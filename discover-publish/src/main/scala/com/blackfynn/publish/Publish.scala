@@ -3,6 +3,7 @@ package com.blackfynn.publish
 import java.time.LocalDate
 import java.util.UUID
 
+import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.alpakka.s3.scaladsl.S3
@@ -20,6 +21,7 @@ import com.blackfynn.domain.{
   ThrowableError
 }
 import com.blackfynn.models._
+import com.blackfynn.publish.CopyS3ObjectsFlow.{ fromUrl, logger }
 import com.blackfynn.publish.models._
 import com.blackfynn.publish.utils.joinKeys
 import com.typesafe.scalalogging.StrictLogging
@@ -30,6 +32,7 @@ import io.circe.syntax._
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.io.Source
+import scala.util.{ Failure, Success }
 
 object Publish extends StrictLogging {
 
@@ -48,8 +51,8 @@ object Publish extends StrictLogging {
   private def publishedAssetsKey(container: PublishContainer): String =
     joinKeys(
       Seq(
+        "versioned",
         container.publishedDatasetId.toString,
-        container.version.toString,
         PUBLISH_ASSETS_FILENAME
       )
     )
@@ -57,19 +60,15 @@ object Publish extends StrictLogging {
   private def graphManifestKey(container: PublishContainer): String =
     joinKeys(
       Seq(
+        "versioned",
         container.publishedDatasetId.toString,
-        container.version.toString,
         GRAPH_ASSETS_FILENAME
       )
     )
 
   private def outputKey(container: PublishContainer): String =
     joinKeys(
-      Seq(
-        container.publishedDatasetId.toString,
-        container.version.toString,
-        OUTPUT_FILENAME
-      )
+      Seq("versioned", container.publishedDatasetId.toString, OUTPUT_FILENAME)
     )
 
   /**
@@ -94,14 +93,20 @@ object Publish extends StrictLogging {
     system: ActorSystem
   ): EitherT[Future, CoreError, Unit] =
     for {
+      previousFiles <- container.previousVersionsFilesKey match {
+        case None =>
+          EitherT
+            .fromEither[Future](Right(List.empty))
+        case Some(key) =>
+          downloadFromS3[List[PublishedFile]](container, key)
+      }
       packagesResult <- PackagesExport
-        .exportPackageSources(container)
+        .exportPackageSources(container, previousFiles)
         .toEitherT
       (externalIdToPackagePath, packageFileManifests) = packagesResult
 
       bannerResult <- copyBanner(container)
       (bannerKey, bannerFileManifest) = bannerResult
-
       readmeResult <- copyReadme(container)
       (readmeKey, readmeFileManifest) = readmeResult
 
@@ -138,32 +143,16 @@ object Publish extends StrictLogging {
         container,
         publishedAssetsKey(container)
       )
-
       graph <- downloadFromS3[ExportedGraphResult](
         container,
         graphManifestKey(container)
       )
-
       _ = logger.info(s"Writing final manifest file: $METADATA_FILENAME")
 
       _ <- writeMetadata(
         container,
         assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: graph.manifests ++ assets.packageManifests
           .map(_.manifest)
-      )
-
-      totalSize <- computeTotalSize(container)
-
-      _ = logger.info(s"Writing temporary file: $OUTPUT_FILENAME")
-
-      _ <- writeJson(
-        container,
-        outputKey(container),
-        TempPublishResults(
-          readmeKey = assets.readmeKey,
-          bannerKey = assets.bannerKey,
-          totalSize = totalSize
-        ).asJson
       )
 
       _ = logger.info(s"Deleting temporary file: $PUBLISH_ASSETS_FILENAME")
@@ -179,6 +168,33 @@ object Publish extends StrictLogging {
         .deleteObject(container.s3Bucket, graphManifestKey(container))
         .toEitherT[Future]
         .leftMap[CoreError](t => ExceptionError(new Exception(t)))
+
+      _ = logger.info(
+        s"Deleting temporary file: ${container.previousVersionsFilesKey.get}"
+      )
+
+      _ <- container.s3
+        .deleteObject(
+          container.s3Bucket,
+          container.previousVersionsFilesKey.getOrElse("")
+        )
+        .toEitherT[Future]
+        .leftMap[CoreError](t => ExceptionError(new Exception(t)))
+
+      totalSize <- computeTotalSize(container)
+
+      _ = logger.info(s"Writing temporary file: OUTPUT_FILENAME")
+
+      _ <- writeJson(
+        container,
+        outputKey(container),
+        TempPublishResults(
+          readmeKey = assets.readmeKey,
+          bannerKey = assets.bannerKey,
+          totalSize = totalSize
+        ).asJson
+      )
+
     } yield ()
 
   /**
@@ -278,6 +294,10 @@ object Publish extends StrictLogging {
       (_, extension) = utilities.splitFileName(banner.name)
       bannerName = s"banner$extension"
       bannerKey = joinKeys(container.s3Key, bannerName)
+      assetBannerKey = joinKeys(
+        container.publishedDatasetId.toString,
+        joinKeys(container.version.toString, bannerName)
+      )
 
       // Copy to public asset bucket
       _ <- container.s3
@@ -286,7 +306,7 @@ object Publish extends StrictLogging {
             banner.s3Bucket,
             banner.s3Key,
             container.s3AssetBucket,
-            joinKeys(container.s3AssetKeyPrefix, bannerKey)
+            joinKeys(container.s3AssetKeyPrefix, assetBannerKey)
           )
         )
         .toEitherT[Future]
@@ -335,6 +355,10 @@ object Publish extends StrictLogging {
   ): EitherT[Future, CoreError, (String, FileManifest)] = {
 
     val readmeKey = joinKeys(container.s3Key, README_FILENAME)
+    val assetReadmeKey = joinKeys(
+      container.publishedDatasetId.toString,
+      joinKeys(container.version.toString, README_FILENAME)
+    )
 
     for {
       readme <- container.datasetAssetsManager
@@ -353,7 +377,7 @@ object Publish extends StrictLogging {
             readme.s3Bucket,
             readme.s3Key,
             container.s3AssetBucket,
-            joinKeys(container.s3AssetKeyPrefix, readmeKey)
+            joinKeys(container.s3AssetKeyPrefix, assetReadmeKey)
           )
         )
         .toEitherT[Future]
@@ -430,12 +454,10 @@ object Publish extends StrictLogging {
     val metadataSize = sizeCountingOwnSize(
       dropNullPrinter(unsizedMetadata.asJson).getBytes("utf-8").length - 1
     )
-
     // Update the actual size of metadata.json
     val metadata = unsizedMetadata.copy(
       files = (metadataManifest.copy(size = metadataSize) :: manifests).sorted
     )
-
     writeJson(
       container,
       joinKeys(container.s3Key, METADATA_FILENAME),
@@ -466,11 +488,12 @@ object Publish extends StrictLogging {
   )(implicit
     executionContext: ExecutionContext,
     materializer: Materializer
-  ): EitherT[Future, CoreError, Long] =
+  ): EitherT[Future, CoreError, Long] = {
     S3.listBucket(container.s3Bucket, Some(container.s3Key))
       .map(_.size)
       .runWith(Sink.fold(0: Long)(_ + _))
       .toEitherT[CoreError](ThrowableError)
+  }
 
   /**
     * Metadata produced by the publish job that discover-service needs to know

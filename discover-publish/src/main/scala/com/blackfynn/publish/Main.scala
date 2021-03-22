@@ -15,9 +15,6 @@ import net.ceedubs.ficus.Ficus._
 
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
-import akka.dispatch.MessageDispatcher
-import cats.data.EitherT
-import com.blackfynn.domain.CoreError
 
 case class PublishError(message: String) extends AbstractError {
   final override def getMessage: String = message
@@ -99,6 +96,7 @@ object Main extends App with StrictLogging {
       collections <- getEnv("COLLECTIONS")
       externalPublications <- getEnv("EXTERNAL_PUBLICATIONS")
       doi <- getEnv("DOI")
+      previousVersionsFilesKey <- getEnv("S3_VERSIONED_FILES_KEY")
 
       s3Bucket <- getEnv("S3_BUCKET") // either the publish or embargo bucket
       s3Key <- getEnv("S3_PUBLISH_KEY")
@@ -124,7 +122,8 @@ object Main extends App with StrictLogging {
           organizationName = organizationName,
           contributors = contributors,
           collections = collections,
-          externalPublications = externalPublications
+          externalPublications = externalPublications,
+          previousVersionsFilesKey = previousVersionsFilesKey
         ),
         10 seconds
       )

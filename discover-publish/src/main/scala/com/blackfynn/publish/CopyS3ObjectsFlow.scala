@@ -6,11 +6,8 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.scaladsl.Flow
 import akka.stream.alpakka.s3.scaladsl._
-import cats.data._
-import cats.implicits._
-import com.blackfynn.publish.models.CopyAction
+import com.blackfynn.publish.models.{ CopyAction, S3Action }
 import com.typesafe.scalalogging.LazyLogging
-
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success }
@@ -26,13 +23,17 @@ object CopyS3ObjectsFlow extends LazyLogging {
     ec: ExecutionContext,
     mat: Materializer,
     system: ActorSystem
-  ): Flow[CopyAction, CopyAction, NotUsed] = {
+  ): Flow[S3Action, S3Action, NotUsed] = {
     implicit val scheduler = system.scheduler
 
-    Flow[CopyAction]
+    Flow[S3Action]
       .mapAsyncUnordered(container.s3CopyFileParallelism)(
         copyAction =>
-          retry(() => copyFile(copyAction), attempts = 5, delay = 5.second)
+          copyAction match {
+            case ca: CopyAction =>
+              retry(() => copyFile(ca), attempts = 5, delay = 5.second)
+            case x: S3Action => Future(x)
+          }
       )
   }
 
@@ -43,9 +44,11 @@ object CopyS3ObjectsFlow extends LazyLogging {
     ec: ExecutionContext,
     mat: Materializer,
     system: ActorSystem
-  ): Future[CopyAction] = {
+  ): Future[S3Action] = {
     logger
-      .info(s"Copying ${fromUrl(copyAction)} to ${toUrl(copyAction)}")
+      .info(
+        s"Copying ${fromUrl(copyAction)} to ${toUrl(copyAction)} with copyAction.s3version being: ${copyAction.s3version}"
+      )
 
     val futureResult = S3
       .multipartCopy(
@@ -56,13 +59,15 @@ object CopyS3ObjectsFlow extends LazyLogging {
         chunkSize = container.s3CopyChunkSize,
         chunkingParallelism = container.s3CopyChunkParallelism
       )
-      .mapMaterializedValue(_.map(_ => copyAction))
+      .mapMaterializedValue(_.map(result => {
+        copyAction.copy(s3version = result.versionId)
+      }))
       .run()
 
     futureResult.onComplete {
       case Success(_) =>
         logger.info(
-          s"Done copying ${fromUrl(copyAction)} to ${toUrl(copyAction)}"
+          s"Done copying ${fromUrl(copyAction)} to ${toUrl(copyAction)} with copyAction.s3version being: ${copyAction.s3version}"
         )
       case Failure(e) => logger.error(e.getMessage, e)
     }
@@ -70,8 +75,8 @@ object CopyS3ObjectsFlow extends LazyLogging {
     futureResult
   }
 
-  def fromUrl(copyAction: CopyAction): String =
-    s"s3://${copyAction.file.s3Bucket}/${copyAction.file.s3Key}"
+  def fromUrl(action: S3Action): String =
+    s"s3://${action.file.s3Bucket}/${action.file.s3Key}"
 
   def toUrl(copyAction: CopyAction): String =
     s"s3://${copyAction.toBucket}/${copyAction.copyToKey}"

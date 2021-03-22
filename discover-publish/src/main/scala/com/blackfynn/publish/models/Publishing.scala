@@ -12,7 +12,10 @@ object FileManifestIDWrapper {
     new Encoder[FileManifestIDWrapper] {
       final def apply(manifest: FileManifestIDWrapper): Json = {
         manifest.manifest.asJson
-          .mapObject(_.add("id", manifest.manifest.id.asJson))
+          .mapObject(_.add("id", manifest.manifest.sourceFileId.asJson))
+          .mapObject(
+            _.add("sourceFileId", manifest.manifest.sourceFileId.asJson)
+          )
       }
     }
 

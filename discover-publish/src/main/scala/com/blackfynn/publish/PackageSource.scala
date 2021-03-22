@@ -28,7 +28,7 @@ object PackagesSource {
     // Initialize the state for unfolding using the packages at the top level
     // of the dataset.
     Source
-      .fromFuture(
+      .future(
         container.packageManager
           .children(None, container.dataset)
           .value

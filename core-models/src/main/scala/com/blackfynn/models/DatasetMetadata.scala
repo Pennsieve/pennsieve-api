@@ -2,16 +2,12 @@
 
 package com.blackfynn.models
 
-import io.circe._
-import io.circe.syntax._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import org.apache.commons.io.comparator.NameFileComparator
-import java.time.LocalDate
-
-import cats.syntax.functor._
-import org.apache.commons.io.FilenameUtils
 import io.circe.{ Decoder, DecodingFailure, Encoder, HCursor }
+import org.apache.commons.io.FilenameUtils
+import org.apache.commons.io.comparator.NameFileComparator
 
+import java.time.LocalDate
 import java.util.UUID
 
 sealed trait DatasetMetadata {
@@ -178,7 +174,8 @@ case class FileManifest(
   size: Long,
   fileType: FileType,
   sourcePackageId: Option[String] = None,
-  id: Option[UUID] = None
+  sourceFileId: Option[UUID] = None,
+  versionId: Option[String] = None
 ) extends Ordered[FileManifest] {
 
   def name: String = FilenameUtils.getName(path)
@@ -191,7 +188,7 @@ case class FileManifest(
 
 object FileManifest {
   implicit val encoder: Encoder[FileManifest] =
-    deriveEncoder[FileManifest].mapJson(_.mapObject(_.remove("id")))
+    deriveEncoder[FileManifest]
   implicit val decoder: Decoder[FileManifest] =
     deriveDecoder[FileManifest]
 }
