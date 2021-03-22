@@ -2,6 +2,7 @@
 
 package com.blackfynn.managers
 
+import com.blackfynn.aws.cognito.CognitoClient
 import com.blackfynn.models.{ Organization, Token, User }
 import io.github.nremond.SecureHash
 import cats.data.EitherT
@@ -21,19 +22,29 @@ class TokenManager(db: Database) {
   def create(
     name: String,
     user: User,
-    organization: Organization
+    organization: Organization,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Token, Secret)] = {
-    val tokenString = java.util.UUID.randomUUID.toString
+    val username = java.util.UUID.randomUUID.toString
     val secret = java.util.UUID.randomUUID.toString
+
     val token = Token(
       name,
-      tokenString,
+      username,
       SecureHash.createHash(secret),
       organization.id,
       user.id
     )
+
+    cognitoClient.adminCreateUser(username, cognitoClient.getTokenPoolId())
+    cognitoClient.adminSetUserPassword(
+      username,
+      secret,
+      cognitoClient.getTokenPoolId()
+    )
+
     for {
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
@@ -105,7 +116,8 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
   override def create(
     name: String,
     user: User,
-    organization: Organization
+    organization: Organization,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Token, Secret)] = {
@@ -118,6 +130,14 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
       organization.id,
       user.id
     )
+
+    cognitoClient.adminCreateUser(name, cognitoClient.getTokenPoolId())
+    cognitoClient.adminSetUserPassword(
+      name,
+      secret,
+      cognitoClient.getTokenPoolId()
+    )
+
     for {
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Write, "")
