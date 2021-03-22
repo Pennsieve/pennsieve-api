@@ -94,10 +94,12 @@ class TokenManager(db: Database) {
     } yield token
 
   def delete(
-    token: Token
+    token: Token,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Int] = {
+    cognitoClient.adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
     db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
   }
 
@@ -186,13 +188,11 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Int] = {
+    cognitoClient.adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
+
     for {
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Read, token.token)
-      )
-      _ <- cognitoClient.adminDeleteUser(
-        token.userId,
-        cognitoClient.getTokenPoolId()
       )
       result <- db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
     } yield result

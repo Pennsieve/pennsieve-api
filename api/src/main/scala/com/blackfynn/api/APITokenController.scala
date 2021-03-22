@@ -126,7 +126,9 @@ class APITokenController(
         tokenUUID <- paramT[String]("uuid")
         secureContainer <- getSecureContainer
         token <- secureContainer.tokenManager.get(tokenUUID).orError
-        deleted <- secureContainer.tokenManager.delete(token).orError
+        deleted <- secureContainer.tokenManager
+          .delete(token, cognitoClient)
+          .orError
       } yield deleted
 
       override val is = result.value.map(OkResult)
