@@ -1,8 +1,8 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.{ FileChecksum, FileObjectType, FileType }
+import com.pennsieve.models.{ FileChecksum, FileObjectType, FileType }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 

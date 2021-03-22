@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.models
+package com.pennsieve.models
 
 import enumeratum._
 import enumeratum.EnumEntry._
@@ -16,7 +16,7 @@ sealed trait Permission
     with EnumEntry
     with Snakecase {
 
-  import com.blackfynn.models.Permission.{
+  import com.pennsieve.models.Permission.{
     Administer,
     Collaborate,
     Delete,

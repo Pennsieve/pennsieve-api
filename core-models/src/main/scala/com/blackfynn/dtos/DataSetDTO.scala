@@ -1,10 +1,10 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.net.URL
 import java.time.ZonedDateTime
 
 import cats.implicits._
-import com.blackfynn.models._
+import com.pennsieve.models._
 
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }

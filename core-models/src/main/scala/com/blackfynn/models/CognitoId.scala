@@ -1,6 +1,6 @@
 // Copyright (c) [2018] - [2021] Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.models
+package com.pennsieve.models
 
 import io.circe.{ Decoder, Encoder }
 

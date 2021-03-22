@@ -1,4 +1,4 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
 import org.scalatest.{ Matchers, WordSpecLike }
 import io.circe.parser.decode

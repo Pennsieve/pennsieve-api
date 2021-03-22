@@ -1,6 +1,6 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
-import com.blackfynn.models.DateVersion
+import com.pennsieve.models.DateVersion
 
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
