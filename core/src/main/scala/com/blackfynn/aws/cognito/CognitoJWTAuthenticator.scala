@@ -1,13 +1,12 @@
 package com.blackfynn.aws.cognito
 
-import com.blackfynn.auth.middleware.{Jwt}
-import io.circe.{Decoder, Encoder, HCursor}
+import com.blackfynn.auth.middleware.Jwt
+import io.circe.{Decoder, Encoder, HCursor, Parser}
 import io.circe.derivation.deriveDecoder
 import io.circe.generic.extras.semiauto.deriveEncoder
 import pdi.jwt.{JwtAlgorithm, JwtCirce}
 
-sealed trait CognitoClaimType {
-}
+sealed trait CognitoClaimType {}
 
 object CognitoClaimType {
   implicit def claimTypeEncoder: Encoder[CognitoClaimType] = deriveEncoder[CognitoClaimType]
@@ -35,7 +34,7 @@ object CognitoClaim {
   implicit def cognitoClaimDecoder: Decoder[CognitoClaim] = List(v2Decoder, v1Decoder).reduceLeft(_ or _)
 }
 
-object CognitoJWTAuthenticator {
+object CognitoJWTAuthenticator extends Parser {
 
   def validateToken(token: Jwt.Token): Boolean = {
     false
@@ -46,7 +45,8 @@ object CognitoJWTAuthenticator {
       claim <- JwtCirce
         .decode(token.value, "jwt-key", Seq(JwtAlgorithm.HS256))
         .toEither
+      content <- decode[CognitoClaim](claim.content)
     } yield
-      claim.content
+      content.cognitoUsername
   }
 }
