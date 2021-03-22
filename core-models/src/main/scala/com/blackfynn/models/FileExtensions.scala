@@ -1,5 +1,5 @@
-package com.blackfynn.models
-import com.blackfynn.models.FileType._
+package com.pennsieve.models
+import com.pennsieve.models.FileType._
 
 object FileExtensions {
 

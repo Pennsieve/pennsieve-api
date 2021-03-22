@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
-import com.blackfynn.models.ModelProperty
+import com.pennsieve.models.ModelProperty
 import io.circe.Json.JString
 import io.circe._
 import cats.implicits._

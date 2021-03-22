@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
-import com.blackfynn.models.{ File, Package }
+import com.pennsieve.models.{ File, Package }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 

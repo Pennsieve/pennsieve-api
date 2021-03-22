@@ -1,4 +1,4 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
 import cats.syntax.functor._
 import io.circe._

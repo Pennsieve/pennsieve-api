@@ -1,10 +1,10 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.time.OffsetDateTime
 import java.util.UUID
 
-import com.blackfynn.concepts.types._
-import com.blackfynn.models.NodeId
+import com.pennsieve.concepts.types._
+import com.pennsieve.models.NodeId
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.java8.time._

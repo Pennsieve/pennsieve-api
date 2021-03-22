@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.notifications
+package com.pennsieve.notifications
 
 import java.time.ZonedDateTime
 
