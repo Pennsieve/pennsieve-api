@@ -1,0 +1,79 @@
+[
+  {
+    "name": "discover-publish",
+    "image": "${discover_publish_image_url}:${image_tag}",
+    "repositoryCredentials": {
+        "credentialsParameter": "${docker_hub_credentials}"
+    },
+    "environment": [
+      { "name" : "ENVIRONMENT", "value": "${environment_name}" },
+      { "name" : "S3_ASSET_BUCKET", "value": "${s3_asset_bucket}" },
+      { "name" : "S3_ASSET_KEY_PREFIX", "value": "${s3_asset_key_prefix}" },
+      { "name" : "S3_COPY_CHUNK_SIZE", "value": "${s3_copy_chunk_size}" }
+    ],
+    "secrets": [
+      { "name" : "POSTGRES_USER", "valueFrom" : "${postgres_user_arn}" },
+      { "name" : "POSTGRES_PASSWORD", "valueFrom" : "${postgres_password_arn}" },
+      { "name" : "POSTGRES_DB", "valueFrom" : "${postgres_db_arn}" },
+      { "name" : "POSTGRES_HOST", "valueFrom" : "${postgres_host_arn}" },
+      { "name" : "POSTGRES_PORT", "valueFrom" : "${postgres_port_arn}" }
+    ],
+    "dependsOn": [
+      {
+        "containerName": "discover-postgres",
+        "condition": "HEALTHY"
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "${cloudwatch_log_group_name}",
+        "awslogs-region": "${aws_region}",
+        "awslogs-stream-prefix": "${discover_publish_stream_prefix}"
+      }
+    },
+    "mountPoints": [
+      ${mount_points}
+    ]
+  },
+  {
+    "name": "discover-postgres",
+    "image": "${postgres_image_url}:${image_tag}",
+    "repositoryCredentials": {
+        "credentialsParameter": "${docker_hub_credentials}"
+    },
+    "portMappings": [
+      {
+        "containerPort": ${postgres_port}
+      }
+    ],
+    "environment": [
+      { "name" : "S3_PGDUMP_BUCKET", "value": "${s3_pgdump_bucket}" }
+    ],
+    "secrets": [
+      { "name" : "POSTGRES_USER", "valueFrom" : "${postgres_user_arn}" },
+      { "name" : "POSTGRES_PASSWORD", "valueFrom" : "${postgres_password_arn}" },
+      { "name" : "POSTGRES_DB", "valueFrom" : "${postgres_db_arn}" },
+      { "name" : "POSTGRES_HOST", "valueFrom" : "${postgres_host_arn}" },
+      { "name" : "POSTGRES_PORT", "valueFrom" : "${postgres_port_arn}" }
+    ],
+    "healthCheck": {
+      "command": ["CMD", "./healthcheck.sh"],
+      "startPeriod": 60,
+      "interval": 10,
+      "timeout": 5,
+      "retries": 10
+    },
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "${cloudwatch_log_group_name}",
+        "awslogs-region": "${aws_region}",
+        "awslogs-stream-prefix": "${postgres_stream_prefix}"
+      }
+    },
+    "mountPoints": [
+      ${mount_points}
+    ]
+  }
+]

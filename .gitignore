@@ -1,0 +1,48 @@
+.DS_Store
+
+### Scala ###
+*.class
+*.log
+
+# sbt specific
+.testcontainers*
+.cache/
+.history/
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+project/metals.sbt
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+.idea/
+
+## Redis ##
+*.rdb
+
+## Vim ##
+*.swp
+*.swo
+*.tags
+
+## Ensime##
+.ensime
+.ensime_cache/
+
+TAGS
+
+bin/
+
+*.iml
+
+.metals/
+.bloop/
+.projectile
+.bsp/
+
+node_modules/

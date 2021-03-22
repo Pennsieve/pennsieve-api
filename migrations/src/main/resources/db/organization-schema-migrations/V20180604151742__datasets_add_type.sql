@@ -1,0 +1,1 @@
+ALTER TABLE datasets ADD COLUMN type VARCHAR(255) DEFAULT 'research';

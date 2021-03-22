@@ -1,0 +1,10 @@
+CREATE TABLE jobs(
+  id SERIAL PRIMARY KEY,
+  status VARCHAR(255),
+  payload JSONB,
+  result JSONB,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER jobs_update_updated_at BEFORE UPDATE ON jobs FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();

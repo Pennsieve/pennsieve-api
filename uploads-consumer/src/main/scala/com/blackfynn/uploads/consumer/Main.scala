@@ -1,0 +1,117 @@
+// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+
+package com.blackfynn.uploads.consumer
+
+import akka.stream.ActorMaterializer
+import akka.stream.alpakka.sqs.SqsSourceSettings
+import software.amazon.awssdk.services.sns.SnsAsyncClient
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import software.amazon.awssdk.services.sqs.model.Message
+import software.amazon.awssdk.regions.Region
+import com.blackfynn.akka.consumer.{
+  ConsumerUtilities,
+  DeadLetterQueueProcessor,
+  TriggerUtilities
+}
+import com.blackfynn.akka.http.{
+  HealthCheck,
+  HealthCheckService,
+  RouteService,
+  WebServer
+}
+import com.blackfynn.aws.queue.{
+  AWSSQSContainer,
+  LocalSQSContainer,
+  SQSDeduplicationContainer
+}
+import com.blackfynn.aws.s3.{ AWSS3Container, LocalS3Container }
+import com.blackfynn.aws.sns.{ AWSSNSContainer, LocalSNSContainer }
+import com.blackfynn.clients.{
+  JobSchedulingServiceContainerImpl,
+  LocalJobSchedulingServiceContainer,
+  LocalUploadServiceContainer,
+  UploadServiceContainerImpl
+}
+import com.blackfynn.core.utilities.{ DatabaseContainer, RedisContainer }
+import com.blackfynn.service.utilities.ContextLogger
+import com.blackfynn.traits.PostgresProfile.api.Database
+import com.blackfynn.uploads.consumer.antivirus.ClamAVContainer
+import com.redis.RedisClientPool
+import net.ceedubs.ficus.Ficus._
+import scala.concurrent.duration._
+
+object Main extends App with WebServer {
+
+  implicit val logger: ContextLogger = new ContextLogger()
+
+  logger.noContext.info("launching uploads-consumer...")
+
+  override val actorSystemName: String = "uploads-consumer"
+
+  implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
+
+  val environment: String = config.as[String]("environment")
+  val isLocal: Boolean = environment.toLowerCase == "local"
+
+  implicit val container: Container =
+    if (isLocal) {
+      new ConsumerContainer(config) with DatabaseContainer with RedisContainer
+      with LocalSQSContainer with LocalS3Container
+      with SQSDeduplicationContainer with ClamAVContainer with LocalSNSContainer
+      with LocalJobSchedulingServiceContainer with LocalUploadServiceContainer
+    } else {
+      new ConsumerContainer(config) with DatabaseContainer with RedisContainer
+      with AWSSQSContainer with AWSS3Container with SQSDeduplicationContainer
+      with ClamAVContainer with AWSSNSContainer
+      with JobSchedulingServiceContainerImpl with UploadServiceContainerImpl
+    }
+
+  val deadLetterQueueSqsSettings = SqsSourceSettings()
+    .withWaitTime(10.seconds)
+    .withMaxBufferSize(100)
+    .withMaxBatchSize(10)
+
+  implicit val db: Database = container.db
+
+  implicit val sqsClient: SqsAsyncClient = container.sqs.client
+
+  implicit val snsClient: SnsAsyncClient = container.snsClient
+
+  val (deadLetterQueueKillSwitch, deadLetterQueueFuture) =
+    DeadLetterQueueProcessor
+      .deadLetterQueueConsume(
+        container.alertQueue,
+        container.alertTopic,
+        deadLetterQueueSqsSettings,
+        TriggerUtilities.failManifest
+      )
+      .run()
+
+  // Launch Consumer
+  logger.noContext.info(s"polling SQS queue ${container.queue}")
+  val (consumerKillSwitch, completionFuture) =
+    Processor.consume(container.queue, container.parallelism).run()
+
+  ConsumerUtilities.handle(completionFuture)
+
+  // when a termination signal (sigkill) is sent to the application process
+  // this allows the consumer to gracefully shutdown the akka stream
+  ConsumerUtilities.addShutdownHook(consumerKillSwitch)
+
+  // serve health check status
+  override val routeService: RouteService = new HealthCheckService(
+    Map(
+      "postgres" -> HealthCheck.postgresHealthCheck(container.db),
+      "s3" -> HealthCheck.s3HealthCheck(
+        container.s3,
+        List(
+          container.etlBucket,
+          container.storageBucket,
+          container.uploadsBucket
+        )
+      ),
+      "redis" -> HealthCheck.redisHealthCheck(container.redisClientPool)
+    )
+  )
+  startServer()
+}

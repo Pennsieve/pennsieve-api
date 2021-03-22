@@ -1,0 +1,13 @@
+<configuration>
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%date{yyyy-MM-dd'T'HH:mm:ss.SSS'Z'}] [%thread] [%level] [%logger] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.blackfynn" level="INFO" />
+
+    <root level="WARN">
+        <appender-ref ref="Console" />
+    </root>
+</configuration>

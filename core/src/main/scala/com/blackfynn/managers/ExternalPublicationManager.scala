@@ -1,0 +1,58 @@
+// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+
+package com.blackfynn.managers
+
+import cats.data._
+import cats.implicits._
+import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
+import com.blackfynn.db._
+import com.blackfynn.domain._
+import com.blackfynn.models._
+import com.blackfynn.traits.PostgresProfile.api._
+import scala.concurrent.{ ExecutionContext, Future }
+
+class ExternalPublicationManager(
+  val db: Database,
+  val organization: Organization
+) {
+  val externalPublicationMapper = new ExternalPublicationMapper(organization)
+
+  def get(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[ExternalPublication]] =
+    db.run(externalPublicationMapper.get(dataset).sortBy(_.createdAt).result)
+      .toEitherT
+
+  def createOrUpdate(
+    dataset: Dataset,
+    doi: Doi,
+    relationshipType: RelationshipType
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, ExternalPublication] =
+    db.run(
+        externalPublicationMapper.createOrUpdate(dataset, doi, relationshipType)
+      )
+      .toEitherT
+
+  def delete(
+    dataset: Dataset,
+    doi: Doi,
+    relationshipType: RelationshipType
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] =
+    db.run(externalPublicationMapper.delete(dataset, doi, relationshipType))
+      .toEitherT
+      .subflatMap {
+        case 0 =>
+          Left(
+            NotFound(
+              s"External publication $doi with relationship '$relationshipType' for dataset ${dataset.id}"
+            )
+          )
+        case _ => Right(())
+      }
+}

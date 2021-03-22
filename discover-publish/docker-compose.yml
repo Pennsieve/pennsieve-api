@@ -1,0 +1,14 @@
+version: '3.4'
+services:
+  postgres:
+    build:
+      context: .
+    environment:
+      S3_PGDUMP_BUCKET: "dev-discover-pgdump-use1"
+      S3_PGDUMP_KEY: "149/39/dump.sql"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_SESSION_TOKEN: "${AWS_SESSION_TOKEN}"
+      AWS_DEFAULT_REGION: "us-east-1"
+    ports:
+    - "5432:5432"
