@@ -92,7 +92,10 @@ class UserInviteManager(db: Database) {
                 case Some(id) => EitherT.rightT[Future, CoreError](id)
                 case None =>
                   cognitoClient
-                    .adminCreateUser(email.trim.toLowerCase)
+                    .adminCreateUser(
+                      email.trim.toLowerCase,
+                      cognitoClient.userPoolId
+                    )
                     .toEitherT
               }
 
