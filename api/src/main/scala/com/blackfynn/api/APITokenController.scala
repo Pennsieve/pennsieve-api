@@ -4,6 +4,7 @@ package com.blackfynn.api
 
 import cats.data.EitherT
 import cats.implicits._
+import com.blackfynn.aws.cognito.CognitoClient
 import com.blackfynn.dtos.{ APITokenDTO, APITokenSecretDTO }
 import com.blackfynn.helpers.APIContainers.{
   InsecureAPIContainer,
@@ -22,6 +23,7 @@ case class UpdateTokenRequest(name: String)
 class APITokenController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
+  cognitoClient: CognitoClient,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -119,7 +121,6 @@ class APITokenController(
         parameters pathParam[String]("uuid").description("API Token UUID")
     )
   ) {
-
     new AsyncResult {
       val result = for {
         tokenUUID <- paramT[String]("uuid")

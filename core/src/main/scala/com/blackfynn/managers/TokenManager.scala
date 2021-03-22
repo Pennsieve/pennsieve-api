@@ -86,8 +86,9 @@ class TokenManager(db: Database) {
     token: Token
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] =
+  ): EitherT[Future, CoreError, Int] = {
     db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
+  }
 
   def getOrganization(
     token: Token

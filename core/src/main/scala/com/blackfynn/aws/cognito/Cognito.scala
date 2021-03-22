@@ -82,8 +82,8 @@ object Cognito {
 
 class Cognito(
   val client: CognitoIdentityProviderAsyncClient,
-  val userPoolId: String,
-  val tokenPoolId: String
+  userPoolId: String,
+  tokenPoolId: String
 ) extends CognitoClient {
 
   def adminCreateUser(
