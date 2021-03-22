@@ -181,15 +181,20 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
     } yield token
 
   override def delete(
-    token: Token
+    token: Token,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] =
+  ): EitherT[Future, CoreError, Int] = {
     for {
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Read, token.token)
       )
+      _ <- cognitoClient.adminDeleteUser(
+        token.userId,
+        cognitoClient.getTokenPoolId()
+      )
       result <- db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
     } yield result
-
+  }
 }
