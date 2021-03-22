@@ -36,8 +36,6 @@ project/metals.sbt
 
 TAGS
 
-bin/
-
 *.iml
 
 .metals/
