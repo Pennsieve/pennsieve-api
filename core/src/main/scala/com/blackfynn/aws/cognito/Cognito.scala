@@ -14,6 +14,8 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserRequest,
   AdminCreateUserResponse,
+  AdminDeleteUserRequest,
+  AdminDeleteUserResponse,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
@@ -28,7 +30,15 @@ import com.typesafe.config.Config
 
 trait CognitoClient {
   def adminCreateUser(
-    email: String
+    email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId]
+
+  def adminDeleteUser(
+    email: String,
+    userPoolId: String
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId]
@@ -68,12 +78,13 @@ object Cognito {
 
 class Cognito(
   val client: CognitoIdentityProviderAsyncClient,
-  userPoolId: String,
-  tokenPoolId: String
+  val userPoolId: String,
+  val tokenPoolId: String
 ) extends CognitoClient {
 
   def adminCreateUser(
-    email: String
+    email: String,
+    userPoolId: String
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId] = {
@@ -93,7 +104,33 @@ class Cognito(
       cognitoId <- parseCognitoId(cognitoResponse.user()) match {
         case Some(cognitoId) => Future.successful(cognitoId)
         case None =>
-          Future.failed(NotFound("Could not parse Cognito ID from respoonse"))
+          Future.failed(NotFound("Could not parse Cognito ID from response"))
+      }
+    } yield cognitoId
+  }
+
+  def adminDeleteToken(
+    email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId] = {
+    val request = AdminDeleteUserRequest
+      .builder()
+      .userPoolId(userPoolId)
+      .username(email)
+      .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
+      .build()
+
+    for {
+      cognitoResponse <- client
+        .adminDeleteUser(request)
+        .toScala
+
+      cognitoId <- parseCognitoId(cognitoResponse.user()) match {
+        case Some(cognitoId) => Future.successful(cognitoId)
+        case None =>
+          Future.failed(NotFound("Could not parse Cognito ID from response"))
       }
     } yield cognitoId
   }
