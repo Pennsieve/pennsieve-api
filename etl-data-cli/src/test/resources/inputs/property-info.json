@@ -1,0 +1,18 @@
+[
+  {
+    "key": "key-1",
+    "value": "value-1",
+    "dataType": "String",
+    "category": "Pennsieve",
+    "fixed": false,
+    "hidden": false
+  },
+  {
+    "key": "key-2",
+    "value": "value-2",
+    "dataType": "String",
+    "category": "Pennsieve",
+    "fixed": false,
+    "hidden": false
+  }
+]

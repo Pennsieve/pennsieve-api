@@ -1,0 +1,3 @@
+ALTER TABLE contributors ALTER COLUMN first_name DROP NOT NULL;
+ALTER TABLE contributors ALTER COLUMN last_name DROP NOT NULL;
+ALTER TABLE contributors ALTER COLUMN email DROP NOT NULL;

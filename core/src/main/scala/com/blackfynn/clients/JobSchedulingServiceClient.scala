@@ -1,0 +1,176 @@
+package com.blackfynn.clients
+
+import java.net.URI
+
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model._
+import akka.stream.{ ActorMaterializer, Materializer }
+import akka.util.ByteString
+import cats.data.EitherT
+import cats.instances.future._
+import cats.syntax.either._
+import com.blackfynn.auth.middleware.Jwt
+import com.blackfynn.models.{ JobId, Payload }
+import com.blackfynn.utilities.Container
+import com.typesafe.scalalogging.StrictLogging
+import io.circe.syntax._
+import io.circe.{ Decoder, Encoder }
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import com.blackfynn.jobscheduling.clients.generated.jobs.JobsClient
+import com.blackfynn.service.utilities.QueueHttpResponder
+
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.collection.mutable.ArrayBuffer
+
+case class Quota(slotsAllowed: Int)
+
+object Quota {
+  implicit def encoder: Encoder[Quota] = deriveEncoder[Quota]
+  implicit def decoder: Decoder[Quota] = deriveDecoder[Quota]
+}
+
+trait JobSchedulingServiceClient {
+  val jobSchedulingServiceHost: String
+
+  implicit val system: ActorSystem
+  implicit val ec: ExecutionContext
+
+  def setOrganizationQuota(
+    organizationId: Int,
+    quota: Quota,
+    token: Jwt.Token
+  ): EitherT[Future, Throwable, HttpResponse]
+}
+
+class LocalJobSchedulingServiceClient(
+)(implicit
+  override val system: ActorSystem,
+  override val ec: ExecutionContext
+) extends JobSchedulingServiceClient {
+  override val jobSchedulingServiceHost = "test-job-scheduling-service-url"
+
+  val organizationQuotas: ArrayBuffer[(Int, Quota)] =
+    ArrayBuffer.empty[(Int, Quota)]
+
+  def setOrganizationQuota(
+    organizationId: Int,
+    quota: Quota,
+    token: Jwt.Token
+  ): EitherT[Future, Throwable, HttpResponse] = {
+    organizationQuotas += organizationId -> quota
+    EitherT.rightT[Future, Throwable](HttpResponse(201))
+  }
+}
+
+class JobSchedulingClientImpl(
+  override val jobSchedulingServiceHost: String
+)(implicit
+  override val system: ActorSystem,
+  override val ec: ExecutionContext
+) extends JobSchedulingServiceClient
+    with StrictLogging {
+
+  def makeRequest(
+    req: HttpRequest,
+    token: Jwt.Token
+  ): EitherT[Future, Throwable, HttpResponse] = {
+    EitherT(
+      Http()
+        .singleRequest(
+          req.addHeader(
+            headers.Authorization(headers.OAuth2BearerToken(token.value))
+          )
+        )
+        .map(
+          resp =>
+            if (resp.status.isSuccess) {
+              resp.asRight
+            } else {
+              val error = ServerError(
+                s"Error communicating with the job scheduling service: ${resp.toString}"
+              )
+              logger.error(error.message)
+              Left[Throwable, HttpResponse](error)
+            }
+        )
+    )
+  }
+
+  def setOrganizationQuota(
+    organizationId: Int,
+    quota: Quota,
+    token: Jwt.Token
+  ): EitherT[Future, Throwable, HttpResponse] = {
+    val requestData = ByteString(quota.asJson.noSpaces)
+    makeRequest(
+      HttpRequest(
+        HttpMethods.POST,
+        s"$jobSchedulingServiceHost/organizations/${organizationId}/set/quota",
+        entity = HttpEntity
+          .Strict(ContentType(MediaTypes.`application/json`), requestData)
+      ),
+      token
+    )
+  }
+}
+
+trait JobSchedulingServiceContainer { self: Container =>
+  implicit val system: ActorSystem
+  implicit val ec: ExecutionContext
+  implicit def materializer: ActorMaterializer
+
+  val jobSchedulingServiceHost: String
+  val jobSchedulingServiceQueueSize: Int
+  val jobSchedulingServiceRateLimit: Int
+  val jobSchedulingServiceClient: JobSchedulingServiceClient
+  val jobsClient: JobsClient
+}
+
+trait JobSchedulingServiceContainerImpl extends JobSchedulingServiceContainer {
+  self: Container =>
+  implicit val system: ActorSystem
+  implicit val ec: ExecutionContext
+  override implicit val materializer: ActorMaterializer
+
+  val jobSchedulingServiceHost: String
+  val jobSchedulingServiceQueueSize: Int
+  val jobSchedulingServiceRateLimit: Int
+  override lazy val jobSchedulingServiceClient: JobSchedulingServiceClient =
+    new JobSchedulingClientImpl(jobSchedulingServiceHost)
+  override lazy val jobsClient: JobsClient = {
+    val host = URI.create(jobSchedulingServiceHost).getHost
+    val queuedRequestHttpClient: HttpRequest => Future[HttpResponse] =
+      QueueHttpResponder(
+        host,
+        jobSchedulingServiceQueueSize,
+        jobSchedulingServiceRateLimit
+      ).responder
+
+    JobsClient.httpClient(queuedRequestHttpClient, jobSchedulingServiceHost)
+  }
+}
+
+trait LocalJobSchedulingServiceContainer extends JobSchedulingServiceContainer {
+  self: Container =>
+  implicit val system: ActorSystem
+  implicit val ec: ExecutionContext
+  implicit val materializer: ActorMaterializer
+
+  val jobSchedulingServiceHost: String
+  val jobSchedulingServiceQueueSize: Int
+  val jobSchedulingServiceRateLimit: Int
+  override val jobSchedulingServiceClient: JobSchedulingServiceClient =
+    new LocalJobSchedulingServiceClient
+  override lazy val jobsClient: JobsClient = {
+    val host = jobSchedulingServiceHost
+    val queuedRequestHttpClient: HttpRequest => Future[HttpResponse] =
+      QueueHttpResponder(
+        host,
+        jobSchedulingServiceQueueSize,
+        jobSchedulingServiceRateLimit
+      ).responder
+
+    JobsClient.httpClient(queuedRequestHttpClient, host)
+  }
+}

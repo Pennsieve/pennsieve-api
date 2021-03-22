@@ -1,0 +1,23 @@
+{
+    "name": "schema-1",
+    "rowCount": 123456,
+    "columns": [
+        { "name": "1",
+          "dataType": "Character Varying",
+          "primaryKey": false,
+          "internal": false,
+          "displayName": "column-A"
+        },
+        { "name": "2",
+          "dataType": "STRINg",
+          "primaryKey": false,
+          "internal": false,
+          "displayName": "column-B"
+        },
+        { "name": "__bf_id",
+          "dataType": "Serial",
+          "primaryKey": true,
+          "internal": true
+        }
+    ]
+}

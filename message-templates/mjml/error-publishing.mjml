@@ -1,0 +1,91 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-text padding="0" />
+      <mj-button background-color="#5039F7" padding="12px 16px" color="#ffffff" font-size="14px" />
+      <mj-body background-color="#ffffff" />
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif" font-size="16px" line-height="1.5em" />
+      <mj-class name="kicker" font-size="16px" line-height="24px" />
+      <mj-class name="full-section" padding-left="0" padding-right="0" />
+      <mj-class name="copy-section" padding-left="20px" padding-right="20px" text-align="left" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      h1 {
+        font-size: 1.875em;
+        font-weight: 700;
+        line-height: 1.2;
+        margin: 1rem 0 0;
+      }
+      h2 {
+        font-size: 1.25em;
+        margin: 0;
+      }
+      h3 {
+        font-size: .875em;
+        font-weight: bold;
+        margin: 0;
+      }
+      p {
+        font-size: .875em;
+        margin: 0;
+        line-height: 1.5rem;
+      }
+      .divider {
+        background: #2760ff;
+        height: 4px;
+        width: 33px;
+      }
+      .body {
+        overflow: hidden;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="body">
+    <mj-section padding="0">
+      <mj-column>
+        <mj-raw>
+          <picture>
+            <source height="67" width="320" srcset="https://app.pennsieve.net/static/emails/img/Pennsieve-Logo-RGB.png" media="(max-width: 500px)" style="display: block" alt="Pennsieve Logo">
+            <img height="76" width="220" style="padding: 50px 0 20px 0" src="https://app.pennsieve.net/static/emails/img/Pennsieve-Logo-RGB.png" style="display: block" alt="Pennsieve Logo">
+          </picture>
+        </mj-raw>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="full-section" padding-top="0" padding-bottom="20px">
+      <mj-column background-color="#1c46bd" padding="18px 20px 35px 20px">
+        <mj-text color="#ffffff" padding="0">
+          <h1>Dataset publishing error</h1>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0">
+          <p>Your dataset, ${datasetName}, was unable to be published due to an unexpected error. Our team is actively working to resolve this issue. Please try again later or contact our team directly if the problem persists.</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section">
+      <mj-column padding="16px 0">
+        <mj-text height="40px">
+          <!--[if mso]>
+            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="mailto:support@pennieve.net" style="height:40px;v-text-anchor:middle;width:148px;" arcsize="8%" stroke="f" fillcolor="#5039F7">
+              <w:anchorlock/>
+              <center>
+            <![endif]-->
+                <a href="mailto:support@pennsieve.net"
+          style="background-color:#5039F7;border-radius:3px;color:#ffffff;display:inline-block;font-family:sans-serif;font-size:14px;font-weight:500;line-height:40px;text-align:center;text-decoration:none;width:148px;-webkit-text-size-adjust:none;">Contact Us</a>
+            <!--[if mso]>
+              </center>
+            </v:roundrect>
+          <![endif]-->
+        </mj-text>v
+      </mj-column>
+    </mj-section>
+
+    <mj-include path="./footer-discover.mjml" />
+
+  </mj-body>
+</mjml>

@@ -1,0 +1,9 @@
+{
+    "name": "channel-1",
+    "start": 1000,
+    "end": 6000,
+    "rate": 1000.0,
+    "unit": "uV",
+    "type": "CONTINUOUS",
+    "lastAnnotation": 0
+}

@@ -1,0 +1,13 @@
+CREATE TABLE columns(
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  display_name TEXT,
+  data_type TEXT NOT NULL,
+  primary_key BOOLEAN NOT NULL DEFAULT FALSE,
+  internal BOOLEAN NOT NULL DEFAULT FALSE,
+  package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER columns_update_updated_at BEFORE UPDATE ON columns FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();

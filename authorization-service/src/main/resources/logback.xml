@@ -1,0 +1,27 @@
+<configuration>
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp><fieldName>timestamp</fieldName></timestamp>
+                <message/>
+                <loggerName><fieldName>logger</fieldName></loggerName>
+                <logLevel><fieldName>logLevel</fieldName></logLevel>
+                <callerData/>
+                <throwableClassName/>
+                <throwableRootCauseClassName/>
+                <stackTrace/>
+                <mdc><fieldName>pennsieve</fieldName></mdc>
+            </providers>
+        </encoder>
+    </appender>
+
+    <appender name="Async" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="Console" />
+    </appender>
+
+    <logger name="com.blackfynn" level="DEBUG" />
+
+    <root level="INFO">
+        <appender-ref ref="Async" />
+    </root>
+</configuration>

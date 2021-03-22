@@ -1,0 +1,127 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-text padding="0" />
+      <mj-button background-color="#5039F7" padding="12px 16px" color="#ffffff" font-size="14px" />
+      <mj-body background-color="#ffffff" />
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif" font-size="16px" line-height="1.5em" />
+      <mj-class name="kicker" font-size="16px" line-height="24px" />
+      <mj-class name="full-section" padding-left="0" padding-right="0" />
+      <mj-class name="copy-section" padding-left="20px" padding-right="20px" text-align="left" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      h1 {
+        font-size: 1.875em;
+        font-weight: 700;
+        line-height: 1.2;
+        margin: 1rem 0;
+      }
+      h2 {
+        font-size: 1.25em;
+        margin: 0;
+      }
+      h3 {
+        font-size: .875em;
+        font-weight: bold;
+        margin: 0;
+      }
+      p {
+        font-size: .875em;
+        margin: 0;
+        line-height: 1.5rem;
+      }
+      .divider {
+        background: #2760ff;
+        height: 4px;
+        width: 33px;
+      }
+      .body {
+        overflow: hidden;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="body">
+    <mj-section padding="0">
+      <mj-column>
+        <mj-raw>
+          <picture>
+            <source height="67" width="320" srcset="https://app.pennsieve.net/static/emails/img/Pennsieve-Logo-RGB.png" media="(max-width: 500px)" style="display: block" alt="Pennsieve Logo">
+            <img height="76" width="220" style="padding: 50px 0 20px 0" src="https://app.pennsieve.net/static/emails/img/Pennsieve-Logo-RGB.png" style="display: block" alt="Pennsieve Logo">
+          </picture>
+        </mj-raw>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="full-section" padding-top="0" padding-bottom="20px">
+      <mj-column background-color="#5039F7" padding="18px 20px 35px 20px">
+        <mj-text color="#ffffff" padding="0">
+          <h1>Welcome</h1>
+          <h2>You’re now a member of Pennsieve Discover</h2>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section">
+      <mj-column padding="0">
+        <mj-text mj-class="kicker">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section" text-align="left">
+      <mj-column padding-top="22px" padding-bottom="27px">
+        <mj-table width="33px" padding="0" line-height="4px">
+          <tr>
+            <td height="4" width="33" style="background-color: #5039F7; border-radius: 3px">&nbsp;</td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0">
+          <h3>Simplified data management</h3>
+          <p>No more ad-hoc scientific data management solutions. We provide the easiest way to manage and access your scientific data and metadata in a single location.</p>
+        </mj-text>
+
+        <mj-text padding="16px 0">
+          <h3>Explore your data with ease</h3>
+          <p>Organize and navigate your files and metadata through an intuitive, easy-to-use cloud-based solution.</p>
+        </mj-text>
+
+        <mj-text padding="16px 0">
+          <h3>Advanced analysis tools</h3>
+          <p>Leverage powerful APIs and client libraries using the tools and analytical environments you already work in.</p>
+        </mj-text>
+
+        <mj-text padding="16px 0">
+          <h3>Foster collaboration</h3>
+          <p>Accelerate innovation by empowering you and your team with the collaboration tools they need.</p>
+        </mj-text>
+
+        <mj-text padding="16px 0">
+          <h3>For scientists, by scientists</h3>
+          <p>Blackfynn enables you to see your data in context and track activity around your datasets.</p>
+        </mj-text>
+
+        <mj-text padding="16px 0">
+          <h3>Safe and secure</h3>
+          <p>Our secure platform provides best-in-class security and compliance.</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section">
+      <mj-column padding="16px 0 0">
+        <mj-button padding="0" align="left" href="https://app.blackfynn.io">
+          Get Started
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <mj-include path="./footer.mjml" />
+
+  </mj-body>
+</mjml>
