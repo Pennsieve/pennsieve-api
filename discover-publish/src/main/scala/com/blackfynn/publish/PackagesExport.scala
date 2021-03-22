@@ -16,15 +16,18 @@
 
 package com.pennsieve.publish
 
+import akka.Done
 import akka.actor.ActorSystem
-import akka.stream.{ ActorAttributes, Supervision }
-import akka.stream.scaladsl.{ Keep }
+import akka.stream.alpakka.s3.scaladsl.S3
+import akka.stream.{ ActorAttributes, Materializer, Supervision }
+import akka.stream.scaladsl.Keep
 import akka.stream.scaladsl.Sink
-import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
-import com.pennsieve.models.{ ExternalId, FileManifest }
-import com.pennsieve.publish.models.{ CopyAction, PackageExternalIdMap }
+import com.pennsieve.models.{ ExternalId, FileManifest, PublishedFile }
+import com.pennsieve.publish.Publish.logger
+import com.pennsieve.publish.models.{ PackageExternalIdMap, S3Action }
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success }
 
 object PackagesExport extends LazyLogging {
 
@@ -36,7 +39,8 @@ object PackagesExport extends LazyLogging {
   }
 
   def exportPackageSources(
-    container: PublishContainer
+    container: PublishContainer,
+    previousFiles: List[PublishedFile]
   )(implicit
     ec: ExecutionContext,
     system: ActorSystem
@@ -45,7 +49,7 @@ object PackagesExport extends LazyLogging {
 
     val (manifestF, packageNodeIdF) = PackagesSource()
       .withAttributes(ActorAttributes.supervisionStrategy(supervision))
-      .via(BuildCopyRequests())
+      .via(BuildS3ActionRequests(previousFiles))
       .via(CopyS3ObjectsFlow())
       .alsoToMat(buildFileManifest)(Keep.right)
       .toMat(buildPackageExternalIdMap)(Keep.both)
@@ -54,23 +58,62 @@ object PackagesExport extends LazyLogging {
     for {
       manifest <- manifestF
       nodeIdMap <- packageNodeIdF
+
+      filesToDelete <- Future(previousFiles.filterNot { publishedFile =>
+        //if the S3 key of an already published file is in the manifest, then it means that the file has either been
+        // overwritten/version (CopyAction) or left untouched (NoOpAction). In both cases, we should not delete the file
+        manifest
+          .map(_.path)
+          .map(path => container.s3Key + path)
+          .contains(publishedFile.s3Key)
+      })
+
+      _ = filesToDelete.map(file => {
+        deleteFile(file)
+      })
+
     } yield (nodeIdMap, manifest)
+  }
+
+  def deleteFile(
+    fileToDelete: PublishedFile
+  )(implicit
+    container: PublishContainer,
+    ec: ExecutionContext,
+    mat: Materializer,
+    system: ActorSystem
+  ): Future[Done] = {
+
+    val futureResult = S3
+      .deleteObject(
+        bucket = container.s3Bucket,
+        key = fileToDelete.s3Key,
+        versionId = fileToDelete.s3VersionId
+      )
+      .runWith(Sink.head)
+
+    futureResult.onComplete {
+      case Success(_) => logger.info(s"Done deleting ${fileToDelete.s3Key}")
+      case Failure(e) => logger.error(e.getMessage, e)
+    }
+
+    futureResult
   }
 
   def buildFileManifest(
     implicit
     container: PublishContainer
-  ): Sink[CopyAction, Future[List[FileManifest]]] =
-    Sink.fold(Nil: List[FileManifest])(
-      (accum, action: CopyAction) =>
-        FileManifest(
-          path = action.fileKey,
-          size = action.file.size,
-          fileType = action.file.fileType,
-          sourcePackageId = Some(action.pkg.nodeId),
-          id = Some(action.file.uuid)
-        ) :: accum
-    )
+  ): Sink[S3Action, Future[List[FileManifest]]] =
+    Sink.fold(Nil: List[FileManifest])((accum, action: S3Action) => {
+      FileManifest(
+        path = action.fileKey,
+        size = action.file.size,
+        fileType = action.file.fileType,
+        sourcePackageId = Some(action.pkg.nodeId),
+        sourceFileId = Some(action.file.uuid),
+        versionId = action.s3version
+      ) :: accum
+    })
 
   /**
     * Map package ID to S3 path so that `model-publish` can rewrite node IDs as
@@ -83,12 +126,11 @@ object PackagesExport extends LazyLogging {
   def buildPackageExternalIdMap(
     implicit
     container: PublishContainer
-  ): Sink[CopyAction, Future[PackageExternalIdMap]] =
-    Sink.fold(Map.empty: PackageExternalIdMap)(
-      (accum, action: CopyAction) =>
-        accum ++ Map(
-          ExternalId.nodeId(action.pkg.nodeId) -> action.packageKey,
-          ExternalId.intId(action.pkg.id) -> action.packageKey
-        )
-    )
+  ): Sink[S3Action, Future[PackageExternalIdMap]] =
+    Sink.fold(Map.empty: PackageExternalIdMap)((accum, action: S3Action) => {
+      accum ++ Map(
+        ExternalId.nodeId(action.pkg.nodeId) -> action.packageKey,
+        ExternalId.intId(action.pkg.id) -> action.packageKey
+      )
+    })
 }

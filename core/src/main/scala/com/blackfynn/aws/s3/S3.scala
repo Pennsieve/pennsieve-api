@@ -18,31 +18,11 @@ package com.pennsieve.aws.s3
 
 import cats.implicits._
 import com.amazonaws.services.s3.{ AmazonS3, AmazonS3URI }
-import com.amazonaws.services.s3.model.{
-  Bucket,
-  CannedAccessControlList,
-  CompleteMultipartUploadRequest,
-  CompleteMultipartUploadResult,
-  CopyObjectRequest,
-  CopyObjectResult,
-  CopyPartRequest,
-  CopyPartResult,
-  GeneratePresignedUrlRequest,
-  HeadBucketRequest,
-  HeadBucketResult,
-  InitiateMultipartUploadRequest,
-  InitiateMultipartUploadResult,
-  ListObjectsRequest,
-  ObjectListing,
-  ObjectMetadata,
-  PartETag,
-  PutObjectRequest,
-  PutObjectResult,
-  S3Object,
-  S3ObjectSummary
-}
+import com.amazonaws.services.s3.model._
 import java.io.{ File, InputStream }
 import java.net.URL
+
+import com.amazonaws.{ AmazonServiceException, SdkClientException }
 
 import collection.JavaConverters._
 import scala.annotation.tailrec
@@ -92,6 +72,8 @@ trait S3Trait {
   ): Either[Throwable, PutObjectResult]
 
   def createBucket(bucket: String): Either[Throwable, Bucket]
+
+  def enableBucketVersioning(bucket: String): Either[Throwable, Unit]
 
   def deleteBucket(bucket: String): Either[Throwable, Unit]
 
@@ -333,6 +315,16 @@ class S3(val client: AmazonS3) extends S3Trait {
 
   def createBucket(bucket: String): Either[Throwable, Bucket] =
     Either.catchNonFatal { client.createBucket(bucket) }
+
+  def enableBucketVersioning(bucket: String): Either[Throwable, Unit] =
+    Either.catchNonFatal {
+      client.setBucketVersioningConfiguration(
+        new SetBucketVersioningConfigurationRequest(
+          bucket,
+          new BucketVersioningConfiguration("Enabled")
+        )
+      )
+    }
 
   def deleteBucket(bucket: String): Either[Throwable, Unit] =
     Either.catchNonFatal { client.deleteBucket(bucket) }
