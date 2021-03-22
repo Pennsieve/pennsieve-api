@@ -41,7 +41,11 @@ trait CognitoClient {
     userPoolId: String
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId]
+  ): Future[Unit]
+
+  def getUserPoolId(): String
+
+  def getTokenPoolId(): String
 
   def resendUserInvite(
     email: String,
@@ -109,17 +113,16 @@ class Cognito(
     } yield cognitoId
   }
 
-  def adminDeleteToken(
+  def adminDeleteUser(
     email: String,
     userPoolId: String
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[Unit] = {
     val request = AdminDeleteUserRequest
       .builder()
       .userPoolId(userPoolId)
       .username(email)
-      .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
       .build()
 
     for {
@@ -127,12 +130,23 @@ class Cognito(
         .adminDeleteUser(request)
         .toScala
 
-      cognitoId <- parseCognitoId(cognitoResponse.user()) match {
-        case Some(cognitoId) => Future.successful(cognitoId)
-        case None =>
-          Future.failed(NotFound("Could not parse Cognito ID from response"))
-      }
-    } yield cognitoId
+      // TODO(jesse): Check the status of the cognitoResponse? Return Failure for non
+      // 200 codes.
+      //
+      // cognitoId <- parseCognitoId(cognitoResponse.user()) match {
+      //   case Some(cognitoId) => Future.successful(cognitoId)
+      //   case None =>
+      //     Future.failed(NotFound("Could not parse Cognito ID from response"))
+      // }
+    } yield Future.successful(Unit)
+  }
+
+  def getTokenPoolId(): String = {
+    tokenPoolId
+  }
+
+  def getUserPoolId(): String = {
+    userPoolId
   }
 
   def resendUserInvite(
