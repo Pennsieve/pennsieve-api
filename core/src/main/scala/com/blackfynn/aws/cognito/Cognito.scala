@@ -37,6 +37,13 @@ trait CognitoClient {
     ec: ExecutionContext
   ): Future[CognitoId]
 
+  def adminCreateToken(
+    email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId]
+
   def adminDeleteUser(
     email: String,
     userPoolId: String

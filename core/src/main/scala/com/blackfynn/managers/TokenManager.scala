@@ -38,7 +38,7 @@ class TokenManager(db: Database) {
       user.id
     )
 
-    cognitoClient.adminCreateUser(username, cognitoClient.getTokenPoolId())
+    cognitoClient.adminCreateToken(username, cognitoClient.getTokenPoolId())
     cognitoClient.adminSetUserPassword(
       username,
       secret,
@@ -131,7 +131,7 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
       user.id
     )
 
-    cognitoClient.adminCreateUser(name, cognitoClient.getTokenPoolId())
+    cognitoClient.adminCreateToken(name, cognitoClient.getTokenPoolId())
     cognitoClient.adminSetUserPassword(
       name,
       secret,
