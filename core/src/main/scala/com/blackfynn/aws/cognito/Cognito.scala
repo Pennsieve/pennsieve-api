@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserResponse,
   AdminDeleteUserRequest,
   AdminDeleteUserResponse,
+  AdminSetUserPasswordRequest,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
@@ -38,6 +39,14 @@ trait CognitoClient {
 
   def adminDeleteUser(
     email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def adminSetUserPassword(
+    username: String,
+    password: String,
     userPoolId: String
   )(implicit
     ec: ExecutionContext
@@ -86,20 +95,11 @@ class Cognito(
   tokenPoolId: String
 ) extends CognitoClient {
 
-  def adminCreateUser(
-    email: String,
-    userPoolId: String
+  def adminCreate(
+    request: AdminCreateUserRequest
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId] = {
-
-    val request = AdminCreateUserRequest
-      .builder()
-      .userPoolId(userPoolId)
-      .username(email)
-      .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
-      .build()
-
     for {
       cognitoResponse <- client
         .adminCreateUser(request)
@@ -111,6 +111,66 @@ class Cognito(
           Future.failed(NotFound("Could not parse Cognito ID from response"))
       }
     } yield cognitoId
+  }
+
+  def adminCreateUser(
+    email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId] = {
+    val request = AdminCreateUserRequest
+      .builder()
+      .userPoolId(userPoolId)
+      .username(email)
+      .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
+      .build()
+    adminCreate(request)
+  }
+
+  def adminCreateToken(
+    username: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId] = {
+    val request = AdminCreateUserRequest
+      .builder()
+      .userPoolId(userPoolId)
+      .username(username)
+      .build()
+    adminCreate(request)
+  }
+
+  def adminSetUserPassword(
+    username: String,
+    password: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminSetUserPasswordRequest
+      .builder()
+      .password(password)
+      .permanent(true)
+      .userPoolId(userPoolId)
+      .username(username)
+      .build()
+
+    for {
+      cognitoResponse <- client
+        .adminSetUserPassword(request)
+        .toScala
+
+      // TODO(jesse): Check the status of the cognitoResponse? Return Failure for non
+      // 200 codes.
+      //
+      // cognitoId <- parseCognitoId(cognitoResponse.user()) match {
+      //   case Some(cognitoId) => Future.successful(cognitoId)
+      //   case None =>
+      //     Future.failed(NotFound("Could not parse Cognito ID from response"))
+      // }
+    } yield Future.successful(Unit)
   }
 
   def adminDeleteUser(
