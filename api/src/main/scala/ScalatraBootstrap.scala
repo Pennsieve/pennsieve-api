@@ -89,6 +89,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val apiTokenController = new APITokenController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
+        bootstrapHelper.cognitoClient,
         ec
       )
 
