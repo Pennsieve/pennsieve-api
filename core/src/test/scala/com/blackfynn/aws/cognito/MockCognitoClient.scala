@@ -30,9 +30,17 @@ class MockCognito() extends CognitoClient {
     userPoolId: String
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[Unit] = {
     sentDeletes.append(email)
-    Future.successful(CognitoId.randomId())
+    Future.successful(Unit)
+  }
+
+  def getTokenPoolId(): String = {
+    "__MOCK__tokenPoolId"
+  }
+
+  def getUserPoolId(): String = {
+    "__MOCK__userPoolId"
   }
 
   def resendUserInvite(

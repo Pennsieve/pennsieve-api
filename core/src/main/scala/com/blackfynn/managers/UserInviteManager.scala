@@ -94,7 +94,7 @@ class UserInviteManager(db: Database) {
                   cognitoClient
                     .adminCreateUser(
                       email.trim.toLowerCase,
-                      cognitoClient.userPoolId
+                      cognitoClient.getUserPoolId()
                     )
                     .toEitherT
               }
