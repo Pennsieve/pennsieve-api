@@ -16,6 +16,7 @@
 
 package com.pennsieve.api
 
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.domain.NotFound
 import com.pennsieve.dtos.{ APITokenDTO, APITokenSecretDTO }
 import com.pennsieve.managers.SecureTokenManager
@@ -25,6 +26,7 @@ import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 
 class APITokenControllerSpecs extends BaseApiTest {
+  val mockCognito: MockCognito = new MockCognito()
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -33,6 +35,7 @@ class APITokenControllerSpecs extends BaseApiTest {
       new APITokenController(
         insecureContainer,
         secureContainerBuilder,
+        mockCognito,
         system.dispatcher
       ),
       "/*"
@@ -65,6 +68,8 @@ class APITokenControllerSpecs extends BaseApiTest {
       status should be(201)
       response.name should be("test api token")
 
+      mockCognito.sentTokenInvites.length should be(1)
+
       val secureTokenManager =
         new SecureTokenManager(loggedInUser, insecureContainer.db)
       val token = secureTokenManager.get(response.key).await.right.value
@@ -76,7 +81,12 @@ class APITokenControllerSpecs extends BaseApiTest {
 
   test("should get all user's API tokens") {
     val (apiTokenTwo, secret) = tokenManager
-      .create("test api token 2", loggedInUser, loggedInOrganization)
+      .create(
+        "test api token 2",
+        loggedInUser,
+        loggedInOrganization,
+        mockCognito
+      )
       .await
       .right
       .value
@@ -101,7 +111,7 @@ class APITokenControllerSpecs extends BaseApiTest {
 
   test("should not get user's API tokens from another organization") {
     val (pennsieveToken, secret) = tokenManager
-      .create("pennsieve api token", loggedInUser, pennsieve)
+      .create("pennsieve api token", loggedInUser, pennsieve, mockCognito)
       .await
       .right
       .value
@@ -156,6 +166,8 @@ class APITokenControllerSpecs extends BaseApiTest {
       val secureTokenManager =
         new SecureTokenManager(loggedInUser, insecureContainer.db)
 
+      mockCognito.sentDeletes.length should be(1)
+
       secureTokenManager.get(uuid).await.left.value should equal(
         NotFound(s"Token ($uuid)")
       )
@@ -177,5 +189,4 @@ class APITokenControllerSpecs extends BaseApiTest {
       }
     }
   }
-
 }

@@ -16,6 +16,7 @@
 
 package com.pennsieve.managers
 
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.domain.{ CoreError, NotFound, PermissionError }
 import com.pennsieve.models.DBPermission.{ Read, Write }
 import com.pennsieve.models.Token
@@ -24,13 +25,14 @@ import org.scalatest.EitherValues._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class TokenManagerSpec extends BaseManagerSpec {
+  val mockCognitoClient: MockCognito = new MockCognito()
 
   "create" should "create a new api token node" in {
     val user = createUser()
     val _secureTokenManager = secureTokenManager(user)
 
     val (token, secret) = _secureTokenManager
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
@@ -56,7 +58,7 @@ class TokenManagerSpec extends BaseManagerSpec {
     val _secureTokenManager = secureTokenManager(badUser)
 
     val failedCreate = _secureTokenManager
-      .create("test token", user, anotherOrganization)
+      .create("test token", user, anotherOrganization, mockCognitoClient)
       .await
       .left
       .value
@@ -69,7 +71,7 @@ class TokenManagerSpec extends BaseManagerSpec {
     val _secureTokenManager = secureTokenManager(user)
 
     val (token, secret) = _secureTokenManager
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
@@ -81,7 +83,12 @@ class TokenManagerSpec extends BaseManagerSpec {
     val user = createUser()
     val _secureTokenManager = secureTokenManager(user)
 
-    val token = _secureTokenManager.create("test token", user, testOrganization)
+    val token = _secureTokenManager.create(
+      "test token",
+      user,
+      testOrganization,
+      mockCognitoClient
+    )
 
     val fakeUUID = "foo"
     val failedGet = _secureTokenManager.get(fakeUUID).await.left.value
@@ -104,7 +111,7 @@ class TokenManagerSpec extends BaseManagerSpec {
     val _secureTokenManagerTwo = secureTokenManager(badUser)
 
     val (token, secret) = _secureTokenManagerOne
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
@@ -120,12 +127,12 @@ class TokenManagerSpec extends BaseManagerSpec {
     val _secureTokenManager = secureTokenManager(user)
 
     val (tokenOne, secret1) = _secureTokenManager
-      .create("test token 1", user, testOrganization)
+      .create("test token 1", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
     val (tokenTwo, secret2) = _secureTokenManager
-      .create("test token 2", user, testOrganization)
+      .create("test token 2", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
@@ -142,7 +149,7 @@ class TokenManagerSpec extends BaseManagerSpec {
     val _secureTokenManager = secureTokenManager(user)
 
     val (token, secret) = _secureTokenManager
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
@@ -177,7 +184,7 @@ class TokenManagerSpec extends BaseManagerSpec {
     val _secureTokenManagerTwo = secureTokenManager(badUser)
 
     val (token, secret) = _secureTokenManagerOne
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
@@ -195,7 +202,7 @@ class TokenManagerSpec extends BaseManagerSpec {
     val _secureTokenManager = secureTokenManager(user)
 
     val (token, secret) = _secureTokenManager
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
@@ -210,7 +217,7 @@ class TokenManagerSpec extends BaseManagerSpec {
     )
 
     val deleteToken: Either[CoreError, Int] =
-      _secureTokenManager.delete(token).await
+      _secureTokenManager.delete(token, mockCognitoClient).await
 
     assert(
       !(_secureTokenManager
@@ -237,14 +244,13 @@ class TokenManagerSpec extends BaseManagerSpec {
     val _secureTokenManagerTwo = secureTokenManager(badUser)
 
     val (token, secret) = _secureTokenManagerOne
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognitoClient)
       .await
       .right
       .value
     val failedDelete: CoreError =
-      _secureTokenManagerTwo.delete(token).await.left.value
+      _secureTokenManagerTwo.delete(token, mockCognitoClient).await.left.value
 
     assert(failedDelete == PermissionError(badUser.nodeId, Read, token.token))
   }
-
 }

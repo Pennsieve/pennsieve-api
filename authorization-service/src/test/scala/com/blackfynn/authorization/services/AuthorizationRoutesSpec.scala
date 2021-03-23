@@ -44,6 +44,7 @@ import com.pennsieve.auth.middleware.{
   UserClaim
 }
 import com.pennsieve.auth.middleware.Jwt.DatasetRole
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.db.{
   ChangelogEventMapper,
   ContributorMapper,
@@ -86,6 +87,8 @@ import scala.concurrent._
 class AuthorizationRoutesSpec
     extends AuthorizationServiceSpec
     with TestKitBase {
+
+  val mockCognito: MockCognito = new MockCognito()
 
   def withXOriginalURI(uri: String): ImmutableSeq[HttpHeader] =
     ImmutableSeq(RawHeader("X-Original-URI", uri))
@@ -858,7 +861,12 @@ class AuthorizationRoutesSpec
     "reject a request using an API session" in {
       // Create an API session that belongs to Organization Two
       val token = testDIContainer.tokenManager
-        .create("switch-organization-test", nonAdmin, organizationTwo)
+        .create(
+          "switch-organization-test",
+          nonAdmin,
+          organizationTwo,
+          mockCognito
+        )
         .await
         .value
         ._1
