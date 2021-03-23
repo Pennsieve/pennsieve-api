@@ -21,6 +21,9 @@ ThisBuild / useCoursier := false
 
 ThisBuild / scalaVersion := "2.12.11"
 ThisBuild / organization := "com.pennsieve"
+ThisBuild / organizationName := "University of Pennsylvania"
+ThisBuild / licenses := List("Apache-2.0" -> new URL("https://www.apache.org/licenses/LICENSE-2.0.txt"))
+ThisBuild / startYear := Some(2021)
 
 ThisBuild / version := sys.props.get("version").getOrElse("bootstrap-SNAPSHOT")
 
@@ -648,6 +651,7 @@ lazy val core = project
   .settings(coreApiSharedSettings: _*)
   .settings(coreSettings: _*)
   .dependsOn(`core-models`, `bf-aws`, `message-templates`, migrations % "test->compile")
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val admin = project
   .dependsOn(
@@ -655,6 +659,7 @@ lazy val admin = project
     `bf-akka-http` % "test->test;compile->compile"
   )
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(adminSettings: _*)
 
@@ -664,17 +669,20 @@ lazy val `authorization-service` = project
     `bf-akka-http` % "test->test;compile->compile"
   )
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(authorizationServiceSettings: _*)
 
 lazy val `bf-akka-http` = project
   .dependsOn(core % "test->test;compile->compile")
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(bfAkkaHttpSettings: _*)
 
 lazy val api = project
   .dependsOn(core % "test->test;compile->compile")
   .enablePlugins(JettyPlugin, sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(coreApiSharedSettings: _*)
   .settings(apiSettings: _*)
@@ -686,11 +694,13 @@ lazy val jobs = project
     `bf-akka-http` % "test->test;compile->compile"
   )
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(jobsSettings: _*)
 
 lazy val migrations = project
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(migrationsSettings: _*)
 
 lazy val `uploads-consumer` = project
@@ -700,43 +710,52 @@ lazy val `uploads-consumer` = project
     `bf-akka-http` % "test->test;compile->compile"
   )
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(uploadsConsumerSettings: _*)
 
 lazy val `etl-data-cli` = project
   .dependsOn(core % "test->test;compile->compile")
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(etlDataCLISettings: _*)
 
 lazy val `bf-akka` = project
   .settings(bfAkkaSettings)
   .dependsOn(core % "test->test;compile->compile")
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `core-models` = project
   .settings(coreModelsSettings)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `core-clients` = project
   .settings(coreClientsSettings)
   .dependsOn(`core-models`)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `bf-aws` = project
   .settings(bfAwsSettings)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `discover-publish` = project
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(discoverPublishSettings: _*)
   .dependsOn(core % "test->test;compile->compile")
 
 lazy val `organization-storage-migration` = project
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(organizationStorageMigrationSettings: _*)
   .dependsOn(core % "test->test;compile->compile")
 
 lazy val `unused-organization-migration` = project
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(unusedOrganizationMigrationSettings: _*)
   .dependsOn(core % "test->test;compile->compile")
@@ -744,6 +763,7 @@ lazy val `unused-organization-migration` = project
 lazy val `message-templates` = project
   .settings(messageTemplateSettings: _*)
   .enablePlugins(CompileMessageTemplates)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val root = (project in file("."))
   .aggregate(
