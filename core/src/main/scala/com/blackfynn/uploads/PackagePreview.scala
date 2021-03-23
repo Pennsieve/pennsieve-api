@@ -1,11 +1,11 @@
-package com.blackfynn.uploads
+package com.pennsieve.uploads
 
 import cats.implicits._
 import cats.Eval
 import cats.data.NonEmptyList
-import com.blackfynn.domain.{ CoreError, Error }
-import com.blackfynn.models._
-import com.blackfynn.models.Utilities._
+import com.pennsieve.domain.{ CoreError, Error }
+import com.pennsieve.models._
+import com.pennsieve.models.Utilities._
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 

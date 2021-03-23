@@ -1,17 +1,17 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities.{ checkAndNormalizeInitial }
-import com.blackfynn.core.utilities.FutureEitherHelpers
-import com.blackfynn.core.utilities.FutureEitherHelpers.assert
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db._
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.domain.{ CoreError, NotFound, PredicateError }
+import com.pennsieve.core.utilities.{ checkAndNormalizeInitial }
+import com.pennsieve.core.utilities.FutureEitherHelpers
+import com.pennsieve.core.utilities.FutureEitherHelpers.assert
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db._
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
 import org.apache.commons.validator.routines.EmailValidator
 
 import scala.concurrent.{ ExecutionContext, Future }

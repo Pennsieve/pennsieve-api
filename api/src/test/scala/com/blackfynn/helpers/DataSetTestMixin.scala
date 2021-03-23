@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import java.time.ZonedDateTime
 
 import cats.data.EitherT
-import com.blackfynn.api.ApiSuite
-import com.blackfynn.models.{
+import com.pennsieve.api.ApiSuite
+import com.pennsieve.models.{
   Collection,
   Contributor,
   DataUseAgreement,
@@ -26,21 +26,21 @@ import com.blackfynn.models.{
   Team,
   User
 }
-import com.blackfynn.clients.DatasetAssetClient
+import com.pennsieve.clients.DatasetAssetClient
 import org.scalatest.EitherValues._
 import io.circe.syntax._
-import com.blackfynn.test.helpers.TestDatabase
+import com.pennsieve.test.helpers.TestDatabase
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.EitherValue._
 import cats.implicits._
-import com.blackfynn.models.PublishStatus.PublishSucceeded
+import com.pennsieve.models.PublishStatus.PublishSucceeded
 import java.io.ByteArrayInputStream
 import java.util.UUID
 
-import com.blackfynn.dtos._
-import com.blackfynn.domain.CoreError
-import com.blackfynn.models.DBPermission.Delete
+import com.pennsieve.dtos._
+import com.pennsieve.domain.CoreError
+import com.pennsieve.models.DBPermission.Delete
 
 trait DataSetTestMixin { self: ApiSuite =>
 

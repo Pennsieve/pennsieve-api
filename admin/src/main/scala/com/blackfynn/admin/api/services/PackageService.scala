@@ -1,21 +1,21 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
 import akka.stream.ActorMaterializer
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.Router.{
   InsecureResourceContainer,
   SecureResourceContainer
 }
-import com.blackfynn.akka.http.RouteService
-import com.blackfynn.models.NodeCodes.{ nodeIdIsA, packageCode }
+import com.pennsieve.akka.http.RouteService
+import com.pennsieve.models.NodeCodes.{ nodeIdIsA, packageCode }
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives.{ entity, _ }
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.admin.api.Settings
+import com.pennsieve.admin.api.Settings
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.java8.time._
 import io.circe.syntax._
@@ -24,18 +24,18 @@ import io.swagger.annotations.{ Authorization => SwaggerAuthorization }
 import javax.ws.rs.Path
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.blackfynn.admin.api.dtos.{
+import com.pennsieve.admin.api.dtos.{
   JobDTO,
   SimpleDatasetDTO,
   SimpleOrganizationDTO,
   UserDTO
 }
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.clients.Quota
-import com.blackfynn.core.utilities.JwtAuthenticator
-import com.blackfynn.domain.{ CoreError, InvalidId }
-import com.blackfynn.dtos.PackageDTO
-import com.blackfynn.models.User
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.clients.Quota
+import com.pennsieve.core.utilities.JwtAuthenticator
+import com.pennsieve.domain.{ CoreError, InvalidId }
+import com.pennsieve.dtos.PackageDTO
+import com.pennsieve.models.User
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 

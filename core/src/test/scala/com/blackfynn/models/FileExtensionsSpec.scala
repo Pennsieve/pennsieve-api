@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.models
+package com.pennsieve.models
 
-import com.blackfynn.core.utilities
+import com.pennsieve.core.utilities
 import org.scalatest.{ FlatSpec, Matchers }
 
 class FileExtensionsSpec extends FlatSpec with Matchers {

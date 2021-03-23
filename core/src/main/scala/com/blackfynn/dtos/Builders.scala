@@ -1,4 +1,4 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.net.URL
 import java.util.UUID
@@ -7,19 +7,19 @@ import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.stream.Materializer
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.clients.DatasetAssetClient
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities._
-import com.blackfynn.db.{ DatasetAndStatus, PackagesMapper }
-import com.blackfynn.domain.StorageAggregation.{ sdatasets, spackages }
-import com.blackfynn.domain._
-import com.blackfynn.dtos.FileDTO.TypeToFileDTO
-import com.blackfynn.dtos.SimpleFileDTO.TypeToSimpleFile
-import com.blackfynn.managers._
-import com.blackfynn.models.FileObjectType.{ Source, View, File => FileT }
-import com.blackfynn.models.PackageType.TimeSeries
-import com.blackfynn.models.{
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.clients.DatasetAssetClient
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities._
+import com.pennsieve.db.{ DatasetAndStatus, PackagesMapper }
+import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
+import com.pennsieve.domain._
+import com.pennsieve.dtos.FileDTO.TypeToFileDTO
+import com.pennsieve.dtos.SimpleFileDTO.TypeToSimpleFile
+import com.pennsieve.managers._
+import com.pennsieve.models.FileObjectType.{ Source, View, File => FileT }
+import com.pennsieve.models.PackageType.TimeSeries
+import com.pennsieve.models.{
   Collection,
   Contributor,
   DBPermission,

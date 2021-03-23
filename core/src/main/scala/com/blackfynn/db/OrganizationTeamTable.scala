@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{ DBPermission, OrganizationTeam, SystemTeamType }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{ DBPermission, OrganizationTeam, SystemTeamType }
 
 final class OrganizationTeamTable(tag: Tag)
     extends Table[OrganizationTeam](tag, Some("pennsieve"), "organization_team") {

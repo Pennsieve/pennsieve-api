@@ -1,4 +1,4 @@
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import java.time.{ OffsetDateTime, ZoneOffset }
 
@@ -6,8 +6,8 @@ import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
 import akka.stream.Materializer
 import cats.implicits._
 import cats.data.EitherT
-import com.blackfynn.discover.client.definitions
-import com.blackfynn.discover.client.publish.{
+import com.pennsieve.discover.client.definitions
+import com.pennsieve.discover.client.publish.{
   GetStatusResponse,
   GetStatusesResponse,
   PublishClient,
@@ -16,8 +16,8 @@ import com.blackfynn.discover.client.publish.{
   ReviseResponse,
   UnpublishResponse
 }
-import com.blackfynn.models.PublishStatus
-import com.blackfynn.discover.client.definitions.DatasetPublishStatus
+import com.pennsieve.models.PublishStatus
+import com.pennsieve.discover.client.definitions.DatasetPublishStatus
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -1,4 +1,4 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import com.authy.AuthyApiClient
 import com.authy.api.{ Error, Hash, Token, Tokens, User, Users }

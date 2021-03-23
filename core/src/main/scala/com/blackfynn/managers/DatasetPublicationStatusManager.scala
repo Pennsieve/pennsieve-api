@@ -1,14 +1,14 @@
 // Copyright (c) 2020 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db._
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.domain.{ CoreError, NotFound }
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db._
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.domain.{ CoreError, NotFound }
 import com.rms.miu.slickcats.DBIOInstances._
 import slick.dbio.DBIO
 import slick.lifted.ColumnOrdered

@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.aws.cognito.MockCognito
-import com.blackfynn.domain.NotFound
-import com.blackfynn.dtos.{ APITokenDTO, APITokenSecretDTO }
-import com.blackfynn.managers.SecureTokenManager
-import com.blackfynn.models.DBPermission.Administer
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.domain.NotFound
+import com.pennsieve.dtos.{ APITokenDTO, APITokenSecretDTO }
+import com.pennsieve.managers.SecureTokenManager
+import com.pennsieve.models.DBPermission.Administer
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._

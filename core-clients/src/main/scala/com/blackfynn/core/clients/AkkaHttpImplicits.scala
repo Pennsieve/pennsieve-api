@@ -1,4 +1,4 @@
-package com.blackfynn.core.clients
+package com.pennsieve.core.clients
 
 import akka.http.scaladsl.model.{ HttpCharsets, MediaTypes }
 import akka.http.scaladsl.unmarshalling.{ FromEntityUnmarshaller, Unmarshaller }

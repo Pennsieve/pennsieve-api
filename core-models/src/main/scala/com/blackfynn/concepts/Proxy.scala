@@ -1,9 +1,9 @@
-package com.blackfynn.concepts
+package com.pennsieve.concepts
 
 import java.util.UUID
 
 import cats.implicits._
-import com.blackfynn.models.{ ExternalId, NodeId }
+import com.pennsieve.models.{ ExternalId, NodeId }
 import enumeratum.{ CirceEnum, Enum, EnumEntry }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax._

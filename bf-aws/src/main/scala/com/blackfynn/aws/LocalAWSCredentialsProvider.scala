@@ -1,4 +1,4 @@
-package com.blackfynn.aws
+package com.pennsieve.aws
 
 import com.amazonaws.auth.{
   AWSCredentialsProviderChain,

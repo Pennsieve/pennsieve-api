@@ -1,17 +1,17 @@
-package com.blackfynn.jobs.types
+package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
-import com.blackfynn.core.utilities.{ DatabaseContainer, InsecureContainer }
-import com.blackfynn.managers.ManagerSpec
-import com.blackfynn.messages.BackgroundJob._
-import com.blackfynn.messages.{
+import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
+import com.pennsieve.managers.ManagerSpec
+import com.pennsieve.messages.BackgroundJob._
+import com.pennsieve.messages.{
   BackgroundJob,
   DatasetChangelogEventJob,
   EventInstance
 }
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   ChangelogEventCursor,
   ChangelogEventDetail,
   ChangelogEventName

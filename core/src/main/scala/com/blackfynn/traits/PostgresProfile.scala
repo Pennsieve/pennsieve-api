@@ -1,14 +1,14 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.traits
+package com.pennsieve.traits
 
 import java.sql.{ PreparedStatement, ResultSet, Timestamp }
 import java.time.{ ZoneOffset, ZonedDateTime }
 
 import cats.implicits._
-import com.blackfynn.models._
-import com.blackfynn.timeseries.AnnotationData
-import com.blackfynn.utilities.AbstractError
+import com.pennsieve.models._
+import com.pennsieve.timeseries.AnnotationData
+import com.pennsieve.utilities.AbstractError
 import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
 import io.circe.Json

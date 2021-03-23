@@ -1,13 +1,13 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.api.Error
-import com.blackfynn.helpers.Param.ParamKey
-import com.blackfynn.helpers.either.EitherThrowableErrorConverter.implicits._
-import com.blackfynn.helpers.either.ToEither.implicits._
+import com.pennsieve.api.Error
+import com.pennsieve.helpers.Param.ParamKey
+import com.pennsieve.helpers.either.EitherThrowableErrorConverter.implicits._
+import com.pennsieve.helpers.either.ToEither.implicits._
 import enumeratum.{ Enum, EnumEntry }
 import io.circe._
 import io.circe.parser.decode

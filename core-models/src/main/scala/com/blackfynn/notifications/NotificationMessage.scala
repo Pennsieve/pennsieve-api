@@ -1,15 +1,15 @@
-package com.blackfynn.notifications
+package com.pennsieve.notifications
 
 import java.time.OffsetDateTime
 
-import com.blackfynn.dtos.PackageDTO
-import com.blackfynn.models.{
+import com.pennsieve.dtos.PackageDTO
+import com.pennsieve.models.{
   FileType,
   PackageType,
   PayloadType,
   PublishStatus
 }
-import com.blackfynn.notifications.MessageType._
+import com.pennsieve.notifications.MessageType._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 import io.circe.java8.time._

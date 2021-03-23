@@ -1,4 +1,4 @@
-package com.blackfynn.api
+package com.pennsieve.api
 
 class TestHealthController extends BaseApiTest {
 

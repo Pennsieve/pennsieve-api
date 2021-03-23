@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.audit.middleware.Auditor
-import com.blackfynn.domain.CoreError
-import com.blackfynn.dtos.ModelPropertyRO
-import com.blackfynn.helpers.MockAuditLogger
-import com.blackfynn.models.{
+import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.domain.CoreError
+import com.pennsieve.dtos.ModelPropertyRO
+import com.pennsieve.helpers.MockAuditLogger
+import com.pennsieve.models.{
   Annotation,
   AnnotationLayer,
   ModelProperty,

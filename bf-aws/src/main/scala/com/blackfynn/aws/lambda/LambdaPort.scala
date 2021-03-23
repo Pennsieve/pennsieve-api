@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.lambda
+package com.pennsieve.aws.lambda
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
@@ -10,7 +10,7 @@ import com.amazonaws.services.lambda.{
   AWSLambdaAsyncClientBuilder
 }
 
-import com.blackfynn.aws.LocalAWSCredentialsProvider
+import com.pennsieve.aws.LocalAWSCredentialsProvider
 
 trait LambdaPort {
   def lambda: LambdaClient

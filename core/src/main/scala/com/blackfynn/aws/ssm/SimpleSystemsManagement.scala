@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.ssm
+package com.pennsieve.aws.ssm
 
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementAsync
 import com.amazonaws.services.simplesystemsmanagement.model.{
@@ -8,7 +8,7 @@ import com.amazonaws.services.simplesystemsmanagement.model.{
   GetParametersResult
 }
 
-import com.blackfynn.aws.AsyncHandler
+import com.pennsieve.aws.AsyncHandler
 import cats.implicits._
 import collection.JavaConverters._
 import com.typesafe.config.{ Config, ConfigFactory }

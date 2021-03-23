@@ -1,9 +1,9 @@
-package com.blackfynn.akka.consumer
+package com.pennsieve.akka.consumer
 
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.{ ActorMaterializerSettings, Supervision, UniqueKillSwitch }
-import com.blackfynn.service.utilities.ContextLogger
+import com.pennsieve.service.utilities.ContextLogger
 import com.typesafe.scalalogging.Logger
 
 import scala.concurrent.{ ExecutionContext, Future }

@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.core.utilities.checkOrErrorT
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.ChannelsMapper
-import com.blackfynn.domain.{ CoreError, NotFound, PredicateError }
-import com.blackfynn.models.{
+import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.ChannelsMapper
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
+import com.pennsieve.models.{
   Channel,
   DBPermission,
   ModelProperty,
@@ -16,7 +16,7 @@ import com.blackfynn.models.{
   Organization,
   Package
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.collection.SortedSet
 import scala.concurrent.{ ExecutionContext, Future }

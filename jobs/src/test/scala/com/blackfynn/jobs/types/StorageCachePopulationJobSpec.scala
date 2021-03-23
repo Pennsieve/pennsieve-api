@@ -1,15 +1,15 @@
-package com.blackfynn.jobs.types
+package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
-import com.blackfynn.core.utilities.{ DatabaseContainer, InsecureContainer }
-import com.blackfynn.domain.StorageAggregation
-import com.blackfynn.domain.StorageAggregation.sorganizations
-import com.blackfynn.managers.{ ManagerSpec, StorageManager }
-import com.blackfynn.models.PackageState._
-import com.blackfynn.models.PackageType.{ Collection, PDF, TimeSeries }
-import com.blackfynn.models.{
+import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
+import com.pennsieve.domain.StorageAggregation
+import com.pennsieve.domain.StorageAggregation.sorganizations
+import com.pennsieve.managers.{ ManagerSpec, StorageManager }
+import com.pennsieve.models.PackageState._
+import com.pennsieve.models.PackageType.{ Collection, PDF, TimeSeries }
+import com.pennsieve.models.{
   File,
   FileObjectType,
   FileProcessingState,

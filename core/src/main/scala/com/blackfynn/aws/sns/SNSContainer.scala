@@ -1,4 +1,4 @@
-package com.blackfynn.aws.sns
+package com.pennsieve.aws.sns
 
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.auth.credentials.{
@@ -9,8 +9,8 @@ import software.amazon.awssdk.auth.credentials.{
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 
-import com.blackfynn.aws.LocalAWSCredentialsProviderV2
-import com.blackfynn.utilities.Container
+import com.pennsieve.aws.LocalAWSCredentialsProviderV2
+import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
 import java.net.URI
 

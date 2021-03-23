@@ -1,4 +1,4 @@
-package com.blackfynn.timeseries
+package com.pennsieve.timeseries
 
 import akka.stream.{ Attributes, FlowShape, Inlet, Outlet }
 import akka.stream.stage.{ GraphStage, GraphStageLogic, InHandler, OutHandler }

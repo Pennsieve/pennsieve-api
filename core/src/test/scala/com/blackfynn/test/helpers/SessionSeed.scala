@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.test.helpers
+package com.pennsieve.test.helpers
 
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.core.utilities._
-import com.blackfynn.managers._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.core.utilities._
+import com.pennsieve.managers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

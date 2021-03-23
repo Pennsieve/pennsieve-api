@@ -1,29 +1,29 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.testkit.TestKitBase
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainer,
   InsecureResourceContainer,
   SecureResourceContainer
 }
-import com.blackfynn.aws.s3.LocalS3Container
-import com.blackfynn.admin.api.dtos.{
+import com.pennsieve.aws.s3.LocalS3Container
+import com.pennsieve.admin.api.dtos.{
   JobDTO,
   SimpleDatasetDTO,
   SimpleOrganizationDTO,
   UserDTO
 }
-import com.blackfynn.admin.api.{ AdminContainer, Router }
-import com.blackfynn.aws.email.LocalEmailContainer
-import com.blackfynn.aws.queue.LocalSQSContainer
-import com.blackfynn.clients._
-import com.blackfynn.core.utilities._
-import com.blackfynn.dtos.{ Builders, PackageDTO }
-import com.blackfynn.models._
+import com.pennsieve.admin.api.{ AdminContainer, Router }
+import com.pennsieve.aws.email.LocalEmailContainer
+import com.pennsieve.aws.queue.LocalSQSContainer
+import com.pennsieve.clients._
+import com.pennsieve.core.utilities._
+import com.pennsieve.dtos.{ Builders, PackageDTO }
+import com.pennsieve.models._
 import io.circe.syntax._
 
 class PackageServiceSpec extends AdminServiceSpec with TestKitBase {

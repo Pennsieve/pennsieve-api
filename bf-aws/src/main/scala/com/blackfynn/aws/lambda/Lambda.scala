@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.lambda
+package com.pennsieve.aws.lambda
 
 import com.amazonaws.services.lambda.AWSLambdaAsync
 import com.amazonaws.services.lambda.model.{ InvokeRequest, InvokeResult }
 
-import com.blackfynn.aws.AsyncHandler
+import com.pennsieve.aws.AsyncHandler
 
 import scala.concurrent.Future
 

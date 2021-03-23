@@ -1,6 +1,6 @@
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
-import com.blackfynn.messages.{
+import com.pennsieve.messages.{
   BackgroundJob,
   CachePopulationJob,
   CatalogDeleteJob,
@@ -8,7 +8,7 @@ import com.blackfynn.messages.{
   DeleteDatasetJob,
   DeletePackageJob
 }
-import com.blackfynn.service.utilities.LogContext
+import com.pennsieve.service.utilities.LogContext
 
 package object contexts {
 

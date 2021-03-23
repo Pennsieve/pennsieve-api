@@ -5,7 +5,7 @@
         </encoder>
     </appender>
 
-    <logger name="com.blackfynn" level="INFO" />
+    <logger name="com.pennsieve" level="INFO" />
 <!--    <logger name="slick" level="DEBUG" /> -->
 
     <root level="WARN">

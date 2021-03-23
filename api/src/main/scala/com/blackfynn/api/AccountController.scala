@@ -1,19 +1,19 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.aws.email.Email
-import com.blackfynn.core.utilities.PasswordBuddy.passwordEntropy
-import com.blackfynn.dtos.{ Builders, UserDTO }
-import com.blackfynn.helpers.APIContainers.InsecureAPIContainer
-import com.blackfynn.helpers.ResultHandlers.OkResult
-import com.blackfynn.helpers._
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.models.{ CognitoId, DBPermission, Degree }
-import com.blackfynn.web.Settings
+import com.pennsieve.aws.email.Email
+import com.pennsieve.core.utilities.PasswordBuddy.passwordEntropy
+import com.pennsieve.dtos.{ Builders, UserDTO }
+import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
+import com.pennsieve.helpers.ResultHandlers.OkResult
+import com.pennsieve.helpers._
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.models.{ CognitoId, DBPermission, Degree }
+import com.pennsieve.web.Settings
 import javax.servlet.http.HttpServletRequest
 import org.json4s._
 import org.scalatra._

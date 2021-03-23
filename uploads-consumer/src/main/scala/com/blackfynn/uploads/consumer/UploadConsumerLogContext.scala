@@ -1,7 +1,7 @@
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
-import com.blackfynn.models.Manifest
-import com.blackfynn.service.utilities.LogContext
+import com.pennsieve.models.Manifest
+import com.pennsieve.service.utilities.LogContext
 
 final case class UploadConsumerLogContext(
   importId: String,

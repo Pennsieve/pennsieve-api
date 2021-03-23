@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.ssm
+package com.pennsieve.aws.ssm
 
-import com.blackfynn.utilities.AbstractError
+import com.pennsieve.utilities.AbstractError
 
 sealed trait SimpleSystemsManagementException extends AbstractError
 

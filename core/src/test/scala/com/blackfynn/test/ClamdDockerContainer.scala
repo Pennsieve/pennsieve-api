@@ -1,4 +1,4 @@
-package com.blackfynn.test
+package com.pennsieve.test
 import java.time.Duration
 
 import com.dimafeng.testcontainers.GenericContainer

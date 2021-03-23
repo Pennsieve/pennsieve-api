@@ -1,22 +1,22 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.audit.middleware.Auditor
-import com.blackfynn.auth.middleware.DatasetPermission
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.domain.IntegrityError
-import com.blackfynn.dtos._
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.auth.middleware.DatasetPermission
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.domain.IntegrityError
+import com.pennsieve.dtos._
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.Colors
-import com.blackfynn.helpers.ResultHandlers.{ CreatedResult, OkResult }
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.models.{ AnnotationLayer, PathElement }
+import com.pennsieve.helpers.Colors
+import com.pennsieve.helpers.ResultHandlers.{ CreatedResult, OkResult }
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.models.{ AnnotationLayer, PathElement }
 import org.scalatra.swagger.Swagger
 import org.scalatra.{
   ActionResult,

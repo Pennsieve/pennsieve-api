@@ -1,6 +1,6 @@
-package com.blackfynn.models.deserialization
+package com.pennsieve.models.deserialization
 
-import com.blackfynn.models.ExternalId
+import com.pennsieve.models.ExternalId
 
 import org.scalatest.{ Matchers, WordSpecLike }
 import io.circe.parser.decode

@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.test.helpers.AwaitableImplicits._
-import com.blackfynn.etl.`data-cli`.SetDimension.DimensionInfo
-import com.blackfynn.etl.`data-cli`.exceptions._
-import com.blackfynn.models.{ Dataset, Dimension, DimensionAssignment, Package }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.test.helpers.AwaitableImplicits._
+import com.pennsieve.etl.`data-cli`.SetDimension.DimensionInfo
+import com.pennsieve.etl.`data-cli`.exceptions._
+import com.pennsieve.models.{ Dataset, Dimension, DimensionAssignment, Package }
+import com.pennsieve.traits.PostgresProfile.api._
 
 import java.io.{ File => JavaFile }
 import org.scalatest.{ FlatSpec, Matchers }

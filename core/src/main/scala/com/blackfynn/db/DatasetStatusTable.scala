@@ -1,7 +1,7 @@
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models._
 
 import java.time.ZonedDateTime
 

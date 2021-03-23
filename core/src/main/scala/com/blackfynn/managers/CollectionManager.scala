@@ -1,14 +1,14 @@
 // Copyright (c) 2020 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ CollectionMapper, DatasetsMapper }
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.domain.{ CoreError, Error, NotFound, PredicateError }
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ CollectionMapper, DatasetsMapper }
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.domain.{ CoreError, Error, NotFound, PredicateError }
 import org.postgresql.util.PSQLException
 import slick.dbio.DBIO
 

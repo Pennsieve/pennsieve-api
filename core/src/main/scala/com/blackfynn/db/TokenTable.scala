@@ -1,9 +1,9 @@
-package com.blackfynn.db
+package com.pennsieve.db
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.Token
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models.Token
+import com.pennsieve.traits.PostgresProfile.api._
 
 final class TokenTable(tag: Tag)
     extends Table[Token](tag, Some("pennsieve"), "tokens") {

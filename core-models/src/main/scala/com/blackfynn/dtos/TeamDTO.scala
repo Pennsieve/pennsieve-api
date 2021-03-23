@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
-import com.blackfynn.models.{ OrganizationTeam, SystemTeamType, Team }
+import com.pennsieve.models.{ OrganizationTeam, SystemTeamType, Team }
 
 case class TeamDTO(
   id: String,

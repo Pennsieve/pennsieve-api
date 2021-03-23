@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
 import java.util.UUID
 
 import com.amazonaws.services.s3.model.MultiObjectDeleteException.DeleteError
-import com.blackfynn.audit.middleware.TraceId
-import com.blackfynn.streaming.LookupResultRow
+import com.pennsieve.audit.middleware.TraceId
+import com.pennsieve.streaming.LookupResultRow
 
 sealed trait JobResult {
   val message: String

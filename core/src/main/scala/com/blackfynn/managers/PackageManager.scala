@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.sql.Timestamp
 import java.time.{ ZoneOffset, ZonedDateTime }
@@ -8,20 +8,20 @@ import java.util.UUID
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.audit.middleware.TraceId
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
-import com.blackfynn.models.Utilities.isNameValid
-import com.blackfynn.db._
-import com.blackfynn.domain._
-import com.blackfynn.domain.StorageAggregation.{
+import com.pennsieve.audit.middleware.TraceId
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
+import com.pennsieve.models.Utilities.isNameValid
+import com.pennsieve.db._
+import com.pennsieve.domain._
+import com.pennsieve.domain.StorageAggregation.{
   spackages => PackageStorageAggregationKey
 }
-import com.blackfynn.messages.{ BackgroundJob, DeletePackageJob }
-import com.blackfynn.models.FileObjectType.Source
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.Collection
-import com.blackfynn.models.{
+import com.pennsieve.messages.{ BackgroundJob, DeletePackageJob }
+import com.pennsieve.models.FileObjectType.Source
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.Collection
+import com.pennsieve.models.{
   CollectionUpload,
   Dataset,
   ExternalId,
@@ -40,7 +40,7 @@ import com.blackfynn.models.{
   PublicationStatus,
   User
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.Json
 import org.postgresql.util.PSQLException
 import slick.jdbc.{ GetResult, SQLActionBuilder, TransactionIsolation }

@@ -1,6 +1,6 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
-import com.blackfynn.models.{ ExternalId, Package }
+import com.pennsieve.models.{ ExternalId, Package }
 
 import io.circe._
 import io.circe.syntax._

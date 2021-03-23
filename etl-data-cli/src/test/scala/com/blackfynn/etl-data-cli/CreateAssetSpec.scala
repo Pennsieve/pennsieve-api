@@ -1,17 +1,17 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.etl.`data-cli`.CreateAsset.AssetInfo
-import com.blackfynn.etl.`data-cli`.exceptions._
-import com.blackfynn.models.{
+import com.pennsieve.etl.`data-cli`.CreateAsset.AssetInfo
+import com.pennsieve.etl.`data-cli`.exceptions._
+import com.pennsieve.models.{
   Dataset,
   File,
   FileObjectType,
   FileProcessingState,
   Package
 }
-import com.blackfynn.test.helpers.AwaitableImplicits._
+import com.pennsieve.test.helpers.AwaitableImplicits._
 
 import java.io.{ File => JavaFile }
 import org.scalatest.{ FlatSpec, Matchers }

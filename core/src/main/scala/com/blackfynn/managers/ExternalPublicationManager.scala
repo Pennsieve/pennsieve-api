@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db._
-import com.blackfynn.domain._
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db._
+import com.pennsieve.domain._
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
 import scala.concurrent.{ ExecutionContext, Future }
 
 class ExternalPublicationManager(

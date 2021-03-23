@@ -1,4 +1,4 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import java.time.LocalDate
 import java.util.UUID
@@ -10,18 +10,18 @@ import akka.stream.scaladsl.Sink
 import cats.data._
 import cats.implicits._
 import com.amazonaws.services.s3.model.CopyObjectRequest
-import com.blackfynn.core.utilities
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.domain.{
+import com.pennsieve.core.utilities
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.domain.{
   CoreError,
   ExceptionError,
   PredicateError,
   ServiceError,
   ThrowableError
 }
-import com.blackfynn.models._
-import com.blackfynn.publish.models._
-import com.blackfynn.publish.utils.joinKeys
+import com.pennsieve.models._
+import com.pennsieve.publish.models._
+import com.pennsieve.publish.utils.joinKeys
 import com.typesafe.scalalogging.StrictLogging
 import io.circe._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
