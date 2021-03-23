@@ -8,6 +8,7 @@ import akka.testkit.TestKitBase
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase
 import org.apache.http.entity.ByteArrayEntity
 import com.blackfynn.auth.middleware._
+import com.blackfynn.aws.cognito.MockCognito
 import com.blackfynn.aws.email.LocalEmailContainer
 import com.blackfynn.aws.queue.LocalSQSContainer
 import com.blackfynn.aws.s3.LocalS3Container
@@ -353,6 +354,8 @@ trait ApiSuite
   override def beforeEach(): Unit = {
     super.beforeEach()
 
+    val mockCognito: MockCognito = new MockCognito()
+
     superAdmin =
       userManager.create(superAdminUser, Some("password")).await.value
 
@@ -435,7 +438,7 @@ trait ApiSuite
     )
 
     val (_apiToken, _secret) = tokenManager
-      .create("test api token", loggedInUser, loggedInOrganization)
+      .create("test api token", loggedInUser, loggedInOrganization, mockCognito)
       .await
       .value
     apiToken = _apiToken

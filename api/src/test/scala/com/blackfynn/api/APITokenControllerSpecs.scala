@@ -2,6 +2,7 @@
 
 package com.blackfynn.api
 
+import com.blackfynn.aws.cognito.MockCognito
 import com.blackfynn.domain.NotFound
 import com.blackfynn.dtos.{ APITokenDTO, APITokenSecretDTO }
 import com.blackfynn.managers.SecureTokenManager
@@ -11,6 +12,7 @@ import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 
 class APITokenControllerSpecs extends BaseApiTest {
+  val mockCognito: MockCognito = new MockCognito()
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -19,6 +21,7 @@ class APITokenControllerSpecs extends BaseApiTest {
       new APITokenController(
         insecureContainer,
         secureContainerBuilder,
+        mockCognito,
         system.dispatcher
       ),
       "/*"
@@ -62,7 +65,12 @@ class APITokenControllerSpecs extends BaseApiTest {
 
   test("should get all user's API tokens") {
     val (apiTokenTwo, secret) = tokenManager
-      .create("test api token 2", loggedInUser, loggedInOrganization)
+      .create(
+        "test api token 2",
+        loggedInUser,
+        loggedInOrganization,
+        mockCognito
+      )
       .await
       .right
       .value
@@ -87,7 +95,7 @@ class APITokenControllerSpecs extends BaseApiTest {
 
   test("should not get user's API tokens from another organization") {
     val (pennsieveToken, secret) = tokenManager
-      .create("pennsieve api token", loggedInUser, pennsieve)
+      .create("pennsieve api token", loggedInUser, pennsieve, mockCognito)
       .await
       .right
       .value
