@@ -1,6 +1,6 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
-import com.blackfynn.core.utilities
+import com.pennsieve.core.utilities
 import org.scalatest.{ FlatSpec, Matchers }
 
 class PackageStateSpec extends FlatSpec with Matchers {

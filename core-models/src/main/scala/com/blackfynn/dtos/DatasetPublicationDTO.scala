@@ -1,10 +1,10 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import java.time.{ LocalDate, OffsetDateTime }
 
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   DatasetPublicationStatus,
   PublicationStatus,
   PublicationType

@@ -1,6 +1,6 @@
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
-import com.blackfynn.web.Settings
+import com.pennsieve.web.Settings
 
 import scala.util.Random
 

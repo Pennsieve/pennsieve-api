@@ -1,4 +1,4 @@
-package com.blackfynn.test
+package com.pennsieve.test
 
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.config.{ Config, ConfigValueFactory }

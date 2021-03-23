@@ -1,10 +1,10 @@
-package com.blackfynn.aws.s3
+package com.pennsieve.aws.s3
 
 import com.amazonaws.services.s3.model._
-import com.blackfynn.test._
-import com.blackfynn.test.helpers._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.utilities.Container
+import com.pennsieve.test._
+import com.pennsieve.test.helpers._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.utilities.Container
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.apache.commons.io.IOUtils
 import org.scalatest._

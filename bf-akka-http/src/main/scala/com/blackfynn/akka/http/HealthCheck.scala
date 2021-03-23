@@ -1,4 +1,4 @@
-package com.blackfynn.akka.http
+package com.pennsieve.akka.http
 
 import java.util.UUID.randomUUID
 
@@ -6,10 +6,10 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
 import akka.http.scaladsl.server.Directives.{ complete, _ }
 import akka.http.scaladsl.server.Route
-import com.blackfynn.akka.http.HealthCheck._
-import com.blackfynn.aws.s3.S3Trait
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.utilities.Container
+import com.pennsieve.akka.http.HealthCheck._
+import com.pennsieve.aws.s3.S3Trait
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.utilities.Container
 import com.redis.RedisClientPool
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }

@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
-import com.blackfynn.utilities.AbstractError
+import com.pennsieve.utilities.AbstractError
 
 sealed trait JobException extends AbstractError
 

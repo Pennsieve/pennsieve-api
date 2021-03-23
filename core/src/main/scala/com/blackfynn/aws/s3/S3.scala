@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.s3
+package com.pennsieve.aws.s3
 
 import cats.implicits._
 import com.amazonaws.services.s3.{ AmazonS3, AmazonS3URI }

@@ -1,11 +1,11 @@
 // Copyright (c) 2018 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.{ OnboardingEvent, OnboardingEventType }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models.{ OnboardingEvent, OnboardingEventType }
+import com.pennsieve.traits.PostgresProfile.api._
 
 final class OnboardingEventsTable(tag: Tag)
     extends Table[OnboardingEvent](tag, Some("pennsieve"), "onboarding_events") {

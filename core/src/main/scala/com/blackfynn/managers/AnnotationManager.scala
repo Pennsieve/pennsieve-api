@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.db._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{
+import com.pennsieve.db._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{
   Annotation,
   AnnotationLayer,
   ModelProperty,
@@ -13,10 +13,10 @@ import com.blackfynn.models.{
   PathElement,
   User
 }
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.domain.{ CoreError, Error, IntegrityError, NotFound }
+import com.pennsieve.domain.{ CoreError, Error, IntegrityError, NotFound }
 import org.postgresql.util.PSQLException
 import slick.dbio.{ DBIOAction, Effect, NoStream }
 import slick.sql.FixedSqlAction

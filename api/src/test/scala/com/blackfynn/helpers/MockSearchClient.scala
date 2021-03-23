@@ -1,19 +1,19 @@
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
 import akka.stream.Materializer
 import cats.implicits._
 import cats.data.EitherT
-import com.blackfynn.discover.client.definitions
-import com.blackfynn.discover.client.search.{
+import com.pennsieve.discover.client.definitions
+import com.pennsieve.discover.client.search.{
   SearchClient,
   SearchDatasetsResponse
 }
-import com.blackfynn.discover.client.definitions.{
+import com.pennsieve.discover.client.definitions.{
   DatasetsPage,
   PublicDatasetDTO
 }
-import com.blackfynn.models.{ Dataset, Organization, PublishStatus, User }
+import com.pennsieve.models.{ Dataset, Organization, PublishStatus, User }
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.ExecutionContext.Implicits.global

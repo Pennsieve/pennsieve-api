@@ -1,8 +1,8 @@
-package com.blackfynn.uploads
+package com.pennsieve.uploads
 
-import com.blackfynn.core.utilities
-import com.blackfynn.models.{ FileExtensions, FileType, FileTypeInfo }
-import com.blackfynn.models.Utilities._
+import com.pennsieve.core.utilities
+import com.pennsieve.models.{ FileExtensions, FileType, FileTypeInfo }
+import com.pennsieve.models.Utilities._
 
 case class FileUpload(
   uploadId: Option[Int], // not present during manifest upload request

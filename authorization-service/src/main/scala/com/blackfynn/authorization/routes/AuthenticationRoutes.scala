@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
 
 import akka.http.scaladsl.model.headers.{ Authorization, HttpCookie }
 import akka.http.scaladsl.model.{ HttpHeader, HttpResponse }
@@ -22,12 +22,12 @@ import cats.implicits._
 
 import com.typesafe.scalalogging.LazyLogging
 
-import com.blackfynn.akka.http.RouteService
-import com.blackfynn.authorization.Router.ResourceContainer
-import com.blackfynn.authorization.utilities.exceptions._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.dtos.{ Builders, UserDTO }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.akka.http.RouteService
+import com.pennsieve.authorization.Router.ResourceContainer
+import com.pennsieve.authorization.utilities.exceptions._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.dtos.{ Builders, UserDTO }
+import com.pennsieve.traits.PostgresProfile.api._
 
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 

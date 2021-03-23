@@ -1,4 +1,4 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
 import cats.data._
 import cats.implicits._
@@ -10,7 +10,7 @@ import io.circe._
 import io.circe.syntax._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 
-import com.blackfynn.dtos.ContributorDTO
+import com.pennsieve.dtos.ContributorDTO
 
 /**
   * Try and keep this spreadsheet up to date with enums/details

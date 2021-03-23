@@ -1,10 +1,10 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.domain.{ CoreError, UnsupportedPackageType }
-import com.blackfynn.models.{ ExternalFile, Package, PackageType }
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.domain.{ CoreError, UnsupportedPackageType }
+import com.pennsieve.models.{ ExternalFile, Package, PackageType }
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global

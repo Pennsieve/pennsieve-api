@@ -1,11 +1,11 @@
-package com.blackfynn.db
+package com.pennsieve.db
 
 import java.time.ZonedDateTime
 import java.util.UUID
 
-import com.blackfynn.domain.SqlError
-import com.blackfynn.models.{ DatasetAsset, Organization }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.domain.SqlError
+import com.pennsieve.models.{ DatasetAsset, Organization }
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.ExecutionContext
 

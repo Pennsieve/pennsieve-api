@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.cognito
+package com.pennsieve.aws.cognito
 
-import com.blackfynn.models.CognitoId
-import com.blackfynn.domain.{ NotFound, PredicateError }
+import com.pennsieve.models.CognitoId
+import com.pennsieve.domain.{ NotFound, PredicateError }
 import cats.data._
 import cats.implicits._
 import scala.compat.java8.FutureConverters._

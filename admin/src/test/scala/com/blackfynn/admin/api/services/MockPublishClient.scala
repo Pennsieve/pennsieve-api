@@ -1,11 +1,11 @@
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
 import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
 import akka.stream.Materializer
 import cats.implicits._
 import cats.data.EitherT
-import com.blackfynn.discover.client.definitions
-import com.blackfynn.discover.client.publish.{
+import com.pennsieve.discover.client.definitions
+import com.pennsieve.discover.client.publish.{
   GetStatusResponse,
   GetStatusesResponse,
   PublishClient,
@@ -14,8 +14,8 @@ import com.blackfynn.discover.client.publish.{
   SponsorDatasetResponse,
   UnpublishResponse
 }
-import com.blackfynn.models.PublishStatus
-import com.blackfynn.discover.client.definitions.{
+import com.pennsieve.models.PublishStatus
+import com.pennsieve.discover.client.definitions.{
   DatasetPublishStatus,
   SponsorshipRequest,
   SponsorshipResponse

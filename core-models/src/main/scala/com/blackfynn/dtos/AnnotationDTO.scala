@@ -1,8 +1,8 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.{ Annotation, ModelProperty, PathElement }
+import com.pennsieve.models.{ Annotation, ModelProperty, PathElement }
 
 case class AnnotationDTO(
   userId: String,

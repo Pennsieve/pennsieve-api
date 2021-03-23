@@ -1,8 +1,8 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.Token
+import com.pennsieve.models.Token
 
 case class APITokenDTO(
   name: String,

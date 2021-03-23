@@ -1,4 +1,4 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import cats.implicits._
 import com.amazonaws.services.s3.model.{
@@ -7,8 +7,8 @@ import com.amazonaws.services.s3.model.{
   PutObjectRequest,
   PutObjectResult
 }
-import com.blackfynn.aws.s3.S3Trait
-import com.blackfynn.models.DatasetAsset
+import com.pennsieve.aws.s3.S3Trait
+import com.pennsieve.models.DatasetAsset
 import org.apache.commons.io.IOUtils
 import org.joda.time.DateTime
 

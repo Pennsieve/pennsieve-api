@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
 import java.time.ZonedDateTime
 
 import cats.Semigroup
@@ -14,8 +14,8 @@ import io.circe.syntax._
 import io.circe.parser.decode
 import slick.lifted.Case._
 
-import com.blackfynn.domain.SqlError
-import com.blackfynn.traits.PostgresProfile
+import com.pennsieve.domain.SqlError
+import com.pennsieve.traits.PostgresProfile
 
 import scala.concurrent.ExecutionContext
 

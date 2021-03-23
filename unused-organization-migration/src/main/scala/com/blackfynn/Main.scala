@@ -1,7 +1,7 @@
-package com.blackfynn.utilities.`unused-organization-migration`
+package com.pennsieve.utilities.`unused-organization-migration`
 
-import com.blackfynn.core.utilities.DatabaseContainer
-import com.blackfynn.db.{
+import com.pennsieve.core.utilities.DatabaseContainer
+import com.pennsieve.db.{
   CustomTermsOfServiceMapper,
   DatasetsMapper,
   FeatureFlagsMapper,
@@ -14,9 +14,9 @@ import com.blackfynn.db.{
   UserInvitesMapper,
   UserMapper
 }
-import com.blackfynn.models.Organization
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.utilities.Container
+import com.pennsieve.models.Organization
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.utilities.Container
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
 

@@ -1,12 +1,12 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.clients
+package com.pennsieve.clients
 
-import com.blackfynn.aws.s3.S3Trait
+import com.pennsieve.aws.s3.S3Trait
 import com.amazonaws.services.s3.model.{ PutObjectResult, S3Object }
 import cats.implicits._
 import com.amazonaws.services.s3.model.ObjectMetadata
-import com.blackfynn.models.{ DateVersion, ToDateVersion }
+import com.pennsieve.models.{ DateVersion, ToDateVersion }
 import com.typesafe.config.Config
 import java.io.ByteArrayInputStream
 import net.ceedubs.ficus.Ficus._

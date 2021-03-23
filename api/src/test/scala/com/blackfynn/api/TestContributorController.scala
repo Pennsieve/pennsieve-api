@@ -1,18 +1,18 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.models.{ Degree, PackageType }
-import com.blackfynn.domain.PredicateError
-import com.blackfynn.dtos.ContributorDTO
-import com.blackfynn.helpers._
+import com.pennsieve.models.{ Degree, PackageType }
+import com.pennsieve.domain.PredicateError
+import com.pennsieve.dtos.ContributorDTO
+import com.pennsieve.helpers._
 import io.circe.{ Decoder, Encoder }
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import cats.implicits._
 
 import org.json4s.jackson.Serialization.write
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   DBPermission,
   NodeCodes,
   OrcidAuthorization,

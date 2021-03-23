@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.models.OnboardingEventType
-import com.blackfynn.models.OnboardingEventType._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.test.helpers.AwaitableImplicits._
+import com.pennsieve.models.OnboardingEventType
+import com.pennsieve.models.OnboardingEventType._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.AwaitableImplicits._
 import io.circe._
 import io.circe.syntax._
 import io.circe.parser._

@@ -1,19 +1,19 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.aws.cognito.CognitoClient
-import com.blackfynn.models.{ Organization, Token, User }
+import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.models.{ Organization, Token, User }
 import io.github.nremond.SecureHash
 import cats.data.EitherT
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db.{ OrganizationsMapper, TokensMapper }
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db.{ OrganizationsMapper, TokensMapper }
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers
-import com.blackfynn.domain.{ CoreError, NotFound, PermissionError }
-import com.blackfynn.dtos.Secret
-import com.blackfynn.models.DBPermission.{ Read, Write }
+import com.pennsieve.core.utilities.FutureEitherHelpers
+import com.pennsieve.domain.{ CoreError, NotFound, PermissionError }
+import com.pennsieve.dtos.Secret
+import com.pennsieve.models.DBPermission.{ Read, Write }
 
 import scala.concurrent.{ ExecutionContext, Future }
 

@@ -1,20 +1,20 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.helpers.ResultHandlers._
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherThrowableErrorConverter.implicits._
-import com.blackfynn.domain.{ CoreError, OperationNoLongerSupported }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.helpers.ResultHandlers._
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherThrowableErrorConverter.implicits._
+import com.pennsieve.domain.{ CoreError, OperationNoLongerSupported }
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.ResultHandlers.OkResult
-import com.blackfynn.models.User
+import com.pennsieve.helpers.ResultHandlers.OkResult
+import com.pennsieve.models.User
 import org.scalatra.swagger.Swagger
 import org.scalatra.{ ActionResult, AsyncResult, ScalatraServlet }
 

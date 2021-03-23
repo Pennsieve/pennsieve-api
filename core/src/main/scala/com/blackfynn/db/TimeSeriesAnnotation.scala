@@ -1,11 +1,11 @@
 /**
   * *   Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
   */
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.timeseries.AnnotationData
+import com.pennsieve.timeseries.AnnotationData
 import com.github.tminglei.slickpg.Range
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import scala.collection.SortedSet
 
 case class DBTimeSeriesAnnotation(

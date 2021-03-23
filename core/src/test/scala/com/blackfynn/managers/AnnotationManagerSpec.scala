@@ -1,16 +1,16 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
-import com.blackfynn.models.DBPermission.Delete
-import com.blackfynn.models.{
+package com.pennsieve.managers
+import com.pennsieve.models.DBPermission.Delete
+import com.pennsieve.models.{
   Annotation,
   AnnotationLayer,
   ModelProperty,
   Package,
   PathElement
 }
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.PDF
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.PDF
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global

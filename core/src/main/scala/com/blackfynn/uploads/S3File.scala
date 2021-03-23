@@ -1,9 +1,9 @@
-package com.blackfynn.uploads
-import com.blackfynn.models.FileHash
-import com.blackfynn.models.FileHash._
+package com.pennsieve.uploads
+import com.pennsieve.models.FileHash
+import com.pennsieve.models.FileHash._
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import com.blackfynn.models.Utilities._
+import com.pennsieve.models.Utilities._
 
 case class S3File(
   uploadId: Option[Int],

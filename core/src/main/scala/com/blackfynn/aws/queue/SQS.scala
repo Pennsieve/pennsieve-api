@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.queue
+package com.pennsieve.aws.queue
 
 import cats.data.EitherT
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
@@ -13,9 +13,9 @@ import software.amazon.awssdk.services.sqs.model.{
   SendMessageRequest,
   SendMessageResponse
 }
-import com.blackfynn.aws.AsyncHandler
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
-import com.blackfynn.domain.CoreError
+import com.pennsieve.aws.AsyncHandler
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
+import com.pennsieve.domain.CoreError
 
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }

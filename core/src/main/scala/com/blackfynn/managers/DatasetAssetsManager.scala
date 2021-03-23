@@ -1,17 +1,17 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.time.ZonedDateTime
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ DatasetAssetsMapper, DatasetsMapper }
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{ Dataset, DatasetAsset, DatasetState }
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ DatasetAssetsMapper, DatasetsMapper }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{ Dataset, DatasetAsset, DatasetState }
 import com.rms.miu.slickcats.DBIOInstances._
 import java.util.UUID
 
-import com.blackfynn.domain.{ CoreError, ExceptionError, NotFound, SqlError }
+import com.pennsieve.domain.{ CoreError, ExceptionError, NotFound, SqlError }
 
 import scala.concurrent.{ ExecutionContext, Future }
 

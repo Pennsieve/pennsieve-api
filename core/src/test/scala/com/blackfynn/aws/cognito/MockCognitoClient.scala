@@ -1,6 +1,6 @@
-package com.blackfynn.aws.cognito
+package com.pennsieve.aws.cognito
 
-import com.blackfynn.models.CognitoId
+import com.pennsieve.models.CognitoId
 import java.util.UUID
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }

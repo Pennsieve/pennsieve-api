@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.models
+package com.pennsieve.models
 
 import java.sql.Timestamp
 import java.time.format.DateTimeFormatter

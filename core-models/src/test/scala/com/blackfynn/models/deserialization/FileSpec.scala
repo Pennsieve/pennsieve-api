@@ -1,7 +1,7 @@
-package com.blackfynn.models.deserialization
+package com.pennsieve.models.deserialization
 
-import com.blackfynn.models.File
-import com.blackfynn.models.FileType
+import com.pennsieve.models.File
+import com.pennsieve.models.FileType
 
 import org.scalatest.{ Matchers, WordSpecLike }
 import io.circe.parser.decode

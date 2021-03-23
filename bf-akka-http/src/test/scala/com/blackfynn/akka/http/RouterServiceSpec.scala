@@ -1,4 +1,4 @@
-package com.blackfynn.akka.http
+package com.pennsieve.akka.http
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }

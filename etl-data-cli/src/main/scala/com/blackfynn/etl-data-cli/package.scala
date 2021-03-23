@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.core.utilities.DatabaseContainer
-import com.blackfynn.utilities.{ Container => ConfigContainer }
+import com.pennsieve.core.utilities.DatabaseContainer
+import com.pennsieve.utilities.{ Container => ConfigContainer }
 
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._

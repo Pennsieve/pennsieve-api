@@ -1,16 +1,16 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
 
-import com.blackfynn.authorization.{ AuthyContainer, JwtContainer, Router }
-import com.blackfynn.authorization.Router.ResourceContainer
-import com.blackfynn.akka.http.{ RouteService, RouterServiceSpec }
-import com.blackfynn.core.utilities._
-import com.blackfynn.test._
-import com.blackfynn.test.helpers._
+import com.pennsieve.authorization.{ AuthyContainer, JwtContainer, Router }
+import com.pennsieve.authorization.Router.ResourceContainer
+import com.pennsieve.akka.http.{ RouteService, RouterServiceSpec }
+import com.pennsieve.core.utilities._
+import com.pennsieve.test._
+import com.pennsieve.test.helpers._
 import akka.testkit.TestKitBase
 import com.authy.AuthyApiClient
-import com.blackfynn.clients.MockAuthyApiClient
+import com.pennsieve.clients.MockAuthyApiClient
 import com.redis.RedisClientPool
 import com.typesafe.config.{ Config, ConfigValueFactory }
 

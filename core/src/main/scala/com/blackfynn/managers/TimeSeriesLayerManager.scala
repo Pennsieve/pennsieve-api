@@ -1,12 +1,12 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db.{
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db.{
   TimeSeriesAnnotationTable,
   TimeSeriesLayer,
   TimeSeriesLayerTable
 }
-import com.blackfynn.utilities.AbstractError
+import com.pennsieve.utilities.AbstractError
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag

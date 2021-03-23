@@ -1,4 +1,4 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import akka.util.ByteString
 import akka.http.scaladsl.HttpExt
@@ -8,8 +8,8 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.Materializer
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.domain.{ CoreError, ExceptionError }
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.domain.{ CoreError, ExceptionError }
 import io.circe.syntax._
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }

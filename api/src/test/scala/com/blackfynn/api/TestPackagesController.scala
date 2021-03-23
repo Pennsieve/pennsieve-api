@@ -1,38 +1,38 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import java.net.URL
 import java.time.ZonedDateTime
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import com.blackfynn.clients.MockJobSchedulingServiceClient
-import com.blackfynn.domain.StorageAggregation.{
+import com.pennsieve.clients.MockJobSchedulingServiceClient
+import com.pennsieve.domain.StorageAggregation.{
   sdatasets,
   sorganizations,
   susers
 }
-import com.blackfynn.dtos.{
+import com.pennsieve.dtos.{
   DownloadManifestDTO,
   ExtendedPackageDTO,
   FileDTO,
   PackageDTO,
   PagedResponse
 }
-import com.blackfynn.helpers.{
+import com.pennsieve.helpers.{
   DataSetTestMixin,
   MockAuditLogger,
   MockObjectStore,
   MockUrlShortenerClient
 }
-import com.blackfynn.managers.{ FileManager, PackageManager }
-import com.blackfynn.models.PackageState.{
+import com.pennsieve.managers.{ FileManager, PackageManager }
+import com.pennsieve.models.PackageState.{
   PROCESSING,
   READY,
   UNAVAILABLE,
   UPLOADED
 }
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   Dataset,
   File,
   FileChecksum,
@@ -46,7 +46,7 @@ import com.blackfynn.models.{
   Role,
   User
 }
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.EitherValue._
 import io.circe.parser.decode
 import org.json4s._
 import org.json4s.jackson.JsonMethods._

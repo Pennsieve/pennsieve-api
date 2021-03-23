@@ -1,7 +1,7 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectResult }
-import com.blackfynn.models.DatasetAsset
+import com.pennsieve.models.DatasetAsset
 import org.apache.commons.io.IOUtils
 
 import java.io.InputStream

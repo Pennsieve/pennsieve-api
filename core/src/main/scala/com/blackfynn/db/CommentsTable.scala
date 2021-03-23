@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{ Comment, Organization }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{ Comment, Organization }
 import java.time.ZonedDateTime
 
 final class CommentsTable(schema: String, tag: Tag)

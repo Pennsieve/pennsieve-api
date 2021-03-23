@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
-import com.blackfynn.api.Error
+import com.pennsieve.api.Error
 import io.circe.Encoder
 import io.circe.syntax._
 import javax.servlet.http.HttpServletResponse

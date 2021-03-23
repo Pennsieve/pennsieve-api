@@ -1,15 +1,15 @@
 // Copyright (c) 2018 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.implicits._
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.ResultHandlers.OkResult
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.models.OnboardingEventType
+import com.pennsieve.helpers.ResultHandlers.OkResult
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.models.OnboardingEventType
 import org.scalatra.swagger.Swagger
 import org.scalatra.{ AsyncResult, ScalatraServlet }
 

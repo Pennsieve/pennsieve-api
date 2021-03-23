@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.timeseries
+package com.pennsieve.timeseries
 
 case class AnnotationAggregateWindowResult[T](start: Long, end: Long, value: T)

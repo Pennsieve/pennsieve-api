@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import cats.implicits._
-import com.blackfynn.auth.middleware.{
+import com.pennsieve.auth.middleware.{
   DatasetId,
   DatasetNodeId,
   EncryptionKeyId,
@@ -15,7 +15,7 @@ import com.blackfynn.auth.middleware.{
   UserClaim,
   UserId
 }
-import com.blackfynn.db.{
+import com.pennsieve.db.{
   DatasetTeamMapper,
   DatasetUserMapper,
   DatasetsMapper,
@@ -24,7 +24,7 @@ import com.blackfynn.db.{
   OrganizationsMapper,
   UserMapper
 }
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   DBPermission,
   Dataset,
   Feature,
@@ -32,11 +32,11 @@ import com.blackfynn.models.{
   Role,
   User
 }
-import com.blackfynn.test.helpers.AwaitableImplicits._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.test.helpers.AwaitableImplicits._
+import com.pennsieve.traits.PostgresProfile.api._
 import java.util.UUID
 
-import com.blackfynn.auth.middleware.Jwt.Role.RoleIdentifier
+import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.{ FiniteDuration, _ }

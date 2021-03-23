@@ -1,18 +1,18 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase
 import org.apache.http.entity.ByteArrayEntity
-import com.blackfynn.auth.middleware._
-import com.blackfynn.aws.cognito.MockCognito
-import com.blackfynn.aws.email.LocalEmailContainer
-import com.blackfynn.aws.queue.LocalSQSContainer
-import com.blackfynn.aws.s3.LocalS3Container
-import com.blackfynn.models.{
+import com.pennsieve.auth.middleware._
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.aws.email.LocalEmailContainer
+import com.pennsieve.aws.queue.LocalSQSContainer
+import com.pennsieve.aws.s3.LocalS3Container
+import com.pennsieve.models.{
   Dataset,
   DatasetStatus,
   Degree,
@@ -26,31 +26,31 @@ import com.blackfynn.models.{
   Token,
   User
 }
-import com.blackfynn.clients.{
+import com.pennsieve.clients.{
   MockCustomTermsOfServiceClientContainer,
   MockJobSchedulingServiceContainer
 }
-import com.blackfynn.core.utilities._
-import com.blackfynn.models.DBPermission.{ Administer, BlindReviewer, Delete }
-import com.blackfynn.managers._
-import com.blackfynn.managers.DatasetManager
-import com.blackfynn.helpers._
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.core.utilities._
+import com.pennsieve.models.DBPermission.{ Administer, BlindReviewer, Delete }
+import com.pennsieve.managers._
+import com.pennsieve.managers.DatasetManager
+import com.pennsieve.helpers._
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.utilities._
-import com.blackfynn.web.SwaggerApp
-import com.blackfynn.domain.Sessions
-import com.blackfynn.dtos.Secret
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.Collection
-import com.blackfynn.models.PublishStatus.{ PublishFailed, PublishSucceeded }
-import com.blackfynn.test._
-import com.blackfynn.test.helpers._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.traits.TimeSeriesDBContainer
+import com.pennsieve.utilities._
+import com.pennsieve.web.SwaggerApp
+import com.pennsieve.domain.Sessions
+import com.pennsieve.dtos.Secret
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.Collection
+import com.pennsieve.models.PublishStatus.{ PublishFailed, PublishSucceeded }
+import com.pennsieve.test._
+import com.pennsieve.test.helpers._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.TimeSeriesDBContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import enumeratum._
 import io.circe.syntax._
@@ -58,8 +58,8 @@ import java.net.URI
 import java.time.{ Duration, ZonedDateTime }
 import java.util.UUID
 
-import com.blackfynn.audit.middleware.AuditLogger
-import com.blackfynn.auth.middleware.Jwt.Role.RoleIdentifier
+import com.pennsieve.audit.middleware.AuditLogger
+import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import com.redis.RedisClientPool
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._

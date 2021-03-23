@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads.consumer.antivirus
+package com.pennsieve.uploads.consumer.antivirus
 
 import cats.data._
 import cats.kernel.Eq

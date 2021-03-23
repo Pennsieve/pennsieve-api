@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads
+package com.pennsieve.uploads
 
-import com.blackfynn.models.{ FileType, PackageType }
+import com.pennsieve.models.{ FileType, PackageType }
 import org.scalatest.{ FlatSpec, Matchers }
 
 class FileUploadSpec extends FlatSpec with Matchers {

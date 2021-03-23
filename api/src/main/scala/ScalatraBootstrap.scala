@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-import com.blackfynn.api._
-import com.blackfynn.helpers.{
+import com.pennsieve.api._
+import com.pennsieve.helpers.{
   AWSBootstrapHelper,
   BaseBootstrapHelper,
   LocalBootstrapHelper
 }
-import com.blackfynn.web.{ ResourcesApp, Settings, SwaggerApp }
+import com.pennsieve.web.{ ResourcesApp, Settings, SwaggerApp }
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer

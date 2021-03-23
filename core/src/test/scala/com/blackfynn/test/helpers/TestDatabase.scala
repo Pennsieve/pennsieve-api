@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.test.helpers
+package com.pennsieve.test.helpers
 
 import cats.data.EitherT
-import com.blackfynn.core.utilities.PostgresDatabase
+import com.pennsieve.core.utilities.PostgresDatabase
 
 import scala.concurrent.Future
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.migrations.DatabaseMigrationRunner
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.migrations.DatabaseMigrationRunner
 import slick.jdbc.GetResult
 
 case class Awaitable[A](f: Future[A]) {

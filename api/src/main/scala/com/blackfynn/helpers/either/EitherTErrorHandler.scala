@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers.either
+package com.pennsieve.helpers.either
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.domain.{
+import com.pennsieve.domain.{
   CoreError,
   DatasetRolePermissionError,
   InvalidAction,
@@ -23,7 +23,7 @@ import com.blackfynn.domain.{
 }
 import enumeratum.{ CirceEnum, Enum, EnumEntry }
 import org.scalatra._
-import com.blackfynn.web.Settings
+import com.pennsieve.web.Settings
 
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }

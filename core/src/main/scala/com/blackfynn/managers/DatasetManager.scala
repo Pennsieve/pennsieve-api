@@ -1,23 +1,23 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.util.UUID
 
 import cats.data._
 import cats.implicits._
 import cats.Applicative
-import com.blackfynn.audit.middleware.TraceId
+import com.pennsieve.audit.middleware.TraceId
 
 import scala.util.Either
-import com.blackfynn.core.utilities.FutureEitherHelpers
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ DatasetPublicationStatusMapper, _ }
-import com.blackfynn.domain._
-import com.blackfynn.messages._
-import com.blackfynn.models._
-import com.blackfynn.core.utilities.checkOrErrorT
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.core.utilities.FutureEitherHelpers
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ DatasetPublicationStatusMapper, _ }
+import com.pennsieve.domain._
+import com.pennsieve.messages._
+import com.pennsieve.models._
+import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.traits.PostgresProfile.api._
 import enumeratum.{ Enum, EnumEntry }
 import org.postgresql.util.PSQLException
 import slick.ast.Ordering

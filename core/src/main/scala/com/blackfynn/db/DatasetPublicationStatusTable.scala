@@ -1,7 +1,7 @@
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models._
 import java.time.ZonedDateTime
 
 import scala.concurrent.ExecutionContext
@@ -11,7 +11,7 @@ import cats.implicits._
 import java.util.UUID
 import java.time.LocalDate
 
-import com.blackfynn.domain.SqlError
+import com.pennsieve.domain.SqlError
 
 final class DatasetPublicationStatusTable(schema: String, tag: Tag)
     extends Table[DatasetPublicationStatus](

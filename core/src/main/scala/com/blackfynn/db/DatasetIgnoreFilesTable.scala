@@ -1,7 +1,7 @@
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.models.{ DatasetIgnoreFile, Organization }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models.{ DatasetIgnoreFile, Organization }
+import com.pennsieve.traits.PostgresProfile.api._
 import scala.concurrent.ExecutionContext
 
 final class DatasetIgnoreFilesTable(schema: String, tag: Tag)

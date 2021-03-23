@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
-import com.blackfynn.db._
-import com.blackfynn.managers._
-import com.blackfynn.models.{
+import com.pennsieve.db._
+import com.pennsieve.managers._
+import com.pennsieve.models.{
   DBPermission,
   Dataset,
   DatasetPublicationStatus,
@@ -22,7 +22,7 @@ import com.blackfynn.models.{
   TeamUser,
   User
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import java.util.UUID
 
 import org.scalatest.{ Matchers, WordSpec }

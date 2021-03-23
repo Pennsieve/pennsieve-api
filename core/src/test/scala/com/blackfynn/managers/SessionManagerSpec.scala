@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.aws.cognito.MockCognito
-import com.blackfynn.domain.NotFound
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.domain.Sessions.{
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.domain.NotFound
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.domain.Sessions.{
   sessionKey,
   APISession,
   BrowserSession,
