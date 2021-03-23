@@ -27,20 +27,20 @@ class TokenManager(db: Database) {
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Token, Secret)] = {
-    val username = java.util.UUID.randomUUID.toString
+    val tokenString = java.util.UUID.randomUUID.toString
     val secret = java.util.UUID.randomUUID.toString
 
     val token = Token(
       name,
-      username,
+      tokenString,
       SecureHash.createHash(secret),
       organization.id,
       user.id
     )
 
-    cognitoClient.adminCreateToken(username, cognitoClient.getTokenPoolId())
+    cognitoClient.adminCreateToken(tokenString, cognitoClient.getTokenPoolId())
     cognitoClient.adminSetUserPassword(
-      username,
+      tokenString,
       secret,
       cognitoClient.getTokenPoolId()
     )
