@@ -2,6 +2,7 @@
 
 package com.blackfynn.managers
 
+import com.blackfynn.aws.cognito.MockCognito
 import com.blackfynn.domain.NotFound
 import com.blackfynn.test.helpers.EitherValue._
 import com.blackfynn.domain.Sessions.{
@@ -17,6 +18,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class SessionManagerSpec extends BaseManagerSpec {
 
   implicit def um: UserManager = userManager
+
+  val mockCognito: MockCognito = new MockCognito()
 
   "create" should "generate a new browser session" in {
     val user = createUser()
@@ -46,7 +49,7 @@ class SessionManagerSpec extends BaseManagerSpec {
     val _secureTokenManager = secureTokenManager(user)
 
     val (token, secret) = _secureTokenManager
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognito)
       .await
       .right
       .value

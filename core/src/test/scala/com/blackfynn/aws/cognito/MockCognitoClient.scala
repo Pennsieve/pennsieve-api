@@ -13,6 +13,9 @@ class MockCognito() extends CognitoClient {
   val sentTokenInvites: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
+  val sentPasswordSets: mutable.ArrayBuffer[String] =
+    mutable.ArrayBuffer.empty
+
   val sentDeletes: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
@@ -20,7 +23,8 @@ class MockCognito() extends CognitoClient {
     mutable.Map.empty
 
   def adminCreateUser(
-    email: String
+    email: String,
+    userPoolId: String
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId] = {
@@ -29,12 +33,24 @@ class MockCognito() extends CognitoClient {
   }
 
   def adminCreateToken(
-    email: String
+    email: String,
+    userPoolId: String
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId] = {
     sentTokenInvites.append(email)
     Future.successful(CognitoId.randomId())
+  }
+
+  def adminSetUserPassword(
+    username: String,
+    password: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    sentPasswordSets.append(username)
+    Future.successful(Unit)
   }
 
   def adminDeleteUser(
