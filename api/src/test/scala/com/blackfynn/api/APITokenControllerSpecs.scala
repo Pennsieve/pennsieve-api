@@ -54,6 +54,8 @@ class APITokenControllerSpecs extends BaseApiTest {
       status should be(201)
       response.name should be("test api token")
 
+      mockCognito.sentTokenInvites.length should be(1)
+
       val secureTokenManager =
         new SecureTokenManager(loggedInUser, insecureContainer.db)
       val token = secureTokenManager.get(response.key).await.right.value
@@ -150,6 +152,8 @@ class APITokenControllerSpecs extends BaseApiTest {
       val secureTokenManager =
         new SecureTokenManager(loggedInUser, insecureContainer.db)
 
+      mockCognito.sentDeletes.length should be(1)
+
       secureTokenManager.get(uuid).await.left.value should equal(
         NotFound(s"Token ($uuid)")
       )
@@ -171,5 +175,4 @@ class APITokenControllerSpecs extends BaseApiTest {
       }
     }
   }
-
 }
