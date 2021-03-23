@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.HttpMethods.{ GET, PUT }
@@ -14,20 +14,20 @@ import akka.stream._
 import akka.testkit.TestKitBase
 import cats.data._
 import cats.implicits._
-import com.blackfynn.akka.http.EitherValue._
-import com.blackfynn.db.DatasetsMapper
-import com.blackfynn.managers.{
+import com.pennsieve.akka.http.EitherValue._
+import com.pennsieve.db.DatasetsMapper
+import com.pennsieve.managers.{
   DatasetManager,
   DatasetPreviewManager,
   UserManager
 }
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   DatasetPreviewer,
   EmbargoAccess,
   PackageState,
   Role
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.duration._
 import scala.concurrent._

@@ -1,8 +1,8 @@
 // Copyright (c) 2020 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.Matchers._
 
 import scala.concurrent.ExecutionContext.Implicits.global

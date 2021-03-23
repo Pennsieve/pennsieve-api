@@ -1,24 +1,24 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads
+package com.pennsieve.uploads
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.blackfynn.akka.consumer.AlertConfig
-import com.blackfynn.aws.queue.{ SQSContainer, SQSDeduplicationContainer }
-import com.blackfynn.aws.s3.S3Container
-import com.blackfynn.aws.sns.SNSContainer
-import com.blackfynn.core.utilities.{
+import com.pennsieve.akka.consumer.AlertConfig
+import com.pennsieve.aws.queue.{ SQSContainer, SQSDeduplicationContainer }
+import com.pennsieve.aws.s3.S3Container
+import com.pennsieve.aws.sns.SNSContainer
+import com.pennsieve.core.utilities.{
   ContextLoggingContainer,
   DatabaseContainer,
   RedisContainer
 }
-import com.blackfynn.clients.{
+import com.pennsieve.clients.{
   JobSchedulingServiceContainer,
   UploadServiceContainer
 }
-import com.blackfynn.uploads.consumer.antivirus.ClamAVContainer
-import com.blackfynn.utilities.{ Container => ConfigContainer }
+import com.pennsieve.uploads.consumer.antivirus.ClamAVContainer
+import com.pennsieve.utilities.{ Container => ConfigContainer }
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 

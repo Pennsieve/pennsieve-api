@@ -1,12 +1,12 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import java.time.OffsetDateTime
 import java.util.UUID
 
-import com.blackfynn.concepts.types.CreateProxyInstancePayload
-import com.blackfynn.domain.CoreError
-import com.blackfynn.dtos.{ ConceptDTO, ConceptInstanceDTO }
-import com.blackfynn.models.NodeId
+import com.pennsieve.concepts.types.CreateProxyInstancePayload
+import com.pennsieve.domain.CoreError
+import com.pennsieve.dtos.{ ConceptDTO, ConceptInstanceDTO }
+import com.pennsieve.models.NodeId
 import io.circe.syntax._
 import io.circe.Json
 import org.apache.http.impl.client.HttpClients

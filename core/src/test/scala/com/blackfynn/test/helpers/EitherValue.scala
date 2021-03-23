@@ -1,4 +1,4 @@
-package com.blackfynn.test.helpers
+package com.pennsieve.test.helpers
 
 import org.scalactic.source
 import org.scalatest.exceptions.{ StackDepthException, TestFailedException }

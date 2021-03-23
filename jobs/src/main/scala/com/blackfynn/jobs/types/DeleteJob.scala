@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.jobs.types
+package com.pennsieve.jobs.types
 
 import java.util.concurrent.TimeUnit
 
@@ -23,26 +23,26 @@ import com.amazonaws.ClientConfiguration
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.model._
 import com.amazonaws.services.s3.{ AmazonS3, AmazonS3ClientBuilder }
-import com.blackfynn.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.aws.s3._
-import com.blackfynn.clients
-import com.blackfynn.clients._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities._
-import com.blackfynn.db.{ DatasetAssetsMapper, _ }
-import com.blackfynn.domain.{ CoreError, NotFound }
-import com.blackfynn.jobs.contexts.{
+import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.aws.s3._
+import com.pennsieve.clients
+import com.pennsieve.clients._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities._
+import com.pennsieve.db.{ DatasetAssetsMapper, _ }
+import com.pennsieve.domain.{ CoreError, NotFound }
+import com.pennsieve.jobs.contexts.{
   CatalogDeleteContext,
   DatasetDeleteContext,
   PackageDeleteContext
 }
-import com.blackfynn.jobs.{ DeleteResult, _ }
-import com.blackfynn.managers._
-import com.blackfynn.messages._
-import com.blackfynn.models.FileType.Aperio
-import com.blackfynn.models.PackageType.{ Collection, TimeSeries }
-import com.blackfynn.models.{
+import com.pennsieve.jobs.{ DeleteResult, _ }
+import com.pennsieve.managers._
+import com.pennsieve.messages._
+import com.pennsieve.models.FileType.Aperio
+import com.pennsieve.models.PackageType.{ Collection, TimeSeries }
+import com.pennsieve.models.{
   Channel,
   DatasetState,
   File,
@@ -50,10 +50,10 @@ import com.blackfynn.models.{
   Package,
   PackageState
 }
-import com.blackfynn.service.utilities.{ ContextLogger, LogContext, Tier }
-import com.blackfynn.streaming.RangeLookUp
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.traits.TimeSeriesDBContainer
+import com.pennsieve.service.utilities.{ ContextLogger, LogContext, Tier }
+import com.pennsieve.streaming.RangeLookUp
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.traits.TimeSeriesDBContainer
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
 import org.apache.http.impl.client.HttpClients

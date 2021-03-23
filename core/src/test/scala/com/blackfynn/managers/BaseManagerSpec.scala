@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   Contributor,
   DBPermission,
   Dataset,
@@ -21,13 +21,13 @@ import com.blackfynn.models.{
   Team,
   User
 }
-import com.blackfynn.core.utilities.PostgresDatabase
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db._
-import com.blackfynn.models.FileObjectType.Source
-import com.blackfynn.test._
-import com.blackfynn.test.helpers._
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.core.utilities.PostgresDatabase
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db._
+import com.pennsieve.models.FileObjectType.Source
+import com.pennsieve.test._
+import com.pennsieve.test.helpers._
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest._
 import com.redis.RedisClientPool
 import java.util.UUID

@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import cats.data._
-import com.blackfynn.core.utilities.InsecureCoreContainer
-import com.blackfynn.domain.CoreError
-import com.blackfynn.managers._
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.utilities.Container
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.core.utilities.InsecureCoreContainer
+import com.pennsieve.domain.CoreError
+import com.pennsieve.managers._
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.utilities.Container
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 

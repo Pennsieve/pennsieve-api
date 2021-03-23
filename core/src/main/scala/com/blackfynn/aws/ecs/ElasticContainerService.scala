@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.ecs
+package com.pennsieve.aws.ecs
 
-import com.blackfynn.aws.AsyncHandler
+import com.pennsieve.aws.AsyncHandler
 import com.amazonaws.services.ecs.AmazonECSAsync
 import com.amazonaws.services.ecs.model.{
   ListTasksRequest,

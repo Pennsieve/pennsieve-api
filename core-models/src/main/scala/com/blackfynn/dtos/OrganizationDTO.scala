@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.SubscriptionStatus.{
+import com.pennsieve.models.SubscriptionStatus.{
   ConfirmedSubscription => Confirmed,
   PendingSubscription => Pending
 }
-import com.blackfynn.models.{ Feature, Subscription }
+import com.pennsieve.models.{ Feature, Subscription }
 
 sealed trait SubscriptionDTO
 case class PendingSubscription(`type`: Option[String] = None)

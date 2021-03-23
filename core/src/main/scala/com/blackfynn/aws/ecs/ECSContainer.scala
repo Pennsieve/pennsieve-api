@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.ecs
+package com.pennsieve.aws.ecs
 
-import com.blackfynn.utilities.Container
+import com.pennsieve.utilities.Container
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.regions.Regions
@@ -10,7 +10,7 @@ import com.amazonaws.services.ecs.{
   AmazonECSAsync,
   AmazonECSAsyncClientBuilder
 }
-import com.blackfynn.aws.LocalAWSCredentialsProvider
+import com.pennsieve.aws.LocalAWSCredentialsProvider
 import net.ceedubs.ficus.Ficus._
 
 trait ECSContainer { self: Container =>

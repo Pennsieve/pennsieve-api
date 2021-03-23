@@ -1,18 +1,18 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.syntax.either._
 import cats.instances.future._
-import com.blackfynn.domain.NotFound
-import com.blackfynn.models.{
+import com.pennsieve.domain.NotFound
+import com.pennsieve.models.{
   DBPermission,
   Feature,
   Organization,
   SystemTeamType
 }
-import com.blackfynn.test.helpers.TestDatabase
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.TestDatabase
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.Matchers
 import sun.awt.AWTAccessor.SystemTrayAccessor
 

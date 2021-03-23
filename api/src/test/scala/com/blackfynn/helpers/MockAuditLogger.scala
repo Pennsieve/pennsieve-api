@@ -1,6 +1,6 @@
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
-import com.blackfynn.audit.middleware.{ Auditor, ToMessage, TraceId }
+import com.pennsieve.audit.middleware.{ Auditor, ToMessage, TraceId }
 
 import scala.concurrent.Future
 

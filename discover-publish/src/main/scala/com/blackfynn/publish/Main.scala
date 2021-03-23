@@ -1,23 +1,23 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.StrictLogging
 import com.typesafe.config.{ Config, ConfigFactory }
 import cats.implicits._
-import com.blackfynn.utilities.AbstractError
+import com.pennsieve.utilities.AbstractError
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
-import com.blackfynn.aws.s3.S3
+import com.pennsieve.aws.s3.S3
 import net.ceedubs.ficus.Ficus._
 
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
 import akka.dispatch.MessageDispatcher
 import cats.data.EitherT
-import com.blackfynn.domain.CoreError
+import com.pennsieve.domain.CoreError
 
 case class PublishError(message: String) extends AbstractError {
   final override def getMessage: String = message

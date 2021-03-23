@@ -1,4 +1,4 @@
-package com.blackfynn.api
+package com.pennsieve.api
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -8,15 +8,15 @@ import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.stream.Materializer
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.auth.middleware.{ DatasetPermission, Jwt }
-import com.blackfynn.aws.email.{ Email, SesMessageResult }
-import com.blackfynn.clients.{ DatasetAssetClient, ModelServiceClient }
-import com.blackfynn.core.utilities.{
+import com.pennsieve.auth.middleware.{ DatasetPermission, Jwt }
+import com.pennsieve.aws.email.{ Email, SesMessageResult }
+import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
+import com.pennsieve.core.utilities.{
   checkOrError,
   checkOrErrorT,
   JwtAuthenticator
 }
-import com.blackfynn.discover.client.definitions.{
+import com.pennsieve.discover.client.definitions.{
   DatasetPublishStatus,
   DatasetsPage,
   InternalCollection,
@@ -27,30 +27,30 @@ import com.blackfynn.discover.client.definitions.{
   PublishRequest,
   ReviseRequest
 }
-import com.blackfynn.discover.client.publish.PublishClient
-import com.blackfynn.discover.client.search.SearchClient
-import com.blackfynn.domain
-import com.blackfynn.domain.{ Error => CoreServerError, _ }
-import com.blackfynn.dtos.{
+import com.pennsieve.discover.client.publish.PublishClient
+import com.pennsieve.discover.client.search.SearchClient
+import com.pennsieve.domain
+import com.pennsieve.domain.{ Error => CoreServerError, _ }
+import com.pennsieve.dtos.{
   CollectionDTO,
   ContributorDTO,
   DataSetDTO,
   DiscoverPublishedDatasetDTO
 }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer
 }
-import com.blackfynn.managers.DatasetManager
-import com.blackfynn.models.PublicationStatus.Requested
-import com.blackfynn.models.PublicationType.Revision
-import com.blackfynn.models._
-import com.blackfynn.notifications.{
+import com.pennsieve.managers.DatasetManager
+import com.pennsieve.models.PublicationStatus.Requested
+import com.pennsieve.models.PublicationType.Revision
+import com.pennsieve.models._
+import com.pennsieve.notifications.{
   DiscoverPublishNotification,
   MessageType,
   NotificationMessage
 }
-import com.blackfynn.web.Settings
+import com.pennsieve.web.Settings
 import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
 import javax.servlet.http.HttpServletRequest

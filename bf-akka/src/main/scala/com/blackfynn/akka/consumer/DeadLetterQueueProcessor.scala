@@ -1,4 +1,4 @@
-package com.blackfynn.akka.consumer
+package com.pennsieve.akka.consumer
 
 import akka.{ Done, NotUsed }
 import akka.stream.UniqueKillSwitch
@@ -9,7 +9,7 @@ import akka.stream.scaladsl.{ Flow, Keep, RunnableGraph, Sink, Source }
 import cats.data.EitherT
 import cats.implicits._
 
-import com.blackfynn.models.PayloadType
+import com.pennsieve.models.PayloadType
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sns.model.PublishRequest

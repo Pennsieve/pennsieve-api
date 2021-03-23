@@ -1,25 +1,25 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.audit.middleware.Auditor
-import com.blackfynn.auth.middleware.DatasetPermission
-import com.blackfynn.client.NotificationServiceClient
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.{ checkOrErrorT, JwtAuthenticator }
-import com.blackfynn.domain.{ CoreError, NotFound }
-import com.blackfynn.dtos.{ Builders, CommentDTO, DiscussionDTO, UserDTO }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.auth.middleware.DatasetPermission
+import com.pennsieve.client.NotificationServiceClient
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.{ checkOrErrorT, JwtAuthenticator }
+import com.pennsieve.domain.{ CoreError, NotFound }
+import com.pennsieve.dtos.{ Builders, CommentDTO, DiscussionDTO, UserDTO }
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.ResultHandlers.{ CreatedResult, OkResult }
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.models.{ Comment, Package, User }
-import com.blackfynn.notifications.MessageType.Mention
-import com.blackfynn.notifications.{ MentionNotification, NotificationMessage }
+import com.pennsieve.helpers.ResultHandlers.{ CreatedResult, OkResult }
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.models.{ Comment, Package, User }
+import com.pennsieve.notifications.MessageType.Mention
+import com.pennsieve.notifications.{ MentionNotification, NotificationMessage }
 import org.scalatra.swagger.Swagger
 import org.scalatra.{ ActionResult, AsyncResult, Forbidden, ScalatraServlet }
 

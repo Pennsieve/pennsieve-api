@@ -1,17 +1,17 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.implicits._
 import cats.data.EitherT
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ ExternalFilesMapper, PackagesMapper }
-import com.blackfynn.domain.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ ExternalFilesMapper, PackagesMapper }
+import com.pennsieve.domain.{
   CoreError,
   NotFound,
   SqlError,
   UnsupportedPackageType
 }
-import com.blackfynn.models.{ ExternalFile, Package, PackageType }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models.{ ExternalFile, Package, PackageType }
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 

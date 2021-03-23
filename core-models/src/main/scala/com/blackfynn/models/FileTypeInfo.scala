@@ -1,6 +1,6 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
-import com.blackfynn.models.FileType.{
+import com.pennsieve.models.FileType.{
   AdobeIllustrator,
   Ansys,
   BAM,
@@ -19,7 +19,7 @@ import com.blackfynn.models.FileType.{
   YAML,
   _
 }
-import com.blackfynn.models.Icon.{
+import com.pennsieve.models.Icon.{
   Code,
   Flow,
   Generic,
@@ -32,8 +32,8 @@ import com.blackfynn.models.Icon.{
   Timeseries,
   _
 }
-import com.blackfynn.models.PackageType.Unsupported
-import com.blackfynn.models.FileTypeGrouping._
+import com.pennsieve.models.PackageType.Unsupported
+import com.pennsieve.models.FileTypeGrouping._
 import scala.collection.immutable.{ Map, Set }
 
 sealed trait FileTypeGrouping

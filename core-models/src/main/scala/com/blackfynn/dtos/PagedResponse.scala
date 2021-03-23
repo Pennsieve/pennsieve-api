@@ -1,4 +1,4 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }

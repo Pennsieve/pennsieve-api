@@ -1,4 +1,4 @@
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import cats.data.EitherT
 import cats.syntax.either.catsSyntaxEitherId
@@ -7,8 +7,8 @@ import software.amazon.awssdk.services.sqs.model.{
   PurgeQueueResponse,
   SendMessageResponse
 }
-import com.blackfynn.aws.queue.SQSClient
-import com.blackfynn.domain.CoreError
+import com.pennsieve.aws.queue.SQSClient
+import com.pennsieve.domain.CoreError
 
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }

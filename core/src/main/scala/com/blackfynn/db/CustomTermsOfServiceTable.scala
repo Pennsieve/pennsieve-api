@@ -1,9 +1,9 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.dtos.CustomTermsOfServiceDTO
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.dtos.CustomTermsOfServiceDTO
+import com.pennsieve.traits.PostgresProfile.api._
 import java.time.{ ZoneOffset, ZonedDateTime }
 
 import scala.concurrent.ExecutionContext

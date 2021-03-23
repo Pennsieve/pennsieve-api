@@ -1,11 +1,11 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{
   ChannelGroup,
   ChannelGroupTable,
   DBTimeSeriesAnnotation,
@@ -14,8 +14,8 @@ import com.blackfynn.db.{
   TimeSeriesLayer,
   TimeSeriesLayerTable
 }
-import com.blackfynn.domain.CoreError
-import com.blackfynn.timeseries.{
+import com.pennsieve.domain.CoreError
+import com.pennsieve.timeseries.{
   AnnotationAggregateWindowResult,
   AnnotationChunker,
   AnnotationData,
@@ -24,8 +24,8 @@ import com.blackfynn.timeseries.{
   WindowAggregator
 }
 import com.github.tminglei.slickpg.Range
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.Package
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.Package
 import slick.dbio.Effect
 import slick.sql.FixedSqlAction
 import slick.jdbc.{ ResultSetConcurrency, ResultSetType }

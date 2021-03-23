@@ -1,7 +1,7 @@
-package com.blackfynn.publish.models
+package com.pennsieve.publish.models
 
-import com.blackfynn.models.{ File, Package }
-import com.blackfynn.publish.utils.joinKeys
+import com.pennsieve.models.{ File, Package }
+import com.pennsieve.publish.utils.joinKeys
 
 /**
   * Container that describes the source and destination of an S3 file to copy.

@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.{ DBPermission, UserInvite }
+import com.pennsieve.models.{ DBPermission, UserInvite }
 
 case class UserInviteDTO(
   id: String,

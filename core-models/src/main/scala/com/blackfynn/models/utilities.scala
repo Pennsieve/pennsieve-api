@@ -1,4 +1,4 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
 import com.google.common.net.UrlEscapers
 import org.apache.commons.io.FilenameUtils

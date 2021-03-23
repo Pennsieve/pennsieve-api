@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import org.scalatra.ScalatraBase
 import org.scalatra.swagger.{ SwaggerSupport, SwaggerSupportSyntax }

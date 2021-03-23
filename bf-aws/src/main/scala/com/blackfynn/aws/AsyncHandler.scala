@@ -1,4 +1,4 @@
-package com.blackfynn.aws
+package com.pennsieve.aws
 
 import com.amazonaws.AmazonWebServiceRequest
 import com.amazonaws.handlers.{ AsyncHandler => AWSAsyncHandler }

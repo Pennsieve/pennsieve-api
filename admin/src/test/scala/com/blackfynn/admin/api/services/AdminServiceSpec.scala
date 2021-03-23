@@ -1,27 +1,27 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import com.blackfynn.admin.api.{ AdminContainer, Router }
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.{ AdminContainer, Router }
+import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainer,
   AdminETLServiceContainerImpl,
   InsecureResourceContainer,
   SecureResourceContainer
 }
-import com.blackfynn.aws.cognito.{ LocalCognitoContainer, MockCognito }
-import com.blackfynn.aws.s3.LocalS3Container
-import com.blackfynn.akka.http.{ RouteService, RouterServiceSpec }
-import com.blackfynn.aws.email.LocalEmailContainer
-import com.blackfynn.aws.queue.LocalSQSContainer
-import com.blackfynn.core.utilities._
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.test._
-import com.blackfynn.test.helpers._
+import com.pennsieve.aws.cognito.{ LocalCognitoContainer, MockCognito }
+import com.pennsieve.aws.s3.LocalS3Container
+import com.pennsieve.akka.http.{ RouteService, RouterServiceSpec }
+import com.pennsieve.aws.email.LocalEmailContainer
+import com.pennsieve.aws.queue.LocalSQSContainer
+import com.pennsieve.core.utilities._
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.test._
+import com.pennsieve.test.helpers._
 import akka.testkit.TestKitBase
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.clients._
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.clients._
 import com.typesafe.config.{ Config, ConfigValueFactory }
 import org.scalatest._
 

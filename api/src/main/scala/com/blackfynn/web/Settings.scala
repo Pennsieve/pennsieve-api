@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.web
+package com.pennsieve.web
 import com.amazonaws.regions.Regions
 import software.amazon.awssdk.regions.Region
-import com.blackfynn.aws.email.Email
+import com.pennsieve.aws.email.Email
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
 

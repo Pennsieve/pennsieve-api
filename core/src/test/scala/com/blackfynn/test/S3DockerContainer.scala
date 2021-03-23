@@ -1,4 +1,4 @@
-package com.blackfynn.test
+package com.pennsieve.test
 
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.{ AWSStaticCredentialsProvider, BasicAWSCredentials }

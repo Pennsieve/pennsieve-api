@@ -1,6 +1,6 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
-import com.blackfynn.models.ModelProperty
+import com.pennsieve.models.ModelProperty
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 

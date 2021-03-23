@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.web
+package com.pennsieve.web
 
 import org.scalatra.swagger.{ ApiInfo, JacksonSwaggerBase, Swagger }
 import org.scalatra._

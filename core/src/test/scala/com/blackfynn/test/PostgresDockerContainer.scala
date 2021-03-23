@@ -1,5 +1,6 @@
-package com.blackfynn.test
-import com.blackfynn.core.utilities.PostgresDatabase
+package com.pennsieve.test
+
+import com.pennsieve.core.utilities.PostgresDatabase
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy

@@ -1,4 +1,4 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
 import java.time.ZonedDateTime
 import cats.data._

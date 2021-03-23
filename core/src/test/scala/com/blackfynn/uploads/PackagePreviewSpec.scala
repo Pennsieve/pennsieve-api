@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads
+package com.pennsieve.uploads
 
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.EitherValue._
 import java.util.UUID
 
-import com.blackfynn.models.{ FileType, JobId, PackageType }
+import com.pennsieve.models.{ FileType, JobId, PackageType }
 import org.scalatest.{ FlatSpec, Matchers }
 
 class PackagePreviewSpec extends FlatSpec with Matchers {

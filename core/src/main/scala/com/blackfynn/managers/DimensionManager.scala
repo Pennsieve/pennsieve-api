@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.db.{ DatasetsMapper, DimensionsMapper }
-import com.blackfynn.models.{
+import com.pennsieve.db.{ DatasetsMapper, DimensionsMapper }
+import com.pennsieve.models.{
   DBPermission,
   Dimension,
   DimensionAssignment,
@@ -11,20 +11,20 @@ import com.blackfynn.models.{
   Organization,
   Package
 }
-import com.blackfynn.core.utilities.FutureEitherHelpers
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.FutureEitherHelpers
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.domain.{
+import com.pennsieve.domain.{
   CoreError,
   ExceptionError,
   NotFound,
   UnsupportedPackageType
 }
-import com.blackfynn.models.Imaging
+import com.pennsieve.models.Imaging
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 
 class DimensionManager(db: Database, organization: Organization) {
 

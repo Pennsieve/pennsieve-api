@@ -1,12 +1,12 @@
 // Copyright (c) 2018 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.db.{ OrganizationsMapper, PackagesMapper }
-import com.blackfynn.etl.`data-cli`.container._
-import com.blackfynn.etl.`data-cli`.exceptions._
-import com.blackfynn.models.{ ModelProperty, Organization, Package }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.db.{ OrganizationsMapper, PackagesMapper }
+import com.pennsieve.etl.`data-cli`.container._
+import com.pennsieve.etl.`data-cli`.exceptions._
+import com.pennsieve.models.{ ModelProperty, Organization, Package }
+import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.parser.decode
 import io.circe.syntax._
 import io.circe.java8.time._

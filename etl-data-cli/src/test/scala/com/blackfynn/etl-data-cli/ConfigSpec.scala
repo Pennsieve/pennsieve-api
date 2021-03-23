@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.aws.ssm.{
+import com.pennsieve.aws.ssm.{
   AWSSimpleSystemsManagementContainer,
   LocalSimpleSystemsManagerContainer
 }
-import com.blackfynn.utilities.{ Container => ConfigContainer }
+import com.pennsieve.utilities.{ Container => ConfigContainer }
 import com.typesafe.config.ConfigFactory
 import net.ceedubs.ficus.Ficus._
 import org.scalatest.{ FlatSpec, Matchers }

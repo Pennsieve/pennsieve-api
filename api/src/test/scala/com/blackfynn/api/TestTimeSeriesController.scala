@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.db.TimeSeriesAnnotation
-import com.blackfynn.models.{ Channel, ModelProperty, Package }
-import com.blackfynn.dtos.{ ChannelDTO, ModelPropertiesDTO, ModelPropertyRO }
+import com.pennsieve.db.TimeSeriesAnnotation
+import com.pennsieve.models.{ Channel, ModelProperty, Package }
+import com.pennsieve.dtos.{ ChannelDTO, ModelPropertiesDTO, ModelPropertyRO }
 import scala.collection.SortedSet
-import com.blackfynn.helpers.{ DataSetTestMixin, TimeSeriesHelper }
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.TimeSeries
+import com.pennsieve.helpers.{ DataSetTestMixin, TimeSeriesHelper }
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.TimeSeries
 import org.json4s._
 import org.json4s.jackson.Serialization.write
 import org.scalatest.FlatSpec

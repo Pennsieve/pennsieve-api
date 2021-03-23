@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.s3
+package com.pennsieve.aws.s3
 
-import com.blackfynn.utilities.Container
+import com.pennsieve.utilities.Container
 
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain

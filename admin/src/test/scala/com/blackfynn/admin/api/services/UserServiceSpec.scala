@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
 import akka.http.scaladsl.model.HttpMethods.POST
 import akka.http.scaladsl.model.StatusCodes.OK
 import cats.syntax.option._
-import com.blackfynn.aws.cognito.MockCognito
-import com.blackfynn.models.{ DBPermission, User, UserInvite }
-import com.blackfynn.models.DBPermission.Owner
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.models.{ DBPermission, User, UserInvite }
+import com.pennsieve.models.DBPermission.Owner
+import com.pennsieve.test.helpers.EitherValue._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.java8.time._

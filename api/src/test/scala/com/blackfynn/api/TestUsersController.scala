@@ -1,23 +1,23 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import java.time.LocalDateTime
 
-import com.blackfynn.auth.middleware.{ Jwt, UserClaim }
-import com.blackfynn.clients.{
+import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
+import com.pennsieve.clients.{
   MockAuthyApiClient,
   MockCustomTermsOfServiceClient
 }
-import com.blackfynn.db.CustomTermsOfService
-import com.blackfynn.dtos.{
+import com.pennsieve.db.CustomTermsOfService
+import com.pennsieve.dtos.{
   CustomTermsOfServiceDTO,
   OrcidDTO,
   PennsieveTermsOfServiceDTO
 }
-import com.blackfynn.helpers.{ MockAuditLogger, OrcidClient }
-import com.blackfynn.models.DBPermission.Delete
-import com.blackfynn.models.{ DateVersion, Degree, OrcidAuthorization }
+import com.pennsieve.helpers.{ MockAuditLogger, OrcidClient }
+import com.pennsieve.models.DBPermission.Delete
+import com.pennsieve.models.{ DateVersion, Degree, OrcidAuthorization }
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 

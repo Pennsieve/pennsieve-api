@@ -1,25 +1,25 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.stream.Materializer
 import cats.data.{ EitherT, _ }
 import cats.implicits._
-import com.blackfynn.audit.middleware.{ Auditor, TraceId }
-import com.blackfynn.auth.middleware.{ DatasetPermission, Jwt }
-import com.blackfynn.clients.ModelServiceClient
-import com.blackfynn.concepts._
-import com.blackfynn.concepts.types._
-import com.blackfynn.core.utilities
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.{
+import com.pennsieve.audit.middleware.{ Auditor, TraceId }
+import com.pennsieve.auth.middleware.{ DatasetPermission, Jwt }
+import com.pennsieve.clients.ModelServiceClient
+import com.pennsieve.concepts._
+import com.pennsieve.concepts.types._
+import com.pennsieve.core.utilities
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.{
   checkOrErrorT,
   getFileType,
   splitFileName,
   JwtAuthenticator
 }
-import com.blackfynn.domain.{
+import com.pennsieve.domain.{
   CoreError,
   IntegrityError,
   InvalidAction,
@@ -28,21 +28,21 @@ import com.blackfynn.domain.{
   PackagePreviewExpected,
   ServiceError
 }
-import com.blackfynn.dtos.Builders._
-import com.blackfynn.dtos._
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.dtos.Builders._
+import com.pennsieve.dtos._
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.ObjectStore
-import com.blackfynn.helpers.ResultHandlers._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.jobscheduling.clients.generated.jobs.JobsClient
-import com.blackfynn.managers.FileManager
-import com.blackfynn.managers.FileManager.UploadSourceFile
-import com.blackfynn.models.Utilities.escapeName
-import com.blackfynn.models.{
+import com.pennsieve.helpers.ObjectStore
+import com.pennsieve.helpers.ResultHandlers._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
+import com.pennsieve.managers.FileManager
+import com.pennsieve.managers.FileManager.UploadSourceFile
+import com.pennsieve.models.Utilities.escapeName
+import com.pennsieve.models.{
   ChangelogEventDetail,
   CollectionUpload,
   Dataset,
@@ -61,8 +61,8 @@ import com.blackfynn.models.{
   Upload,
   User
 }
-import com.blackfynn.uploads._
-import com.blackfynn.web.Settings
+import com.pennsieve.uploads._
+import com.pennsieve.web.Settings
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder

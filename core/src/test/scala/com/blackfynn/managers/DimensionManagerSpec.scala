@@ -1,17 +1,17 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.domain.UnsupportedPackageType
-import com.blackfynn.models.PackageType
-import com.blackfynn.models.{
+import com.pennsieve.domain.UnsupportedPackageType
+import com.pennsieve.models.PackageType
+import com.pennsieve.models.{
   Dataset,
   Dimension,
   DimensionAssignment,
   DimensionProperties,
   Package
 }
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.Matchers._
 import org.scalatest.EitherValues._
 

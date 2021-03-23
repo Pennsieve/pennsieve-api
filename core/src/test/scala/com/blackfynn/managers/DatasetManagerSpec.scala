@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.audit.middleware.TraceId
-import com.blackfynn.domain.CoreError
-import com.blackfynn.managers.DatasetManager.{ OrderByColumn, OrderByDirection }
-import com.blackfynn.models._
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.audit.middleware.TraceId
+import com.pennsieve.domain.CoreError
+import com.pennsieve.managers.DatasetManager.{ OrderByColumn, OrderByDirection }
+import com.pennsieve.models._
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.OptionValues._
 import org.scalatest.Matchers._
 

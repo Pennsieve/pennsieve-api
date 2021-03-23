@@ -1,13 +1,13 @@
-package com.blackfynn.api
+package com.pennsieve.api
 
 import java.util.UUID
 import org.scalatest._
-import com.blackfynn.models._
+import com.pennsieve.models._
 import org.json4s
 import org.json4s._
 import org.json4s.jackson.Serialization.{ read, write }
 import io.circe
-import com.blackfynn.helpers.ModelSerializers
+import com.pennsieve.helpers.ModelSerializers
 
 class TestModelSerializers extends FlatSpec with Matchers {
 

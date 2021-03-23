@@ -1,17 +1,17 @@
-package com.blackfynn.core.utilities
+package com.pennsieve.core.utilities
 
 import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.auth.middleware.{
+import com.pennsieve.auth.middleware.{
   DatasetId,
   DatasetNodeId,
   Jwt,
   OrganizationId,
   Permission
 }
-import com.blackfynn.aws.email.Email
-import com.blackfynn.db.{
+import com.pennsieve.aws.email.Email
+import com.pennsieve.db.{
   CollectionMapper,
   ContributorMapper,
   DatasetPublicationStatusMapper,
@@ -21,12 +21,12 @@ import com.blackfynn.db.{
   ExternalFilesMapper,
   PackagesMapper
 }
-import com.blackfynn.domain.{ CoreError, DatasetRolePermissionError, NotFound }
-import com.blackfynn.managers._
-import com.blackfynn.models.{ Dataset, Organization, Package, Role, User }
-import com.blackfynn.service.utilities.ContextLogger
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.utilities.Container
+import com.pennsieve.domain.{ CoreError, DatasetRolePermissionError, NotFound }
+import com.pennsieve.managers._
+import com.pennsieve.models.{ Dataset, Organization, Package, Role, User }
+import com.pennsieve.service.utilities.ContextLogger
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.utilities.Container
 import com.redis.RedisClientPool
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._

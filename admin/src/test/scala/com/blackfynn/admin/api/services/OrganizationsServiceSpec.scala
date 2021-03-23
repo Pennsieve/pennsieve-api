@@ -1,31 +1,31 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
 import akka.http.scaladsl.model.ContentTypes
 import akka.util.ByteString
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
-import com.blackfynn.admin.api.{ AdminContainer, Router }
-import com.blackfynn.admin.api.dtos.UserDTO
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.{ AdminContainer, Router }
+import com.pennsieve.admin.api.dtos.UserDTO
+import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainer,
   InsecureResourceContainer,
   SecureResourceContainer
 }
 
 import java.time.{ ZoneOffset, ZonedDateTime }
-import com.blackfynn.aws.s3.LocalS3Container
-import com.blackfynn.aws.email.LocalEmailContainer
-import com.blackfynn.core.utilities._
-import com.blackfynn.messages._
-import com.blackfynn.models.DBPermission.Owner
-import com.blackfynn.models.SubscriptionStatus.{
+import com.pennsieve.aws.s3.LocalS3Container
+import com.pennsieve.aws.email.LocalEmailContainer
+import com.pennsieve.core.utilities._
+import com.pennsieve.messages._
+import com.pennsieve.models.DBPermission.Owner
+import com.pennsieve.models.SubscriptionStatus.{
   ConfirmedSubscription,
   PendingSubscription
 }
-import com.blackfynn.models._
-import com.blackfynn.models.DateVersion._
-import com.blackfynn.aws.queue.LocalSQSContainer
+import com.pennsieve.models._
+import com.pennsieve.models.DateVersion._
+import com.pennsieve.aws.queue.LocalSQSContainer
 import akka.http.scaladsl.model.HttpMethods.{ DELETE, GET, POST, PUT }
 import akka.http.scaladsl.model.StatusCodes.{
   BadRequest,
@@ -36,9 +36,9 @@ import akka.http.scaladsl.model.StatusCodes.{
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.testkit.TestKitBase
-import com.blackfynn.auth.middleware.Jwt.Role.RoleIdentifier
-import com.blackfynn.auth.middleware.{ Jwt, OrganizationId }
-import com.blackfynn.clients._
+import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
+import com.pennsieve.auth.middleware.{ Jwt, OrganizationId }
+import com.pennsieve.clients._
 import io.circe.java8.time._
 import io.circe.syntax._
 import io.circe.parser._

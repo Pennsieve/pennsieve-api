@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.ssm
+package com.pennsieve.aws.ssm
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementAsyncClientBuilder
 
-import com.blackfynn.aws.LocalAWSCredentialsProvider
-import com.blackfynn.utilities.Container
+import com.pennsieve.aws.LocalAWSCredentialsProvider
+import com.pennsieve.utilities.Container
 
 import net.ceedubs.ficus.Ficus._
 

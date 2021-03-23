@@ -1,20 +1,20 @@
 // Copyright (c) 2020 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.implicits._
 import cats.data.EitherT
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.checkOrErrorT
-import com.blackfynn.db._
-import com.blackfynn.domain.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.db._
+import com.pennsieve.domain.{
   CoreError,
   ExceptionError,
   NotFound,
   PredicateError
 }
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 

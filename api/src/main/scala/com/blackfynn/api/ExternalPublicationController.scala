@@ -1,26 +1,26 @@
-package com.blackfynn.api
+package com.pennsieve.api
 
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import cats.data._
 import cats.implicits._
-import com.blackfynn.domain.{
+import com.pennsieve.domain.{
   CoreError,
   NotFound,
   ServiceError,
   UnauthorizedError
 }
-import com.blackfynn.auth.middleware.DatasetPermission
-import com.blackfynn.doi.client.definitions.CitationDTO
-import com.blackfynn.doi.client.doi.{ DoiClient, GetCitationsResponse }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.auth.middleware.DatasetPermission
+import com.pennsieve.doi.client.definitions.CitationDTO
+import com.pennsieve.doi.client.doi.{ DoiClient, GetCitationsResponse }
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.helpers.Param
-import com.blackfynn.helpers.ResultHandlers._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.helpers.Param
+import com.pennsieve.helpers.ResultHandlers._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.models._
 import javax.servlet.http.HttpServletRequest
 import org.scalatra._
 import org.scalatra.swagger.Swagger

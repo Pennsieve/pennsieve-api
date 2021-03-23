@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import java.io.File
 import java.net.URLEncoder
@@ -9,30 +9,30 @@ import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import cats.implicits._
-import com.blackfynn.auth.middleware.{ Jwt, OrganizationId, UserClaim, UserId }
-import com.blackfynn.aws.email.LoggingEmailer
-import com.blackfynn.clients.{ MockDatasetAssetClient, MockModelServiceClient }
-import com.blackfynn.discover.client.definitions.DatasetPublishStatus
-import com.blackfynn.doi.client.definitions._
-import com.blackfynn.doi.models.{ DoiDTO, DoiState }
-import com.blackfynn.dtos.SimpleFileDTO.TypeToSimpleFile
-import com.blackfynn.dtos._
-import com.blackfynn.helpers._
-import com.blackfynn.managers.{ CollaboratorChanges, TeamManager }
-import com.blackfynn.models.FileObjectType.Source
-import com.blackfynn.models.PackageType.{
+import com.pennsieve.auth.middleware.{ Jwt, OrganizationId, UserClaim, UserId }
+import com.pennsieve.aws.email.LoggingEmailer
+import com.pennsieve.clients.{ MockDatasetAssetClient, MockModelServiceClient }
+import com.pennsieve.discover.client.definitions.DatasetPublishStatus
+import com.pennsieve.doi.client.definitions._
+import com.pennsieve.doi.models.{ DoiDTO, DoiState }
+import com.pennsieve.dtos.SimpleFileDTO.TypeToSimpleFile
+import com.pennsieve.dtos._
+import com.pennsieve.helpers._
+import com.pennsieve.managers.{ CollaboratorChanges, TeamManager }
+import com.pennsieve.models.FileObjectType.Source
+import com.pennsieve.models.PackageType.{
   CSV,
   Collection,
   PDF,
   Slide,
   TimeSeries
 }
-import com.blackfynn.models._
-import com.blackfynn.notifications.{
+import com.pennsieve.models._
+import com.pennsieve.notifications.{
   DiscoverPublishNotification,
   NotificationMessage
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.parser.decode
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils

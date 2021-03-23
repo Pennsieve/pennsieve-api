@@ -1,4 +1,4 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 case class CollaboratorsDTO(
   users: List[UserDTO],

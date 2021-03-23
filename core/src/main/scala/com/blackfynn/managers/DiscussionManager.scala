@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.db.{
+import com.pennsieve.db.{
   CommentsMapper,
   DiscussionsMapper,
   TimeSeriesAnnotation,
   UserMapper
 }
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   Annotation,
   Comment,
   Discussion,
@@ -16,12 +16,12 @@ import com.blackfynn.models.{
   Package,
   User
 }
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.domain.{ CoreError, NotFound }
+import com.pennsieve.domain.{ CoreError, NotFound }
 import slick.dbio.{ DBIOAction, NoStream }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 

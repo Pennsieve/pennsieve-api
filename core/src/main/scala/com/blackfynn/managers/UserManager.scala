@@ -1,17 +1,17 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.core.utilities.FutureEitherHelpers.assert
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.assert
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.{
   checkAndNormalizeInitial,
   checkOrErrorT,
   FutureEitherHelpers
 }
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db._
-import com.blackfynn.models.{
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db._
+import com.pennsieve.models.{
   CognitoId,
   DBPermission,
   Degree,
@@ -24,8 +24,8 @@ import com.blackfynn.models.{
 }
 import cats.data._
 import cats.implicits._
-import com.blackfynn
-import com.blackfynn.domain.{ CoreError, NotFound, PredicateError }
+import com.pennsieve
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
 import io.github.nremond.SecureHash
 import java.util.UUID
 

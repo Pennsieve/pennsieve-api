@@ -1,6 +1,6 @@
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
-import com.blackfynn.clients.UrlShortenerClient
+import com.pennsieve.clients.UrlShortenerClient
 
 import java.net.URL
 import scala.collection.mutable.ArrayBuffer

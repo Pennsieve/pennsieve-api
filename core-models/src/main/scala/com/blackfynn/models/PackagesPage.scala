@@ -1,6 +1,6 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
-import com.blackfynn.dtos.ExtendedPackageDTO
+import com.pennsieve.dtos.ExtendedPackageDTO
 
 final case class PackagesPage(
   packages: Seq[ExtendedPackageDTO],

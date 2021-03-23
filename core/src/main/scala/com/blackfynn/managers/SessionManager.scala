@@ -1,13 +1,13 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.domain.Sessions._
-import com.blackfynn.models.{ Organization, Token, User }
-import com.blackfynn.core.utilities.checkOrError
-import com.blackfynn.domain.{
+import com.pennsieve.domain.Sessions._
+import com.pennsieve.models.{ Organization, Token, User }
+import com.pennsieve.core.utilities.checkOrError
+import com.pennsieve.domain.{
   CoreError,
   Error,
   KeyValueStoreError,

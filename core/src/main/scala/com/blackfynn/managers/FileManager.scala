@@ -1,18 +1,18 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.checkOrErrorT
-import com.blackfynn.db.FilesTable.{ OrderByColumn, OrderByDirection }
-import com.blackfynn.db.{ FilesMapper, FilesTable, PackagesMapper }
-import com.blackfynn.domain.{ CoreError, NotFound, PredicateError }
-import com.blackfynn.models.FileObjectType.{ Source, View, File => FileT }
-import com.blackfynn.models.FileProcessingState.{ Processed, Unprocessed }
-import com.blackfynn.models.Utilities.isNameValid
-import com.blackfynn.models.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.db.FilesTable.{ OrderByColumn, OrderByDirection }
+import com.pennsieve.db.{ FilesMapper, FilesTable, PackagesMapper }
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
+import com.pennsieve.models.FileObjectType.{ Source, View, File => FileT }
+import com.pennsieve.models.FileProcessingState.{ Processed, Unprocessed }
+import com.pennsieve.models.Utilities.isNameValid
+import com.pennsieve.models.{
   File,
   FileChecksum,
   FileObjectType,
@@ -23,7 +23,7 @@ import com.blackfynn.models.{
   Package,
   User
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 

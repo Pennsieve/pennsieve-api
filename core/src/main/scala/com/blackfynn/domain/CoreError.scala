@@ -1,7 +1,7 @@
-package com.blackfynn.domain
+package com.pennsieve.domain
 
-import com.blackfynn.models.{ DBPermission, PackageType }
-import com.blackfynn.utilities.AbstractError
+import com.pennsieve.models.{ DBPermission, PackageType }
+import com.pennsieve.utilities.AbstractError
 
 sealed trait CoreError extends AbstractError
 

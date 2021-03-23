@@ -1,8 +1,8 @@
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db.{DatasetUserMapper, DatasetsMapper, OrganizationsMapper, PackagesMapper}
-import com.blackfynn.models.{Dataset, Organization, Package, User}
-import com.blackfynn.core.utilities.PostgresDatabase
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db.{DatasetUserMapper, DatasetsMapper, OrganizationsMapper, PackagesMapper}
+import com.pennsieve.models.{Dataset, Organization, Package, User}
+import com.pennsieve.core.utilities.PostgresDatabase
 import slick.dbio.Effect
 import slick.sql.FixedSqlAction
 

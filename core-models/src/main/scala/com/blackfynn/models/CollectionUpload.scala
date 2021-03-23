@@ -1,4 +1,4 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
