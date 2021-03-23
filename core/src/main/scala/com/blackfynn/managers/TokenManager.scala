@@ -141,15 +141,15 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
     )
 
     for {
+      _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
+        PermissionError(actor.nodeId, Write, "")
+      )
       _ <- cognitoClient
         .adminCreateToken(name, cognitoClient.getTokenPoolId())
         .toEitherT
       _ <- cognitoClient
         .adminSetUserPassword(name, secret, cognitoClient.getTokenPoolId())
         .toEitherT
-      _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
-        PermissionError(actor.nodeId, Write, "")
-      )
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
         .toEitherT
@@ -196,12 +196,12 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
   ): EitherT[Future, CoreError, Int] = {
 
     for {
-      _ <- cognitoClient
-        .adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
-        .toEitherT
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Read, token.token)
       )
+      _ <- cognitoClient
+        .adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
+        .toEitherT
       result <- db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
     } yield result
   }
