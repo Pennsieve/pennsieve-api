@@ -177,7 +177,7 @@ class Cognito(
       //   case None =>
       //     Future.failed(NotFound("Could not parse Cognito ID from response"))
       // }
-    } yield Future.successful(Unit)
+    } yield ()
   }
 
   def adminDeleteUser(
@@ -205,7 +205,7 @@ class Cognito(
       //   case None =>
       //     Future.failed(NotFound("Could not parse Cognito ID from response"))
       // }
-    } yield Future.successful(Unit)
+    } yield ()
   }
 
   def getTokenPoolId(): String = {

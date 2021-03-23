@@ -38,14 +38,17 @@ class TokenManager(db: Database) {
       user.id
     )
 
-    cognitoClient.adminCreateToken(tokenString, cognitoClient.getTokenPoolId())
-    cognitoClient.adminSetUserPassword(
-      tokenString,
-      secret,
-      cognitoClient.getTokenPoolId()
-    )
-
     for {
+      _ <- cognitoClient
+        .adminCreateToken(tokenString, cognitoClient.getTokenPoolId())
+        .toEitherT
+      _ <- cognitoClient
+        .adminSetUserPassword(
+          tokenString,
+          secret,
+          cognitoClient.getTokenPoolId()
+        )
+        .toEitherT
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
         .toEitherT
@@ -99,8 +102,12 @@ class TokenManager(db: Database) {
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Int] = {
-    cognitoClient.adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
-    db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
+    for {
+      _ <- cognitoClient
+        .adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
+        .toEitherT
+      result <- db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
+    } yield result
   }
 
   def getOrganization(
@@ -133,14 +140,13 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
       user.id
     )
 
-    cognitoClient.adminCreateToken(name, cognitoClient.getTokenPoolId())
-    cognitoClient.adminSetUserPassword(
-      name,
-      secret,
-      cognitoClient.getTokenPoolId()
-    )
-
     for {
+      _ <- cognitoClient
+        .adminCreateToken(name, cognitoClient.getTokenPoolId())
+        .toEitherT
+      _ <- cognitoClient
+        .adminSetUserPassword(name, secret, cognitoClient.getTokenPoolId())
+        .toEitherT
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Write, "")
       )
@@ -188,9 +194,11 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Int] = {
-    cognitoClient.adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
 
     for {
+      _ <- cognitoClient
+        .adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
+        .toEitherT
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Read, token.token)
       )
