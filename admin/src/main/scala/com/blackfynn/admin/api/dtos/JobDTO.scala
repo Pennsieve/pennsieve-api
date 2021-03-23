@@ -1,4 +1,4 @@
-package com.blackfynn.admin.api.dtos
+package com.pennsieve.admin.api.dtos
 import java.util.UUID
 
 import io.circe.{ Decoder, Encoder }

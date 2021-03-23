@@ -1,15 +1,15 @@
-package com.blackfynn.migrations.organizations
+package com.pennsieve.migrations.organizations
 
-import com.blackfynn.core.utilities.DatabaseContainer
-import com.blackfynn.db.UserMapper
-import com.blackfynn.managers.BaseManagerSpec
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.test.S3DockerContainer
-import com.blackfynn.utilities.`unused-organization-migration`.UnusedOrganizationMigrationContainer
+import com.pennsieve.core.utilities.DatabaseContainer
+import com.pennsieve.db.UserMapper
+import com.pennsieve.managers.BaseManagerSpec
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.test.S3DockerContainer
+import com.pennsieve.utilities.`unused-organization-migration`.UnusedOrganizationMigrationContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._
 import matchers._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

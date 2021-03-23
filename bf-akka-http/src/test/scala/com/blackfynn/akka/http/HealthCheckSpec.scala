@@ -1,11 +1,11 @@
-import com.blackfynn.aws.s3.{ S3, S3Trait }
-import com.blackfynn.core.utilities.PostgresDatabase
-import com.blackfynn.test._
+import com.pennsieve.aws.s3.{ S3, S3Trait }
+import com.pennsieve.core.utilities.PostgresDatabase
+import com.pennsieve.test._
 import org.scalatest._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.model.StatusCodes.{ InternalServerError, OK }
-import com.blackfynn.akka.http._
+import com.pennsieve.akka.http._
 import com.redis.RedisClientPool
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import io.circe.java8.time._

@@ -1,9 +1,9 @@
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
 import java.security.cert
 import java.time.Duration
 
-import com.blackfynn.test._
+import com.pennsieve.test._
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import javax.net.ssl._
 import javax.security.cert.X509Certificate

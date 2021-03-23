@@ -1,7 +1,7 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import org.scalatest.FlatSpec
-import com.blackfynn.core.utilities.PasswordBuddy.passwordEntropy
+import com.pennsieve.core.utilities.PasswordBuddy.passwordEntropy
 
 class PasswordSpec extends FlatSpec {
 

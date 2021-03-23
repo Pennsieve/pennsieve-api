@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.domain.NotFound
-import com.blackfynn.models.FileObjectType.{ Source, View, File => FileT }
-import com.blackfynn.models.{
+import com.pennsieve.domain.NotFound
+import com.pennsieve.models.FileObjectType.{ Source, View, File => FileT }
+import com.pennsieve.models.{
   File,
   FileChecksum,
   FileObjectType,
@@ -14,11 +14,11 @@ import com.blackfynn.models.{
   Organization,
   Package
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import java.time.ZonedDateTime
 import java.util.UUID
 
-import com.blackfynn.db.FilesTable.{ OrderByColumn, OrderByDirection }
+import com.pennsieve.db.FilesTable.{ OrderByColumn, OrderByDirection }
 import enumeratum.{ Enum, EnumEntry }
 import slick.ast.Ordering
 import slick.dbio.Effect

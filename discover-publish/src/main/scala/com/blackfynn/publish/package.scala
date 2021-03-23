@@ -1,7 +1,7 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import org.apache.commons.lang3.StringUtils
-import com.blackfynn.models.Utilities._
+import com.pennsieve.models.Utilities._
 
 package object utils {
 

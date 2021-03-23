@@ -1,6 +1,6 @@
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import com.github.tminglei.slickpg.Range
 import slick.dbio.Effect
 import slick.sql.{ FixedSqlAction, FixedSqlStreamingAction }

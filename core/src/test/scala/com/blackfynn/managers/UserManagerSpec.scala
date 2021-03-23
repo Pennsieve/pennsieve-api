@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.time.Duration
 
-import com.blackfynn.aws.cognito.MockCognito
-import com.blackfynn.domain.PredicateError
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.domain.PredicateError
 
-import com.blackfynn.models._
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.models._
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.EitherValues._
 import org.scalatest.Matchers._
 

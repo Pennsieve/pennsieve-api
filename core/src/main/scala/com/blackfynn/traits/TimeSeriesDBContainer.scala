@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.traits
+package com.pennsieve.traits
 
-import com.blackfynn.core.utilities.DataDBContainer
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db.{
+import com.pennsieve.core.utilities.DataDBContainer
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db.{
   ChannelGroupTable,
   TimeSeriesAnnotationTable,
   TimeSeriesLayerTable
 }
-import com.blackfynn.managers.{
+import com.pennsieve.managers.{
   ChannelGroupManager,
   TimeSeriesAnnotationManager,
   TimeSeriesLayerManager

@@ -1,7 +1,7 @@
-package com.blackfynn.messages
+package com.pennsieve.messages
 
-import com.blackfynn.audit.middleware.TraceId
-import com.blackfynn.models.ChangelogEventName
+import com.pennsieve.audit.middleware.TraceId
+import com.pennsieve.models.ChangelogEventName
 import io.circe.generic.extras.semiauto.{
   deriveUnwrappedDecoder,
   deriveUnwrappedEncoder

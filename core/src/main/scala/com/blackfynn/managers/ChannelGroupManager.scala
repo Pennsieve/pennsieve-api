@@ -1,8 +1,8 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db.ChannelGroup
-import com.blackfynn.db.ChannelGroupTable
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db.ChannelGroup
+import com.pennsieve.db.ChannelGroupTable
 import slick.dbio.Effect
 import slick.sql.SqlAction
 

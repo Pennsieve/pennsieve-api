@@ -1,4 +1,4 @@
-package com.blackfynn.akka.consumer
+package com.pennsieve.akka.consumer
 
 import akka.stream.alpakka.sqs.MessageAction
 import akka.stream.{ FlowShape, Graph, KillSwitches, UniqueKillSwitch }

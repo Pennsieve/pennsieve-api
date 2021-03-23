@@ -1,4 +1,4 @@
-package com.blackfynn.test
+package com.pennsieve.test
 
 import org.scalatest._
 import com.dimafeng.testcontainers._

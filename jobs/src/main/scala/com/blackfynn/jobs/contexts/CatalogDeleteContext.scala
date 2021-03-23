@@ -1,6 +1,6 @@
-package com.blackfynn.jobs.contexts
+package com.pennsieve.jobs.contexts
 
-import com.blackfynn.service.utilities.LogContext
+import com.pennsieve.service.utilities.LogContext
 
 final case class CatalogDeleteContext(organizationId: Int, userId: String)
     extends LogContext {

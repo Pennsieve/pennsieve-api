@@ -1,4 +1,4 @@
-package com.blackfynn.akka.http
+package com.pennsieve.akka.http
 
 import org.scalactic.source
 import org.scalatest.exceptions.{ StackDepthException, TestFailedException }

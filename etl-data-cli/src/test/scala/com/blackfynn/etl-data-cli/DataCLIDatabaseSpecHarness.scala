@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
 import java.util.UUID
 
-import com.blackfynn.db._
-import com.blackfynn.managers.DatasetStatusManager
-import com.blackfynn.models.{
+import com.pennsieve.db._
+import com.pennsieve.managers.DatasetStatusManager
+import com.pennsieve.models.{
   Dataset,
   File,
   NodeCodes,
@@ -14,7 +14,7 @@ import com.blackfynn.models.{
   PackageState,
   PackageType
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import org.scalatest.{ FlatSpec, Matchers }
 import scala.concurrent.ExecutionContext.Implicits.global
 

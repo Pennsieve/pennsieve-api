@@ -1,4 +1,4 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import org.scalatest.{ Matchers, Suite, WordSpec }
 import cats._

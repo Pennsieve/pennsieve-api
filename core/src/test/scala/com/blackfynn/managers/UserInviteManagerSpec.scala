@@ -1,12 +1,12 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.time.Duration
 
-import com.blackfynn.models.DBPermission.Delete
+import com.pennsieve.models.DBPermission.Delete
 import org.scalatest.EitherValues._
 import org.scalatest.Matchers
 import scala.concurrent.ExecutionContext.Implicits.global
-import com.blackfynn.aws.cognito.MockCognito
+import com.pennsieve.aws.cognito.MockCognito
 
 class UserInviteManagerSpec extends BaseManagerSpec with Matchers {
 

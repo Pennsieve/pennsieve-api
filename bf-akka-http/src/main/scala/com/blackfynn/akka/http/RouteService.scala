@@ -1,4 +1,4 @@
-package com.blackfynn.akka.http
+package com.pennsieve.akka.http
 
 import akka.http.scaladsl.server.Directives.concat
 import akka.http.scaladsl.server.Route
@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.RouteConcatenation._
 
 import cats.implicits._
 
-import com.blackfynn.domain.{ CoreError, Error }
+import com.pennsieve.domain.{ CoreError, Error }
 
 import scala.util.Try
 

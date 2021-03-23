@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
 
 import akka.http.scaladsl.unmarshalling.Unmarshaller._
 import akka.http.scaladsl.model._
@@ -20,8 +20,8 @@ import akka.http.scaladsl.model.StatusCodes.{
 import akka.testkit.TestKitBase
 import akka.util.ByteString
 
-import com.blackfynn.akka.http.EitherValue._
-import com.blackfynn.models.{ DBPermission, User }
+import com.pennsieve.akka.http.EitherValue._
+import com.pennsieve.models.{ DBPermission, User }
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
 import io.circe.java8.time._

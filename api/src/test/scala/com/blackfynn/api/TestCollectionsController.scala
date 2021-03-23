@@ -1,9 +1,9 @@
 // Copyright (c) 2020 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.dtos.CollectionDTO
-import com.blackfynn.helpers._
+import com.pennsieve.dtos.CollectionDTO
+import com.pennsieve.helpers._
 import io.circe.{ Decoder, Encoder }
 import org.json4s._
 import org.json4s.jackson.JsonMethods._

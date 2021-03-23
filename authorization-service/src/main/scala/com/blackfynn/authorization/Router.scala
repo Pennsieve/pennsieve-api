@@ -1,26 +1,26 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.authorization
+package com.pennsieve.authorization
 
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ Directive, Route }
 import akka.stream.ActorMaterializer
-import com.blackfynn.akka.http.RouteService
-import com.blackfynn.akka.http.directives.AuthorizationDirectives.{
+import com.pennsieve.akka.http.RouteService
+import com.pennsieve.akka.http.directives.AuthorizationDirectives.{
   session,
   user,
   AuthorizationContainer
 }
-import com.blackfynn.authorization.Router.ResourceContainer
-import com.blackfynn.authorization.routes.{
+import com.pennsieve.authorization.Router.ResourceContainer
+import com.pennsieve.authorization.routes.{
   AuthenticationRoutes,
   AuthorizationRoutes,
   DiscoverAuthorizationRoutes
 }
-import com.blackfynn.core.utilities._
-import com.blackfynn.utilities._
+import com.pennsieve.core.utilities._
+import com.pennsieve.utilities._
 
 import scala.concurrent.ExecutionContext
 

@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.domain
+package com.pennsieve.domain
 
 import enumeratum.EnumEntry.Snakecase
 import enumeratum.{ CirceEnum, Enum, EnumEntry }

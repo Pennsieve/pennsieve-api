@@ -1,12 +1,12 @@
-package com.blackfynn.api
+package com.pennsieve.api
 import java.util.UUID.randomUUID
 
 import cats.data.EitherT
-import com.blackfynn.core.utilities.checkOrErrorT
-import com.blackfynn.domain.{ CoreError, ServiceError }
-import com.blackfynn.helpers.APIContainers.InsecureAPIContainer
-import com.blackfynn.helpers.ResultHandlers.OkResult
-import com.blackfynn.helpers.{ ErrorLoggingSupport, ParamsSupport }
+import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.domain.{ CoreError, ServiceError }
+import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
+import com.pennsieve.helpers.ResultHandlers.OkResult
+import com.pennsieve.helpers.{ ErrorLoggingSupport, ParamsSupport }
 import org.scalatra.json.JacksonJsonSupport
 import org.scalatra.{
   ActionResult,
@@ -14,11 +14,11 @@ import org.scalatra.{
   FutureSupport,
   ScalatraServlet
 }
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import cats.implicits._
 import org.scalatra.swagger.Swagger
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 
 import scala.concurrent.{ ExecutionContext, Future }
 

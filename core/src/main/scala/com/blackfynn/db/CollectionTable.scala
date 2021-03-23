@@ -1,9 +1,9 @@
 // Copyright (c) 2020 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{ Collection, Organization }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{ Collection, Organization }
 import java.time.ZonedDateTime
 
 final class CollectionTable(schema: String, tag: Tag)

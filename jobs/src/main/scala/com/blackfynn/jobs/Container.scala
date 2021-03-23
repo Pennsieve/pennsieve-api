@@ -1,10 +1,10 @@
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
-import com.blackfynn.aws.queue.{ SQSContainer, SQSDeduplicationContainer }
-import com.blackfynn.core.utilities.RedisContainer
-import com.blackfynn.utilities.{ Container => ConfigContainer }
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.messages._
+import com.pennsieve.aws.queue.{ SQSContainer, SQSDeduplicationContainer }
+import com.pennsieve.core.utilities.RedisContainer
+import com.pennsieve.utilities.{ Container => ConfigContainer }
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.messages._
 
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
 

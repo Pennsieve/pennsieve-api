@@ -1,4 +1,4 @@
-package com.blackfynn.akka
+package com.pennsieve.akka
 
 import software.amazon.awssdk.services.sqs.model.Message
 

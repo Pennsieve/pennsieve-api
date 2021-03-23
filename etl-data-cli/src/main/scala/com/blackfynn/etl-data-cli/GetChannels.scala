@@ -1,19 +1,19 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.db.{ ChannelsMapper, OrganizationsMapper, PackagesMapper }
-import com.blackfynn.etl.`data-cli`.container._
-import com.blackfynn.etl.`data-cli`.exceptions._
-import com.blackfynn.models.Organization
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.db.{ ChannelsMapper, OrganizationsMapper, PackagesMapper }
+import com.pennsieve.etl.`data-cli`.container._
+import com.pennsieve.etl.`data-cli`.exceptions._
+import com.pennsieve.models.Organization
+import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.parser.decode
 import io.circe.syntax._
 import io.circe.java8.time._
 import cats.implicits._
 import java.io.{ FileWriter, File => JavaFile }
 
-import com.blackfynn.models.Channel
+import com.pennsieve.models.Channel
 import net.ceedubs.ficus.Ficus._
 
 import scala.io.Source

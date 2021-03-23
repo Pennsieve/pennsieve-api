@@ -1,17 +1,17 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.auth.middleware.DatasetPermission
-import com.blackfynn.dtos.DimensionDTO
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.auth.middleware.DatasetPermission
+import com.pennsieve.dtos.DimensionDTO
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.helpers.ResultHandlers._
-import com.blackfynn.models.{ DimensionAssignment, DimensionProperties }
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.ResultHandlers._
+import com.pennsieve.models.{ DimensionAssignment, DimensionProperties }
 
 import cats.data.EitherT
 import cats.implicits._

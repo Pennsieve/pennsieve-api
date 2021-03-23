@@ -1,10 +1,10 @@
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
-import com.blackfynn.messages._
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.messages._
+import com.pennsieve.test.helpers.EitherValue._
 import io.circe.syntax._
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
-import com.blackfynn.audit.middleware.TraceId
+import com.pennsieve.audit.middleware.TraceId
 import org.scalatest.{ FlatSpec, Matchers }
 
 class ProcessJobSpec extends FlatSpec with Matchers {

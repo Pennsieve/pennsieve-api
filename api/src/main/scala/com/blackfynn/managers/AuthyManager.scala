@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.syntax.either._
 import com.authy.AuthyApiClient
 import com.authy.api.{ User => AuthyUser, Users => AuthyUsers }
-import com.blackfynn.api.Error
-import com.blackfynn.models.User
+import com.pennsieve.api.Error
+import com.pennsieve.models.User
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatra.{ ActionResult, InternalServerError }
 

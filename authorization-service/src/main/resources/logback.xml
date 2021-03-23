@@ -19,7 +19,7 @@
         <appender-ref ref="Console" />
     </appender>
 
-    <logger name="com.blackfynn" level="DEBUG" />
+    <logger name="com.pennsieve" level="DEBUG" />
 
     <root level="INFO">
         <appender-ref ref="Async" />

@@ -1,4 +1,4 @@
-package com.blackfynn.akka.http
+package com.pennsieve.akka.http
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http

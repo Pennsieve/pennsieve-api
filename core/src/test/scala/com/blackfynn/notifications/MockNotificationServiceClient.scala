@@ -1,7 +1,7 @@
-package com.blackfynn.notifications
+package com.pennsieve.notifications
 
-import com.blackfynn.client.NotificationServiceClient
-import com.blackfynn.clients.ToBearer
+import com.pennsieve.client.NotificationServiceClient
+import com.pennsieve.clients.ToBearer
 
 class MockNotificationServiceClient
     extends NotificationServiceClient("mock-host", 0) {

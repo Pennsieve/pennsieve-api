@@ -1,13 +1,13 @@
-package com.blackfynn.akka.consumer
+package com.pennsieve.akka.consumer
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.models.{ PayloadType, Upload }
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ OrganizationsMapper, PackagesMapper }
-import com.blackfynn.models
-import com.blackfynn.models.PackageState
-import com.blackfynn.traits.PostgresProfile.api.Database
+import com.pennsieve.models.{ PayloadType, Upload }
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ OrganizationsMapper, PackagesMapper }
+import com.pennsieve.models
+import com.pennsieve.models.PackageState
+import com.pennsieve.traits.PostgresProfile.api.Database
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ ExecutionContext, Future }

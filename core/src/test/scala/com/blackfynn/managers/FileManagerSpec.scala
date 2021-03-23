@@ -1,13 +1,13 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.domain.{ LockedDatasetError, PredicateError, ServiceError }
-import com.blackfynn.models.FileType.GenericData
-import com.blackfynn.models.PackageType.CSV
-import com.blackfynn.models._
-import com.blackfynn.models.FileObjectType.Source
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.domain.{ LockedDatasetError, PredicateError, ServiceError }
+import com.pennsieve.models.FileType.GenericData
+import com.pennsieve.models.PackageType.CSV
+import com.pennsieve.models._
+import com.pennsieve.models.FileObjectType.Source
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global

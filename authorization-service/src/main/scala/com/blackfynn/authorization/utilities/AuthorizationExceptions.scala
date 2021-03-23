@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.authorization.utilities
+package com.pennsieve.authorization.utilities
 
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes.{
@@ -9,8 +9,8 @@ import akka.http.scaladsl.model.StatusCodes.{
   NotFound,
   Unauthorized
 }
-import com.blackfynn.domain.FeatureNotEnabled
-import com.blackfynn.models.{ Organization, User }
+import com.pennsieve.domain.FeatureNotEnabled
+import com.pennsieve.models.{ Organization, User }
 import com.typesafe.scalalogging.LazyLogging
 
 trait AuthorizationException {

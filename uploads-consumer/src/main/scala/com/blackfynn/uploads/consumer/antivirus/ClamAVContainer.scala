@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads.consumer.antivirus
+package com.pennsieve.uploads.consumer.antivirus
 
-import com.blackfynn.utilities.{ Container => ConfigContainer }
+import com.pennsieve.utilities.{ Container => ConfigContainer }
 import net.ceedubs.ficus.Ficus._
 
 trait ClamAVContainer { self: ConfigContainer =>

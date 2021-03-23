@@ -1,14 +1,14 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.domain.StorageAggregation.{
+import com.pennsieve.domain.StorageAggregation.{
   sdatasets,
   sorganizations,
   spackages,
   susers
 }
-import com.blackfynn.db._
-import com.blackfynn.models.PackageType._
-import com.blackfynn.models.{
+import com.pennsieve.db._
+import com.pennsieve.models.PackageType._
+import com.pennsieve.models.{
   Dataset,
   File,
   FileObjectType,
@@ -17,11 +17,11 @@ import com.blackfynn.models.{
   Package,
   PackageState
 }
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.PDF
-import com.blackfynn.core.utilities._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.utilities.Container
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.PDF
+import com.pennsieve.core.utilities._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.utilities.Container
 import akka.actor.ActorSystem
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._

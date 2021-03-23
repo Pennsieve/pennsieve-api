@@ -1,18 +1,18 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import java.time.ZonedDateTime
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.api.AuthenticatedController.{
+import com.pennsieve.api.AuthenticatedController.{
   getOrganizationId,
   getOrganizationIntId
 }
-import com.blackfynn.audit.middleware.{ AuditLogger, TraceId }
-import com.blackfynn.auth.middleware.Jwt.Claim
-import com.blackfynn.auth.middleware.{
+import com.pennsieve.audit.middleware.{ AuditLogger, TraceId }
+import com.pennsieve.auth.middleware.Jwt.Claim
+import com.pennsieve.auth.middleware.{
   EncryptionKeyId,
   Jwt,
   OrganizationId,
@@ -21,24 +21,24 @@ import com.blackfynn.auth.middleware.{
   UserClaim,
   Validator
 }
-import com.blackfynn.core.utilities.{ FutureEitherHelpers, JwtAuthenticator }
-import com.blackfynn.db._
-import com.blackfynn.domain.{ CoreError, InvalidJWT, MissingTraceId }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.core.utilities.{ FutureEitherHelpers, JwtAuthenticator }
+import com.pennsieve.db._
+import com.pennsieve.domain.{ CoreError, InvalidJWT, MissingTraceId }
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.helpers.{
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.{
   ErrorLoggingSupport,
   ModelSerializers,
   ParamsSupport
 }
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.web.Settings
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.web.Settings
 import com.typesafe.scalalogging.LazyLogging
 import enumeratum.Json4s
 import javax.servlet.http.HttpServletRequest

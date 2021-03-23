@@ -1,7 +1,7 @@
-package com.blackfynn.core.utilities
+package com.pennsieve.core.utilities
 
 import slick.util.AsyncExecutor
-import com.blackfynn.traits.PostgresProfile.api.Database
+import com.pennsieve.traits.PostgresProfile.api.Database
 
 import com.zaxxer.hikari.HikariDataSource
 

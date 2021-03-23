@@ -1,13 +1,13 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.aws.ssm.{
+import com.pennsieve.aws.ssm.{
   AWSSimpleSystemsManagementContainer,
   LocalSimpleSystemsManagerContainer,
   SimpleSystemsManagementContainer
 }
-import com.blackfynn.utilities.{ Container => ConfigContainer }
+import com.pennsieve.utilities.{ Container => ConfigContainer }
 
 import cats.data._
 import cats.implicits._

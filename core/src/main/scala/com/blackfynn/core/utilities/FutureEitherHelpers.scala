@@ -1,8 +1,8 @@
-package com.blackfynn.core.utilities
+package com.pennsieve.core.utilities
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.domain.{ CoreError, ExceptionError }
+import com.pennsieve.domain.{ CoreError, ExceptionError }
 
 import scala.concurrent.{ ExecutionContext, Future }
 

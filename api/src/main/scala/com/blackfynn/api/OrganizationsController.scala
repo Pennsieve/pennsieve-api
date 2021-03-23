@@ -1,8 +1,8 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.dtos.{
+import com.pennsieve.dtos.{
   Builders,
   DatasetStatusDTO,
   OrganizationDTO,
@@ -10,16 +10,16 @@ import com.blackfynn.dtos.{
   UserDTO,
   UserInviteDTO
 }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.helpers.ResultHandlers._
-import com.blackfynn.managers.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.ResultHandlers._
+import com.pennsieve.managers.{
   DatasetStatusManager,
   OrganizationManager,
   SecureOrganizationManager,
@@ -27,27 +27,27 @@ import com.blackfynn.managers.{
   StorageServiceClientTrait,
   UpdateOrganization
 }
-import com.blackfynn.models._
-import com.blackfynn.models.DateVersion._
-import com.blackfynn.models.DBPermission.{ Administer, Delete }
-import com.blackfynn.core.utilities.checkOrErrorT
-import com.blackfynn.domain.StorageAggregation.{ sorganizations, susers }
-import com.blackfynn.web.Settings
+import com.pennsieve.models._
+import com.pennsieve.models.DateVersion._
+import com.pennsieve.models.DBPermission.{ Administer, Delete }
+import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.domain.StorageAggregation.{ sorganizations, susers }
+import com.pennsieve.web.Settings
 import cats.data._
 import cats.implicits._
 import java.time.Duration
 import shapeless._
 
-import com.blackfynn.audit.middleware.Auditor
-import com.blackfynn.aws.cognito.CognitoClient
-import com.blackfynn.aws.email.Email
-import com.blackfynn.clients.CustomTermsOfServiceClient
-import com.blackfynn.domain.{
+import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.email.Email
+import com.pennsieve.clients.CustomTermsOfServiceClient
+import com.pennsieve.domain.{
   CoreError,
   InvalidDateVersion,
   MissingCustomTermsOfService
 }
-import com.blackfynn.managers.OrganizationManager.Invite
+import com.pennsieve.managers.OrganizationManager.Invite
 
 import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
