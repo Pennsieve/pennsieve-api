@@ -1,12 +1,12 @@
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import cats.data._
 import cats.implicits._
-import com.blackfynn.jobs.container._
-import com.blackfynn.jobs.types._
-import com.blackfynn.messages._
+import com.pennsieve.jobs.container._
+import com.pennsieve.jobs.types._
+import com.pennsieve.messages._
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ ExecutionContext, Future }

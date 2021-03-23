@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.core.utilities
+package com.pennsieve.core.utilities
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.domain.{ CoreError, ThrowableError }
-import com.blackfynn.models.{ Dataset, Organization, User }
+import com.pennsieve.domain.{ CoreError, ThrowableError }
+import com.pennsieve.models.{ Dataset, Organization, User }
 
-import com.blackfynn.templates.GeneratedMessageTemplates
+import com.pennsieve.templates.GeneratedMessageTemplates
 
-import com.blackfynn.aws.email._
+import com.pennsieve.aws.email._
 
 class MessageTemplates(
   host: String,

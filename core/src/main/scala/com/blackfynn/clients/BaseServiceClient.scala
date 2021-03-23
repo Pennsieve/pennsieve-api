@@ -1,11 +1,11 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 import java.io.IOException
 import java.util.UUID
 
 import cats.implicits._
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.domain
-import com.blackfynn.domain.{ CoreError, ExceptionError, ParseError }
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.domain
+import com.pennsieve.domain.{ CoreError, ExceptionError, ParseError }
 import com.typesafe.scalalogging.LazyLogging
 import io.circe._
 import io.circe.parser._

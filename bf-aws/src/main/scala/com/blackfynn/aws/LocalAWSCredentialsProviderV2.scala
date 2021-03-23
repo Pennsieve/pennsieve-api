@@ -1,4 +1,4 @@
-package com.blackfynn.aws
+package com.pennsieve.aws
 
 import software.amazon.awssdk.auth.credentials.{
   AwsBasicCredentials,

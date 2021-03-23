@@ -1,7 +1,7 @@
-package com.blackfynn.jobs.contexts
+package com.pennsieve.jobs.contexts
 
-import com.blackfynn.audit.middleware.TraceId
-import com.blackfynn.service.utilities.LogContext
+import com.pennsieve.audit.middleware.TraceId
+import com.pennsieve.service.utilities.LogContext
 
 final case class PackageDeleteContext(
   organizationId: Int,

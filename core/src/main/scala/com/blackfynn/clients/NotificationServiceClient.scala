@@ -1,8 +1,8 @@
-package com.blackfynn.client
+package com.pennsieve.client
 
-import com.blackfynn.clients.ToBearer
-import com.blackfynn.notifications.MessageType.Mention
-import com.blackfynn.notifications.NotificationMessage
+import com.pennsieve.clients.ToBearer
+import com.pennsieve.notifications.MessageType.Mention
+import com.pennsieve.notifications.NotificationMessage
 import com.typesafe.scalalogging.LazyLogging
 import io.circe.syntax._
 import org.apache.http.client.methods.HttpPost

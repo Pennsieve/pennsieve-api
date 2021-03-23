@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
@@ -8,14 +8,14 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import cats.data._
 import cats.implicits._
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.Router.{
   InsecureResourceContainer,
   SecureResourceContainer
 }
-import com.blackfynn.admin.api.Settings
-import com.blackfynn.akka.http.RouteService
-import com.blackfynn.models.UserInvite
-import com.blackfynn.models.DBPermission.{ Delete, Owner }
+import com.pennsieve.admin.api.Settings
+import com.pennsieve.akka.http.RouteService
+import com.pennsieve.models.UserInvite
+import com.pennsieve.models.DBPermission.{ Delete, Owner }
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.java8.time._
@@ -25,9 +25,9 @@ import io.swagger.annotations._
 import io.swagger.annotations.{ Authorization => SwaggerAuthorization }
 import java.time.Duration
 
-import com.blackfynn.domain.CoreError
+import com.pennsieve.domain.CoreError
 import javax.ws.rs.Path
-import com.blackfynn.managers.OrganizationManager.Invite
+import com.pennsieve.managers.OrganizationManager.Invite
 
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -77,7 +77,7 @@ class UserService(
           "User email, Organization Id and if they will be an owner of the given organization",
         required = true,
         paramType = "body",
-        dataType = "com.blackfynn.admin.api.services.InviteRequest"
+        dataType = "com.pennsieve.admin.api.services.InviteRequest"
       )
     )
   )

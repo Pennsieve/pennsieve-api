@@ -1,10 +1,10 @@
-package com.blackfynn.admin.api.dtos
+package com.pennsieve.admin.api.dtos
 
-import com.blackfynn.dtos.{
+import com.pennsieve.dtos.{
   CustomTermsOfServiceDTO,
   PennsieveTermsOfServiceDTO
 }
-import com.blackfynn.models.User
+import com.pennsieve.models.User
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 import io.circe.java8.time._

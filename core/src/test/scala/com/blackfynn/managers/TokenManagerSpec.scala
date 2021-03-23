@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.domain.{ CoreError, NotFound, PermissionError }
-import com.blackfynn.models.DBPermission.{ Read, Write }
-import com.blackfynn.models.Token
+import com.pennsieve.domain.{ CoreError, NotFound, PermissionError }
+import com.pennsieve.models.DBPermission.{ Read, Write }
+import com.pennsieve.models.Token
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global

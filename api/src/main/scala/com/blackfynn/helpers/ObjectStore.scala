@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
-import com.blackfynn.api.Error
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.web.Settings
+import com.pennsieve.api.Error
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.web.Settings
 
-import com.blackfynn.aws.s3.S3
+import com.pennsieve.aws.s3.S3
 import com.amazonaws.services.s3.model._
 import cats.syntax.either._
 import java.net.URL

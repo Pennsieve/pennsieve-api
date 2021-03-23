@@ -1,17 +1,17 @@
 // Copyright (c) 2019 Pennsieve, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data.EitherT
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{
   PennsieveTermsOfService,
   PennsieveTermsOfServiceMapper
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import java.time.ZonedDateTime
 
-import com.blackfynn.domain.CoreError
+import com.pennsieve.domain.CoreError
 
 import scala.concurrent.{ ExecutionContext, Future }
 

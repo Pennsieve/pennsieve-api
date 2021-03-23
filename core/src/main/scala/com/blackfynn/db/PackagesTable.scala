@@ -1,18 +1,18 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
 import cats._
 import cats.implicits._
-import com.blackfynn.core.utilities.recommendName
-import com.blackfynn.domain.{
+import com.pennsieve.core.utilities.recommendName
+import com.pennsieve.domain.{
   CoreError,
   Error,
   NameCheckError,
   PredicateError,
   SqlError
 }
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   CollectionUpload,
   Dataset,
   FileObjectType,
@@ -22,8 +22,8 @@ import com.blackfynn.models.{
   PackageState,
   PackageType
 }
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.traits.PostgresProfile.ProfileAction
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.ProfileAction
 import com.rms.miu.slickcats.DBIOInstances._
 import java.util.UUID
 import java.time.ZonedDateTime

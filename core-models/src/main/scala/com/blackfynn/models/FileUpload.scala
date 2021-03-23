@@ -1,7 +1,7 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
-import com.blackfynn.models.FileExtensions.fileTypeMap
-import com.blackfynn.models.FileType.GenericData
+import com.pennsieve.models.FileExtensions.fileTypeMap
+import com.pennsieve.models.FileType.GenericData
 import org.apache.commons.io.FilenameUtils
 
 case class FileUpload(

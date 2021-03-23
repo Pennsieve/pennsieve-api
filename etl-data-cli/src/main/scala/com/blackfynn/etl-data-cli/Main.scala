@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.etl.`data-cli`.container._
-import com.blackfynn.etl.`data-cli`.exceptions._
-import com.blackfynn.core.utilities.DatabaseContainer
+import com.pennsieve.etl.`data-cli`.container._
+import com.pennsieve.etl.`data-cli`.exceptions._
+import com.pennsieve.core.utilities.DatabaseContainer
 import cats.data._
 import cats.implicits._
 import com.typesafe.config.{ Config, ConfigFactory }

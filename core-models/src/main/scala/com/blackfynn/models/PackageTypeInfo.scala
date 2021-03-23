@@ -1,4 +1,4 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
 object PackageTypeInfo {
 

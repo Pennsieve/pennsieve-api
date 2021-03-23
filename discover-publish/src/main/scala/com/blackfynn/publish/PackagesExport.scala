@@ -1,4 +1,4 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import akka.actor.ActorSystem
 import akka.stream.{ ActorAttributes, Materializer, Supervision }
@@ -6,8 +6,8 @@ import akka.stream.scaladsl.{ Keep }
 import akka.stream.scaladsl.Sink
 import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
-import com.blackfynn.models.{ ExternalId, FileManifest }
-import com.blackfynn.publish.models.{ CopyAction, PackageExternalIdMap }
+import com.pennsieve.models.{ ExternalId, FileManifest }
+import com.pennsieve.publish.models.{ CopyAction, PackageExternalIdMap }
 import scala.concurrent.{ ExecutionContext, Future }
 
 object PackagesExport extends LazyLogging {

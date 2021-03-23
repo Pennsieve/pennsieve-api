@@ -1,16 +1,16 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.dtos.{ APITokenDTO, APITokenSecretDTO }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.dtos.{ APITokenDTO, APITokenSecretDTO }
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.ResultHandlers.{ CreatedResult, OkResult }
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.ResultHandlers.{ CreatedResult, OkResult }
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 

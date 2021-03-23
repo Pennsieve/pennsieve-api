@@ -1,4 +1,4 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -13,9 +13,9 @@ import akka.stream.ActorMaterializer
 import cats.data.EitherT
 import cats.instances.future._
 import cats.syntax.either._
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.utilities.Container
-import com.blackfynn.models.FileHash
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.utilities.Container
+import com.pennsieve.models.FileHash
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.Decoder
 import io.circe.parser.decode

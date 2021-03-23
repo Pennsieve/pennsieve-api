@@ -1,17 +1,17 @@
-package com.blackfynn.test.helpers
+package com.pennsieve.test.helpers
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.core.utilities.{
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.core.utilities.{
   OrganizationManagerContainer,
   PostgresDatabase,
   UserManagerContainer
 }
-import com.blackfynn.managers.{ SecureOrganizationManager, UserManager }
-import com.blackfynn.models.DBPermission.{ Administer, Delete, Owner }
-import com.blackfynn.models.Role.BlindReviewer
-import com.blackfynn.models.SubscriptionStatus.ConfirmedSubscription
-import com.blackfynn.models._
+import com.pennsieve.managers.{ SecureOrganizationManager, UserManager }
+import com.pennsieve.models.DBPermission.{ Administer, Delete, Owner }
+import com.pennsieve.models.Role.BlindReviewer
+import com.pennsieve.models.SubscriptionStatus.ConfirmedSubscription
+import com.pennsieve.models._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

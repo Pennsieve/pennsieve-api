@@ -1,10 +1,10 @@
-package com.blackfynn.aws.cognito
+package com.pennsieve.aws.cognito
 
-import com.blackfynn.utilities.Container
+import com.pennsieve.utilities.Container
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderAsyncClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
-import com.blackfynn.aws.LocalAWSCredentialsProviderV2
+import com.pennsieve.aws.LocalAWSCredentialsProviderV2
 import net.ceedubs.ficus.Ficus._
 
 trait CognitoContainer { self: Container =>

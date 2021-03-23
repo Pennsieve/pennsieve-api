@@ -1,13 +1,13 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.domain.relational
+package com.pennsieve.domain.relational
 
 import akka.stream.testkit.scaladsl.TestSink
-import com.blackfynn.api.ApiSuite
-import com.blackfynn.db.{ TimeSeriesAnnotation, TimeSeriesLayer }
-import com.blackfynn.models.{ Channel, Package, PackageState, PackageType }
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.timeseries._
+import com.pennsieve.api.ApiSuite
+import com.pennsieve.db.{ TimeSeriesAnnotation, TimeSeriesLayer }
+import com.pennsieve.models.{ Channel, Package, PackageState, PackageType }
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.timeseries._
 import com.github.tminglei.slickpg.Range
 import org.json4s._
 import org.json4s.jackson.JsonMethods._

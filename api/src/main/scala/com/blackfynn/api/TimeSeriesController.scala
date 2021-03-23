@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
-import com.blackfynn.auth.middleware.DatasetPermission
-import com.blackfynn.dtos.{
+import com.pennsieve.auth.middleware.DatasetPermission
+import com.pennsieve.dtos.{
   Builders,
   ChannelDTO,
   ModelPropertyRO,
@@ -14,32 +14,32 @@ import com.blackfynn.dtos.{
   PagedResponse,
   UserDTO
 }
-import com.blackfynn.helpers.TimeSeriesHelper
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.helpers.TimeSeriesHelper
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.ResultHandlers.{
+import com.pennsieve.helpers.ResultHandlers.{
   CreatedResult,
   OkResult,
   StreamResult
 }
-import com.blackfynn.helpers.Validators.oneOfTransform
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.models.{ Dataset, ModelProperty, Package, PackageType }
-import com.blackfynn.core.utilities.checkOrErrorT
+import com.pennsieve.helpers.Validators.oneOfTransform
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.models.{ Dataset, ModelProperty, Package, PackageType }
+import com.pennsieve.core.utilities.checkOrErrorT
 import com.github.tminglei.slickpg.Range
 import cats.implicits._
 import cats.data.EitherT
-import com.blackfynn.db.{ TimeSeriesAnnotation, TimeSeriesLayer }
-import com.blackfynn.domain.{ CoreError, NotFound }
-import com.blackfynn.dtos.Builders.packageDTO
-import com.blackfynn.timeseries._
-import com.blackfynn.helpers.Colors
-import com.blackfynn.models.FileObjectType.View
+import com.pennsieve.db.{ TimeSeriesAnnotation, TimeSeriesLayer }
+import com.pennsieve.domain.{ CoreError, NotFound }
+import com.pennsieve.dtos.Builders.packageDTO
+import com.pennsieve.timeseries._
+import com.pennsieve.helpers.Colors
+import com.pennsieve.models.FileObjectType.View
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder

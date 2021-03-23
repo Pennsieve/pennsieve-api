@@ -1,4 +1,4 @@
-package com.blackfynn.akka.consumer
+package com.pennsieve.akka.consumer
 
 import java.io.{ PrintWriter, StringWriter }
 import java.time.OffsetDateTime

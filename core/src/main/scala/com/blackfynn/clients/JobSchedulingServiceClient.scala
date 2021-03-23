@@ -1,4 +1,4 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import java.net.URI
 
@@ -10,15 +10,15 @@ import akka.util.ByteString
 import cats.data.EitherT
 import cats.instances.future._
 import cats.syntax.either._
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.models.{ JobId, Payload }
-import com.blackfynn.utilities.Container
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.models.{ JobId, Payload }
+import com.pennsieve.utilities.Container
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.syntax._
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import com.blackfynn.jobscheduling.clients.generated.jobs.JobsClient
-import com.blackfynn.service.utilities.QueueHttpResponder
+import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
+import com.pennsieve.service.utilities.QueueHttpResponder
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.mutable.ArrayBuffer

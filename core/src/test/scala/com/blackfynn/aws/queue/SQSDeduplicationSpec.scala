@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.queue
+package com.pennsieve.aws.queue
 
 import java.util.UUID
 
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
-import com.blackfynn.core.utilities.RedisContainer
-import com.blackfynn.utilities.Container
+import com.pennsieve.core.utilities.RedisContainer
+import com.pennsieve.utilities.Container
 import org.scalatest.{
   BeforeAndAfterAll,
   BeforeAndAfterEach,
@@ -15,7 +15,7 @@ import org.scalatest.{
   Suite,
   SuiteMixin
 }
-import com.blackfynn.test._
+import com.pennsieve.test._
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import com.redis.RedisClientPool
 

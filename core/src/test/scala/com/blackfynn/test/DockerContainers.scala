@@ -1,4 +1,4 @@
-package com.blackfynn.test
+package com.pennsieve.test
 
 /**
   * Shared singleton Docker containers.

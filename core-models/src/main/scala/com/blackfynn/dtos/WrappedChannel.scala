@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.{ Channel, Package }
+import com.pennsieve.models.{ Channel, Package }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 

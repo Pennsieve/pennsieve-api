@@ -1,15 +1,15 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import akka.NotUsed
 import akka.stream.scaladsl.{ Flow, Source }
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities
-import com.blackfynn.models.{ DatasetIgnoreFile, File, Package }
-import com.blackfynn.publish.models.{ CopyAction, PackagePath }
-import com.blackfynn.publish.utils.joinKeys
-import com.blackfynn.models.Utilities._
+import com.pennsieve.core.utilities
+import com.pennsieve.models.{ DatasetIgnoreFile, File, Package }
+import com.pennsieve.publish.models.{ CopyAction, PackagePath }
+import com.pennsieve.publish.utils.joinKeys
+import com.pennsieve.models.Utilities._
 
 import scala.concurrent.{ ExecutionContext, Future }
 

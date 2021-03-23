@@ -1,12 +1,12 @@
 // Copyright (c) 2018 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.core.utilities
+package com.pennsieve.core.utilities
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.auth.middleware.Jwt.Claim
-import com.blackfynn.auth.middleware.Jwt.Role.RoleIdentifier
-import com.blackfynn.auth.middleware.{
+import com.pennsieve.auth.middleware.Jwt.Claim
+import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
+import com.pennsieve.auth.middleware.{
   DatasetId,
   EncryptionKeyId,
   Extractor,
@@ -19,15 +19,15 @@ import com.blackfynn.auth.middleware.{
   UserNodeId,
   Wildcard
 }
-import com.blackfynn.domain.{
+import com.pennsieve.domain.{
   CoreError,
   InvalidJWT,
   MissingOrganization,
   Sessions,
   UnsupportedJWTClaimType
 }
-import com.blackfynn.models.{ Organization, Role, User }
-import com.blackfynn.utilities.Container
+import com.pennsieve.models.{ Organization, Role, User }
+import com.pennsieve.utilities.Container
 import shapeless.syntax.inject._
 
 import scala.concurrent.duration.FiniteDuration

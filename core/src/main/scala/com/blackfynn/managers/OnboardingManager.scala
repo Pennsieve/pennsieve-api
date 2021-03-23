@@ -1,14 +1,14 @@
 // Copyright (c) 2018 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.data.EitherT
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.OnboardingEventsMapper
-import com.blackfynn.models.{ OnboardingEvent, OnboardingEventType }
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db._
-import com.blackfynn.domain.CoreError
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.OnboardingEventsMapper
+import com.pennsieve.models.{ OnboardingEvent, OnboardingEventType }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db._
+import com.pennsieve.domain.CoreError
 
 import scala.concurrent.{ ExecutionContext, Future }
 

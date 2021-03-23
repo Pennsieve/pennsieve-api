@@ -1,13 +1,13 @@
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.ResultHandlers.OkResult
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.ResultHandlers.OkResult
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder

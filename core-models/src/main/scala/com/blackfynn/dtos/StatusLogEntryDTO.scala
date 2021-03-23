@@ -1,10 +1,10 @@
-package com.blackfynn.dtos
+package com.pennsieve.dtos
 
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.{ DatasetStatusLog, User }
+import com.pennsieve.models.{ DatasetStatusLog, User }
 
 case class StatusLogEntryDTO(
   user: Option[UserStubDTO],

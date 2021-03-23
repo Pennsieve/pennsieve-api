@@ -1,18 +1,18 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.jobs.types
+package com.pennsieve.jobs.types
 
 import akka.NotUsed
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{ Flow, Sink, Source }
 import akka.util.Timeout
-import com.blackfynn.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
-import com.blackfynn.core.utilities.RedisContainer
-import com.blackfynn.jobs._
-import com.blackfynn.jobs.container.{ Container, JobContainer }
-import com.blackfynn.managers.ManagerSpec
-import com.blackfynn.messages._
-import com.blackfynn.service.utilities.ContextLogger
+import com.pennsieve.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
+import com.pennsieve.core.utilities.RedisContainer
+import com.pennsieve.jobs._
+import com.pennsieve.jobs.container.{ Container, JobContainer }
+import com.pennsieve.managers.ManagerSpec
+import com.pennsieve.messages._
+import com.pennsieve.service.utilities.ContextLogger
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._
 import org.scalatest.EitherValues._

@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.athena
+package com.pennsieve.aws.athena
 
 import com.amazonaws.services.athena.AmazonAthenaAsync
 import com.amazonaws.services.athena.model._
 
-import com.blackfynn.aws.AsyncHandler
+import com.pennsieve.aws.AsyncHandler
 
 import scala.concurrent.Future
 

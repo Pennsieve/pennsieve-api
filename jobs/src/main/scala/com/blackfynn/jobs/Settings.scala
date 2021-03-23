@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
 import com.typesafe.config.ConfigFactory
 import net.ceedubs.ficus.Ficus._

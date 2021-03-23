@@ -1,19 +1,19 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.dtos._
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.dtos._
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.OrcidClient
-import com.blackfynn.helpers.ResultHandlers._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.models._
+import com.pennsieve.helpers.OrcidClient
+import com.pennsieve.helpers.ResultHandlers._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.models._
 import org.json4s.JValue
 import org.json4s.JsonAST.JNothing
 import org.scalatra._

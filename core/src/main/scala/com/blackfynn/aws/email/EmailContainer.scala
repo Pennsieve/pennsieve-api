@@ -1,14 +1,14 @@
 /**
   * *   Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
   */
-package com.blackfynn.aws.email
+package com.pennsieve.aws.email
 
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.simpleemail.{
   AmazonSimpleEmailService,
   AmazonSimpleEmailServiceClientBuilder
 }
-import com.blackfynn.utilities.Container
+import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
 
 trait EmailContainer { self: Container =>

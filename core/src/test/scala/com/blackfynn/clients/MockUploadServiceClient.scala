@@ -1,7 +1,7 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import akka.stream.ActorMaterializer
-import com.blackfynn.utilities.Container
+import com.pennsieve.utilities.Container
 
 trait MockUploadServiceContainer extends UploadServiceContainer {
   self: Container =>

@@ -1,4 +1,4 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import akka.NotUsed
 import akka.stream.scaladsl.{ Source }
@@ -6,8 +6,8 @@ import akka.stream.scaladsl.{ Source }
 import cats.data._
 import cats.implicits._
 
-import com.blackfynn.models.{ Package }
-import com.blackfynn.publish.models.{ PackagePath }
+import com.pennsieve.models.{ Package }
+import com.pennsieve.publish.models.{ PackagePath }
 
 import scala.collection.mutable.{ ArrayStack }
 import scala.concurrent.{ ExecutionContext, Future }

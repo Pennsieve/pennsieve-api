@@ -1,7 +1,7 @@
-package com.blackfynn.models
+package com.pennsieve.models
 
 import java.time.ZonedDateTime
-import com.blackfynn.dtos.ExternalFileDTO
+import com.pennsieve.dtos.ExternalFileDTO
 
 final case class ExternalFile(
   packageId: Int,

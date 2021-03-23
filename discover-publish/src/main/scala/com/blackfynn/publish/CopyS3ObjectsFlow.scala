@@ -1,4 +1,4 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import akka.NotUsed
 import akka.pattern.retry
@@ -8,7 +8,7 @@ import akka.stream.scaladsl.Flow
 import akka.stream.alpakka.s3.scaladsl._
 import cats.data._
 import cats.implicits._
-import com.blackfynn.publish.models.CopyAction
+import com.pennsieve.publish.models.CopyAction
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ ExecutionContext, Future }

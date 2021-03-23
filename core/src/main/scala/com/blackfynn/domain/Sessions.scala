@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.domain
+package com.pennsieve.domain
 
 import cats.data.EitherT
 
-import com.blackfynn.managers.{ OrganizationManager, RedisManager, UserManager }
-import com.blackfynn.models.{ Organization, User }
+import com.pennsieve.managers.{ OrganizationManager, RedisManager, UserManager }
+import com.pennsieve.models.{ Organization, User }
 
 import scala.concurrent.{ ExecutionContext, Future }
 

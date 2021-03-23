@@ -1,11 +1,11 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models.{ ExternalFile, Organization, Package }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models.{ ExternalFile, Organization, Package }
+import com.pennsieve.traits.PostgresProfile.api._
 
 final class ExternalFilesTable(schema: String, tag: Tag)
     extends Table[ExternalFile](tag, Some(schema), "externally_linked_files") {

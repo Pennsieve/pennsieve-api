@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.core.utilities.DatabaseContainer
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db.OrganizationsMapper
-import com.blackfynn.etl.`data-cli`.container._
-import com.blackfynn.models.{ NodeCodes, Organization }
-import com.blackfynn.test._
-import com.blackfynn.test.helpers.{ TestDatabase }
+import com.pennsieve.core.utilities.DatabaseContainer
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db.OrganizationsMapper
+import com.pennsieve.etl.`data-cli`.container._
+import com.pennsieve.models.{ NodeCodes, Organization }
+import com.pennsieve.test._
+import com.pennsieve.test.helpers.{ TestDatabase }
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._
 

@@ -1,4 +1,4 @@
-package com.blackfynn.core.utilities
+package com.pennsieve.core.utilities
 
 import slick.jdbc.meta._
 

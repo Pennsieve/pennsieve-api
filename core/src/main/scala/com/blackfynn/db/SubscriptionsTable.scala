@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{ Subscription, SubscriptionStatus }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{ Subscription, SubscriptionStatus }
 import java.time.ZonedDateTime
 
 final class SubscriptionsTable(tag: Tag)

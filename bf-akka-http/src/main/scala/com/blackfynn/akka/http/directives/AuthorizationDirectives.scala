@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.akka.http.directives
+package com.pennsieve.akka.http.directives
 
 import java.time.ZonedDateTime
 
@@ -9,8 +9,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.Credentials
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.auth.middleware.{ Jwt, UserClaim }
-import com.blackfynn.core.utilities.{
+import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
+import com.pennsieve.core.utilities.{
   FutureEitherHelpers,
   JwtAuthenticator,
   OrganizationManagerContainer,
@@ -19,15 +19,15 @@ import com.blackfynn.core.utilities.{
   UserAuthContext,
   UserManagerContainer
 }
-import com.blackfynn.domain.{ CoreError, Error }
-import com.blackfynn.domain.Sessions.{
+import com.pennsieve.domain.{ CoreError, Error }
+import com.pennsieve.domain.Sessions.{
   APISession,
   BrowserSession,
   Session,
   TemporarySession
 }
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.utilities.Container
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
 
 import scala.concurrent.{ ExecutionContext, Future }

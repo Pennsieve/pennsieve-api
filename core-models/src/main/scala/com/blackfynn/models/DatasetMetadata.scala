@@ -1,6 +1,6 @@
 // Copyright (c) 2019 The University of Pennsylvania. All Rights Reserved.
 
-package com.blackfynn.models
+package com.pennsieve.models
 
 import io.circe._
 import io.circe.syntax._

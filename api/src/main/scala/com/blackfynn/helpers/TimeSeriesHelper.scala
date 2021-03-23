@@ -1,17 +1,17 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import cats.data.EitherT
 import cats.instances.future._
-import com.blackfynn.db.TimeSeriesAnnotation
-import com.blackfynn.dtos.ChannelDTO
-import com.blackfynn.helpers.APIContainers.SecureAPIContainer
-import com.blackfynn.models.{ Channel, Package }
-import com.blackfynn.timeseries.AnnotationAggregateWindowResult
+import com.pennsieve.db.TimeSeriesAnnotation
+import com.pennsieve.dtos.ChannelDTO
+import com.pennsieve.helpers.APIContainers.SecureAPIContainer
+import com.pennsieve.models.{ Channel, Package }
+import com.pennsieve.timeseries.AnnotationAggregateWindowResult
 import java.time.{ Instant, ZoneOffset, ZonedDateTime }
 
-import com.blackfynn.domain.CoreError
+import com.pennsieve.domain.CoreError
 
 import scala.concurrent.{ ExecutionContext, Future }
 

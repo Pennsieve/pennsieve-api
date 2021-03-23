@@ -1,37 +1,37 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.aws.cognito.MockCognito
-import com.blackfynn.db.UserInvitesMapper
-import com.blackfynn.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
-import com.blackfynn.managers.{
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.db.UserInvitesMapper
+import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
+import com.pennsieve.managers.{
   DatasetStatusManager,
   SecureOrganizationManager,
   UpdateOrganization
 }
-import com.blackfynn.models.DBPermission.{ Administer, Delete, Owner }
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.Collection
-import com.blackfynn.models.SubscriptionStatus.{
+import com.pennsieve.models.DBPermission.{ Administer, Delete, Owner }
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.Collection
+import com.pennsieve.models.SubscriptionStatus.{
   ConfirmedSubscription,
   PendingSubscription
 }
-import com.blackfynn.models._
-import com.blackfynn.models.DateVersion._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models._
+import com.pennsieve.models.DateVersion._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.PostgresProfile.api._
 import java.time.{ Duration, ZonedDateTime }
 
-import com.blackfynn.audit.middleware.Auditor
-import com.blackfynn.clients.{
+import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.clients.{
   CustomTermsOfServiceClient,
   MockCustomTermsOfServiceClient
 }
-import com.blackfynn.helpers.{ DataSetTestMixin, MockAuditLogger }
-import com.blackfynn.managers.OrganizationManager.Invite
+import com.pennsieve.helpers.{ DataSetTestMixin, MockAuditLogger }
+import com.pennsieve.managers.OrganizationManager.Invite
 import org.apache.http.impl.client.HttpClients
 import org.json4s.jackson.Serialization.{ read, write }
 import org.scalatest.EitherValues._

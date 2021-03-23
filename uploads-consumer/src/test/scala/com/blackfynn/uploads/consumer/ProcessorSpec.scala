@@ -1,16 +1,16 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
-import com.blackfynn.models._
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.models._
+import com.pennsieve.test.helpers.EitherValue._
 import io.circe.syntax._
 import io.circe.java8.time._
 import java.util.UUID
 
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
-import com.blackfynn.akka.consumer.ProcessorUtilities
-import com.blackfynn.models
+import com.pennsieve.akka.consumer.ProcessorUtilities
+import com.pennsieve.models
 import org.scalatest.{ Matchers, WordSpec }
 
 class ProcessorSpec extends WordSpec with Matchers {

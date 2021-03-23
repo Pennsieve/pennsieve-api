@@ -1,4 +1,4 @@
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import java.time.{ OffsetDateTime, ZoneOffset }
 
@@ -6,9 +6,9 @@ import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
 import akka.stream.Materializer
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.doi.client.definitions._
-import com.blackfynn.doi.client.doi._
-import com.blackfynn.doi.models._
+import com.pennsieve.doi.client.definitions._
+import com.pennsieve.doi.client.doi._
+import com.pennsieve.doi.models._
 import io.circe.syntax._
 
 import scala.collection.mutable.ArrayBuffer

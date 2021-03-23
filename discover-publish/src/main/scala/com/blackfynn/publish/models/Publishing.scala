@@ -1,6 +1,6 @@
-package com.blackfynn.publish.models
+package com.pennsieve.publish.models
 
-import com.blackfynn.models.{ ExternalId, FileManifest }
+import com.pennsieve.models.{ ExternalId, FileManifest }
 import io.circe._
 import io.circe.syntax._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }

@@ -1,15 +1,15 @@
 // Copyright (c) 2018 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.test.helpers.AwaitableImplicits._
-import com.blackfynn.etl.`data-cli`.exceptions._
-import com.blackfynn.models.{ Dataset, ModelProperty, Package, PackageState }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.test.helpers.AwaitableImplicits._
+import com.pennsieve.etl.`data-cli`.exceptions._
+import com.pennsieve.models.{ Dataset, ModelProperty, Package, PackageState }
+import com.pennsieve.traits.PostgresProfile.api._
 import java.time.ZonedDateTime
 import java.io.{ File => JavaFile }
 
-import com.blackfynn.models.PackageType
+import com.pennsieve.models.PackageType
 import org.scalatest.{ FlatSpec, Matchers }
 
 class SetPackagePropertiesSpec extends FlatSpec with Matchers {

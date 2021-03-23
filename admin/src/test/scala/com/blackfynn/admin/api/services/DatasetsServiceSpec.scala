@@ -1,9 +1,9 @@
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 import akka.http.scaladsl.model.HttpMethods.{ DELETE, GET, POST }
-import com.blackfynn.models.{ PublishStatus }
+import com.pennsieve.models.{ PublishStatus }
 import io.circe.syntax._
 import akka.http.scaladsl.model.StatusCodes.{ NoContent, OK }
-import com.blackfynn.discover.client.definitions.{
+import com.pennsieve.discover.client.definitions.{
   DatasetPublishStatus,
   SponsorshipRequest,
   SponsorshipResponse

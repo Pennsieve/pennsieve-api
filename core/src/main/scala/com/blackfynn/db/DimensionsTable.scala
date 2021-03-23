@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{ Dimension, DimensionAssignment, Organization }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{ Dimension, DimensionAssignment, Organization }
 import java.time.ZonedDateTime
 
-import com.blackfynn.domain.SqlError
+import com.pennsieve.domain.SqlError
 
 import scala.concurrent.ExecutionContext
 

@@ -1,7 +1,7 @@
 /**
   * *   Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
   */
-package com.blackfynn.timeseries
+package com.pennsieve.timeseries
 
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
