@@ -21,6 +21,7 @@ import akka.testkit.TestKitBase
 import akka.util.ByteString
 
 import com.pennsieve.akka.http.EitherValue._
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.models.{ DBPermission, User }
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
@@ -34,6 +35,8 @@ import scala.concurrent._
 class AuthenticationRoutesSpec
     extends AuthorizationServiceSpec
     with TestKitBase {
+
+  val mockCognito: MockCognito = new MockCognito()
 
   "POST /authentication/login route" should {
 
@@ -147,7 +150,7 @@ class AuthenticationRoutesSpec
 
     "generate a session from an API token and secret" in {
       val (token, secret) = testDIContainer.tokenManager
-        .create("test-api-token", nonAdmin, organizationTwo)
+        .create("test-api-token", nonAdmin, organizationTwo, mockCognito)
         .await
         .value
 
@@ -177,7 +180,7 @@ class AuthenticationRoutesSpec
 
     "respond with a 403 when a user provides a bad password" in {
       val (token, secret) = testDIContainer.tokenManager
-        .create("test-api-token", nonAdmin, organizationTwo)
+        .create("test-api-token", nonAdmin, organizationTwo, mockCognito)
         .await
         .value
 
