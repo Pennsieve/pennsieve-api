@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.pennsieve.ap
+package com.pennsieve.api
 
 import cats.data.EitherT
 import cats.implicits._
