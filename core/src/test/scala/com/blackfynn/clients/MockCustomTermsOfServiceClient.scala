@@ -1,12 +1,12 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
-import com.blackfynn.aws.s3.S3Trait
+import com.pennsieve.aws.s3.S3Trait
 import java.time.{ ZoneOffset, ZonedDateTime }
 import scala.collection.mutable.HashMap
 import java.security.MessageDigest
 
-import com.blackfynn.models.ToDateVersion
-import com.blackfynn.models.{ DateVersion, ToDateVersion }
+import com.pennsieve.models.ToDateVersion
+import com.pennsieve.models.{ DateVersion, ToDateVersion }
 
 class MockCustomTermsOfServiceClient extends CustomTermsOfServiceClient {
 

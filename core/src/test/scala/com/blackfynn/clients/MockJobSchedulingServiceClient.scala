@@ -1,4 +1,4 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import java.time.OffsetDateTime
 
@@ -6,19 +6,19 @@ import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
 import akka.stream.{ ActorMaterializer, Materializer }
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.jobscheduling.clients.generated.definitions.{
+import com.pennsieve.jobscheduling.clients.generated.definitions.{
   Job,
   UploadResult
 }
-import com.blackfynn.jobscheduling.clients.generated.jobs.{
+import com.pennsieve.jobscheduling.clients.generated.jobs.{
   CompleteUploadResponse,
   CreateResponse,
   GetPackageStateResponse,
   JobsClient
 }
-import com.blackfynn.jobscheduling.commons.JobState.Running
-import com.blackfynn.models.{ JobId, PackageState, Payload }
-import com.blackfynn.utilities.Container
+import com.pennsieve.jobscheduling.commons.JobState.Running
+import com.pennsieve.models.{ JobId, PackageState, Payload }
+import com.pennsieve.utilities.Container
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global

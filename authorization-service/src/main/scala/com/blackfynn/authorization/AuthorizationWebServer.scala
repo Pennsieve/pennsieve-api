@@ -1,21 +1,21 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.authorization
+package com.pennsieve.authorization
 
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
 import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 import com.authy.AuthyApiClient
-import com.blackfynn.akka.http.{
+import com.pennsieve.akka.http.{
   HealthCheck,
   HealthCheckService,
   RouteService,
   WebServer
 }
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.authorization.Router.ResourceContainer
-import com.blackfynn.core.utilities._
-import com.blackfynn.utilities.Container
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.authorization.Router.ResourceContainer
+import com.pennsieve.core.utilities._
+import com.pennsieve.utilities.Container
 import com.redis.RedisClientPool
 import com.typesafe.scalalogging.LazyLogging
 import net.ceedubs.ficus.Ficus._

@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -14,40 +14,40 @@ import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityPr
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import com.authy.AuthyApiClient
-import com.blackfynn.auth.middleware.{ Jwt, UserClaim, UserId }
-import com.blackfynn.aws.cognito.CognitoClient
-import com.blackfynn.aws.s3.AWSS3Container
-import com.blackfynn.aws.s3.LocalS3Container
+import com.pennsieve.auth.middleware.{ Jwt, UserClaim, UserId }
+import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.s3.AWSS3Container
+import com.pennsieve.aws.s3.LocalS3Container
 import net.ceedubs.ficus.Ficus._
-import com.blackfynn.aws.email.{
+import com.pennsieve.aws.email.{
   AWSEmailContainer,
   EmailContainer,
   LocalEmailContainer
 }
-import com.blackfynn.clients._
-import com.blackfynn.aws.cognito.Cognito
-import com.blackfynn.aws.queue.{
+import com.pennsieve.clients._
+import com.pennsieve.aws.cognito.Cognito
+import com.pennsieve.aws.queue.{
   AWSSQSContainer,
   LocalSQSContainer,
   SQS,
   SQSClient,
   SQSContainer
 }
-import com.blackfynn.web.Settings
-import com.blackfynn.models.{ Organization, User }
+import com.pennsieve.web.Settings
+import com.pennsieve.models.{ Organization, User }
 import com.typesafe.config.Config
-import com.blackfynn.client.NotificationServiceClient
-import com.blackfynn.core.utilities._
-import com.blackfynn.discover.client.publish.PublishClient
-import com.blackfynn.discover.client.search.SearchClient
-import com.blackfynn.doi.client.doi.DoiClient
-import com.blackfynn.utilities.Container
-import com.blackfynn.traits.TimeSeriesDBContainer
+import com.pennsieve.client.NotificationServiceClient
+import com.pennsieve.core.utilities._
+import com.pennsieve.discover.client.publish.PublishClient
+import com.pennsieve.discover.client.search.SearchClient
+import com.pennsieve.doi.client.doi.DoiClient
+import com.pennsieve.utilities.Container
+import com.pennsieve.traits.TimeSeriesDBContainer
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
 import org.joda.time.DateTime
-import com.blackfynn.jobscheduling.clients.generated.jobs.JobsClient
-import com.blackfynn.service.utilities.{
+import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
+import com.pennsieve.service.utilities.{
   QueueHttpResponder,
   SingleHttpResponder
 }
@@ -55,7 +55,7 @@ import java.util.concurrent.TimeUnit
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 
-import com.blackfynn.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
+import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
 import com.redis.RedisClientPool
 import org.apache.http.ssl.SSLContexts
 import java.util.Date

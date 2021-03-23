@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.models.PackageType
-import com.blackfynn.models.{ Dataset, Package }
-import com.blackfynn.test.helpers.AwaitableImplicits._
+import com.pennsieve.models.PackageType
+import com.pennsieve.models.{ Dataset, Package }
+import com.pennsieve.test.helpers.AwaitableImplicits._
 import org.scalatest.{ FlatSpec, Matchers }
 
 class UpdatePackageTypeSpec extends FlatSpec with Matchers {

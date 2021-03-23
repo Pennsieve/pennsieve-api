@@ -1,13 +1,13 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models._
 
 import java.time.ZonedDateTime
-import com.blackfynn.domain.InvalidOrganization
-import com.blackfynn.dtos.UserDTO
+import com.pennsieve.domain.InvalidOrganization
+import com.pennsieve.dtos.UserDTO
 
 import scala.concurrent.{ ExecutionContext, Future }
 

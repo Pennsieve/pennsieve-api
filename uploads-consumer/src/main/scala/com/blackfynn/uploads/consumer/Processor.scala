@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
 import akka.actor.ActorSystem
 import akka.stream.alpakka.sqs.scaladsl.{ SqsAckSink, SqsSource }
@@ -25,15 +25,15 @@ import software.amazon.awssdk.services.sqs.model.{
 }
 import cats.data._
 import cats.implicits._
-import com.blackfynn.akka.consumer.{
+import com.pennsieve.akka.consumer.{
   MessageExceptionPair,
   ProcessorUtilities,
   StreamContext
 }
-import com.blackfynn.aws.queue.SQS
-import com.blackfynn.models.Manifest
-import com.blackfynn.service.utilities.{ ContextLogger, Tier }
-import com.blackfynn.uploads.consumer.antivirus.{ Locked, ScanResult, Scanning }
+import com.pennsieve.aws.queue.SQS
+import com.pennsieve.models.Manifest
+import com.pennsieve.service.utilities.{ ContextLogger, Tier }
+import com.pennsieve.uploads.consumer.antivirus.{ Locked, ScanResult, Scanning }
 
 import java.util.concurrent.CompletionException
 import scala.concurrent.duration._

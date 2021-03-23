@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.models.{ Channel, PackageType }
-import com.blackfynn.models.Package
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.models.{ Channel, PackageType }
+import com.pennsieve.models.Package
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.Matchers._
 import org.scalatest.EitherValues._
 import scala.collection.SortedSet

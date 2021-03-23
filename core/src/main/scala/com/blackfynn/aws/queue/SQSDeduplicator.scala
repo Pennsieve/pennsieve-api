@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.aws.queue
+package com.pennsieve.aws.queue
 
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
 import com.redis.{ RedisClientPool, Seconds }

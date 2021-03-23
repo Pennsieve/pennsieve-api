@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.models.{ Channel, PackageType }
-import com.blackfynn.db.TimeSeriesLayer
-import com.blackfynn.models.{
+import com.pennsieve.models.{ Channel, PackageType }
+import com.pennsieve.db.TimeSeriesLayer
+import com.pennsieve.models.{
   File,
   FileObjectType,
   FileProcessingState,
@@ -13,17 +13,17 @@ import com.blackfynn.models.{
   PackageState
 }
 import org.json4s.JsonAST.JValue
-import com.blackfynn.timeseries.{ AnnotationAggregateWindowResult, Integer }
-import com.blackfynn.helpers.TimeSeriesHelper
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.{ Slide, TimeSeries }
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.timeseries.{ AnnotationAggregateWindowResult, Integer }
+import com.pennsieve.helpers.TimeSeriesHelper
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.{ Slide, TimeSeries }
+import com.pennsieve.test.helpers.EitherValue._
 import com.github.tminglei.slickpg.Range
 import org.json4s.jackson.Serialization.write
 import org.scalatest.OptionValues._
 import org.scalatest.{ BeforeAndAfterEach, FlatSpec, Matchers }
-import com.blackfynn.dtos.PagedResponse
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.dtos.PagedResponse
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.collection.SortedSet
 

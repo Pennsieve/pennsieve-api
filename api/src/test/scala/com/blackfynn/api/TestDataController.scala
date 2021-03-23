@@ -1,18 +1,18 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.messages._
-import com.blackfynn.dtos.ModelPropertyRO
-import com.blackfynn.helpers.{
+import com.pennsieve.messages._
+import com.pennsieve.dtos.ModelPropertyRO
+import com.pennsieve.helpers.{
   DataSetTestMixin,
   MockAuditLogger,
   MockSQSClient
 }
-import com.blackfynn.messages.DeletePackageJob
-import com.blackfynn.models.PackageState.{ DELETING, READY }
-import com.blackfynn.models.PackageType.{ Collection, PDF }
-import com.blackfynn.domain.StorageAggregation.{ sdatasets, spackages }
+import com.pennsieve.messages.DeletePackageJob
+import com.pennsieve.models.PackageState.{ DELETING, READY }
+import com.pennsieve.models.PackageType.{ Collection, PDF }
+import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
 import org.apache.http.impl.client.HttpClients
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._

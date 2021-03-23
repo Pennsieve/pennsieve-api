@@ -1,4 +1,4 @@
-package com.blackfynn.timeseries
+package com.pennsieve.timeseries
 
 import akka.NotUsed
 import akka.stream.scaladsl.Flow

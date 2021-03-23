@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{ CognitoId, DBPermission, UserInvite }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{ CognitoId, DBPermission, UserInvite }
 
 import java.time.ZonedDateTime
 

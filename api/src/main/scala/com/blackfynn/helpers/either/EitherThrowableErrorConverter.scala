@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers.either
+package com.pennsieve.helpers.either
 
 import cats.syntax.either._
-import com.blackfynn.api.Error
+import com.pennsieve.api.Error
 import org.scalatra.{ ActionResult, BadRequest }
 
 case class EitherThrowableErrorConverter[A](item: Either[Throwable, A]) {

@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.aws.email.LoggingEmailer
-import com.blackfynn.models.DBPermission
-import com.blackfynn.web.Settings
-import com.blackfynn.aws.cognito.MockCognito
+import com.pennsieve.aws.email.LoggingEmailer
+import com.pennsieve.models.DBPermission
+import com.pennsieve.web.Settings
+import com.pennsieve.aws.cognito.MockCognito
 
 import java.time.Duration
 

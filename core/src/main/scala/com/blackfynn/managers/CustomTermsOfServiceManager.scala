@@ -1,17 +1,17 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.time.{ ZoneOffset, ZonedDateTime }
 
 import cats.implicits._
 import cats.data.EitherT
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ CustomTermsOfService, CustomTermsOfServiceMapper }
-import com.blackfynn.domain.{ CoreError, InvalidDateVersion }
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.DateVersion
-import com.blackfynn.models.DateVersion._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ CustomTermsOfService, CustomTermsOfServiceMapper }
+import com.pennsieve.domain.{ CoreError, InvalidDateVersion }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.DateVersion
+import com.pennsieve.models.DateVersion._
 
 import scala.concurrent.{ ExecutionContext, Future }
 

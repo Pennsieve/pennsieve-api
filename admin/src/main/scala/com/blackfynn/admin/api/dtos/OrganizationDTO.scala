@@ -1,6 +1,6 @@
-package com.blackfynn.admin.api.dtos
+package com.pennsieve.admin.api.dtos
 
-import com.blackfynn.models.Organization
+import com.pennsieve.models.Organization
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 

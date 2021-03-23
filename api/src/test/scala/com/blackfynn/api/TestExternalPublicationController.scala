@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import cats.data._
 import cats.implicits._
-import com.blackfynn.dtos._
-import com.blackfynn.helpers._
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.dtos._
+import com.pennsieve.helpers._
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
 import org.json4s._
 import org.json4s.jackson.Serialization.{ read, write }
 import org.scalatest.EitherValues._

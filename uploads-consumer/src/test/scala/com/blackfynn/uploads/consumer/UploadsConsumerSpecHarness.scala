@@ -1,24 +1,24 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.blackfynn.akka.consumer.ConsumerUtilities
-import com.blackfynn.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
-import com.blackfynn.aws.s3.{ LocalS3Container, S3 }
-import com.blackfynn.clients.{
+import com.pennsieve.akka.consumer.ConsumerUtilities
+import com.pennsieve.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
+import com.pennsieve.aws.s3.{ LocalS3Container, S3 }
+import com.pennsieve.clients.{
   MockJobSchedulingServiceContainer,
   MockUploadServiceContainer
 }
-import com.blackfynn.models.{ NodeCodes, Organization, User }
-import com.blackfynn.test.helpers.{ AwaitableImplicits, TestDatabase }
-import com.blackfynn.aws.sns.LocalSNSContainer
-import com.blackfynn.core.utilities.{ DatabaseContainer, RedisContainer }
-import com.blackfynn.db.{ OrganizationsMapper, UserMapper }
-import com.blackfynn.test._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.uploads.consumer.antivirus.ClamAVContainer
+import com.pennsieve.models.{ NodeCodes, Organization, User }
+import com.pennsieve.test.helpers.{ AwaitableImplicits, TestDatabase }
+import com.pennsieve.aws.sns.LocalSNSContainer
+import com.pennsieve.core.utilities.{ DatabaseContainer, RedisContainer }
+import com.pennsieve.db.{ OrganizationsMapper, UserMapper }
+import com.pennsieve.test._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.uploads.consumer.antivirus.ClamAVContainer
 import com.redis.RedisClientPool
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import com.typesafe.scalalogging.LazyLogging

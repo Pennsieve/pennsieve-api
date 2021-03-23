@@ -1,4 +1,4 @@
-package com.blackfynn.akka.http.directives
+package com.pennsieve.akka.http.directives
 
 import akka.http.scaladsl.marshalling.{
   ToEntityMarshaller,

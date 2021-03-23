@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.helpers.MockAuditLogger
-import com.blackfynn.models.{ Annotation, Comment, Discussion }
-import com.blackfynn.notifications.MockNotificationServiceClient
+import com.pennsieve.helpers.MockAuditLogger
+import com.pennsieve.models.{ Annotation, Comment, Discussion }
+import com.pennsieve.notifications.MockNotificationServiceClient
 import org.apache.http.impl.client.HttpClients
 import org.scalatest.EitherValues._
 import org.json4s._

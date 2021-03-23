@@ -1,17 +1,17 @@
-package com.blackfynn.migrations.storage
+package com.pennsieve.migrations.storage
 
 import cats.data._
 import cats.implicits._
 import com.amazonaws.services.s3.model._
-import com.blackfynn.aws.s3._
-import com.blackfynn.core.utilities._
-import com.blackfynn.db._
-import com.blackfynn.managers.BaseManagerSpec
-import com.blackfynn.test._
-import com.blackfynn.test.helpers._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models._
+import com.pennsieve.aws.s3._
+import com.pennsieve.core.utilities._
+import com.pennsieve.db._
+import com.pennsieve.managers.BaseManagerSpec
+import com.pennsieve.test._
+import com.pennsieve.test.helpers._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models._
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._
 import matchers._

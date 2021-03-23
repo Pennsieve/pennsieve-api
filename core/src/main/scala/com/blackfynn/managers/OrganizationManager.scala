@@ -1,23 +1,23 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.time.{ Duration, ZonedDateTime }
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.aws.cognito.CognitoClient
-import com.blackfynn.aws.email.{ Email, EmailToSend, Emailer }
-import com.blackfynn.core.utilities.{ DatabaseHelpers, FutureEitherHelpers }
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db._
-import com.blackfynn.domain._
-import com.blackfynn.managers.OrganizationManager.Invite
-import com.blackfynn.models.SubscriptionStatus.PendingSubscription
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.utilities.AbstractError
-import com.blackfynn.core.utilities.MessageTemplates
+import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.email.{ Email, EmailToSend, Emailer }
+import com.pennsieve.core.utilities.{ DatabaseHelpers, FutureEitherHelpers }
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db._
+import com.pennsieve.domain._
+import com.pennsieve.managers.OrganizationManager.Invite
+import com.pennsieve.models.SubscriptionStatus.PendingSubscription
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.utilities.AbstractError
+import com.pennsieve.core.utilities.MessageTemplates
 import io.circe.{ Encoder, Json }
 import io.circe.syntax._
 

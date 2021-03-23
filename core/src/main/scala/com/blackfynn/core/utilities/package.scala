@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.core
+package com.pennsieve.core
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.domain.{ CoreError, Error, NameCheckError, PredicateError }
-import com.blackfynn.models.FileExtensions.fileTypeMap
-import com.blackfynn.models.{ FileType, Organization }
-import com.blackfynn.models.FileType.GenericData
-import com.blackfynn.models.Utilities.{
+import com.pennsieve.domain.{ CoreError, Error, NameCheckError, PredicateError }
+import com.pennsieve.models.FileExtensions.fileTypeMap
+import com.pennsieve.models.{ FileType, Organization }
+import com.pennsieve.models.FileType.GenericData
+import com.pennsieve.models.Utilities.{
   escapeName,
   getFullExtension,
   getPennsieveExtension

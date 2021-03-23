@@ -1,7 +1,7 @@
-package com.blackfynn.publish
+package com.pennsieve.publish
 
-import com.blackfynn.aws.s3.S3
-import com.blackfynn.core.utilities.{
+import com.pennsieve.aws.s3.S3
+import com.pennsieve.core.utilities.{
   DatabaseContainer,
   DatasetManagerContainer,
   DatasetMapperContainer,
@@ -10,15 +10,15 @@ import com.blackfynn.core.utilities.{
   PackagesMapperContainer,
   UserPermissionContainer
 }
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.managers.{ FileManager, PackageManager }
-import com.blackfynn.models._
-import com.blackfynn.utilities.Container
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.managers.{ FileManager, PackageManager }
+import com.pennsieve.models._
+import com.pennsieve.utilities.Container
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import org.apache.commons.lang3.StringUtils
 import scala.concurrent.{ ExecutionContext, Future }
-import com.blackfynn.core.utilities.DatasetAssetsContainer
+import com.pennsieve.core.utilities.DatasetAssetsContainer
 import io.circe.parser.decode
 
 case class InsecureDBContainer(config: Config, organization: Organization)

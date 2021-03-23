@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers.either
+package com.pennsieve.helpers.either
 
 import cats.syntax.either._
-import com.blackfynn.api.Error
-import com.blackfynn.domain.CoreError
+import com.pennsieve.api.Error
+import com.pennsieve.domain.CoreError
 import org.scalatra._
-import com.blackfynn.web.Settings
+import com.pennsieve.web.Settings
 
 object EitherErrorHandler {
   object implicits {

@@ -1,20 +1,20 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.implicits._
-import com.blackfynn.clients.{
+import com.pennsieve.clients.{
   MockJobSchedulingServiceClient,
   MockModelServiceClient
 }
-import com.blackfynn.dtos.PackageDTO
-import com.blackfynn.helpers.{
+import com.pennsieve.dtos.PackageDTO
+import com.pennsieve.helpers.{
   DataSetTestMixin,
   MockAuditLogger,
   MockObjectStore
 }
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.{
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.{
   CollectionUpload,
   Dataset,
   JobId,
@@ -23,8 +23,8 @@ import com.blackfynn.models.{
   PackageType,
   _
 }
-import com.blackfynn.uploads.{ PackagePreview, S3File }
-import com.blackfynn.web.Settings
+import com.pennsieve.uploads.{ PackagePreview, S3File }
+import com.pennsieve.web.Settings
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 import org.scalatest.FlatSpec
@@ -33,7 +33,7 @@ import scala.concurrent.Future
 
 class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
 
-  // hack to get around implicit resolution issues with com.blackfynn.test.helpers.EitherValue
+  // hack to get around implicit resolution issues with com.pennsieve.test.helpers.EitherValue
   object EitherSyntax extends cats.syntax.EitherSyntax
 
   var destination: Package = _

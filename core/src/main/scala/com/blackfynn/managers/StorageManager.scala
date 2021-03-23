@@ -1,18 +1,18 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.core.utilities._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db._
-import com.blackfynn.domain.{
+import com.pennsieve.core.utilities._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db._
+import com.pennsieve.domain.{
   CoreError,
   Error,
   ExceptionError,
   NotFound,
   StorageAggregation
 }
-import com.blackfynn.domain.StorageAggregation.spackages
-import com.blackfynn.messages.{ BackgroundJob, CachePopulationJob }
-import com.blackfynn.models.{
+import com.pennsieve.domain.StorageAggregation.spackages
+import com.pennsieve.messages.{ BackgroundJob, CachePopulationJob }
+import com.pennsieve.models.{
   Dataset,
   File,
   FileObjectType,
@@ -20,7 +20,7 @@ import com.blackfynn.models.{
   Package,
   User
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import cats.data.EitherT
 import cats.implicits._
 import com.rms.miu.slickcats.DBIOInstances._

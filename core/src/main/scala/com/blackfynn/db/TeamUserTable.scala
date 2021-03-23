@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{ DBPermission, TeamUser }
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{ DBPermission, TeamUser }
 
 final class TeamUserTable(tag: Tag)
     extends Table[TeamUser](tag, Some("pennsieve"), "team_user") {

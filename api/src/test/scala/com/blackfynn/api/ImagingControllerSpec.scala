@@ -1,19 +1,19 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.dtos.DimensionDTO
-import com.blackfynn.helpers.DataSetTestMixin
-import com.blackfynn.models.{
+import com.pennsieve.dtos.DimensionDTO
+import com.pennsieve.helpers.DataSetTestMixin
+import com.pennsieve.models.{
   Dataset,
   Dimension,
   DimensionAssignment,
   DimensionProperties,
   Package
 }
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.models.PackageType
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.models.PackageType
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization.write

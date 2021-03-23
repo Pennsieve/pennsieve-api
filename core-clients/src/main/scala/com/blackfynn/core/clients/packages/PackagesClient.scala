@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.core.clients.packages
+package com.pennsieve.core.clients.packages
 
 import akka.http.scaladsl.marshalling.{ Marshal, ToEntityMarshaller }
 import akka.http.scaladsl.model._
@@ -10,8 +10,8 @@ import akka.stream.Materializer
 import cats.data.EitherT
 import cats.syntax.either._
 import cats.instances.future._
-import com.blackfynn.core.clients.AkkaHttpImplicits._
-import com.blackfynn.models.NodeId
+import com.pennsieve.core.clients.AkkaHttpImplicits._
+import com.pennsieve.models.NodeId
 
 import scala.concurrent.{ ExecutionContext, Future }
 

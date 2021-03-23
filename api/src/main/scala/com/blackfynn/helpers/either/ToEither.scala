@@ -1,9 +1,9 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers.either
+package com.pennsieve.helpers.either
 
 import scala.util.{ Success, Try }
-import com.blackfynn.helpers.either.EitherThrowableErrorConverter.implicits._
+import com.pennsieve.helpers.either.EitherThrowableErrorConverter.implicits._
 import org.json4s.JValue
 import org.scalatra.ActionResult
 

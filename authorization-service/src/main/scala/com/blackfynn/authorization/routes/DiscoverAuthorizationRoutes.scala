@@ -1,24 +1,24 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
 import akka.http.scaladsl.model.StatusCodes.{ OK, Unauthorized }
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import com.blackfynn.db._
-import com.blackfynn.models._
+import com.pennsieve.db._
+import com.pennsieve.models._
 import cats.implicits._
-import com.blackfynn.authorization.Router.ResourceContainer
-import com.blackfynn.authorization.utilities.exceptions.{
+import com.pennsieve.authorization.Router.ResourceContainer
+import com.pennsieve.authorization.utilities.exceptions.{
   InvalidDatasetId,
   PreviewNotAllowed
 }
-import com.blackfynn.authorization.utilities.exceptions._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ DatasetsMapper, OrganizationUserMapper, UserMapper }
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.authorization.utilities.exceptions._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ DatasetsMapper, OrganizationUserMapper, UserMapper }
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }

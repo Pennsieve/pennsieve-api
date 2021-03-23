@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.models.PackageType
-import com.blackfynn.db.TimeSeriesAnnotation
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.PDF
-import com.blackfynn.models.{
+import com.pennsieve.models.PackageType
+import com.pennsieve.db.TimeSeriesAnnotation
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.PDF
+import com.pennsieve.models.{
   Annotation,
   AnnotationLayer,
   Comment,
@@ -15,7 +15,7 @@ import com.blackfynn.models.{
   Package,
   PathElement
 }
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.EitherValues._
 import com.github.tminglei.slickpg.Range
 

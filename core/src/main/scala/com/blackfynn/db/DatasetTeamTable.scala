@@ -1,9 +1,9 @@
-package com.blackfynn.db
+package com.pennsieve.db
 
 import java.time.ZonedDateTime
 
-import com.blackfynn.models._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
 import scala.concurrent.ExecutionContext
 
 class DatasetTeamTable(schema: String, tag: Tag)

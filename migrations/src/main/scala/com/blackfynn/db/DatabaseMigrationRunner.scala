@@ -1,4 +1,4 @@
-package com.blackfynn.migrations
+package com.pennsieve.migrations
 
 import org.flywaydb.core.Flyway
 import com.typesafe.config.{ Config, ConfigFactory }

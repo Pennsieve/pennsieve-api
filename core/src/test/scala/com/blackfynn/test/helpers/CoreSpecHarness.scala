@@ -1,7 +1,7 @@
-package com.blackfynn.test.helpers
+package com.pennsieve.test.helpers
 
-import com.blackfynn.core.utilities._
-import com.blackfynn.test._
+import com.pennsieve.core.utilities._
+import com.pennsieve.test._
 import org.scalatest.{
   BeforeAndAfterAll,
   BeforeAndAfterEach,

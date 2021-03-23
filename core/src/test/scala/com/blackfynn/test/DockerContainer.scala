@@ -1,4 +1,4 @@
-package com.blackfynn.test
+package com.pennsieve.test
 import com.dimafeng.testcontainers.GenericContainer
 import com.dimafeng.testcontainers.GenericContainer.DockerImage
 import com.typesafe.config.{ Config, ConfigFactory }

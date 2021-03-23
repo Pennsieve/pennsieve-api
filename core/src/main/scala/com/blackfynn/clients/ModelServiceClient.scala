@@ -1,9 +1,9 @@
-package com.blackfynn.clients
+package com.pennsieve.clients
 
 import cats.Monoid
-import com.blackfynn.concepts.types.CreateProxyInstancePayload
-import com.blackfynn.domain.CoreError
-import com.blackfynn.dtos.{ ConceptDTO, ConceptInstanceDTO }
+import com.pennsieve.concepts.types.CreateProxyInstancePayload
+import com.pennsieve.domain.CoreError
+import com.pennsieve.dtos.{ ConceptDTO, ConceptInstanceDTO }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax._
 import io.circe.{ Decoder, Encoder }

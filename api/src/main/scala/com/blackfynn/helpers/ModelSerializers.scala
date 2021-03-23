@@ -1,13 +1,13 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
-import com.blackfynn.concepts.types.ProxyRelationshipDirection
-import com.blackfynn.doi.models.DoiState
-import com.blackfynn.models.PackageType._
-import com.blackfynn.models._
-import com.blackfynn.timeseries.AnnotationData
-import com.blackfynn.aws.email.Email
+import com.pennsieve.concepts.types.ProxyRelationshipDirection
+import com.pennsieve.doi.models.DoiState
+import com.pennsieve.models.PackageType._
+import com.pennsieve.models._
+import com.pennsieve.timeseries.AnnotationData
+import com.pennsieve.aws.email.Email
 
 import enumeratum.Json4s
 

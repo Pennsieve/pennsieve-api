@@ -1,10 +1,10 @@
 // Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
 
-package com.blackfynn.db
+package com.pennsieve.db
 
-import com.blackfynn.domain.SqlError
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.{
+import com.pennsieve.domain.SqlError
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.{
   CognitoId,
   Degree,
   OrcidAuthorization,

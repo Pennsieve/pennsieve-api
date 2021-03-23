@@ -1,21 +1,21 @@
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.db._
-import com.blackfynn.models._
+import com.pennsieve.db._
+import com.pennsieve.models._
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities
-import com.blackfynn.core.utilities.FutureEitherHelpers
+import com.pennsieve.core.utilities
+import com.pennsieve.core.utilities.FutureEitherHelpers
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.domain.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.domain.{
   CoreError,
   NotFound,
   PermissionError,
   PredicateError
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 
 case class TeamManager(secureOrganizationManager: SecureOrganizationManager) {
 

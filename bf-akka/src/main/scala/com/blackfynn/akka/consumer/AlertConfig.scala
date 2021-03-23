@@ -1,6 +1,6 @@
-package com.blackfynn.akka.consumer
+package com.pennsieve.akka.consumer
 
-import com.blackfynn.utilities.Container
+import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
 
 trait AlertConfig { self: Container =>
