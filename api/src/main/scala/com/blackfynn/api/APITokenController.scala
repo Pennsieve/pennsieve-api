@@ -18,6 +18,7 @@ package com.pennsieve.api
 
 import cats.data.EitherT
 import cats.implicits._
+import com.pennsieve.aws.cognito.CognitoClient
 import com.pennsieve.dtos.{ APITokenDTO, APITokenSecretDTO }
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
@@ -36,6 +37,7 @@ case class UpdateTokenRequest(name: String)
 class APITokenController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
+  cognitoClient: CognitoClient,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -70,7 +72,7 @@ class APITokenController(
         organization = secureContainer.organization
         body <- extractOrError[CreateTokenRequest](parsedBody).toEitherT[Future]
         token_secret <- secureContainer.tokenManager
-          .create(body.name, secureContainer.user, organization)
+          .create(body.name, secureContainer.user, organization, cognitoClient)
           .orError
       } yield APITokenSecretDTO(token_secret)
 
@@ -133,13 +135,14 @@ class APITokenController(
         parameters pathParam[String]("uuid").description("API Token UUID")
     )
   ) {
-
     new AsyncResult {
       val result = for {
         tokenUUID <- paramT[String]("uuid")
         secureContainer <- getSecureContainer
         token <- secureContainer.tokenManager.get(tokenUUID).orError
-        deleted <- secureContainer.tokenManager.delete(token).orError
+        deleted <- secureContainer.tokenManager
+          .delete(token, cognitoClient)
+          .orError
       } yield deleted
 
       override val is = result.value.map(OkResult)

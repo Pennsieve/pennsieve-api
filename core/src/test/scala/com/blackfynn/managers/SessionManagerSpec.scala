@@ -16,6 +16,7 @@
 
 package com.pennsieve.managers
 
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.domain.NotFound
 import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.domain.Sessions.{
@@ -31,6 +32,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class SessionManagerSpec extends BaseManagerSpec {
 
   implicit def um: UserManager = userManager
+
+  val mockCognito: MockCognito = new MockCognito()
 
   "create" should "generate a new browser session" in {
     val user = createUser()
@@ -60,7 +63,7 @@ class SessionManagerSpec extends BaseManagerSpec {
     val _secureTokenManager = secureTokenManager(user)
 
     val (token, secret) = _secureTokenManager
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognito)
       .await
       .right
       .value

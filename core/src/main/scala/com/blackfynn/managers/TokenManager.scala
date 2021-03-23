@@ -16,6 +16,7 @@
 
 package com.pennsieve.managers
 
+import com.pennsieve.aws.cognito.CognitoClient
 import com.pennsieve.models.{ Organization, Token, User }
 import io.github.nremond.SecureHash
 import cats.data.EitherT
@@ -35,12 +36,14 @@ class TokenManager(db: Database) {
   def create(
     name: String,
     user: User,
-    organization: Organization
+    organization: Organization,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Token, Secret)] = {
     val tokenString = java.util.UUID.randomUUID.toString
     val secret = java.util.UUID.randomUUID.toString
+
     val token = Token(
       name,
       tokenString,
@@ -48,7 +51,18 @@ class TokenManager(db: Database) {
       organization.id,
       user.id
     )
+
     for {
+      _ <- cognitoClient
+        .adminCreateToken(tokenString, cognitoClient.getTokenPoolId())
+        .toEitherT
+      _ <- cognitoClient
+        .adminSetUserPassword(
+          tokenString,
+          secret,
+          cognitoClient.getTokenPoolId()
+        )
+        .toEitherT
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
         .toEitherT
@@ -97,11 +111,18 @@ class TokenManager(db: Database) {
     } yield token
 
   def delete(
-    token: Token
+    token: Token,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] =
-    db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
+  ): EitherT[Future, CoreError, Int] = {
+    for {
+      _ <- cognitoClient
+        .adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
+        .toEitherT
+      result <- db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
+    } yield result
+  }
 
   def getOrganization(
     token: Token
@@ -118,7 +139,8 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
   override def create(
     name: String,
     user: User,
-    organization: Organization
+    organization: Organization,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Token, Secret)] = {
@@ -131,10 +153,17 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
       organization.id,
       user.id
     )
+
     for {
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Write, "")
       )
+      _ <- cognitoClient
+        .adminCreateToken(name, cognitoClient.getTokenPoolId())
+        .toEitherT
+      _ <- cognitoClient
+        .adminSetUserPassword(name, secret, cognitoClient.getTokenPoolId())
+        .toEitherT
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
         .toEitherT
@@ -174,15 +203,20 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
     } yield token
 
   override def delete(
-    token: Token
+    token: Token,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] =
+  ): EitherT[Future, CoreError, Int] = {
+
     for {
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Read, token.token)
       )
+      _ <- cognitoClient
+        .adminDeleteUser(token.name, cognitoClient.getTokenPoolId())
+        .toEitherT
       result <- db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
     } yield result
-
+  }
 }
