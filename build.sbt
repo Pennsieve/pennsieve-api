@@ -25,7 +25,7 @@ ThisBuild / organizationName := "University of Pennsylvania"
 ThisBuild / licenses := List("Apache-2.0" -> new URL("https://www.apache.org/licenses/LICENSE-2.0.txt"))
 ThisBuild / startYear := Some(2021)
 
-ThisBuild / version := sys.props.get("version").getOrElse("SNAPSHOT")
+ThisBuild / version := sys.props.get("version").getOrElse("bootstrap-SNAPSHOT")
 
 val publishToNexus =
   settingKey[Option[Resolver]]("Pennsieve Nexus repository resolver")
