@@ -1,6 +1,20 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
 import java.io._
 import java.util.UUID
@@ -13,27 +27,27 @@ import com.amazonaws.services.s3.model.{
   ObjectMetadata,
   PutObjectResult
 }
-import com.blackfynn.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
-import com.blackfynn.aws.s3.{ LocalS3Container, _ }
-import com.blackfynn.aws.sns.LocalSNSContainer
-import com.blackfynn.clients.{
+import com.pennsieve.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
+import com.pennsieve.aws.s3.{ LocalS3Container, _ }
+import com.pennsieve.aws.sns.LocalSNSContainer
+import com.pennsieve.clients.{
   MockJobSchedulingServiceClient,
   MockJobSchedulingServiceContainer,
   MockUploadServiceContainer
 }
-import com.blackfynn.core.utilities
-import com.blackfynn.core.utilities.{
+import com.pennsieve.core.utilities
+import com.pennsieve.core.utilities.{
   getFileType,
   splitFileName,
   DatabaseContainer,
   RedisContainer
 }
-import com.blackfynn.db.OrganizationsMapper
-import com.blackfynn.managers.FileManager.UploadSourceFile
-import com.blackfynn.managers.{ DatasetManager, FileManager, PackageManager }
-import com.blackfynn.models
-import com.blackfynn.models.Utilities.escapeName
-import com.blackfynn.models.{
+import com.pennsieve.db.OrganizationsMapper
+import com.pennsieve.managers.FileManager.UploadSourceFile
+import com.pennsieve.managers.{ DatasetManager, FileManager, PackageManager }
+import com.pennsieve.models
+import com.pennsieve.models.Utilities.escapeName
+import com.pennsieve.models.{
   Dataset,
   FileChecksum,
   FileHash,
@@ -49,10 +63,10 @@ import com.blackfynn.models.{
   PayloadType,
   Upload
 }
-import com.blackfynn.service.utilities.ContextLogger
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.uploads.consumer.antivirus._
+import com.pennsieve.service.utilities.ContextLogger
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.uploads.consumer.antivirus._
 import org.apache.commons.io.FilenameUtils
 import org.testcontainers.shaded.org.apache.commons.io.FileUtils
 

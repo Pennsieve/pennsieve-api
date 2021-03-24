@@ -1,10 +1,25 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.domain.NotFound
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.domain.Sessions.{
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.domain.NotFound
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.domain.Sessions.{
   sessionKey,
   APISession,
   BrowserSession,
@@ -17,6 +32,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class SessionManagerSpec extends BaseManagerSpec {
 
   implicit def um: UserManager = userManager
+
+  val mockCognito: MockCognito = new MockCognito()
 
   "create" should "generate a new browser session" in {
     val user = createUser()
@@ -46,7 +63,7 @@ class SessionManagerSpec extends BaseManagerSpec {
     val _secureTokenManager = secureTokenManager(user)
 
     val (token, secret) = _secureTokenManager
-      .create("test token", user, testOrganization)
+      .create("test token", user, testOrganization, mockCognito)
       .await
       .right
       .value
