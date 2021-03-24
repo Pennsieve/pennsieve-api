@@ -101,4 +101,17 @@ data "aws_iam_policy_document" "iam_policy_document" {
       data.terraform_remote_state.platform_infrastructure.outputs.jobs_kms_key_arn,
     ]
   }
+
+  statement {
+    sid    = "CognitoManageUserPool"
+    effect = "Allow"
+
+    actions = [
+      "cognito-idp:AdminCreateUser",
+    ]
+
+    resources = [
+      data.terraform_remote_state.cognito.outputs.user_pool_arn,
+    ]
+  }
 }
