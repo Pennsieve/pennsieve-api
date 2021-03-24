@@ -294,9 +294,7 @@ lazy val coreSettings = Seq(
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-    "com.softwaremill.diffx" %% "diffx-core" % "0.3.12" % Test,
-    "com.softwaremill.diffx" %% "diffx-scalatest" % "0.3.12" % Test
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
   ),
   excludeDependencies ++= unwantedDependencies
 )
