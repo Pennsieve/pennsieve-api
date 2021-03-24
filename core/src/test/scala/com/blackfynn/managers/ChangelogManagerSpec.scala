@@ -29,9 +29,7 @@ import java.time.{ LocalDate, ZoneId, ZoneOffset, ZonedDateTime }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-import com.softwaremill.diffx.scalatest.DiffMatcher
-
-class ChangelogManagerSpec extends BaseManagerSpec with DiffMatcher {
+class ChangelogManagerSpec extends BaseManagerSpec {
 
   import EventGroupPeriod._
 
@@ -205,13 +203,13 @@ class ChangelogManagerSpec extends BaseManagerSpec with DiffMatcher {
       .right
       .get
 
-    page1 should matchTo(List(e4, e3, e2))
+    page1 shouldBe List(e4, e3, e2)
     cursor1 shouldBe defined
 
     val (page2, cursor2) =
       cm.getEvents(dataset, limit = 3, cursor = cursor1.get).await.right.get
 
-    page2 should matchTo(List(e1))
+    page2 shouldBe List(e1)
     cursor2 shouldBe empty
   }
 
@@ -245,13 +243,13 @@ class ChangelogManagerSpec extends BaseManagerSpec with DiffMatcher {
       .right
       .get
 
-    page1 should matchTo(List(e4, e3, e2))
+    page1 shouldBe List(e4, e3, e2)
     cursor1 shouldBe defined
 
     val (page2, cursor2) =
       cm.getEvents(dataset, limit = 3, cursor = cursor1.get).await.right.get
 
-    page2 should matchTo(List(e1))
+    page2 shouldBe List(e1)
     cursor2 shouldBe empty
   }
 
@@ -388,56 +386,54 @@ class ChangelogManagerSpec extends BaseManagerSpec with DiffMatcher {
     )
 
     val (timeline, cursor) = cm.getTimeline(dataset, now = Now).await.right.get
-    timeline.map(_._1) should matchTo(
-      List(
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_PACKAGE,
-          2,
-          Now.toLocalDate(),
-          DAY,
-          timeRange(Now.minusHours(2), Now)
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.MOVE_PACKAGE,
-          1,
-          Now.toLocalDate(),
-          DAY,
-          timeRange(Now.minusHours(3), Now.minusHours(3))
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_MODEL,
-          1,
-          Now.toLocalDate().minusDays(1),
-          DAY,
-          timeRange(Now.minusDays(1), Now.minusDays(1))
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.DELETE_MODEL,
-          1,
-          Now.toLocalDate().minusDays(1),
-          DAY,
-          timeRange(
-            Now.minusDays(1).minusHours(1),
-            Now.minusDays(1).minusHours(1)
-          )
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_PACKAGE,
-          1,
-          Now.toLocalDate().minusDays(2),
-          DAY,
-          timeRange(Now.minusDays(2), Now.minusDays(2))
+    timeline.map(_._1) shouldBe List(
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_PACKAGE,
+        2,
+        Now.toLocalDate(),
+        DAY,
+        timeRange(Now.minusHours(2), Now)
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.MOVE_PACKAGE,
+        1,
+        Now.toLocalDate(),
+        DAY,
+        timeRange(Now.minusHours(3), Now.minusHours(3))
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_MODEL,
+        1,
+        Now.toLocalDate().minusDays(1),
+        DAY,
+        timeRange(Now.minusDays(1), Now.minusDays(1))
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.DELETE_MODEL,
+        1,
+        Now.toLocalDate().minusDays(1),
+        DAY,
+        timeRange(
+          Now.minusDays(1).minusHours(1),
+          Now.minusDays(1).minusHours(1)
         )
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_PACKAGE,
+        1,
+        Now.toLocalDate().minusDays(2),
+        DAY,
+        timeRange(Now.minusDays(2), Now.minusDays(2))
       )
     )
   }
@@ -452,53 +448,51 @@ class ChangelogManagerSpec extends BaseManagerSpec with DiffMatcher {
 
     val (timeline, cursor) = cm.getTimeline(dataset, now = Now).await.right.get
 
-    timeline.map(_._1) should matchTo(
-      List(
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_RECORD,
-          1,
-          Now.toLocalDate(),
-          DAY,
-          timeRange(Now, Now)
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_RECORD,
-          1,
-          Now.toLocalDate().minusDays(6),
-          DAY,
-          timeRange(Now.minusDays(6), Now.minusDays(6))
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_PACKAGE,
-          2,
-          LocalDate.of(2021, 2, 1),
-          WEEK,
-          timeRange(Now.minusDays(13), Now.minusDays(10))
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.MOVE_PACKAGE,
-          1,
-          LocalDate.of(2021, 2, 1),
-          WEEK,
-          timeRange(Now.minusDays(11), Now.minusDays(11))
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_MODEL,
-          2,
-          LocalDate.of(2021, 1, 25),
-          WEEK,
-          timeRange(Now.minusDays(16), Now.minusDays(15))
-        )
+    timeline.map(_._1) shouldBe List(
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_RECORD,
+        1,
+        Now.toLocalDate(),
+        DAY,
+        timeRange(Now, Now)
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_RECORD,
+        1,
+        Now.toLocalDate().minusDays(6),
+        DAY,
+        timeRange(Now.minusDays(6), Now.minusDays(6))
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_PACKAGE,
+        2,
+        LocalDate.of(2021, 2, 1),
+        WEEK,
+        timeRange(Now.minusDays(13), Now.minusDays(10))
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.MOVE_PACKAGE,
+        1,
+        LocalDate.of(2021, 2, 1),
+        WEEK,
+        timeRange(Now.minusDays(11), Now.minusDays(11))
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_MODEL,
+        2,
+        LocalDate.of(2021, 1, 25),
+        WEEK,
+        timeRange(Now.minusDays(16), Now.minusDays(15))
       )
     )
   }
@@ -547,35 +541,33 @@ class ChangelogManagerSpec extends BaseManagerSpec with DiffMatcher {
       cm.getTimeline(dataset, limit = 3, now = Now).await.right.get
     cursor1 shouldBe defined
 
-    page1.map(_._1) should matchTo(
-      List(
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_RECORD,
-          1,
-          Now.toLocalDate(),
-          DAY,
-          timeRange(Now, Now)
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_RECORD,
-          1,
-          Now.toLocalDate().minusDays(6),
-          DAY,
-          timeRange(Now.minusDays(6), Now.minusDays(6))
-        ),
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_PACKAGE,
-          2,
-          LocalDate.of(2021, 2, 1),
-          WEEK,
-          timeRange(Now.minusDays(13), Now.minusDays(10))
-        )
+    page1.map(_._1) shouldBe List(
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_RECORD,
+        1,
+        Now.toLocalDate(),
+        DAY,
+        timeRange(Now, Now)
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_RECORD,
+        1,
+        Now.toLocalDate().minusDays(6),
+        DAY,
+        timeRange(Now.minusDays(6), Now.minusDays(6))
+      ),
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_PACKAGE,
+        2,
+        LocalDate.of(2021, 2, 1),
+        WEEK,
+        timeRange(Now.minusDays(13), Now.minusDays(10))
       )
     )
 
@@ -586,17 +578,15 @@ class ChangelogManagerSpec extends BaseManagerSpec with DiffMatcher {
 
     cursor2 shouldBe defined
 
-    page2.map(_._1) should matchTo(
-      List(
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.MOVE_PACKAGE,
-          1,
-          LocalDate.of(2021, 2, 1),
-          WEEK,
-          timeRange(Now.minusDays(11), Now.minusDays(11))
-        )
+    page2.map(_._1) shouldBe List(
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.MOVE_PACKAGE,
+        1,
+        LocalDate.of(2021, 2, 1),
+        WEEK,
+        timeRange(Now.minusDays(11), Now.minusDays(11))
       )
     )
 
@@ -605,17 +595,15 @@ class ChangelogManagerSpec extends BaseManagerSpec with DiffMatcher {
 
     cursor3 shouldBe None
 
-    page3.map(_._1) should matchTo(
-      List(
-        ChangelogEventGroup(
-          dataset.id,
-          List(superAdmin.id),
-          ChangelogEventName.CREATE_MODEL,
-          2,
-          LocalDate.of(2021, 1, 25),
-          WEEK,
-          timeRange(Now.minusDays(16), Now.minusDays(15))
-        )
+    page3.map(_._1) shouldBe List(
+      ChangelogEventGroup(
+        dataset.id,
+        List(superAdmin.id),
+        ChangelogEventName.CREATE_MODEL,
+        2,
+        LocalDate.of(2021, 1, 25),
+        WEEK,
+        timeRange(Now.minusDays(16), Now.minusDays(15))
       )
     )
   }
