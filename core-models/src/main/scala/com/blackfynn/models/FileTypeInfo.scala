@@ -198,7 +198,7 @@ object FileTypeInfo {
         masterExtension = None,
         grouping = Individual,
         validate = false,
-        hasWorkflow = true,
+        hasWorkflow = false,
         icon = Timeseries
       )
     case NEV =>
