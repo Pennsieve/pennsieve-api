@@ -16,18 +16,27 @@
 
 package com.blackfynn.aws.cognito
 
+import com.pennsieve.models.CognitoId
 import org.scalatest.{ BeforeAndAfter, FlatSpec, Matchers }
-import pdi.jwt.{ JwtCirce, JwtClaim }
+import pdi.jwt.{ JwtCirce, JwtClaim, JwtHeader }
+
+import java.util.UUID
+import java.time.Instant
 
 class CognitoJWTAuthenticatorSpec
     extends FlatSpec
     with Matchers
     with BeforeAndAfter {
 
-  var testToken: String =
-    JwtCirce.encode(JwtClaim("claim"))
-  var invalidToken: String =
-    JwtCirce.encode(JwtClaim("claim"))
+  var testToken: String = JwtCirce.encode(
+    header = "{\"kid\": \"keyId\"}",
+    claim = "{\"sub\": \"0f14d0ab-9605-4a62-a9e4-5ed26688389b\", \"iat\": " + (Instant
+      .now()
+      .toEpochMilli() / 1000 + 9999)
+      + "}"
+  )
+//  var invalidToken: String = JwtCirce.encode
+//    JwtCirce.encode(JwtClaim("claim"))
 
   var testPublicKeysJson: String =
     "{\n\t\"keys\": [{\n\t\t\"kid\": \"1234example=\",\n\t\t\"alg\": \"RS256\",\n\t\t\"kty\": \"RSA\",\n\t\t\"e\": \"AQAB\",\n\t\t\"n\": \"1234567890\",\n\t\t\"use\": \"sig\"\n\t}, {\n\t\t\"kid\": \"5678example=\",\n\t\t\"alg\": \"RS256\",\n\t\t\"kty\": \"RSA\",\n\t\t\"e\": \"AQAB\",\n\t\t\"n\": \"987654321\",\n\t\t\"use\": \"sig\"\n\t}]\n}"
@@ -40,13 +49,23 @@ class CognitoJWTAuthenticatorSpec
     )
   }
 
-
-  "validateToken" should "return true if supplied token is valid" in {
-    CognitoJWTAuthenticator.validateToken(testToken) should equal(true)
+  "getKeyId" should "work" in {
+    CognitoJWTAuthenticator.getKeyId(testToken) should equal(Right("keyId"))
   }
 
-//  "getUserIdFromToken" should "return user ID from supplied token payload" in {
-//    CognitoJWTAuthenticator.getUserIdFromToken(testToken) should equal("userid")
-//  }
+  "validateJwt" should "return CognitoPayload if supplied token is valid" in {
+    CognitoJWTAuthenticator.validateJwt(
+      "foo",
+      "bar",
+      "appuserfoo,appuserbar",
+      testToken,
+      CognitoJWTAuthenticator.getJwkProvider("foo", "bar")
+    ) should equal(
+      new CognitoPayload(
+        CognitoId(UUID.fromString("0f14d0ab-9605-4a62-a9e4-5ed26688389b")),
+        java.time.Instant.now()
+      )
+    )
+  }
 
 }

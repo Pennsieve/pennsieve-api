@@ -16,61 +16,28 @@
 
 package com.blackfynn.aws.cognito
 
-import com.auth0.jwk.{GuavaCachedJwkProvider, JwkProvider, UrlJwkProvider}
-import io.circe.derivation.{deriveDecoder, deriveEncoder}
-import io.circe.{Decoder, Encoder, Json, Parser, ParsingFailure}
-import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim, JwtOptions}
+import com.auth0.jwk.{ GuavaCachedJwkProvider, JwkProvider, UrlJwkProvider }
+import io.circe.derivation.{ deriveDecoder, deriveEncoder }
+import io.circe.{ Decoder, Encoder, Json, Parser, ParsingFailure }
+import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim, JwtOptions }
 import cats.data._
 import cats.implicits._
 import com.pennsieve.models.CognitoId
 
 import java.time.Instant
 import java.util.UUID
-import scala.io.Source.fromURL
-
-/*
-trait CognitoClaimType {}
-
-object CognitoClaimType {
-  implicit def claimTypeEncoder: Encoder[CognitoClaimType] =
-    deriveEncoder[CognitoClaimType]
-  implicit def claimTypeDecoder: Decoder[CognitoClaimType] =
-    deriveDecoder[CognitoClaimType]
-}
-
-case class CognitoClaim(cognitoUsername: String) extends CognitoClaimType {
-  def toJwtClaim: JwtClaim = JwtClaim(content = cognitoUsername)
-}
-
-object CognitoClaim {
-  private def v2Decoder: Decoder[CognitoClaim] = deriveDecoder[CognitoClaim]
-
-  private def v1Decoder: Decoder[CognitoClaim] = new Decoder[CognitoClaim] {
-    final def apply(c: HCursor): Decoder.Result[CognitoClaim] =
-      for {
-        cognitoUsername <- c.downField("cognito:username").as[String]
-      } yield CognitoClaim(cognitoUsername = cognitoUsername)
-  }
-
-  implicit def cognitoClaimEncoder: Encoder[CognitoClaim] =
-    deriveEncoder[CognitoClaim]
-  implicit def cognitoClaimDecoder: Decoder[CognitoClaim] =
-    List(v2Decoder, v1Decoder).reduceLeft(_ or _)
-}
- */
 
 final case class CognitoPayload(id: CognitoId, issuedAt: Instant)
 
 object CognitoPayload {
+
   /** Create a CognitoPayload from the given claim
     *
     * @param claim The claim to parse into a CognitoPayload
     * @param resourceServer All scopes that are not related to the
     *        given resource server will be filtered out
     */
-  def apply(
-    claim: JwtClaim,
-  ): Either[Throwable, CognitoPayload] =
+  def apply(claim: JwtClaim): Either[Throwable, CognitoPayload] =
     for {
       subject <- Either.fromOption(
         claim.subject,
@@ -82,18 +49,6 @@ object CognitoPayload {
         new Throwable("JWT claim missing 'iat' field:")
       )
       issuedAtInstant <- Either.catchNonFatal(Instant.ofEpochSecond(issuedAt))
-//      claimContent <- io.circe.parser.parse(claim.content)
-//      scopes <- claimContent.hcursor
-//        .downField("scope")
-//        .as[Option[List[(CognitoResourceServerIdentifier, Scope)]]]
-//      filteredScopes = scopes.toList.flatten
-//        .filter {
-//          case (scopeResourceServer, _) =>
-//            scopeResourceServer == resourceServer
-//          case _ => false
-//        }
-//        .map { case (_, scope) => scope }
-//        .toSet
     } yield CognitoPayload(cognitoId, issuedAtInstant)
 }
 
@@ -121,9 +76,9 @@ object CognitoJWTAuthenticator extends Parser {
   ): Either[Throwable, CognitoPayload] = {
     for {
       keyId <- getKeyId(token)
-      jwk <- Either.catchNonFatal(jwkProvider.get(keyId)) // verify the key is within the JWKS
+      jwk <- Either.catchNonFatal(jwkProvider.get(keyId))
       claim <- JwtCirce
-        .decode(token, jwk.getPublicKey, Seq(JwtAlgorithm.RS256)) // performs validation
+        .decode(token, jwk.getPublicKey, Seq(JwtAlgorithm.RS256))
         .toEither
       _ <- validateClaim(claim, awsRegion, awsUserPoolId, awsAppClientIds)
       payload <- CognitoPayload(claim)
@@ -134,7 +89,7 @@ object CognitoJWTAuthenticator extends Parser {
    * Parse the JWT without verifying the signature here only to retrieve the
    * header's kid for use in later validation
    */
-  private def getKeyId(token: String): Either[Throwable, String] = {
+  def getKeyId(token: String): Either[Throwable, String] = {
     JwtCirce
       .decodeAll(token, options = JwtOptions(signature = false))
       .toEither
@@ -154,9 +109,7 @@ object CognitoJWTAuthenticator extends Parser {
     s"https://cognito-idp.$awsRegion.amazonaws.com/$awsUserPoolId"
   }
 
-  private case class CognitoContent(
-    client_id: Option[String]
-  )
+  case class CognitoContent(client_id: Option[String])
 
   object CognitoContent {
     implicit def encoder: Encoder[CognitoContent] =
@@ -179,9 +132,8 @@ object CognitoJWTAuthenticator extends Parser {
   ): Either[Throwable, Unit] =
     decode[CognitoContent](claim.content).flatMap { content =>
       (
-        claim.issuer.contains(getUserPoolEndpoint(awsRegion, awsUserPoolId)) || claim.issuer.contains(
-          getUserPoolEndpoint(awsRegion, awsUserPoolId).dropRight(1)
-        ),
+        claim.issuer.contains(getUserPoolEndpoint(awsRegion, awsUserPoolId)) || claim.issuer
+          .contains(getUserPoolEndpoint(awsRegion, awsUserPoolId).dropRight(1)),
         (content.client_id.exists(a => a == awsAppClientIds) || claim.audience
           .exists(audiences => audiences == awsAppClientIds))
       ) match {
@@ -196,21 +148,6 @@ object CognitoJWTAuthenticator extends Parser {
         case _ => Right(())
       }
     }
-
-  /*
-  def getUserIdFromToken(token: Jwt.Token): Either[Throwable, String] = {
-    for {
-      claim <- JwtCirce
-        .decode(token.value, "jwt-key", Seq(JwtAlgorithm.HS256))
-        .toEither
-      content <- decode[CognitoClaim](claim.content)
-    } yield {
-      content.cognitoUsername
-
-      // TODO: now take the above and get Blackfynn ID from DB
-    }
-  }
-   */
 
   override def parse(input: String): Either[ParsingFailure, Json] = ???
 }
