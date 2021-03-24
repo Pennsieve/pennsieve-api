@@ -20,7 +20,10 @@ ThisBuild / credentials += Credentials(
 ThisBuild / useCoursier := false
 
 ThisBuild / scalaVersion := "2.12.11"
-ThisBuild / organization := "com.blackfynn"
+ThisBuild / organization := "com.pennsieve"
+ThisBuild / organizationName := "University of Pennsylvania"
+ThisBuild / licenses := List("Apache-2.0" -> new URL("https://www.apache.org/licenses/LICENSE-2.0.txt"))
+ThisBuild / startYear := Some(2021)
 
 ThisBuild / version := sys.props.get("version").getOrElse("bootstrap-SNAPSHOT")
 
@@ -53,8 +56,8 @@ lazy val akkaHttpVersion = "10.1.11"
 
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
-lazy val auditMiddlewareVersion = "0.2.8-SNAPSHOT"
-lazy val authMiddlewareVersion = "4.2.2"
+lazy val auditMiddlewareVersion = "com.pennsieve-SNAPSHOT"
+lazy val authMiddlewareVersion = "4.2.3"
 
 lazy val authyVersion = "1.5.1"
 lazy val awsVersion = "1.11.931"
@@ -71,18 +74,19 @@ lazy val scalatraVersion = "2.6.5"
 lazy val scalatestVersion = "3.0.3"
 lazy val slickVersion = "3.3.3"
 lazy val testContainersVersion = "0.38.8"
-lazy val utilitiesVersion = "0.1.10-SNAPSHOT"
-lazy val jobSchedulingServiceClientVersion = "6-ac82190"
-lazy val serviceUtilitiesVersion = "1.3.4-SNAPSHOT"
-lazy val discoverServiceClientVersion = "21-3c068e2"
-lazy val doiServiceClientVersion = "18-0f4025e"
+lazy val utilitiesVersion = "3-cd7539b"
+lazy val jobSchedulingServiceClientVersion = "3-1a58954"
+lazy val serviceUtilitiesVersion = "6-2a4488a"
+lazy val discoverServiceClientVersion = "6-c26717e"
+lazy val doiServiceClientVersion = "3-9436155"
+lazy val timeseriesCoreVersion = "4-d8f62a4"
 lazy val commonsIoVersion = "2.6"
 lazy val enumeratumVersion = "1.5.14"
 
 lazy val unwantedDependencies = Seq(
   ExclusionRule("commons-logging", "commons-logging"),
   // Drop core-models pulled in as a transitive dependency by clients
-  ExclusionRule("com.blackfynn", "core-models_2.12"),
+  ExclusionRule("com.pennsieve", "core-models_2.12"),
   ExclusionRule("com.typesafe.akka", "akka-protobuf-v3_2.12")
 )
 
@@ -163,7 +167,7 @@ lazy val coreApiSharedSettings = Seq(
     "The New Motion Repository" at "https://nexus.thenewmotion.com/content/repositories/releases-public",
   ),
   libraryDependencies ++= Seq(
-    "com.blackfynn" %% "audit-middleware" % auditMiddlewareVersion,
+    "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion,
     "org.json4s" %% "json4s-ext" % json4sVersion,
     "commons-io" % "commons-io" % commonsIoVersion,
@@ -224,10 +228,10 @@ lazy val apiSettings = Seq(
   libraryDependencies ++= Seq(
     "commons-codec" % "commons-codec" % "1.7",
     "com.authy" % "authy-java" % authyVersion,
-    "com.blackfynn" %% "audit-middleware" % auditMiddlewareVersion,
-    "com.blackfynn" %% "auth-middleware" % authMiddlewareVersion,
-    "com.blackfynn" %% "doi-service-client" % doiServiceClientVersion,
-    "com.blackfynn" %% "discover-service-client" % discoverServiceClientVersion,
+    "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
+    "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
+    "com.pennsieve" %% "doi-service-client" % doiServiceClientVersion,
+    "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
@@ -258,10 +262,10 @@ lazy val coreSettings = Seq(
   publishMavenStyle := true,
   scalacOptions ++= Seq("-language:higherKinds"),
   libraryDependencies ++= Seq(
-    "com.blackfynn" %% "auth-middleware" % authMiddlewareVersion,
-    "com.blackfynn" %% "job-scheduling-service-client" % jobSchedulingServiceClientVersion,
-    "com.blackfynn" %% "service-utilities" % serviceUtilitiesVersion,
-    "com.blackfynn" %% "utilities" % utilitiesVersion,
+    "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
+    "com.pennsieve" %% "job-scheduling-service-client" % jobSchedulingServiceClientVersion,
+    "com.pennsieve" %% "service-utilities" % serviceUtilitiesVersion,
+    "com.pennsieve" %% "utilities" % utilitiesVersion,
     "com.authy" % "authy-java" % authyVersion % Test,
     "commons-codec" % "commons-codec" % "1.10",
     "commons-validator" % "commons-validator" % "1.6",
@@ -301,8 +305,8 @@ lazy val coreSettings = Seq(
 lazy val jobsSettings = Seq(
   name := "jobs",
   libraryDependencies ++= Seq(
-    "com.blackfynn" %% "audit-middleware" % auditMiddlewareVersion,
-    "com.blackfynn" %% "timeseries-core" % "1.2.13-SNAPSHOT",
+    "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
+    "com.pennsieve" %% "timeseries-core" % timeseriesCoreVersion,
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
@@ -343,7 +347,7 @@ lazy val adminSettings = Seq(
   name := "admin",
   publishTo := publishToNexus.value,
   libraryDependencies ++= Seq(
-    "com.blackfynn" %% "discover-service-client" % discoverServiceClientVersion,
+    "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
     "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.14.0",
     "com.iheart" %% "ficus" % ficusVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
@@ -377,7 +381,7 @@ lazy val authorizationServiceSettings = Seq(
     "com.iheart" %% "ficus" % ficusVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "io.circe" %% "circe-java8" % circeVersion,
-    "com.blackfynn" %% "auth-middleware" % authMiddlewareVersion,
+    "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
     // testing deps
     "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test,
@@ -531,7 +535,7 @@ lazy val uploadsConsumerSettings = Seq(
 lazy val bfAkkaSettings = Seq(
   name := "bf-akka",
   libraryDependencies ++= Seq(
-    "com.blackfynn" %% "utilities" % utilitiesVersion,
+    "com.pennsieve" %% "utilities" % utilitiesVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
     "com.lightbend.akka" %% "akka-stream-alpakka-sns" % alpakkaVersion,
     "com.lightbend.akka" %% "akka-stream-alpakka-sqs" % alpakkaVersion,
@@ -547,7 +551,7 @@ lazy val coreClientsSettings = Seq(
   publishTo := publishToNexus.value,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
-    "com.blackfynn" %% "utilities" % utilitiesVersion,
+    "com.pennsieve" %% "utilities" % utilitiesVersion,
     "de.heikoseeberger" %% "akka-http-circe" % akkaCirceVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "io.circe" %% "circe-core" % circeVersion,
@@ -635,7 +639,7 @@ lazy val organizationStorageMigrationSettings =
 lazy val messageTemplateSettings = Seq(
   name := "message-templates",
   publishTo := publishToNexus.value,
-  messageTemplatesOutputPackage := "com.blackfynn.templates",
+  messageTemplatesOutputPackage := "com.pennsieve.templates",
   messageTemplatesOutputFile := "GeneratedMessageTemplates.scala",
   messageTemplatesInputDirectory := "html",
   messageTemplatesInputGlob := "*.html"
@@ -647,6 +651,7 @@ lazy val core = project
   .settings(coreApiSharedSettings: _*)
   .settings(coreSettings: _*)
   .dependsOn(`core-models`, `bf-aws`, `message-templates`, migrations % "test->compile")
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val admin = project
   .dependsOn(
@@ -654,6 +659,7 @@ lazy val admin = project
     `bf-akka-http` % "test->test;compile->compile"
   )
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(adminSettings: _*)
 
@@ -663,17 +669,20 @@ lazy val `authorization-service` = project
     `bf-akka-http` % "test->test;compile->compile"
   )
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(authorizationServiceSettings: _*)
 
 lazy val `bf-akka-http` = project
   .dependsOn(core % "test->test;compile->compile")
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(bfAkkaHttpSettings: _*)
 
 lazy val api = project
   .dependsOn(core % "test->test;compile->compile")
   .enablePlugins(JettyPlugin, sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(coreApiSharedSettings: _*)
   .settings(apiSettings: _*)
@@ -685,11 +694,13 @@ lazy val jobs = project
     `bf-akka-http` % "test->test;compile->compile"
   )
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(jobsSettings: _*)
 
 lazy val migrations = project
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(migrationsSettings: _*)
 
 lazy val `uploads-consumer` = project
@@ -699,43 +710,52 @@ lazy val `uploads-consumer` = project
     `bf-akka-http` % "test->test;compile->compile"
   )
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(uploadsConsumerSettings: _*)
 
 lazy val `etl-data-cli` = project
   .dependsOn(core % "test->test;compile->compile")
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(etlDataCLISettings: _*)
 
 lazy val `bf-akka` = project
   .settings(bfAkkaSettings)
   .dependsOn(core % "test->test;compile->compile")
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `core-models` = project
   .settings(coreModelsSettings)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `core-clients` = project
   .settings(coreClientsSettings)
   .dependsOn(`core-models`)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `bf-aws` = project
   .settings(bfAwsSettings)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val `discover-publish` = project
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(discoverPublishSettings: _*)
   .dependsOn(core % "test->test;compile->compile")
 
 lazy val `organization-storage-migration` = project
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(organizationStorageMigrationSettings: _*)
   .dependsOn(core % "test->test;compile->compile")
 
 lazy val `unused-organization-migration` = project
   .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(unusedOrganizationMigrationSettings: _*)
   .dependsOn(core % "test->test;compile->compile")
@@ -743,6 +763,7 @@ lazy val `unused-organization-migration` = project
 lazy val `message-templates` = project
   .settings(messageTemplateSettings: _*)
   .enablePlugins(CompileMessageTemplates)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val root = (project in file("."))
   .aggregate(

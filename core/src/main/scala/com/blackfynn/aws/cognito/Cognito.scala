@@ -1,9 +1,23 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.aws.cognito
+package com.pennsieve.aws.cognito
 
-import com.blackfynn.models.CognitoId
-import com.blackfynn.domain.{ NotFound, PredicateError }
+import com.pennsieve.models.CognitoId
+import com.pennsieve.domain.{ NotFound, PredicateError }
 import cats.data._
 import cats.implicits._
 import scala.compat.java8.FutureConverters._
@@ -14,6 +28,9 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserRequest,
   AdminCreateUserResponse,
+  AdminDeleteUserRequest,
+  AdminDeleteUserResponse,
+  AdminSetUserPasswordRequest,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
@@ -28,10 +45,37 @@ import com.typesafe.config.Config
 
 trait CognitoClient {
   def adminCreateUser(
-    email: String
+    email: String,
+    userPoolId: String
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId]
+
+  def adminCreateToken(
+    email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId]
+
+  def adminDeleteUser(
+    email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def adminSetUserPassword(
+    username: String,
+    password: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def getUserPoolId(): String
+
+  def getTokenPoolId(): String
 
   def resendUserInvite(
     email: String,
@@ -72,19 +116,11 @@ class Cognito(
   tokenPoolId: String
 ) extends CognitoClient {
 
-  def adminCreateUser(
-    email: String
+  def adminCreate(
+    request: AdminCreateUserRequest
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId] = {
-
-    val request = AdminCreateUserRequest
-      .builder()
-      .userPoolId(userPoolId)
-      .username(email)
-      .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
-      .build()
-
     for {
       cognitoResponse <- client
         .adminCreateUser(request)
@@ -93,9 +129,105 @@ class Cognito(
       cognitoId <- parseCognitoId(cognitoResponse.user()) match {
         case Some(cognitoId) => Future.successful(cognitoId)
         case None =>
-          Future.failed(NotFound("Could not parse Cognito ID from respoonse"))
+          Future.failed(NotFound("Could not parse Cognito ID from response"))
       }
     } yield cognitoId
+  }
+
+  def adminCreateUser(
+    email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId] = {
+    val request = AdminCreateUserRequest
+      .builder()
+      .userPoolId(userPoolId)
+      .username(email)
+      .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
+      .build()
+    adminCreate(request)
+  }
+
+  def adminCreateToken(
+    username: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId] = {
+    val request = AdminCreateUserRequest
+      .builder()
+      .userPoolId(userPoolId)
+      .username(username)
+      .build()
+    adminCreate(request)
+  }
+
+  def adminSetUserPassword(
+    username: String,
+    password: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminSetUserPasswordRequest
+      .builder()
+      .password(password)
+      .permanent(true)
+      .userPoolId(userPoolId)
+      .username(username)
+      .build()
+
+    for {
+      cognitoResponse <- client
+        .adminSetUserPassword(request)
+        .toScala
+
+      // TODO(jesse): Check the status of the cognitoResponse? Return Failure for non
+      // 200 codes.
+      //
+      // cognitoId <- parseCognitoId(cognitoResponse.user()) match {
+      //   case Some(cognitoId) => Future.successful(cognitoId)
+      //   case None =>
+      //     Future.failed(NotFound("Could not parse Cognito ID from response"))
+      // }
+    } yield ()
+  }
+
+  def adminDeleteUser(
+    email: String,
+    userPoolId: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDeleteUserRequest
+      .builder()
+      .userPoolId(userPoolId)
+      .username(email)
+      .build()
+
+    for {
+      cognitoResponse <- client
+        .adminDeleteUser(request)
+        .toScala
+
+      // TODO(jesse): Check the status of the cognitoResponse? Return Failure for non
+      // 200 codes.
+      //
+      // cognitoId <- parseCognitoId(cognitoResponse.user()) match {
+      //   case Some(cognitoId) => Future.successful(cognitoId)
+      //   case None =>
+      //     Future.failed(NotFound("Could not parse Cognito ID from response"))
+      // }
+    } yield ()
+  }
+
+  def getTokenPoolId(): String = {
+    tokenPoolId
+  }
+
+  def getUserPoolId(): String = {
+    userPoolId
   }
 
   def resendUserInvite(

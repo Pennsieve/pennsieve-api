@@ -1,6 +1,20 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
 
 import akka.http.scaladsl.unmarshalling.Unmarshaller._
 import akka.http.scaladsl.model._
@@ -20,8 +34,9 @@ import akka.http.scaladsl.model.StatusCodes.{
 import akka.testkit.TestKitBase
 import akka.util.ByteString
 
-import com.blackfynn.akka.http.EitherValue._
-import com.blackfynn.models.{ DBPermission, User }
+import com.pennsieve.akka.http.EitherValue._
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.models.{ DBPermission, User }
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
 import io.circe.java8.time._
@@ -34,6 +49,8 @@ import scala.concurrent._
 class AuthenticationRoutesSpec
     extends AuthorizationServiceSpec
     with TestKitBase {
+
+  val mockCognito: MockCognito = new MockCognito()
 
   "POST /authentication/login route" should {
 
@@ -147,7 +164,7 @@ class AuthenticationRoutesSpec
 
     "generate a session from an API token and secret" in {
       val (token, secret) = testDIContainer.tokenManager
-        .create("test-api-token", nonAdmin, organizationTwo)
+        .create("test-api-token", nonAdmin, organizationTwo, mockCognito)
         .await
         .value
 
@@ -177,7 +194,7 @@ class AuthenticationRoutesSpec
 
     "respond with a 403 when a user provides a bad password" in {
       val (token, secret) = testDIContainer.tokenManager
-        .create("test-api-token", nonAdmin, organizationTwo)
+        .create("test-api-token", nonAdmin, organizationTwo, mockCognito)
         .await
         .value
 

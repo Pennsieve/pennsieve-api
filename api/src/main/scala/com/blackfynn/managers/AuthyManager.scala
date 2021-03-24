@@ -1,12 +1,26 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import cats.syntax.either._
 import com.authy.AuthyApiClient
 import com.authy.api.{ User => AuthyUser, Users => AuthyUsers }
-import com.blackfynn.api.Error
-import com.blackfynn.models.User
+import com.pennsieve.api.Error
+import com.pennsieve.models.User
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatra.{ ActionResult, InternalServerError }
 

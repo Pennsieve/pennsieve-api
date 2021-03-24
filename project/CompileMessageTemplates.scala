@@ -1,4 +1,4 @@
-package com.blackfynn.templates.compile
+package com.pennsieve.templates.compile
 
 import sbt._
 import sbt.nio.file.FileTreeView

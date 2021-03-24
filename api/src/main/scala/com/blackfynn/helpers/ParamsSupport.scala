@@ -1,13 +1,27 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.api.Error
-import com.blackfynn.helpers.Param.ParamKey
-import com.blackfynn.helpers.either.EitherThrowableErrorConverter.implicits._
-import com.blackfynn.helpers.either.ToEither.implicits._
+import com.pennsieve.api.Error
+import com.pennsieve.helpers.Param.ParamKey
+import com.pennsieve.helpers.either.EitherThrowableErrorConverter.implicits._
+import com.pennsieve.helpers.either.ToEither.implicits._
 import enumeratum.{ Enum, EnumEntry }
 import io.circe._
 import io.circe.parser.decode

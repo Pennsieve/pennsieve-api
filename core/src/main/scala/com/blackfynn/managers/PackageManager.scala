@@ -1,6 +1,20 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.sql.Timestamp
 import java.time.{ ZoneOffset, ZonedDateTime }
@@ -8,20 +22,20 @@ import java.util.UUID
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.audit.middleware.TraceId
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
-import com.blackfynn.models.Utilities.isNameValid
-import com.blackfynn.db._
-import com.blackfynn.domain._
-import com.blackfynn.domain.StorageAggregation.{
+import com.pennsieve.audit.middleware.TraceId
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
+import com.pennsieve.models.Utilities.isNameValid
+import com.pennsieve.db._
+import com.pennsieve.domain._
+import com.pennsieve.domain.StorageAggregation.{
   spackages => PackageStorageAggregationKey
 }
-import com.blackfynn.messages.{ BackgroundJob, DeletePackageJob }
-import com.blackfynn.models.FileObjectType.Source
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.Collection
-import com.blackfynn.models.{
+import com.pennsieve.messages.{ BackgroundJob, DeletePackageJob }
+import com.pennsieve.models.FileObjectType.Source
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.Collection
+import com.pennsieve.models.{
   CollectionUpload,
   Dataset,
   ExternalId,
@@ -40,7 +54,7 @@ import com.blackfynn.models.{
   PublicationStatus,
   User
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.Json
 import org.postgresql.util.PSQLException
 import slick.jdbc.{ GetResult, SQLActionBuilder, TransactionIsolation }
