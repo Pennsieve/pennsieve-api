@@ -159,10 +159,10 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
         PermissionError(actor.nodeId, Write, "")
       )
       _ <- cognitoClient
-        .adminCreateToken(name, cognitoClient.getTokenPoolId())
+        .adminCreateToken(tokenString, cognitoClient.getTokenPoolId())
         .toEitherT
       _ <- cognitoClient
-        .adminSetUserPassword(name, secret, cognitoClient.getTokenPoolId())
+        .adminSetUserPassword(tokenString, secret, cognitoClient.getTokenPoolId())
         .toEitherT
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
