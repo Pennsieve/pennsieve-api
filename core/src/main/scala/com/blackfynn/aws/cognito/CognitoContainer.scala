@@ -25,17 +25,19 @@ import net.ceedubs.ficus.Ficus._
 
 trait CognitoContainer { self: Container =>
 
+  val cognitoConfig: CognitoConfig
   val cognitoClient: CognitoClient
 }
 
 trait AWSCognitoContainer extends CognitoContainer { self: Container =>
 
-  lazy val cognitoClient: CognitoClient = Cognito.fromConfig(config)
+  lazy val cognitoConfig: CognitoConfig = CognitoConfig(config)
+  lazy val cognitoClient: CognitoClient = Cognito(config)
 }
 
 trait LocalCognitoContainer extends CognitoContainer { self: Container =>
 
   // TODO: override with local client
+  lazy val cognitoConfig: CognitoConfig = ???
   lazy val cognitoClient: CognitoClient = ???
-
 }

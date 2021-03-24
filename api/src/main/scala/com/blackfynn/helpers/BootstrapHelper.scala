@@ -134,7 +134,7 @@ trait BaseBootstrapHelper {
 
   lazy val sqsClient: SQSClient = new SQS(awsSQSClient)
 
-  lazy val cognitoClient: CognitoClient = Cognito.fromConfig(config)
+  lazy val cognitoClient: CognitoClient = Cognito(config)
 
   lazy val modelServiceClient = {
 
