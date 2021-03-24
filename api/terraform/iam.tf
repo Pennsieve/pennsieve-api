@@ -6,6 +6,12 @@ resource "aws_iam_policy" "batch_iam_policy" {
   policy = data.aws_iam_policy_document.batch_iam_policy_document.json
 }
 
+resource "aws_iam_policy" "cognito_iam_policy" {
+  name   = "${var.environment_name}-${var.service_name}-cognito-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+  path   = "/service/"
+  policy = data.aws_iam_policy_document.cognito_iam_policy_document.json
+}
+
 resource "aws_iam_policy" "kms_iam_policy" {
   name   = "${var.environment_name}-${var.service_name}-kms-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
   path   = "/service/"
@@ -47,6 +53,11 @@ resource "aws_iam_policy" "sts_iam_policy" {
 resource "aws_iam_role_policy_attachment" "batch_iam_role_policy_attachment" {
   role       = var.ecs_task_iam_role_id
   policy_arn = aws_iam_policy.batch_iam_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "cognito_iam_role_policy_attachment" {
+  role       = var.ecs_task_iam_role_id
+  policy_arn = aws_iam_policy.cognito_iam_policy.arn
 }
 
 resource "aws_iam_role_policy_attachment" "kms_iam_role_policy_attachment" {
@@ -91,6 +102,34 @@ data "aws_iam_policy_document" "batch_iam_policy_document" {
     ]
 
     resources = ["*"]
+  }
+}
+
+data "aws_iam_policy_document" "cognito_iam_policy_document" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "cognito-idp:AdminCreateUser",
+    ]
+
+    resources = [
+      data.terraform_remote_state.cognito.outputs.user_pool_arn,
+    ]
+  }
+
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminDeleteUser",
+      "cognito-idp:AdminSetUserPassword",
+    ]
+
+    resources = [
+      data.terraform_remote_state.cognito.outputs.token_pool_arn,
+    ]
   }
 }
 
@@ -275,26 +314,5 @@ data "aws_iam_policy_document" "uploader_iam_role_policy_document" {
       type        = "AWS"
       identifiers = [var.ecs_task_iam_role_arn]
     }
-  }
-}
-
-# Cognito
-
-resource "aws_iam_policy" "cognito_iam_policy" {
-  name   = "${var.environment_name}-${var.service_name}-cognito-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
-  policy = data.aws_iam_policy_document.cognito_iam_policy_document.json
-}
-
-resource "aws_iam_role_policy_attachment" "cognito_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.cognito_iam_policy.arn
-}
-
-data "aws_iam_policy_document" "cognito_iam_policy_document" {
-  statement {
-    effect = "Allow"
-    actions = ["cognito-idp:*"]
-    resources = ["*"]
   }
 }
