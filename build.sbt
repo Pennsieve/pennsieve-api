@@ -25,7 +25,7 @@ ThisBuild / organizationName := "University of Pennsylvania"
 ThisBuild / licenses := List("Apache-2.0" -> new URL("https://www.apache.org/licenses/LICENSE-2.0.txt"))
 ThisBuild / startYear := Some(2021)
 
-ThisBuild / version := sys.props.get("version").getOrElse("bootstrap-SNAPSHOT")
+ThisBuild / version := sys.props.get("version").getOrElse("SNAPSHOT")
 
 val publishToNexus =
   settingKey[Option[Resolver]]("Pennsieve Nexus repository resolver")
@@ -56,7 +56,7 @@ lazy val akkaHttpVersion = "10.1.11"
 
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
-lazy val auditMiddlewareVersion = "com.pennsieve-SNAPSHOT"
+lazy val auditMiddlewareVersion = "1.0.0"
 lazy val authMiddlewareVersion = "4.2.3"
 
 lazy val authyVersion = "1.5.1"
