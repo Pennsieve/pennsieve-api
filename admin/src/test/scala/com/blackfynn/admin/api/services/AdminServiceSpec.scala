@@ -17,6 +17,7 @@
 package com.pennsieve.admin.api.services
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import akka.testkit.TestKitBase
 import com.pennsieve.admin.api.{ AdminContainer, Router }
 import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainer,
@@ -24,7 +25,12 @@ import com.pennsieve.admin.api.Router.{
   InsecureResourceContainer,
   SecureResourceContainer
 }
-import com.pennsieve.aws.cognito.{ LocalCognitoContainer, MockCognito }
+import com.pennsieve.aws.cognito.{
+  CognitoConfig,
+  CognitoPoolConfig,
+  LocalCognitoContainer,
+  MockCognito
+}
 import com.pennsieve.aws.s3.LocalS3Container
 import com.pennsieve.akka.http.{ RouteService, RouterServiceSpec }
 import com.pennsieve.aws.email.LocalEmailContainer
@@ -33,11 +39,11 @@ import com.pennsieve.core.utilities._
 import com.pennsieve.models.{ Organization, User }
 import com.pennsieve.test._
 import com.pennsieve.test.helpers._
-import akka.testkit.TestKitBase
 import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.clients._
 import com.typesafe.config.{ Config, ConfigValueFactory }
 import org.scalatest._
+import software.amazon.awssdk.regions.Region
 
 import scala.concurrent.Future
 
@@ -119,6 +125,11 @@ trait AdminServiceSpec
       with MockJobSchedulingServiceContainer with LocalCognitoContainer {
         override val postgresUseSSL = false
         override lazy val cognitoClient = new MockCognito()
+        override lazy val cognitoConfig = CognitoConfig(
+          Region.US_EAST_1,
+          CognitoPoolConfig(Region.US_EAST_1, "user-pool-id", "client-id"),
+          CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
+        )
       }
 
     secureContainerBuilder = (user: User, organization: Organization) =>
