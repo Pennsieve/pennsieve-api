@@ -75,33 +75,24 @@ trait CognitoClient {
 
 object Cognito {
 
-  def fromConfig(config: Config): Cognito = {
+  def apply(config: Config): Cognito = {
 
-    val region: Region = config
-      .as[Option[String]]("cognito.region")
-      .map(Region.of(_))
-      .getOrElse(Region.US_EAST_1)
-
-    val userPoolId = config.as[String]("cognito.user_pool_id")
-
-    val tokenPoolId = config.as[String]("cognito.token_pool_id")
+    val cognitoConfig = CognitoConfig(config)
 
     new Cognito(
-      client = CognitoIdentityProviderAsyncClient
+      CognitoIdentityProviderAsyncClient
         .builder()
-        .region(region)
+        .region(cognitoConfig.region)
         .httpClientBuilder(NettyNioAsyncHttpClient.builder())
         .build(),
-      userPoolId = userPoolId,
-      tokenPoolId = tokenPoolId
+      cognitoConfig
     )
   }
 }
 
 class Cognito(
   val client: CognitoIdentityProviderAsyncClient,
-  userPoolId: String,
-  tokenPoolId: String
+  cognitoConfig: CognitoConfig
 ) extends CognitoClient {
 
   def inviteUser(
@@ -111,7 +102,7 @@ class Cognito(
   ): Future[CognitoId] = {
     val request = AdminCreateUserRequest
       .builder()
-      .userPoolId(userPoolId)
+      .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
       .build()
@@ -131,7 +122,7 @@ class Cognito(
 
     val createUserRequest = AdminCreateUserRequest
       .builder()
-      .userPoolId(tokenPoolId)
+      .userPoolId(cognitoConfig.tokenPool.id)
       .username(token)
       .build()
 
@@ -139,7 +130,7 @@ class Cognito(
       .builder()
       .password(secret.plaintext)
       .permanent(true)
-      .userPoolId(tokenPoolId)
+      .userPoolId(cognitoConfig.tokenPool.id)
       .username(token)
       .build()
 
@@ -160,7 +151,7 @@ class Cognito(
   ): Future[Unit] = {
     val request = AdminDeleteUserRequest
       .builder()
-      .userPoolId(tokenPoolId)
+      .userPoolId(cognitoConfig.tokenPool.id)
       .username(token)
       .build()
 
@@ -180,7 +171,7 @@ class Cognito(
     // TODO: sanity check if user already exists before sending?
     val resendRequest = AdminCreateUserRequest
       .builder()
-      .userPoolId(userPoolId)
+      .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
       .messageAction(MessageActionType.RESEND)

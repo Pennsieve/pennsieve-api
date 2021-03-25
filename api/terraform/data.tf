@@ -169,3 +169,14 @@ data "terraform_remote_state" "vpc" {
     region = "us-east-1"
   }
 }
+
+# Import Cognito Data
+data "terraform_remote_state" "cognito" {
+  backend = "s3"
+
+  config = {
+    bucket = "${var.aws_account}-terraform-state"
+    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/cognito/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
