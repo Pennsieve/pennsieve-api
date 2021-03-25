@@ -240,7 +240,7 @@ resource "aws_ssm_parameter" "orcid_redirect_url" {
 }
 
 resource "aws_ssm_parameter" "orcid_read_public_token" {
-  name  = "/${var.environment_name}/${var.service_name}/orcid-read-public-token"
+  name      = "/${var.environment_name}/${var.service_name}/orcid-read-public-token"
   overwrite = false
   type      = "SecureString"
   value     = "dummy"
@@ -372,4 +372,28 @@ resource "aws_ssm_parameter" "pennsieve_s3_uploader_role" {
   name  = "/${var.environment_name}/${var.service_name}/pennsieve-s3-uploader-role"
   type  = "String"
   value = aws_iam_role.uploader_iam_role.arn
+}
+
+resource "aws_ssm_parameter" "cognito_user_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.cognito.outputs.user_pool_id
+}
+
+resource "aws_ssm_parameter" "cognito_user_pool_app_client_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-app-client-id"
+  type  = "String"
+  value = data.terraform_remote_state.cognito.outputs.user_pool_client_id
+}
+
+resource "aws_ssm_parameter" "cognito_token_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.cognito.outputs.token_pool_id
+}
+
+resource "aws_ssm_parameter" "cognito_token_pool_app_client_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-app-client-id"
+  type  = "String"
+  value = data.terraform_remote_state.cognito.outputs.token_pool_client_id
 }
