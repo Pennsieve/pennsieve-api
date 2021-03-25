@@ -162,7 +162,11 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
         .adminCreateToken(tokenString, cognitoClient.getTokenPoolId())
         .toEitherT
       _ <- cognitoClient
-        .adminSetUserPassword(tokenString, secret, cognitoClient.getTokenPoolId())
+        .adminSetUserPassword(
+          tokenString,
+          secret,
+          cognitoClient.getTokenPoolId()
+        )
         .toEitherT
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
