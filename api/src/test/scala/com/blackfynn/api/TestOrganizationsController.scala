@@ -443,7 +443,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       results.get(email).value.success should be(true)
     }
 
-    mockCognito.sentInvites.toList shouldBe List(email)
+    mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
 
     // existing user
     val createReq2 = write(
@@ -469,7 +469,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
 
     // Should not send another request to Cognito
-    mockCognito.sentInvites.toList shouldBe List(email)
+    mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
   }
 
   test("add an organization member as a blind reviewer") {
