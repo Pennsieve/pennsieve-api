@@ -63,7 +63,7 @@ import scala.util.{ Failure, Success, Try }
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
-  session: Session
+  session: Option[String]
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
@@ -120,7 +120,7 @@ class AuthorizationRoutes(
       } yield {
         val roles =
           List(organizationRole.some, datasetRole, workspaceRole).flatten
-        val userClaim = getUserClaim(user, roles, session)
+        val userClaim = getUserClaim(user, roles)
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
@@ -153,18 +153,19 @@ class AuthorizationRoutes(
     (path("switch-organization") & parameters('organization_id.as[Int]) & put) {
       (organizationId) =>
         val result: Future[UserDTO] = for {
-          _ <- session.isBrowserSession match {
-            case true => Future.successful(())
-            case false => Future.failed(NonBrowserSession)
-          }
+          // TODO: Only allow users to change sessions, not client tokens
+//          _ <- session.isBrowserSession match {
+//            case true => Future.successful(())
+//            case false => Future.failed(NonBrowserSession)
+//          }
           organizationToSwitchTo <- getOrganization(user, organizationId)
-          savedSession <- Future.fromTry(
-            container.sessionManager
-              .update(
-                session.copy(organizationId = organizationToSwitchTo.nodeId)
-              )
-              .toTry
-          )
+//          savedSession <- Future.fromTry(
+//            container.sessionManager
+//              .update(
+//                session.copy(organizationId = organizationToSwitchTo.nodeId)
+//              )
+//              .toTry
+//          )
           updatedUser <- updateUserPreferredOrganization(
             user,
             organizationToSwitchTo
@@ -193,19 +194,20 @@ class AuthorizationRoutes(
 
   private def getUserClaim(
     user: User,
-    roles: List[Jwt.Role],
-    session: Session
+    roles: List[Jwt.Role]
+//    session: Session
   ): UserClaim = {
-    val jwtSession: JwtSession = session.`type` match {
-      case Sessions.APISession(_) => JwtSession.API(session.uuid)
-      case Sessions.BrowserSession => JwtSession.Browser(session.uuid)
-      case Sessions.TemporarySession => JwtSession.Temporary(session.uuid)
-    }
+//    val jwtSession: JwtSession = session.`type` match {
+//      case Sessions.APISession(_) => JwtSession.API(session.uuid)
+//      case Sessions.BrowserSession => JwtSession.Browser(session.uuid)
+//      case Sessions.TemporarySession => JwtSession.Temporary(session.uuid)
+//    }
 
     UserClaim(
       id = UserId(user.id),
       roles = roles,
-      session = Some(jwtSession),
+//      session = Some(jwtSession),
+      session = None,
       node_id = Some(UserNodeId(user.nodeId))
     )
   }

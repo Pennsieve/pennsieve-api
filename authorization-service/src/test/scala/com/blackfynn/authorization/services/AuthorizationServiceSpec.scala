@@ -24,6 +24,7 @@ import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import akka.testkit.TestKitBase
 import com.authy.AuthyApiClient
+import com.pennsieve.aws.cognito.{ CognitoConfig, CognitoPoolConfig }
 import com.pennsieve.clients.MockAuthyApiClient
 import com.redis.RedisClientPool
 import com.typesafe.config.{ Config, ConfigValueFactory }
@@ -35,6 +36,7 @@ import org.scalatest.{
   Matchers,
   WordSpec
 }
+import software.amazon.awssdk.regions.Region
 
 trait AuthorizationServiceSpec
     extends WordSpec
@@ -102,6 +104,12 @@ trait AuthorizationServiceSpec
           new MockAuthyApiClient(authyKey, authyUrl, authyDebugMode)
         override val postgresUseSSL = false
       }
+
+    implicit val cognitoConfig: CognitoConfig = CognitoConfig(
+      Region.US_EAST_1,
+      CognitoPoolConfig(Region.US_EAST_1, "user-pool-id", "client-id"),
+      CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
+    )
 
     routeService = new Router(diContainer)
 
