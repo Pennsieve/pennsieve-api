@@ -59,6 +59,7 @@ object CognitoJWTAuthenticator extends Parser {
     s"https://cognito-idp.$awsRegion.amazonaws.com/$userPoolId/.well-known/jwks.json"
   }
 
+  // TODO: move into Cognito Config
   def getJwkProvider(
     awsRegion: String,
     userPoolId: String
@@ -69,7 +70,6 @@ object CognitoJWTAuthenticator extends Parser {
   }
 
   def validateJwt(
-    awsAppClientIds: String,
     token: String
   )(implicit
     cognitoConfig: CognitoConfig
@@ -80,7 +80,7 @@ object CognitoJWTAuthenticator extends Parser {
       claim <- JwtCirce
         .decode(token, jwk.getPublicKey, Seq(JwtAlgorithm.RS256))
         .toEither
-      _ <- validateClaim(claim, awsAppClientIds)
+      _ <- validateClaim(claim)
       payload <- CognitoPayload(claim)
     } yield payload
   }
@@ -127,8 +127,7 @@ object CognitoJWTAuthenticator extends Parser {
    * slash which the issuer might not contain
    */
   private def validateClaim(
-    claim: JwtClaim,
-    awsAppClientIds: String
+    claim: JwtClaim
   )(implicit
     cognitoConfig: CognitoConfig
   ): Either[Throwable, Unit] =
@@ -136,8 +135,8 @@ object CognitoJWTAuthenticator extends Parser {
       (
         claim.issuer.contains(getUserPoolEndpoint()) || claim.issuer
           .contains(getUserPoolEndpoint().dropRight(1)),
-        (content.client_id.exists(a => a == awsAppClientIds) || claim.audience
-          .exists(audiences => audiences == awsAppClientIds))
+        (content.client_id.exists(a => a == cognitoConfig.userPool.appClientId) || claim.audience
+          .exists(audiences => audiences == cognitoConfig.userPool.appClientId))
       ) match {
         case (false, _) => Left(new Exception("claim contains invalid issuer"))
         case (_, false) => {

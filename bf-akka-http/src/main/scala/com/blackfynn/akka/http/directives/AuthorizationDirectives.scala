@@ -173,7 +173,7 @@ object AuthorizationDirectives {
       realm = realm,
       authenticator = {
         case Credentials.Provided(token) =>
-          (userContextFromCognitoJwt(container, token)(cognitoConfig, ec) recoverWith {
+          (userContextFromCognitoJwt(container, token) recoverWith {
             case _ =>
               JwtAuthenticator
                 .userContextFromToken(container, Jwt.Token(token)) recoverWith {
@@ -194,7 +194,7 @@ object AuthorizationDirectives {
   ): EitherT[Future, CoreError, UserAuthContext] = {
     for {
       cognitoContext <- CognitoJWTAuthenticator
-        .validateJwt(config.userPool.appClientId, token)
+        .validateJwt(token)
         .leftMap(ThrowableError(_))
         .toEitherT[Future]
       user <- container.userManager.getByCognitoId(cognitoContext.id)
