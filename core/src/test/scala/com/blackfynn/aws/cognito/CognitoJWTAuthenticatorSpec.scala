@@ -89,8 +89,8 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
   }
 
   /*
-   * TODO: Come back and finish this test fingers crossed as well as tests for
-   * invalid JWTs
+ * TODO: Come back and finish this test fingers crossed as well as tests for
+ * invalid JWTs
 
   "validateJwt" should "return CognitoPayload if supplied token is valid" in {
     CognitoJWTAuthenticator.validateJwt(
@@ -106,6 +106,6 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
       )
     )
   }
-   */
+ */
 
 }
