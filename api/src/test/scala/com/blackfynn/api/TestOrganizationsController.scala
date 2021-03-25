@@ -18,6 +18,7 @@ package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
+import com.pennsieve.aws.email.Email
 import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.db.UserInvitesMapper
 import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
@@ -442,7 +443,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       results.get(email).value.success should be(true)
     }
 
-    mockCognito.sentInvites.toList shouldBe List(email)
+    mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
 
     // existing user
     val createReq2 = write(
@@ -468,7 +469,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
 
     // Should not send another request to Cognito
-    mockCognito.sentInvites.toList shouldBe List(email)
+    mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
   }
 
   test("add an organization member as a blind reviewer") {
@@ -676,7 +677,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       status should be(200)
       val response = parsedBody.extract[AddUserResponse]
 
-      mockCognito.reSentInvites.get(email) shouldBe Some(
+      mockCognito.reSentInvites.get(Email(email)) shouldBe Some(
         invalidInvite.cognitoId
       )
     }

@@ -18,6 +18,7 @@ package com.pennsieve.managers
 
 import java.time.Duration
 
+import com.pennsieve.aws.email.Email
 import com.pennsieve.models.DBPermission.Delete
 import org.scalatest.EitherValues._
 import org.scalatest.Matchers
@@ -101,6 +102,8 @@ class UserInviteManagerSpec extends BaseManagerSpec with Matchers {
       .right
       .value
 
-    mockCognito.reSentInvites.get(email) shouldBe Some(userInvite.cognitoId)
+    mockCognito.reSentInvites.get(Email(email)) shouldBe Some(
+      userInvite.cognitoId
+    )
   }
 }

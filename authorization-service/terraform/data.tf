@@ -14,6 +14,17 @@ data "terraform_remote_state" "account" {
   }
 }
 
+# Import Cognito Data
+data "terraform_remote_state" "cognito" {
+  backend = "s3"
+
+  config = {
+    bucket = "${var.aws_account}-terraform-state"
+    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/cognito/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
 # Import API Redis Data
 data "terraform_remote_state" "pennsieve_redis" {
   backend = "s3"

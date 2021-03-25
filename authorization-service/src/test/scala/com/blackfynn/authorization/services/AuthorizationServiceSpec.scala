@@ -107,8 +107,8 @@ trait AuthorizationServiceSpec
 
     implicit val cognitoConfig: CognitoConfig = CognitoConfig(
       Region.US_EAST_1,
-      CognitoPoolConfig(Region.US_EAST_1, "1234", ""),
-      CognitoPoolConfig(Region.US_EAST_1, "1234", "")
+      CognitoPoolConfig(Region.US_EAST_1, "user-pool-id", "client-id"),
+      CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
     )
 
     routeService = new Router(diContainer)

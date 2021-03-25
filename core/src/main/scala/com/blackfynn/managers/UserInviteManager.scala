@@ -108,10 +108,7 @@ class UserInviteManager(db: Database) {
                 case Some(id) => EitherT.rightT[Future, CoreError](id)
                 case None =>
                   cognitoClient
-                    .adminCreateUser(
-                      email.trim.toLowerCase,
-                      cognitoClient.getUserPoolId()
-                    )
+                    .inviteUser(Email(email.trim.toLowerCase))
                     .toEitherT
               }
 
@@ -208,7 +205,7 @@ class UserInviteManager(db: Database) {
     cognitoClient: CognitoClient
   ): EitherT[Future, CoreError, UserInvite] =
     cognitoClient
-      .resendUserInvite(userInvite.email, userInvite.cognitoId)
+      .resendUserInvite(Email(userInvite.email), userInvite.cognitoId)
       .toEitherT
       .map(_ => userInvite)
 }
