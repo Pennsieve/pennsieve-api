@@ -36,7 +36,7 @@ import net.ceedubs.ficus.Ficus._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object AuthorizationDirectives extends StrictLogging {
+object AuthorizationDirectives {
 
   type AuthorizationContainer = Container
     with SessionManagerContainer
@@ -162,7 +162,6 @@ object AuthorizationDirectives extends StrictLogging {
       authenticator = {
         case Credentials.Provided(token) =>
           (userContextFromCognitoJwt(container, token) recoverWith {
-
             case _ =>
               JwtAuthenticator
                 .userContextFromToken(container, Jwt.Token(token)) recoverWith {
