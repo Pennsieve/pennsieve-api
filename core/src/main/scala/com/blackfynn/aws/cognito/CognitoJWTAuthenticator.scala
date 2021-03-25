@@ -22,6 +22,7 @@ import io.circe.{ Decoder, Encoder, Json, Parser, ParsingFailure }
 import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim, JwtOptions }
 import cats.data._
 import cats.implicits._
+import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.models.CognitoId
 
 import java.time.Instant
@@ -68,19 +69,18 @@ object CognitoJWTAuthenticator extends Parser {
   }
 
   def validateJwt(
-    awsRegion: String,
-    awsUserPoolId: String,
     awsAppClientIds: String,
-    token: String,
-    jwkProvider: JwkProvider
+    token: String
+  )(implicit
+    cognitoConfig: CognitoConfig
   ): Either[Throwable, CognitoPayload] = {
     for {
       keyId <- getKeyId(token)
-      jwk <- Either.catchNonFatal(jwkProvider.get(keyId))
+      jwk <- Either.catchNonFatal(cognitoConfig.jwkProvider.get(keyId))
       claim <- JwtCirce
         .decode(token, jwk.getPublicKey, Seq(JwtAlgorithm.RS256))
         .toEither
-      _ <- validateClaim(claim, awsRegion, awsUserPoolId, awsAppClientIds)
+      _ <- validateClaim(claim, awsAppClientIds)
       payload <- CognitoPayload(claim)
     } yield payload
   }
@@ -103,10 +103,12 @@ object CognitoJWTAuthenticator extends Parser {
   }
 
   private def getUserPoolEndpoint(
-    awsRegion: String,
-    awsUserPoolId: String
+  )(implicit
+    cognitoConfig: CognitoConfig
   ): String = {
-    s"https://cognito-idp.$awsRegion.amazonaws.com/$awsUserPoolId"
+    var region: String = cognitoConfig.region.toString
+    var poolId: String = cognitoConfig.userPool.id
+    s"https://cognito-idp.$region.amazonaws.com/$poolId"
   }
 
   case class CognitoContent(client_id: Option[String])
@@ -126,14 +128,14 @@ object CognitoJWTAuthenticator extends Parser {
    */
   private def validateClaim(
     claim: JwtClaim,
-    awsRegion: String,
-    awsUserPoolId: String,
     awsAppClientIds: String
+  )(implicit
+    cognitoConfig: CognitoConfig
   ): Either[Throwable, Unit] =
     decode[CognitoContent](claim.content).flatMap { content =>
       (
-        claim.issuer.contains(getUserPoolEndpoint(awsRegion, awsUserPoolId)) || claim.issuer
-          .contains(getUserPoolEndpoint(awsRegion, awsUserPoolId).dropRight(1)),
+        claim.issuer.contains(getUserPoolEndpoint()) || claim.issuer
+          .contains(getUserPoolEndpoint().dropRight(1)),
         (content.client_id.exists(a => a == awsAppClientIds) || claim.audience
           .exists(audiences => audiences == awsAppClientIds))
       ) match {
