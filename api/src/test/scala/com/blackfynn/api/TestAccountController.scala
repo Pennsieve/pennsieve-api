@@ -39,6 +39,16 @@ class TestAccountController extends BaseApiTest {
     )
   }
 
+  test("swagger") {
+    import com.pennsieve.web.ResourcesApp
+    addServlet(new ResourcesApp, "/api-docs/*")
+
+    get("/api-docs/swagger.json") {
+      status should equal(200)
+      println(body)
+    }
+  }
+
   test("reset password") {
     val temporarySession =
       sessionManager.generateTemporarySession(loggedInUser).await.right.value
