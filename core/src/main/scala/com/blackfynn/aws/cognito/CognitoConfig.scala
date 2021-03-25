@@ -20,6 +20,7 @@ import com.auth0.jwk.JwkProvider
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
 import software.amazon.awssdk.regions.Region
+import java.net.URL
 
 case class CognitoConfig(
   region: Region,
@@ -29,12 +30,26 @@ case class CognitoConfig(
 
   // TODO: separate providers for each pool
   lazy val jwkProvider = CognitoJWTAuthenticator.getJwkProvider(userPool)
+
 }
 
 /**
   * Config for a single Cognito User Pool
   */
-case class CognitoPoolConfig(region: Region, id: String, appClientId: String)
+case class CognitoPoolConfig(region: Region, id: String, appClientId: String) {
+
+  def endpoint: String =
+    s"https://cognito-idp.${region.toString}.amazonaws.com/$id"
+
+  /**
+    * Must be a URL type - Auth0 JDK provider strips string endpoints down to
+    * their domain name.
+    */
+  def jwkUrl: URL =
+    new URL(
+      s"https://cognito-idp.${region.toString}.amazonaws.com/$id/.well-known/jwks.json"
+    )
+}
 
 object CognitoConfig {
 
