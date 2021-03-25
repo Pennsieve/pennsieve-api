@@ -33,6 +33,7 @@ import com.pennsieve.authorization.routes.{
   AuthorizationRoutes,
   DiscoverAuthorizationRoutes
 }
+import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.core.utilities._
 import com.pennsieve.utilities._
 
@@ -52,6 +53,7 @@ class Router(
   val container: ResourceContainer
 )(implicit
   system: ActorSystem,
+  cognitoConfig: CognitoConfig,
   materializer: ActorMaterializer
 ) extends RouteService {
 
@@ -62,19 +64,26 @@ class Router(
 
   // use bf-akka-http for authorization:
   val routes: Route =
-    authentication.routes ~ session(container, realm = "authentication")(
+//    authentication.routes ~ session(container, realm = "authentication")(
+    authentication.routes ~ user(container, realm = "authentication")(
+      container,
+      cognitoConfig,
       executionContext
     ) {
-      case (session, user, organization) =>
+      case userContext =>
         val authorization = new AuthorizationRoutes(
-          user = user,
-          organization = organization,
-          session = session
+          user = userContext.user,
+          organization = userContext.organization,
+          session = userContext.session
         )(container, executionContext, materializer)
 
         logByEnvironment(authorization.routes)
 
-    } ~ user(container, realm = "authentication")(container, executionContext) {
+    } ~ user(container, realm = "authentication")(
+      container,
+      cognitoConfig,
+      executionContext
+    ) {
       case userContext =>
         logByEnvironment(
           DiscoverAuthorizationRoutes(user = userContext.user)(

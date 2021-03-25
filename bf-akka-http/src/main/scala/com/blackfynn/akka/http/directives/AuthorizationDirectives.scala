@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.blackfynn.akka.http.directives
+package com.pennsieve.akka.http.directives
 
 import java.time.ZonedDateTime
 import akka.http.scaladsl.server.Directive1
@@ -35,7 +35,7 @@ import com.pennsieve.core.utilities.{
   UserAuthContext,
   UserManagerContainer
 }
-import com.pennsieve.domain.{ CoreError, Error }
+import com.pennsieve.domain.{ CoreError, Error, ThrowableError }
 import com.pennsieve.domain.Sessions.{
   APISession,
   BrowserSession,
@@ -208,6 +208,7 @@ object AuthorizationDirectives {
           token,
           jwkProvider
         )
+        .leftMap(ThrowableError(_))
         .toEitherT[Future]
       user <- container.userManager.getByCognitoId(cognitoContext.id)
       // TODO: Better tracking of organizations w/ sessions etc
