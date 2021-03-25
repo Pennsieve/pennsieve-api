@@ -16,17 +16,18 @@
 
 package com.blackfynn.aws.cognito
 
-import com.auth0.jwk.{ GuavaCachedJwkProvider, JwkProvider, UrlJwkProvider }
+import com.auth0.jwk.{ GuavaCachedJwkProvider, UrlJwkProvider }
 import io.circe.derivation.{ deriveDecoder, deriveEncoder }
-import io.circe.{ Decoder, Encoder, Json, Parser, ParsingFailure }
+import io.circe.{ Decoder, Encoder }
+import io.circe.parser.decode
 import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim, JwtOptions }
-import cats.data._
 import cats.implicits._
 import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.models.CognitoId
 
 import java.time.Instant
 import java.util.UUID
+import java.net.URL
 
 final case class CognitoPayload(id: CognitoId, issuedAt: Instant)
 
@@ -53,7 +54,7 @@ object CognitoPayload {
     } yield CognitoPayload(cognitoId, issuedAtInstant)
 }
 
-object CognitoJWTAuthenticator extends Parser {
+object CognitoJWTAuthenticator {
 
   def getKeysUrl(awsRegion: String, userPoolId: String): String = {
     s"https://cognito-idp.$awsRegion.amazonaws.com/$userPoolId/.well-known/jwks.json"
@@ -65,7 +66,7 @@ object CognitoJWTAuthenticator extends Parser {
     userPoolId: String
   ): GuavaCachedJwkProvider = {
     new GuavaCachedJwkProvider(
-      new UrlJwkProvider(getKeysUrl(awsRegion, userPoolId))
+      new UrlJwkProvider(new URL(getKeysUrl(awsRegion, userPoolId)))
     )
   }
 
@@ -150,5 +151,4 @@ object CognitoJWTAuthenticator extends Parser {
       }
     }
 
-  override def parse(input: String): Either[ParsingFailure, Json] = ???
 }
