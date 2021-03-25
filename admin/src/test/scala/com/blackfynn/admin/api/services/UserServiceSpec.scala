@@ -65,7 +65,8 @@ class UserServiceSpec extends AdminServiceSpec {
           testDIContainer.cognitoClient
             .asInstanceOf[MockCognito]
             .sentInvites
-            .head == email
+            .head
+            .address == email
         )
       }
     }
