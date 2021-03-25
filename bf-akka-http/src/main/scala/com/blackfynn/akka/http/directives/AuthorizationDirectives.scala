@@ -22,33 +22,21 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.Credentials
 import cats.data.EitherT
 import cats.implicits._
-import com.auth0.jwk.{ GuavaCachedJwkProvider, JwkProvider }
+import com.auth0.jwk.{GuavaCachedJwkProvider, JwkProvider}
 import com.blackfynn.aws.cognito.CognitoJWTAuthenticator
-import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
+import com.pennsieve.auth.middleware.{Jwt, UserClaim}
 import com.pennsieve.aws.cognito.CognitoConfig
-import com.pennsieve.core.utilities.{
-  FutureEitherHelpers,
-  JwtAuthenticator,
-  OrganizationManagerContainer,
-  SessionManagerContainer,
-  TokenManagerContainer,
-  UserAuthContext,
-  UserManagerContainer
-}
-import com.pennsieve.domain.{ CoreError, Error, ThrowableError }
-import com.pennsieve.domain.Sessions.{
-  APISession,
-  BrowserSession,
-  Session,
-  TemporarySession
-}
-import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.core.utilities.{FutureEitherHelpers, JwtAuthenticator, OrganizationManagerContainer, SessionManagerContainer, TokenManagerContainer, UserAuthContext, UserManagerContainer}
+import com.pennsieve.domain.{CoreError, Error, ThrowableError}
+import com.pennsieve.domain.Sessions.{APISession, BrowserSession, Session, TemporarySession}
+import com.pennsieve.models.{Organization, User}
 import com.pennsieve.utilities.Container
+import com.typesafe.scalalogging.StrictLogging
 import net.ceedubs.ficus.Ficus._
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
-object AuthorizationDirectives {
+object AuthorizationDirectives extends StrictLogging {
 
   type AuthorizationContainer = Container
     with SessionManagerContainer
@@ -174,6 +162,7 @@ object AuthorizationDirectives {
       authenticator = {
         case Credentials.Provided(token) =>
           (userContextFromCognitoJwt(container, token) recoverWith {
+
             case _ =>
               JwtAuthenticator
                 .userContextFromToken(container, Jwt.Token(token)) recoverWith {
