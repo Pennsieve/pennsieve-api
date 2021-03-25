@@ -53,7 +53,7 @@ object CognitoConfig {
     val tokenPoolAppClientId =
       config.as[String]("cognito.token_pool.app_client_id")
 
-    lazy implicit val jwkProvider =
+    lazy val jwkProvider =
       CognitoJWTAuthenticator.getJwkProvider(region.toString(), tokenPoolId)
 
     CognitoConfig(
