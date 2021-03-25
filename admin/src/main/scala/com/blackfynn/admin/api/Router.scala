@@ -118,6 +118,7 @@ class Router(
   val adminOnlyRoutes: Route =
     admin(insecureContainer, realm = "admin")(
       insecureContainer.jwtConfig,
+      insecureContainer.cognitoConfig,
       executionContext
     ) {
       case context =>
