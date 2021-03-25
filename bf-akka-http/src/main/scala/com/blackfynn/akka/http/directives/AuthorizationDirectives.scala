@@ -17,13 +17,15 @@
 package com.pennsieve.akka.http.directives
 
 import java.time.ZonedDateTime
-
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.Credentials
 import cats.data.EitherT
 import cats.implicits._
+import com.auth0.jwk.JwkProvider
+import com.blackfynn.aws.cognito.CognitoJWTAuthenticator
 import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
+import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.core.utilities.{
   FutureEitherHelpers,
   JwtAuthenticator,
@@ -33,7 +35,7 @@ import com.pennsieve.core.utilities.{
   UserAuthContext,
   UserManagerContainer
 }
-import com.pennsieve.domain.{ CoreError, Error }
+import com.pennsieve.domain.{ CoreError, Error, ThrowableError }
 import com.pennsieve.domain.Sessions.{
   APISession,
   BrowserSession,
@@ -163,19 +165,64 @@ object AuthorizationDirectives {
     realm: String
   )(implicit
     config: Jwt.Config,
+    cognitoConfig: CognitoConfig,
     ec: ExecutionContext
   ): Directive1[UserAuthContext] = {
     authenticateOAuth2Async(
       realm = realm,
       authenticator = {
         case Credentials.Provided(token) =>
-          (JwtAuthenticator
-            .userContextFromToken(container, Jwt.Token(token)) recoverWith {
-            case _ => extractContextFromSession(container, token)
+          (userContextFromCognitoJwt(container, token)(
+            cognitoConfig,
+            ec,
+            CognitoJWTAuthenticator.getJwkProvider(
+              cognitoConfig.region.toString(),
+              cognitoConfig.userPool.id
+            )
+          ) recoverWith {
+            case _ =>
+              JwtAuthenticator
+                .userContextFromToken(container, Jwt.Token(token)) recoverWith {
+                case _ => extractContextFromSession(container, token)
+              }
           }).value.map(_.toOption)
         case _ => Future.successful(None)
       }
     )
+  }
+
+  def userContextFromCognitoJwt(
+    container: AuthorizationContainer,
+    token: String
+  )(implicit
+    config: CognitoConfig,
+    ec: ExecutionContext,
+    jwkProvider: JwkProvider
+  ): EitherT[Future, CoreError, UserAuthContext] = {
+    for {
+      cognitoContext <- CognitoJWTAuthenticator
+        .validateJwt(
+          config.region.toString(),
+          config.userPool.id,
+          config.userPool.appClientId,
+          token,
+          jwkProvider
+        )
+        .leftMap(ThrowableError(_))
+        .toEitherT[Future]
+      user <- container.userManager.getByCognitoId(cognitoContext.id)
+      // TODO: Better tracking of organizations w/ sessions etc
+      preferredOrganizationId <- user._1.preferredOrganizationId match {
+        case Some(id) => EitherT.rightT[Future, CoreError](id)
+        case None =>
+          EitherT.leftT[Future, Int](
+            com.pennsieve.domain.NotFound("User has no preferred organzation.")
+          )
+      }
+      organization <- container.organizationManager.get(preferredOrganizationId)
+    } yield {
+      UserAuthContext(user._1, organization, None)
+    }
   }
 
   /**
@@ -213,6 +260,7 @@ object AuthorizationDirectives {
     realm: String
   )(implicit
     config: Jwt.Config,
+    cognitoConfig: CognitoConfig,
     ec: ExecutionContext
   ): Directive1[UserAuthContext] = {
     authenticateFromJwtOrSession(container, realm).flatMap { context =>
@@ -234,6 +282,7 @@ object AuthorizationDirectives {
     realm: String
   )(implicit
     config: Jwt.Config,
+    cognitoConfig: CognitoConfig,
     ec: ExecutionContext
   ): Directive1[UserAuthContext] =
     authenticateFromJwtOrSession(container, realm).flatMap(provide)

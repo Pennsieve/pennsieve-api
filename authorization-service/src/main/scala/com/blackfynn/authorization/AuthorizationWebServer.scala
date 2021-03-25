@@ -28,6 +28,7 @@ import com.pennsieve.akka.http.{
 }
 import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.authorization.Router.ResourceContainer
+import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.core.utilities._
 import com.pennsieve.utilities.Container
 import com.redis.RedisClientPool
@@ -75,6 +76,8 @@ object AuthorizationWebServer extends App with WebServer with LazyLogging {
       "redis" -> HealthCheck.redisHealthCheck(container.redisClientPool)
     )
   )
+
+  implicit val cognitoConfig = CognitoConfig(config)
 
   override val routeService: RouteService = new Router(container)
 
