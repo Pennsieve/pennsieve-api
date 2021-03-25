@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.blackfynn.aws.cognito
+package com.pennsieve.aws.cognito
 
 import com.auth0.jwk.{ GuavaCachedJwkProvider, UrlJwkProvider }
 import io.circe.derivation.{ deriveDecoder, deriveEncoder }
@@ -22,7 +22,6 @@ import io.circe.{ Decoder, Encoder }
 import io.circe.parser.decode
 import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim, JwtOptions }
 import cats.implicits._
-import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.models.CognitoId
 
 import java.time.Instant
@@ -56,19 +55,8 @@ object CognitoPayload {
 
 object CognitoJWTAuthenticator {
 
-  def getKeysUrl(awsRegion: String, userPoolId: String): String = {
-    s"https://cognito-idp.$awsRegion.amazonaws.com/$userPoolId/.well-known/jwks.json"
-  }
-
-  // TODO: move into Cognito Config
-  def getJwkProvider(
-    awsRegion: String,
-    userPoolId: String
-  ): GuavaCachedJwkProvider = {
-    new GuavaCachedJwkProvider(
-      new UrlJwkProvider(new URL(getKeysUrl(awsRegion, userPoolId)))
-    )
-  }
+  def getJwkProvider(poolConfig: CognitoPoolConfig): GuavaCachedJwkProvider =
+    new GuavaCachedJwkProvider(new UrlJwkProvider(poolConfig.jwkUrl))
 
   def validateJwt(
     token: String
@@ -103,15 +91,6 @@ object CognitoJWTAuthenticator {
       }
   }
 
-  private def getUserPoolEndpoint(
-  )(implicit
-    cognitoConfig: CognitoConfig
-  ): String = {
-    var region: String = cognitoConfig.region.toString
-    var poolId: String = cognitoConfig.userPool.id
-    s"https://cognito-idp.$region.amazonaws.com/$poolId"
-  }
-
   case class CognitoContent(client_id: Option[String])
 
   object CognitoContent {
@@ -124,8 +103,7 @@ object CognitoJWTAuthenticator {
   /*
    * Verify the issuer and audience in the JWT match what was expected
    *
-   * The dropRight on the configuration User Pool endpoint removes a trailing
-   * slash which the issuer might not contain
+   * TODO: check token pool endpoint / client IDs
    */
   private def validateClaim(
     claim: JwtClaim
@@ -134,14 +112,10 @@ object CognitoJWTAuthenticator {
   ): Either[Throwable, Unit] =
     decode[CognitoContent](claim.content).flatMap { content =>
       (
-        claim.issuer.contains(getUserPoolEndpoint()) || claim.issuer
-          .contains(getUserPoolEndpoint().dropRight(1)),
-        content.client_id.exists(a => a == cognitoConfig.userPool.appClientId)
+        claim.issuer.contains(cognitoConfig.userPool.endpoint),
+        content.client_id.exists(_ == cognitoConfig.userPool.appClientId)
           || claim.audience
-            .exists(
-              audiences =>
-                audiences.contains(cognitoConfig.userPool.appClientId)
-            )
+            .exists(_.contains(cognitoConfig.userPool.appClientId))
       ) match {
         case (false, _) => Left(new Exception("claim contains invalid issuer"))
         case (_, false) => {
