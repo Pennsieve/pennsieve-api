@@ -18,6 +18,7 @@ package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
+import com.pennsieve.aws.email.Email
 import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.db.UserInvitesMapper
 import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
@@ -676,7 +677,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       status should be(200)
       val response = parsedBody.extract[AddUserResponse]
 
-      mockCognito.reSentInvites.get(email) shouldBe Some(
+      mockCognito.reSentInvites.get(Email(email)) shouldBe Some(
         invalidInvite.cognitoId
       )
     }
