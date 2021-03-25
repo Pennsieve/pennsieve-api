@@ -136,15 +136,15 @@ object CognitoJWTAuthenticator {
       (
         claim.issuer.contains(getUserPoolEndpoint()) || claim.issuer
           .contains(getUserPoolEndpoint().dropRight(1)),
-        (content.client_id.exists(a => a == cognitoConfig.userPool.appClientId) || claim.audience
-          .exists(audiences => audiences == cognitoConfig.userPool.appClientId))
+        content.client_id.exists(a => a == cognitoConfig.userPool.appClientId)
+          || claim.audience
+            .exists(
+              audiences =>
+                audiences.contains(cognitoConfig.userPool.appClientId)
+            )
       ) match {
         case (false, _) => Left(new Exception("claim contains invalid issuer"))
         case (_, false) => {
-          val audiences = claim.audience
-            .getOrElse(Set.empty)
-            .union(content.client_id.toSet)
-            .mkString(", ")
           Left(new Exception("claim contains invalid audience"))
         }
         case _ => Right(())
