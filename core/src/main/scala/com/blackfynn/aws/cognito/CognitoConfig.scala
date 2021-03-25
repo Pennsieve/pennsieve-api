@@ -17,7 +17,6 @@
 package com.pennsieve.aws.cognito
 
 import com.auth0.jwk.JwkProvider
-import com.blackfynn.aws.cognito.CognitoJWTAuthenticator
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
 import software.amazon.awssdk.regions.Region
@@ -25,9 +24,12 @@ import software.amazon.awssdk.regions.Region
 case class CognitoConfig(
   region: Region,
   userPool: CognitoPoolConfig, // Pennsieve users
-  tokenPool: CognitoPoolConfig, // Client token pool
-  jwkProvider: JwkProvider
-)
+  tokenPool: CognitoPoolConfig // Client token pool
+) {
+
+  // TODO: separate providers for each pool
+  lazy val jwkProvider = CognitoJWTAuthenticator.getJwkProvider(userPool)
+}
 
 /**
   * Config for a single Cognito User Pool
@@ -53,9 +55,6 @@ object CognitoConfig {
     val tokenPoolAppClientId =
       config.as[String]("cognito.token_pool.app_client_id")
 
-    lazy val jwkProvider =
-      CognitoJWTAuthenticator.getJwkProvider(region.toString(), tokenPoolId)
-
     CognitoConfig(
       region = region,
       userPool = CognitoPoolConfig(
@@ -67,8 +66,7 @@ object CognitoConfig {
         region = region,
         id = tokenPoolId,
         appClientId = tokenPoolAppClientId
-      ),
-      jwkProvider = jwkProvider
+      )
     )
   }
 }
