@@ -26,7 +26,6 @@ import com.pennsieve.models.CognitoId
 
 import java.time.Instant
 import java.util.UUID
-import java.net.URL
 
 final case class CognitoPayload(id: CognitoId, issuedAt: Instant)
 
@@ -54,6 +53,15 @@ object CognitoPayload {
 }
 
 object CognitoJWTAuthenticator {
+
+  case class CognitoContent(client_id: Option[String])
+
+  object CognitoContent {
+    implicit def encoder: Encoder[CognitoContent] =
+      deriveEncoder[CognitoContent]
+    implicit def decoder: Decoder[CognitoContent] =
+      deriveDecoder[CognitoContent]
+  }
 
   def getJwkProvider(poolConfig: CognitoPoolConfig): GuavaCachedJwkProvider =
     new GuavaCachedJwkProvider(new UrlJwkProvider(poolConfig.jwkUrl))
@@ -89,15 +97,6 @@ object CognitoJWTAuthenticator {
             new Exception("kid not present in JWT header")
           )
       }
-  }
-
-  case class CognitoContent(client_id: Option[String])
-
-  object CognitoContent {
-    implicit def encoder: Encoder[CognitoContent] =
-      deriveEncoder[CognitoContent]
-    implicit def decoder: Decoder[CognitoContent] =
-      deriveDecoder[CognitoContent]
   }
 
   /*
