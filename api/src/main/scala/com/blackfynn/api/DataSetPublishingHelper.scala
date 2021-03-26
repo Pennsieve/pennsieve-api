@@ -815,6 +815,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     dataset: Dataset,
     owner: User,
     ownerOrcid: String,
+    ownerBearerToken: String,
     description: String,
     license: License,
     contributors: List[ContributorDTO],
@@ -846,10 +847,8 @@ case object DataSetPublishingHelper extends LazyLogging {
       fileCount <- secureContainer.datasetManager
         .sourceFileCount(dataset)
 
-      userToken = secureContainer.generateUserToken
-
       modelCount <- modelServiceClient
-        .getModelStats(userToken, dataset.nodeId)
+        .getModelStats(ownerBearerToken, dataset.nodeId)
         .toEitherT[Future]
 
       discoverRequest = PublishRequest(
@@ -889,14 +888,6 @@ case object DataSetPublishingHelper extends LazyLogging {
         )
       )
 
-      token = JwtAuthenticator.generateServiceToken(
-        1.minute,
-        organization.id,
-        Some(dataset.id)
-      )
-
-      tokenHeader = Authorization(OAuth2BearerToken(token.value))
-
       _ = logger.info(
         s"Sending request to discover to publish dataset ${dataset.nodeId} with request: ${discoverRequest}"
       )
@@ -907,7 +898,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           datasetId = dataset.id,
           embargo = Some(embargo),
           body = discoverRequest,
-          headers = List(tokenHeader),
+          headers = getTokenHeaders(organization, dataset),
           embargoReleaseDate = embargoReleaseDate
         )
         .leftSemiflatMap(handleGuardrailError)

@@ -211,13 +211,10 @@ class DatasetsMapper(val organization: Organization)
     this.filter(_.state =!= (DatasetState.DELETING: DatasetState))
 
   /**
-    * Finds all datatsets for a user provided a minimum permission level
-    * which can be overriden by a credentials passed to the system in the
-    * request
+    * Finds all datatsets for a user provided a minimum permission level.
     *
     * @param user the user to find all permitted datasets for
     * @param withRole the minimum role level (can be overriden)
-    * @param overrideRole the role level to override to
     * @param datasetIds a list of dataset integer ids
     * @param datasetUser the mapper to provide access to the linking table between dataset and user
     * @param datasetTeam the mapper to provide access to the linking table between dataset and team
@@ -227,7 +224,6 @@ class DatasetsMapper(val organization: Organization)
   def find(
     user: User,
     withRole: Option[Role],
-    overrideRole: Option[Role],
     datasetIds: Option[List[Int]]
   )(implicit
     datasetUser: DatasetUserMapper,
@@ -237,8 +233,7 @@ class DatasetsMapper(val organization: Organization)
     maxRoles(user.id).flatMap { roleMap =>
       val datasetIdsByRole = roleMap
         .filter {
-          case (_, role) =>
-            role >= withRole || (overrideRole >= withRole && role.isDefined)
+          case (_, role) => role >= withRole
         }
         .keys
         .toList

@@ -1383,61 +1383,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("elevate permissions using a jwt") {
-    val props = List(
-      ModelProperty("meta", "data", "string", "user-defined"),
-      ModelProperty("other", "unchanged", "string", "user-definied")
-    )
-
-    secureContainer.datasetManager.addUserCollaborator(
-      dataset,
-      loggedInBlindReviewer,
-      Role.BlindReviewer
-    )
-
-    val pdfPackage = packageManager
-      .create(
-        "Foo10",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None,
-        attributes = props
-      )
-      .await
-      .right
-      .value
-
-    get(
-      s"/${pdfPackage.nodeId}",
-      headers = authorizationHeader(blindReviewerJwt) ++ traceIdHeader()
-    ) {
-      status should equal(403)
-    }
-
-    get(
-      s"/${pdfPackage.nodeId}",
-      headers = jwtUserAuthorizationHeader(
-        loggedInOrganization,
-        organizationRole = Role.BlindReviewer,
-        dataset = dataset,
-        datasetRole = Role.Viewer // elevate dataset role
-      ) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val json = parse(response.body)
-
-      compact(render(json \ "content" \ "id")) should include("N:package:")
-      compact(render(json \ "content" \\ "name")) should include("Foo10")
-      compact(render(json \ "content" \\ "packageType")) should include("PDF")
-      compact(render(json \ "properties" \\ "key")) should include("meta")
-      compact(render(json \ "properties" \\ "value")) should include("data")
-      compact(render(json)) should not include ("objects")
-    }
-  }
-
   test("NotFound") {
     get(
       s"/N:collection:invalid-ffe2-4213-ae1a-4fed890bcba6",
@@ -2788,7 +2733,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val externalOrgSecureContainer =
-      secureContainerBuilder(externalUser, externalOrganization, List.empty)
+      secureContainerBuilder(externalUser, externalOrganization)
 
     externalOrgSecureContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value
 

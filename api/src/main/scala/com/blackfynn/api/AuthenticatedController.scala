@@ -282,12 +282,7 @@ trait AuthenticatedController
                   .userContext(insecureContainer, claim)
                   .coreErrorToActionResult()
               }
-            } yield
-              secureContainerBuilder(
-                context.user,
-                context.organization,
-                claim.content.roles
-              )
+            } yield secureContainerBuilder(context.user, context.organization)
 
           // case: Service
           //   Check for the existence of an `X-ORGANIZATION-(INT)-ID` header that defines the organizational context
@@ -300,12 +295,7 @@ trait AuthenticatedController
 
               _ <- validateJwt(request, organization.id).toEitherT[Future]
 
-            } yield
-              secureContainerBuilder(
-                User.serviceUser,
-                organization,
-                claim.content.roles
-              )
+            } yield secureContainerBuilder(User.serviceUser, organization)
         }
       }
 
