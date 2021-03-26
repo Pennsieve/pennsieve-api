@@ -434,24 +434,6 @@ class TestUsersController extends BaseApiTest {
     v.getDayOfMonth should ===(1)
   }
 
-  test("a blind reviewer should be able to get user") {
-    get("", headers = authorizationHeader(blindReviewerJwt) ++ traceIdHeader()) {
-      status should equal(200)
-      body should include(blindReviewerUser.firstName)
-      body should include(blindReviewerUser.lastName)
-    }
-  }
-
-  test("a blind reviewer should be able to sign terms of service") {
-    putJson(
-      "/pennsieve-terms-of-service",
-      tosVersionJson,
-      headers = authorizationHeader(blindReviewerJwt)
-    ) {
-      status should equal(200)
-    }
-  }
-
   test("a service token should be able to get a specified users dto") {
     get(
       s"/${loggedInUser.id}",

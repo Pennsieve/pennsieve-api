@@ -142,7 +142,7 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
         degree = Some(Degree.PhD),
         middleInitial = Some("K"),
         orcid = Some("Fake-Orcid"),
-        userId = Some(loggedInBlindReviewer.id)
+        userId = Some(externalUser.id)
       )
 
     get(s"/${ct2.id}", headers = authorizationHeader(loggedInJwt)) {
@@ -152,14 +152,12 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       //orcid, middle Initial and degree come from the user if userId is provided and they are defined at the user level, otherwise, from the contributor but can be None
 
       (parsedBody \ "firstName").extract[String] should equal(
-        loggedInBlindReviewer.firstName
+        externalUser.firstName
       )
       (parsedBody \ "lastName").extract[String] should equal(
-        loggedInBlindReviewer.lastName
+        externalUser.lastName
       )
-      (parsedBody \ "email").extract[String] should equal(
-        loggedInBlindReviewer.email
-      )
+      (parsedBody \ "email").extract[String] should equal(externalUser.email)
       (parsedBody \ "middleInitial").extractOpt[String] should equal(Some("K"))
       (parsedBody \ "degree").extractOpt[String] should equal(Some("Ph.D."))
       (parsedBody \ "orcid").extractOpt[String] should equal(Some("Fake-Orcid"))

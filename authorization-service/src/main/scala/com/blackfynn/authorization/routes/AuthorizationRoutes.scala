@@ -25,7 +25,6 @@ import com.pennsieve.db._
 import com.pennsieve.domain.{ FeatureNotEnabled, Sessions }
 import com.pennsieve.domain.Sessions.Session
 import com.pennsieve.dtos.{ Builders, UserDTO }
-import com.pennsieve.models.Role.BlindReviewer
 import com.pennsieve.models._
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.{ DBIOAction, Effect, NoStream }
@@ -77,24 +76,10 @@ class AuthorizationRoutes(
     container.config.as[List[Int]]("workspaces.allowed")
 
   val routes: Route = pathPrefix("authorization") {
-    // See https://github.com/Blackfynn/gateway/blob/master/templates/nginx.conf.tmpl
-    //
-    // nginx will route requests from /internal-auth/ to /authorization, setting the
-    // `X-Original-URI` to the full, originating request.
-    //
-    // Based on the `nginx.conf.tmpl` configuration for the gateway, the `X-Original-URI"` header
-    // MUST exist when a request is made for authentication/authorization.
-    headerValueByName("X-Original-URI") { originalURI: String =>
-      {
-        logger.info(
-          s"authorization route: got X-Original-URI header = $originalURI"
-        )
-        authorization(originalURI)
-      }
-    }
+    authorization
   } ~ pathPrefix("session") { switchOrganization }
 
-  def authorization(originalURI: String): Route =
+  def authorization: Route =
     (pathEndOrSingleSlash & get & parameters(
       'organization_id
         .as[String]
@@ -108,11 +93,7 @@ class AuthorizationRoutes(
         _ <- organizationId.traverse(
           assertOrganizationIdMatches(user, organization, _)
         )
-        organizationRole <- getOrganizationRole(
-          user,
-          organization,
-          originalURI.some
-        )
+        organizationRole <- getOrganizationRole(user, organization)
         datasetRole <- datasetId.traverse(getDatasetRole(user, organization, _))
         workspaceRole <- workspaceId.traverse(
           getWorkspaceRole(user, _, allowedWorkspaces)
@@ -301,8 +282,7 @@ private[routes] object AuthorizationQueries {
 
   def getOrganizationRole(
     user: User,
-    organization: Organization,
-    originalURI: Option[String]
+    organization: Organization
   )(implicit
     container: ResourceContainer,
     executionContext: ExecutionContext
@@ -337,19 +317,12 @@ private[routes] object AuthorizationQueries {
       : FixedSqlStreamingAction[Seq[Feature], Feature, Effect.Read] =
       FeatureFlagsMapper.getActiveFeatures(organization.id).result
 
-    def isTrials: Boolean =
-      (user.isSuperAdmin || originalURI.exists(_.contains("/trials")))
-
     val result: Future[(Role, Option[String], Seq[Feature])] =
       container.db
         .run(for {
           permission <- getPermission
           role <- {
             permission.toRole match {
-              case Some(BlindReviewer) if !isTrials =>
-                DBIO.failed(
-                  FeatureNotEnabled("non trials feature for trials user")
-                )
               case Some(role) => DBIO.successful(role)
               case None => DBIO.failed(new InvalidSession(user, organization))
             }

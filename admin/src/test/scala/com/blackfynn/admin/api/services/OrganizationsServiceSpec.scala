@@ -426,8 +426,6 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       val nonAdminUser =
         UserWithPermission(UserDTO(nonAdmin), DBPermission.Delete)
       val ownerUser = UserWithPermission(UserDTO(owner), DBPermission.Owner)
-      val blindReviewerUser =
-        UserWithPermission(UserDTO(blindReviewer), DBPermission.BlindReviewer)
 
       testRequest(
         GET,
@@ -441,8 +439,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         responseAs[List[UserWithPermission]] should contain theSameElementsAs List(
           user,
           nonAdminUser,
-          ownerUser,
-          blindReviewerUser
+          ownerUser
         )
       }
     }

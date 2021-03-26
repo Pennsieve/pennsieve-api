@@ -152,7 +152,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -170,7 +169,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -188,7 +186,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -206,7 +203,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -223,7 +219,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -240,7 +235,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -257,7 +251,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -295,7 +288,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -312,7 +304,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -336,7 +327,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -353,7 +343,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -370,7 +359,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -387,7 +375,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -404,7 +391,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -457,7 +443,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -474,7 +459,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -491,7 +475,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -525,7 +508,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -542,7 +524,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
@@ -559,7 +540,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(
       dm.getDatasetPaginated(
           withRole = Role.Viewer,
-          overrideRole = None,
           limit = None,
           offset = None,
           orderBy = (OrderByColumn.Name, OrderByDirection.Asc),

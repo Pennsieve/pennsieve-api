@@ -730,51 +730,6 @@ class AuthorizationRoutesSpec
         status shouldBe OK
       }
     }
-
-    "return not authorized for a blind reviewer role attempting to access anything outside trials service" in {
-      val request = testRequest(
-        GET,
-        "/authorization",
-        session = blindReviewerSession,
-        headers = withXOriginalURI(s"/model-schema")
-      )
-
-      request ~> routes ~> check(status shouldBe Forbidden)
-    }
-
-    "return ok for a blind reviewer attempting to access trials service" in {
-      val request = testRequest(
-        GET,
-        "/authorization",
-        session = blindReviewerSession,
-        headers = withXOriginalURI(s"/trials")
-      )
-
-      request ~> routes ~> check(status shouldBe OK)
-    }
-
-    "return the trial dataset for a trials request" in {
-      val datasetsMapper = new DatasetsMapper(organizationOne)
-      val datasetManager =
-        new DatasetManager(db, blindReviewer, datasetsMapper)
-      val dataset = datasetManager.create("Test Dataset").await.value
-
-      val request = testRequest(
-        GET,
-        s"/authorization?dataset_id=${dataset.id}",
-        session = blindReviewerSession,
-        headers = withXOriginalURI(s"/trials/${dataset.id}")
-      )
-
-      request ~> routes ~> check {
-        status shouldBe OK
-
-        val claim = getClaim()
-
-        claim.content shouldBe a[UserClaim]
-        claim.content.roles should have length 2
-      }
-    }
   }
 
   "PUT /session/switch-organization route" should {
@@ -834,9 +789,10 @@ class AuthorizationRoutesSpec
     }
 
     "reject a request to switch to an organization a user does not have access to" in {
-      // Confirm the session starts belonging to Organization One
+
+      // Confirm the session starts belonging to Organization Onep
       sessionManager
-        .get(blindReviewerSession.get)
+        .get(ownerSession.get)
         .right
         .get
         .organizationId shouldBe organizationOne.nodeId
@@ -844,14 +800,14 @@ class AuthorizationRoutesSpec
       testRequest(
         PUT,
         s"/session/switch-organization?organization_id=${organizationTwo.id}",
-        session = blindReviewerSession
+        session = ownerSession
       ) ~>
         routes ~> check {
         status shouldEqual Unauthorized
 
         // Verify the session does not belong to Organization Two
         sessionManager
-          .get(blindReviewerSession.get)
+          .get(ownerSession.get)
           .right
           .get
           .organizationId should not be organizationTwo.nodeId

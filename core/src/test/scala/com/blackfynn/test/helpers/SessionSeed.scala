@@ -30,7 +30,7 @@ trait SessionSeed[
 
   var adminSession: Option[String] = None
   var nonAdminSession: Option[String] = None
-  var blindReviewerSession: Option[String] = None
+  var ownerSession: Option[String] = None
 
   override def seed(container: SeedContainer): Unit = {
     super.seed(container)
@@ -43,12 +43,8 @@ trait SessionSeed[
     nonAdminSession = Some(
       sessionManager.generateBrowserSession(nonAdmin, 6000).await.value.uuid
     )
-    blindReviewerSession = Some(
-      sessionManager
-        .generateBrowserSession(blindReviewer, 6000)
-        .await
-        .value
-        .uuid
+    ownerSession = Some(
+      sessionManager.generateBrowserSession(owner, 6000).await.value.uuid
     )
   }
 

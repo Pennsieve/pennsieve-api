@@ -45,7 +45,7 @@ import com.pennsieve.clients.{
   MockJobSchedulingServiceContainer
 }
 import com.pennsieve.core.utilities._
-import com.pennsieve.models.DBPermission.{ Administer, BlindReviewer, Delete }
+import com.pennsieve.models.DBPermission.{ Administer, Delete }
 import com.pennsieve.managers._
 import com.pennsieve.managers.DatasetManager
 import com.pennsieve.helpers._
@@ -195,16 +195,14 @@ trait ApiSuite
       override val dataPostgresUseSSL = false
     }
 
-    secureContainerBuilder = { (user, org, roleOverrides) =>
+    secureContainerBuilder = { (user, org) =>
       new SecureContainer(
         config = config,
         _db = insecureContainer.db,
         _redisClientPool = insecureContainer.redisClientPool,
         user = user,
-        organization = org,
-        roleOverrides = roleOverrides
-      ) with SecureCoreContainer with LocalEmailContainer
-      with RoleOverrideContainer {
+        organization = org
+      ) with SecureCoreContainer with LocalEmailContainer {
         override val postgresUseSSL = false
         override val dataPostgresUseSSL = false
       }
@@ -243,7 +241,6 @@ trait ApiSuite
   var onboardingManager: OnboardingManager = _
 
   var loggedInUser: User = _
-  var loggedInBlindReviewer: User = _
   var colleagueUser: User = _
   var externalUser: User = _
   var superAdmin: User = _
@@ -260,8 +257,6 @@ trait ApiSuite
   var colleagueJwt: String = _
 
   var externalJwt: String = _
-
-  var blindReviewerJwt: String = _
 
   var adminJwt: String = _
 
@@ -340,21 +335,6 @@ trait ApiSuite
     None,
     id = 4
   )
-  val blindReviewerUser = User(
-    NodeCodes.generateId(NodeCodes.userCode),
-    "blind@test.com",
-    "blind",
-    None,
-    "reviewer",
-    None,
-    "password",
-    "cred",
-    "",
-    "http://blind.com",
-    0,
-    false,
-    None
-  )
 
   override def afterEach(): Unit = {
     super.afterEach()
@@ -384,13 +364,9 @@ trait ApiSuite
 
     loggedInUser = userManager.create(me, Some("password")).await.value
     colleagueUser = userManager.create(colleague, Some("password")).await.value
-
     externalUser = userManager.create(other, Some("password")).await.value
-    loggedInBlindReviewer =
-      userManager.create(blindReviewerUser, Some("password")).await.value
 
-    secureContainer =
-      secureContainerBuilder(loggedInUser, loggedInOrganization, List.empty)
+    secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
 
     secureDataSetManager = secureContainer.datasetManager
     fileManager = secureContainer.fileManager
@@ -420,18 +396,9 @@ trait ApiSuite
       .addUser(externalOrganization, externalUser, Delete)
       .await
       .value
-    organizationManager
-      .addUser(loggedInOrganization, loggedInBlindReviewer, BlindReviewer)
-      .await
-      .value
 
     loggedInJwt = Authenticator.createUserToken(
       loggedInUser,
-      loggedInOrganization
-    )(jwtConfig, insecureContainer.db, ec)
-
-    blindReviewerJwt = Authenticator.createUserToken(
-      loggedInBlindReviewer,
       loggedInOrganization
     )(jwtConfig, insecureContainer.db, ec)
 

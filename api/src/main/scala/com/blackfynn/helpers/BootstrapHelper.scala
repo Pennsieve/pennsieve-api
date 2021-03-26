@@ -28,7 +28,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityPr
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import com.authy.AuthyApiClient
-import com.pennsieve.auth.middleware.{ Jwt, UserClaim, UserId }
 import com.pennsieve.aws.cognito.CognitoClient
 import com.pennsieve.aws.s3.AWSS3Container
 import com.pennsieve.aws.s3.LocalS3Container
@@ -93,10 +92,9 @@ object APIContainers {
   type SecureAPIContainer = APIContainer
     with SecureContainer
     with SecureCoreContainer
-    with RoleOverrideContainer
 
   type SecureContainerBuilderType =
-    (User, Organization, List[Jwt.Role]) => SecureAPIContainer
+    (User, Organization) => SecureAPIContainer
 }
 
 trait BaseBootstrapHelper {
@@ -235,19 +233,16 @@ class LocalBootstrapHelper(
     */
   override val secureContainerBuilder: (
     User,
-    Organization,
-    List[Jwt.Role]
-  ) => SecureContainer with SecureCoreContainer with LocalEmailContainer with RoleOverrideContainer = {
-    (user: User, organization: Organization, roleOverrides: List[Jwt.Role]) =>
+    Organization
+  ) => SecureContainer with SecureCoreContainer with LocalEmailContainer = {
+    (user: User, organization: Organization) =>
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
         _redisClientPool = insecureContainer.redisClientPool,
         user = user,
-        organization = organization,
-        roleOverrides = roleOverrides
+        organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
-      with RoleOverrideContainer
   }
 }
 
@@ -289,14 +284,12 @@ class AWSBootstrapHelper(
   )
 
   override val secureContainerBuilder =
-    (user: User, organization: Organization, roleOverrides: List[Jwt.Role]) =>
+    (user: User, organization: Organization) =>
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
         _redisClientPool = insecureContainer.redisClientPool,
         user = user,
-        organization = organization,
-        roleOverrides = roleOverrides
+        organization = organization
       ) with SecureCoreContainer with AWSEmailContainer
-      with RoleOverrideContainer
 }
