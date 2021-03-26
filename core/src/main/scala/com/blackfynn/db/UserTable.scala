@@ -90,7 +90,12 @@ object UserMapper extends TableQuery(new UserTable(_)) {
     this.filter(_.email.toLowerCase === email.toLowerCase).result.headOption
 
   def getByCognitoId(cognitoId: CognitoId) =
-    this.join(CognitoUserMapper).on(_.id === _.userId).result.headOption
+    this
+      .join(CognitoUserMapper)
+      .on(_.id === _.userId)
+      .filter(_._2.cognitoId === cognitoId)
+      .result
+      .headOption
 
   def getUser(
     id: Int
