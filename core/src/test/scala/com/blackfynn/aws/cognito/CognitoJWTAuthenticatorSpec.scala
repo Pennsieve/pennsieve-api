@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.blackfynn.aws.cognito
+package com.pennsieve.aws.cognito
 
 import com.auth0.jwk.{ Jwk, JwkProvider }
 import com.pennsieve.models.CognitoId
@@ -75,12 +75,6 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
   //  var invalidToken: String = JwtCirce.encode
 
   var jwkProvider: JwkProvider = new MockJwkProvider(jwk)
-
-  "getKeysUrl" should "return the correct URL given arguments" in {
-    CognitoJWTAuthenticator.getKeysUrl("foo", "bar") should equal(
-      "https://cognito-idp.foo.amazonaws.com/bar/.well-known/jwks.json"
-    )
-  }
 
   "getKeyId" should "work" in {
     CognitoJWTAuthenticator.getKeyId(testToken) should equal(

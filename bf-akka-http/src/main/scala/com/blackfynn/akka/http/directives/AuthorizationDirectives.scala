@@ -22,8 +22,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.Credentials
 import cats.data.EitherT
 import cats.implicits._
-import com.auth0.jwk.JwkProvider
-import com.blackfynn.aws.cognito.CognitoJWTAuthenticator
+import com.pennsieve.aws.cognito.CognitoJWTAuthenticator
 import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
 import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.core.utilities.{
@@ -168,18 +167,12 @@ object AuthorizationDirectives {
     cognitoConfig: CognitoConfig,
     ec: ExecutionContext
   ): Directive1[UserAuthContext] = {
+
     authenticateOAuth2Async(
       realm = realm,
       authenticator = {
         case Credentials.Provided(token) =>
-          (userContextFromCognitoJwt(container, token)(
-            cognitoConfig,
-            ec,
-            CognitoJWTAuthenticator.getJwkProvider(
-              cognitoConfig.region.toString(),
-              cognitoConfig.userPool.id
-            )
-          ) recoverWith {
+          (userContextFromCognitoJwt(container, token) recoverWith {
             case _ =>
               JwtAuthenticator
                 .userContextFromToken(container, Jwt.Token(token)) recoverWith {
@@ -196,18 +189,11 @@ object AuthorizationDirectives {
     token: String
   )(implicit
     config: CognitoConfig,
-    ec: ExecutionContext,
-    jwkProvider: JwkProvider
+    ec: ExecutionContext
   ): EitherT[Future, CoreError, UserAuthContext] = {
     for {
       cognitoContext <- CognitoJWTAuthenticator
-        .validateJwt(
-          config.region.toString(),
-          config.userPool.id,
-          config.userPool.appClientId,
-          token,
-          jwkProvider
-        )
+        .validateJwt(token)
         .leftMap(ThrowableError(_))
         .toEitherT[Future]
       user <- container.userManager.getByCognitoId(cognitoContext.id)
