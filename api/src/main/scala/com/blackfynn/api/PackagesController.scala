@@ -1355,7 +1355,9 @@ class PackagesController(
     }
   }
 
-  val getPackageFiles = (apiOperation[List[FileDTO]]("getPackageFiles")
+  type FileListDTO = List[FileDTO]
+
+  val getPackageFiles = (apiOperation[FileListDTO]("getPackageFiles")
     summary "Gets all files of a package of the given id, if no files exist, returns sources"
     parameters (
       pathParam[String]("id").description("package id"),

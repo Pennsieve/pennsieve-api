@@ -2699,25 +2699,26 @@ class DataSetsController(
     }
   }
 
-  def publicationAnnotation[Unit](
+  def publicationAnnotation(
     publicationStatus: PublicationStatus,
-    summary: String
+    summary: String,
+    operationIdPrefix: String = ""
   ): OperationBuilder = {
-    (apiOperation(s"${publicationStatus.entryName}PublicationRevision")
+    (apiOperation[Unit](
+      s"${operationIdPrefix}${publicationStatus.entryName}PublicationRevision"
+    )
       summary summary
-      parameters (
-        pathParam[String]("id").required.description("dataset id"),
-        queryParam[String]("publicationType").required
-          .description(
-            "this field must match the currently in-progress publication workflow"
-          ),
-        queryParam[String]("comments").optional
-          .description("optional explanation"),
-        queryParam[String]("embargoReleaseDate").optional
-          .description(
-            "release date for embargoed datasets, for example: 2020-03-17"
-          )
-    ))
+      parameter pathParam[String]("id").required.description("dataset id")
+      parameter queryParam[String]("publicationType").required
+        .description(
+          "this field must match the currently in-progress publication workflow"
+        )
+      parameter queryParam[String]("comments").optional
+        .description("optional explanation")
+      parameter queryParam[String]("embargoReleaseDate").optional
+        .description(
+          "release date for embargoed datasets, for example: 2020-03-17"
+        ))
   }
 
   post(
@@ -2815,7 +2816,7 @@ class DataSetsController(
   post(
     "/:id/publication/cancel",
     operation(
-      publicationAnnotation[Unit](
+      publicationAnnotation(
         PublicationStatus.Cancelled,
         "cancel a request for publication or revision"
       )
@@ -3345,7 +3346,8 @@ class DataSetsController(
     operation(
       publicationAnnotation(
         PublicationStatus.Accepted,
-        "internal use only: release an embargoed dataset to Discover"
+        "internal use only: release an embargoed dataset to Discover",
+        "release"
       )
     )
   ) {

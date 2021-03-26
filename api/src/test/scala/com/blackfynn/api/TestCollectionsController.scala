@@ -47,6 +47,16 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
     super.afterEach()
   }
 
+  test("swagger") {
+    import com.pennsieve.web.ResourcesApp
+    addServlet(new ResourcesApp, "/api-docs/*")
+
+    get("/api-docs/swagger.json") {
+      status should equal(200)
+      println(body)
+    }
+  }
+
   val myCollectionName = "My Collection"
   val myOtherCollectionName = "My Other Collection"
   val myNewOtherCollectionName = "My New Other Collection"
