@@ -97,19 +97,16 @@ class CollectionsController(
     }
   }
 
-  put(
-    "/:id",
-    operation(
-      apiOperation[ContributorDTO]("editCollection")
-        summary "changes the name of a collection that belongs to the current organization"
-        parameters (
-          queryParam[Int]("id")
-            .description("identifier of the collection"),
-          bodyParam[UpdateCollectionRequest]("body")
-            .description("new name of the collection"),
-      )
-    )
-  ) {
+  val updateCollectionOperation = (apiOperation[ContributorDTO](
+    "editCollection"
+  )
+    summary "changes the name of a collection that belongs to the current organization"
+    parameter bodyParam[UpdateCollectionRequest]("body")
+      .description("new name of the collection")
+    parameter pathParam[String]("id")
+      .description("ID of the collection"))
+
+  put("/:id", operation(updateCollectionOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, CollectionDTO] = for {
         secureContainer <- getSecureContainer

@@ -1547,13 +1547,11 @@ class DataSetsController(
     }
   }
 
-  val addContributor: OperationBuilder = (apiOperation("addContributor")
+  val addContributor = (apiOperation[Unit]("addContributor")
     summary "add a contributor to this dataset"
-    parameters (
-      pathParam[String]("id").description("data set id"),
-      bodyParam[AddContributorRequest]("body")
-        .description("contributor id to add to the dataset")
-  ))
+    parameter pathParam[String]("id").description("data set id")
+    parameter bodyParam[AddContributorRequest]("body")
+      .description("contributor id to add to the dataset"))
 
   put("/:id/contributors", operation(addContributor)) {
 
@@ -1593,15 +1591,11 @@ class DataSetsController(
     }
   }
 
-  val switchContributorsOrder: OperationBuilder = (apiOperation(
-    "switchContributorsOrder"
-  )
+  val switchContributorsOrder = (apiOperation[Unit]("switchContributorsOrder")
     summary "switch the position of the two contributors"
-    parameters (
-      pathParam[String]("datasetId").description("data set id"),
-      bodyParam[SwitchContributorsOrderRequest]("body")
-        .description("ids of the contributor whose order need to be switched")
-  ))
+    parameter pathParam[String]("datasetId").description("data set id")
+    parameter bodyParam[SwitchContributorsOrderRequest]("body")
+      .description("ids of the contributor whose order need to be switched"))
 
   post("/:datasetId/contributors/switch", operation(switchContributorsOrder)) {
 
@@ -1645,13 +1639,11 @@ class DataSetsController(
     }
   }
 
-  val removeContributor: OperationBuilder = (apiOperation("removeContributor")
+  val removeContributor = (apiOperation[Unit]("removeContributor")
     summary "remove contributor from this dataset"
-    parameters (
-      pathParam[String]("datasetId").description("data set node id"),
-      pathParam[Int]("contributorId")
-        .description("contributor id to remove from the dataset"),
-  ))
+    parameter pathParam[String]("datasetId").description("data set node id")
+    parameter pathParam[Int]("contributorId")
+      .description("contributor id to remove from the dataset"))
 
   delete(
     "/:datasetId/contributors/:contributorId",
@@ -1725,13 +1717,11 @@ class DataSetsController(
     }
   }
 
-  val addCollection: OperationBuilder = (apiOperation("addCollection")
+  val addCollection = (apiOperation[Unit]("addCollection")
     summary "add this dataset to a collection"
-    parameters (
-      pathParam[String]("id").description("data set id"),
-      bodyParam[AddCollectionRequest]("body")
-        .description("collection id which the dataset is to be adeed to")
-  ))
+    parameter pathParam[String]("id").description("data set id")
+    parameter bodyParam[AddCollectionRequest]("body")
+      .description("collection id which the dataset is to be adeed to"))
 
   put("/:id/collections", operation(addCollection)) {
 
@@ -1780,13 +1770,11 @@ class DataSetsController(
     }
   }
 
-  val removeCollection: OperationBuilder = (apiOperation("removeCollection")
+  val removeCollection = (apiOperation[Unit]("removeCollection")
     summary "remove this dataset from the Collection"
-    parameters (
-      pathParam[String]("datasetId").description("data set node id"),
-      pathParam[Int]("collectionId")
-        .description("collection id from which the dataset is to be removed"),
-  ))
+    parameter pathParam[String]("datasetId").description("data set node id")
+    parameter pathParam[Int]("collectionId")
+      .description("collection id from which the dataset is to be removed"))
 
   delete("/:datasetId/collections/:collectionId", operation(removeCollection)) {
     new AsyncResult {
@@ -1868,15 +1856,11 @@ class DataSetsController(
     }
   }
 
-  val addUserCollaborator: OperationBuilder = (apiOperation(
-    "addUserCollaborator"
-  )
+  val addUserCollaborator = (apiOperation[Unit]("addUserCollaborator")
     summary "add a user as a collaborator on this dataset"
-    parameters (
-      pathParam[String]("id").description("data set id"),
-      bodyParam[CollaboratorRoleDTO]("body")
-        .description("User to share this dataset with")
-  ))
+    parameter pathParam[String]("id").description("data set id")
+    parameter bodyParam[CollaboratorRoleDTO]("body")
+      .description("User to share this dataset with"))
 
   put("/:id/collaborators/users", operation(addUserCollaborator)) {
     new AsyncResult {
@@ -1922,15 +1906,11 @@ class DataSetsController(
     }
   }
 
-  val deleteUserCollaborator: OperationBuilder = (apiOperation(
-    "deleteUserCollaborator"
-  )
+  val deleteUserCollaborator = (apiOperation[Unit]("deleteUserCollaborator")
     summary "remove a user who is a collaborator on the dataset"
-    parameters (
-      pathParam[String]("id").description("data set id"),
-      bodyParam[CollaboratorRoleDTO]("body")
-        .description("User to unshare this dataset with")
-  ))
+    parameters pathParam[String]("id").description("data set id")
+    parameters bodyParam[CollaboratorRoleDTO]("body")
+      .description("User to unshare this dataset with"))
 
   delete("/:id/collaborators/users", operation(deleteUserCollaborator)) {
     new AsyncResult {
@@ -2010,15 +1990,11 @@ class DataSetsController(
     }
   }
 
-  val addTeamCollaborator: OperationBuilder = (apiOperation(
-    "addTeamCollaborator"
-  )
+  val addTeamCollaborator = (apiOperation[Unit]("addTeamCollaborator")
     summary "share this dataset with a team"
-    parameters (
-      pathParam[String]("id").description("data set id"),
-      bodyParam[CollaboratorRoleDTO]("body")
-        .description("Team to share this dataset with")
-  ))
+    parameter pathParam[String]("id").description("data set id")
+    parameter bodyParam[CollaboratorRoleDTO]("body")
+      .description("Team to share this dataset with"))
 
   put("/:id/collaborators/teams", operation(addTeamCollaborator)) {
     new AsyncResult {
@@ -2071,15 +2047,11 @@ class DataSetsController(
     }
   }
 
-  val deleteTeamCollaborator: OperationBuilder = (apiOperation(
-    "deleteTeamCollaborator"
-  )
+  val deleteTeamCollaborator = (apiOperation[Unit]("deleteTeamCollaborator")
     summary "unshare this dataset with a team"
-    parameters (
-      pathParam[String]("id").description("data set id"),
-      bodyParam[CollaboratorRoleDTO]("body")
-        .description("Team to unshare this dataset with")
-  ))
+    parameter pathParam[String]("id").description("data set id")
+    parameter bodyParam[CollaboratorRoleDTO]("body")
+      .description("Team to unshare this dataset with"))
 
   delete("/:id/collaborators/teams", operation(deleteTeamCollaborator)) {
     new AsyncResult {
@@ -2133,15 +2105,13 @@ class DataSetsController(
     }
   }
 
-  val getOrganizationCollaboratorRole: OperationBuilder = (apiOperation(
+  val getOrganizationCollaboratorRole = (apiOperation[Unit](
     "getOrganizationCollaboratorRole"
   )
     summary "get the organizations allowed role on the dataset"
-    parameters (
-      pathParam[String]("id").description("data set id"),
-      bodyParam[OrganizationRoleDTO]("body")
-        .description("Role of the organization")
-  ))
+    parameter pathParam[String]("id").description("data set id")
+    parameter bodyParam[OrganizationRoleDTO]("body")
+      .description("Role of the organization"))
 
   get(
     "/:id/collaborators/organizations",
@@ -2172,15 +2142,13 @@ class DataSetsController(
     }
   }
 
-  val setOrganizationCollaboratorRole: OperationBuilder = (apiOperation(
+  val setOrganizationCollaboratorRole = (apiOperation[Unit](
     "setOrganizationCollaboratorRole"
   )
     summary "share this dataset with the rest of the organization"
-    parameters (
-      pathParam[String]("id").description("data set id"),
-      bodyParam[OrganizationRoleDTO]("body")
-        .description("Role to set for the organization")
-  ))
+    parameter pathParam[String]("id").description("data set id")
+    parameter bodyParam[OrganizationRoleDTO]("body")
+      .description("Role to set for the organization"))
 
   put(
     "/:id/collaborators/organizations",
@@ -2229,13 +2197,11 @@ class DataSetsController(
     }
   }
 
-  val removeOrganizationCollaborator: OperationBuilder = (apiOperation(
+  val removeOrganizationCollaborator = (apiOperation[Unit](
     "removeOrganizationCollaborator"
   )
     summary "unshare this dataset with the organization"
-    parameters (
-      pathParam[String]("id").description("data set id")
-    ))
+    parameter pathParam[String]("id").description("data set id"))
 
   delete(
     "/:id/collaborators/organizations",
@@ -2311,12 +2277,11 @@ class DataSetsController(
     }
   }
 
-  val switchOwner: OperationBuilder = (apiOperation("switchOwner")
+  val switchOwner = (apiOperation[Unit]("switchOwner")
     summary "switch the owner of a dataset. Previous owner is downgraded to manager"
-    parameters (
-      pathParam[String]("id").description("data set node id"),
-      bodyParam[String]("body").description("intended new owner node id")
-  ))
+    parameter pathParam[String]("id").description("data set node id")
+    parameter bodyParam[String]("body")
+      .description("intended new owner node id"))
 
   put("/:id/collaborators/owner", operation(switchOwner)) {
     new AsyncResult {
@@ -2601,9 +2566,8 @@ class DataSetsController(
     "getBatchPackages"
   )
     summary "get multiple packages"
-    parameters (pathParam[String]("id").required.description("dataset id"),
-    queryParam[ExternalId]("packageId").description("package id"),
-  ))
+    parameters pathParam[String]("id").required.description("dataset id")
+    parameters queryParam[String]("packageId").description("package id"))
 
   get("/:id/packages/batch", operation(getBatchPackagesOperation)) {
 
@@ -2735,7 +2699,7 @@ class DataSetsController(
     }
   }
 
-  def publicationAnnotation(
+  def publicationAnnotation[Unit](
     publicationStatus: PublicationStatus,
     summary: String
   ): OperationBuilder = {
@@ -2851,7 +2815,7 @@ class DataSetsController(
   post(
     "/:id/publication/cancel",
     operation(
-      publicationAnnotation(
+      publicationAnnotation[Unit](
         PublicationStatus.Cancelled,
         "cancel a request for publication or revision"
       )
@@ -3200,7 +3164,7 @@ class DataSetsController(
     }
   }
 
-  val publishComplete: OperationBuilder = (apiOperation("publishComplete")
+  val publishComplete: OperationBuilder = (apiOperation[Unit]("publishComplete")
     summary "notify API that Discover has completed a publish job"
     parameters (pathParam[Int]("id").required.description("dataset id"),
     bodyParam[PublishCompleteRequest]("body")
@@ -3486,18 +3450,15 @@ class DataSetsController(
     }
   }
 
-  val postPreview: OperationBuilder = (
-    apiOperation("postPreview")
-      summary "Grant preview access to a user. This endpoint can either approve an access request, or grant access to a net-new user."
-      description "this endpoint is under active development and subject to change"
-      parameters (
-        pathParam[String]("id").description("data set id"),
-        bodyParam[GrantPreviewAccessRequest]("body")
-          .description(
-            "user id for which preview access to the dataset should be granted"
-          )
-    )
-  )
+  val postPreview = (apiOperation[Unit]("postPreview")
+    summary "Grant preview access to a user. This endpoint can either approve an access request, or grant access to a net-new user."
+    description "this endpoint is under active development and subject to change"
+    parameter pathParam[String]("id")
+      .description("data set id")
+    parameter bodyParam[GrantPreviewAccessRequest]("body")
+      .description(
+        "user id for which preview access to the dataset should be granted"
+      ))
 
   // TODO:
   // the PreviewAccessRequest will need to be expanded to include an organization ID once we open this up to
@@ -3560,7 +3521,7 @@ class DataSetsController(
   }
 
   val deletePreview: OperationBuilder = (
-    apiOperation("deletePreview")
+    apiOperation[Unit]("deletePreview")
       summary "Remove preview access to a user."
       description "this endpoint is under active development and subject to change"
       parameters (
@@ -3622,15 +3583,11 @@ class DataSetsController(
     }
   }
 
-  val requestPreview: OperationBuilder = (
-    apiOperation("requestPreview")
-      summary "Request preview access to a dataset for the current user."
-      description "this endpoint is under active development and subject to change"
-      parameters (
-        bodyParam[PreviewAccessRequest]("body")
-          .description("dataset node id for which access is requested")
-        )
-  )
+  val requestPreview = (apiOperation[Unit]("requestPreview")
+    summary "Request preview access to a dataset for the current user."
+    description "this endpoint is under active development and subject to change"
+    parameters bodyParam[PreviewAccessRequest]("body")
+      .description("dataset node id for which access is requested"))
 
   post("/publication/preview/request", operation(requestPreview)) {
     new AsyncResult {
@@ -4363,25 +4320,21 @@ class DataSetsController(
     }
   }
 
-  val getChangelog: OperationBuilder = (
-    apiOperation[ChangelogPage]("getChangelog")
-      .summary("get dataset changelog")
-      .parameters(
-        pathParam[String]("id").description("data set id"),
-        queryParam[Int]("limit").optional
-          .description("max number event groups")
-          .defaultValue(DatasetsDefaultLimit),
-        queryParam[String]("cursor").optional
-          .description("cursor to next page of event groups"),
-        queryParam[ChangelogEventCategory]("category").optional
-          .description("filter events by category")
-          .allowableValues(ChangelogEventCategory.values.map(_.entryName)),
-        queryParam[LocalDate]("startDate").optional
-          .description("oldest event to return in the timeline"),
-        queryParam[Int]("userId").optional
-          .description("filter events by user")
-      )
-    )
+  val getChangelog = (apiOperation[ChangelogPage]("getChangelog")
+    summary ("get dataset changelog")
+    parameter pathParam[String]("id").description("data set id")
+    parameter queryParam[Int]("limit").optional
+      .description("max number event groups")
+      .defaultValue(DatasetsDefaultLimit)
+    parameter queryParam[String]("cursor").optional
+      .description("cursor to next page of event groups")
+    parameter queryParam[String]("category").optional
+      .description("filter events by category")
+      .allowableValues(ChangelogEventCategory.values.map(_.entryName))
+    parameter queryParam[LocalDate]("startDate").optional
+      .description("oldest event to return in the timeline")
+    parameter queryParam[Int]("userId").optional
+      .description("filter events by user"))
 
   get("/:id/changelog/timeline", operation(getChangelog)) {
     new AsyncResult {
