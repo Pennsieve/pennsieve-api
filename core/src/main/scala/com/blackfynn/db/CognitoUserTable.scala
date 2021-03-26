@@ -17,7 +17,7 @@
 package com.pennsieve.db
 
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.models.CognitoId
+import com.pennsieve.models.{ CognitoId, User }
 
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -39,4 +39,11 @@ final class CognitoUserTable(tag: Tag)
   def * = (cognitoId, userId).mapTo[CognitoUser]
 }
 
-object CognitoUserMapper extends TableQuery(new CognitoUserTable(_)) {}
+object CognitoUserMapper extends TableQuery(new CognitoUserTable(_)) {
+
+  def create(cognitoId: CognitoId, user: User) =
+    CognitoUserMapper returning CognitoUserMapper += CognitoUser(
+      cognitoId = cognitoId,
+      userId = user.id
+    )
+}
