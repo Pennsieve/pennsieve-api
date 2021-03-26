@@ -71,6 +71,16 @@ class TestExternalPublicationController
       parsedBody.extract[ExternalPublicationDTO]
     }
 
+  test("swagger") {
+    import com.pennsieve.web.ResourcesApp
+    addServlet(new ResourcesApp, "/api-docs/*")
+
+    get("/api-docs/swagger.json") {
+      status should equal(200)
+      println(body)
+    }
+  }
+
   test("link external publications with valid DOIs to a dataset") {
 
     val dataset = createDataSet("dataset")
