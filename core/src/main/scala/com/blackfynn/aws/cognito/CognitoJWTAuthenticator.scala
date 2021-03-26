@@ -22,6 +22,13 @@ import io.circe.{ Decoder, Encoder }
 import io.circe.parser.decode
 import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim, JwtOptions }
 import cats.implicits._
+import com.pennsieve.core.utilities.checkOrError
+import com.pennsieve.domain.{
+  CoreError,
+  InvalidJWT,
+  ParseError,
+  ThrowableError
+}
 import com.pennsieve.models.CognitoId
 
 import java.time.Instant
@@ -37,18 +44,20 @@ object CognitoPayload {
     * @param resourceServer All scopes that are not related to the
     *        given resource server will be filtered out
     */
-  def apply(claim: JwtClaim): Either[Throwable, CognitoPayload] =
+  def apply(claim: JwtClaim): Either[CoreError, CognitoPayload] =
     for {
       subject <- Either.fromOption(
         claim.subject,
-        new Throwable("JWT claim missing 'sub' field")
+        InvalidJWT(claim.content, Some("JWT claim missing 'sub' field"))
       )
       cognitoId = CognitoId(UUID.fromString(subject))
       issuedAt <- Either.fromOption(
         claim.issuedAt,
-        new Throwable("JWT claim missing 'iat' field:")
+        InvalidJWT(claim.content, Some("JWT claim missing 'iat' field"))
       )
-      issuedAtInstant <- Either.catchNonFatal(Instant.ofEpochSecond(issuedAt))
+      issuedAtInstant <- Either
+        .catchNonFatal(Instant.ofEpochSecond(issuedAt))
+        .leftMap(ThrowableError(_))
     } yield CognitoPayload(cognitoId, issuedAtInstant)
 }
 
@@ -70,13 +79,16 @@ object CognitoJWTAuthenticator {
     token: String
   )(implicit
     cognitoConfig: CognitoConfig
-  ): Either[Throwable, CognitoPayload] = {
+  ): Either[CoreError, CognitoPayload] = {
     for {
       keyId <- getKeyId(token)
-      jwk <- Either.catchNonFatal(cognitoConfig.jwkProvider.get(keyId))
+      jwk <- Either
+        .catchNonFatal(cognitoConfig.jwkProvider.get(keyId))
+        .leftMap(ThrowableError(_))
       claim <- JwtCirce
         .decode(token, jwk.getPublicKey, Seq(JwtAlgorithm.RS256))
         .toEither
+        .leftMap(_ => InvalidJWT(token))
       _ <- validateClaim(claim)
       payload <- CognitoPayload(claim)
     } yield payload
@@ -86,15 +98,16 @@ object CognitoJWTAuthenticator {
    * Parse the JWT without verifying the signature here only to retrieve the
    * header's kid for use in later validation
    */
-  def getKeyId(token: String): Either[Throwable, String] = {
+  def getKeyId(token: String): Either[CoreError, String] = {
     JwtCirce
       .decodeAll(token, options = JwtOptions(signature = false))
       .toEither
+      .leftMap(_ => InvalidJWT(token))
       .flatMap {
         case (header, _, _) =>
           Either.fromOption(
             header.keyId,
-            new Exception("kid not present in JWT header")
+            InvalidJWT(token, Some("kid not present in JWT header"))
           )
       }
   }
@@ -108,20 +121,19 @@ object CognitoJWTAuthenticator {
     claim: JwtClaim
   )(implicit
     cognitoConfig: CognitoConfig
-  ): Either[Throwable, Unit] =
-    decode[CognitoContent](claim.content).flatMap { content =>
-      (
-        claim.issuer.contains(cognitoConfig.userPool.endpoint),
+  ): Either[CoreError, Unit] =
+    for {
+      content <- decode[CognitoContent](claim.content).leftMap(ParseError(_))
+
+      _ <- checkOrError(claim.issuer.contains(cognitoConfig.userPool.endpoint))(
+        InvalidJWT(claim.content, Some("claim contains invalid issuer"))
+      )
+
+      _ <- checkOrError(
         content.client_id.exists(_ == cognitoConfig.userPool.appClientId)
           || claim.audience
             .exists(_.contains(cognitoConfig.userPool.appClientId))
-      ) match {
-        case (false, _) => Left(new Exception("claim contains invalid issuer"))
-        case (_, false) => {
-          Left(new Exception("claim contains invalid audience"))
-        }
-        case _ => Right(())
-      }
-    }
+      )(InvalidJWT(claim.content, Some("claim contains invalid audience")))
 
+    } yield ()
 }
