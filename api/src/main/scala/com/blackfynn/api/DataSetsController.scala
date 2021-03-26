@@ -21,7 +21,7 @@ import java.time.{ LocalDate, OffsetDateTime, ZonedDateTime }
 
 import akka.Done
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
@@ -272,7 +272,8 @@ case class ChangelogEventPage(
 class DataSetsController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
-  materializer: Materializer,
+  implicit
+  val system: ActorSystem,
   auditLogger: Auditor,
   sqsClient: SQSClient,
   modelServiceClient: ModelServiceClient,
@@ -289,8 +290,6 @@ class DataSetsController(
     with FileUploadSupport {
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
-
-  implicit val mat: Materializer = materializer
 
   override val swaggerTag = "DataSets"
 
@@ -490,7 +489,7 @@ class DataSetsController(
           DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
             publishClient
           ),
-          materializer,
+          system,
           jwtConfig
         ).coreErrorToActionResult
 
@@ -614,7 +613,7 @@ class DataSetsController(
               DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
                 publishClient
               ),
-              materializer,
+              system,
               jwtConfig
             ).orError
           }
@@ -816,7 +815,7 @@ class DataSetsController(
             DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
               publishClient
             ),
-            materializer,
+            system,
             jwtConfig
           ).orError
 
@@ -899,7 +898,7 @@ class DataSetsController(
           DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
             publishClient
           ),
-          materializer,
+          system,
           jwtConfig
         ).orError
       } yield dto
@@ -1087,7 +1086,7 @@ class DataSetsController(
           DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
             publishClient
           ),
-          materializer,
+          system,
           jwtConfig
         ).orError
 
@@ -1204,7 +1203,7 @@ class DataSetsController(
             secureContainer.user,
             publishClient,
             sendNotification
-          )(ec, materializer, jwtConfig)
+          )(ec, system, jwtConfig)
           .coreErrorToActionResult
 
         deleteMessage <- secureContainer.datasetManager
@@ -2703,7 +2702,7 @@ class DataSetsController(
               organization,
               dataset,
               secureContainer.user
-            )(ec, materializer, jwtConfig)
+            )(ec, system, jwtConfig)
             .coreErrorToActionResult
         } yield status
 
@@ -2726,7 +2725,7 @@ class DataSetsController(
               publishClient,
               secureContainer.organization,
               secureContainer.user
-            )(ec, materializer, jwtConfig)
+            )(ec, system, jwtConfig)
             .coreErrorToActionResult
 
         } yield statuses
@@ -2784,7 +2783,7 @@ class DataSetsController(
               datasetId,
               PublicationStatus.Requested,
               publicationType
-            )(request, ec, materializer, jwtConfig)
+            )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
           embargoReleaseDate <- embargoReleaseDate match {
@@ -2872,7 +2871,7 @@ class DataSetsController(
               datasetId,
               PublicationStatus.Cancelled,
               publicationType
-            )(request, ec, materializer, jwtConfig)
+            )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
           _ <- DataSetPublishingHelper
@@ -2923,7 +2922,7 @@ class DataSetsController(
               datasetId,
               PublicationStatus.Rejected,
               publicationType
-            )(request, ec, materializer, jwtConfig)
+            )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
           contributors <- secureContainer.datasetManager
@@ -2993,7 +2992,7 @@ class DataSetsController(
               datasetId,
               PublicationStatus.Accepted,
               publicationType
-            )(request, ec, materializer, jwtConfig)
+            )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
           contributors <- secureContainer.datasetManager
@@ -3016,7 +3015,7 @@ class DataSetsController(
               secureContainer.organization,
               validated.dataset,
               secureContainer.user
-            )(ec, materializer, jwtConfig)
+            )(ec, system, jwtConfig)
             .coreErrorToActionResult
 
           response <- validated.publicationType match {
@@ -3042,7 +3041,7 @@ class DataSetsController(
                     validated.embargoReleaseDate,
                     collections,
                     externalPublications
-                  )(ec, materializer, jwtConfig)
+                  )(ec, system, jwtConfig)
                   .coreErrorToActionResult
 
                 response <- secureContainer.datasetPublicationStatusManager
@@ -3085,7 +3084,7 @@ class DataSetsController(
                     sendNotification,
                     collections,
                     externalPublications
-                  )(ec, materializer, jwtConfig)
+                  )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
                 _ <- secureContainer.datasetPublicationStatusManager
@@ -3132,7 +3131,7 @@ class DataSetsController(
                     secureContainer.user,
                     publishClient,
                     sendNotification
-                  )(ec, materializer, jwtConfig)
+                  )(ec, system, jwtConfig)
                   .coreErrorToActionResult
 
                 _ <- secureContainer.datasetPublicationStatusManager
@@ -3171,7 +3170,7 @@ class DataSetsController(
                     secureContainer.user,
                     publishClient,
                     sendNotification
-                  )(ec, materializer, jwtConfig)
+                  )(ec, system, jwtConfig)
                   .coreErrorToActionResult
 
                 response <- secureContainer.datasetPublicationStatusManager
@@ -3420,7 +3419,7 @@ class DataSetsController(
               secureContainer.user,
               publishClient,
               sendNotification
-            )(ec, materializer, jwtConfig)
+            )(ec, system, jwtConfig)
             .coreErrorToActionResult
 
           _ <- secureContainer.datasetPublicationStatusManager
@@ -4309,7 +4308,7 @@ class DataSetsController(
             DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
               publishClient
             ),
-            materializer,
+            system,
             jwtConfig
           ).map(_.map(dto => (dto.content.intId, dto)).toMap).orError
 

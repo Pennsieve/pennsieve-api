@@ -16,12 +16,12 @@
 
 package com.pennsieve.clients
 
+import akka.actor.ActorSystem
 import akka.util.ByteString
 import akka.http.scaladsl.HttpExt
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.Materializer
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
@@ -50,7 +50,7 @@ class BitlyUrlShortenerClient(
   accessToken: String
 )(implicit
   executionContext: ExecutionContext,
-  materializer: Materializer
+  system: ActorSystem
 ) extends UrlShortenerClient {
 
   def shortenUrl(longUrl: URL): Future[URL] = {

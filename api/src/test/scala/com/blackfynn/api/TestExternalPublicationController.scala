@@ -38,7 +38,7 @@ class TestExternalPublicationController
   override def afterStart(): Unit = {
     super.afterStart()
 
-    val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
+    implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
       Future.successful(HttpResponse())
     }
 
@@ -46,7 +46,7 @@ class TestExternalPublicationController
       new ExternalPublicationController(
         insecureContainer,
         secureContainerBuilder,
-        new MockDoiClient(httpClient, ec, materializer),
+        new MockDoiClient(),
         system.dispatcher
       ),
       "/*"

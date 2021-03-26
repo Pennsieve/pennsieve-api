@@ -17,7 +17,7 @@
 package com.pennsieve.publish
 
 import akka.actor.ActorSystem
-import akka.stream.{ ActorAttributes, Materializer, Supervision }
+import akka.stream.{ ActorAttributes, Supervision }
 import akka.stream.scaladsl.{ Keep }
 import akka.stream.scaladsl.Sink
 import cats.implicits._
@@ -39,7 +39,6 @@ object PackagesExport extends LazyLogging {
     container: PublishContainer
   )(implicit
     ec: ExecutionContext,
-    mat: Materializer,
     system: ActorSystem
   ): Future[(PackageExternalIdMap, List[FileManifest])] = {
     implicit val publishContainer: PublishContainer = container

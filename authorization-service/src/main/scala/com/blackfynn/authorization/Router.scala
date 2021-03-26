@@ -20,7 +20,6 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ Directive, Route }
-import akka.stream.ActorMaterializer
 import com.pennsieve.akka.http.RouteService
 import com.pennsieve.akka.http.directives.AuthorizationDirectives.{
   session,
@@ -53,8 +52,7 @@ class Router(
   val container: ResourceContainer
 )(implicit
   system: ActorSystem,
-  cognitoConfig: CognitoConfig,
-  materializer: ActorMaterializer
+  cognitoConfig: CognitoConfig
 ) extends RouteService {
 
   implicit val executionContext: ExecutionContext = system.dispatcher
@@ -75,7 +73,7 @@ class Router(
           user = userContext.user,
           organization = userContext.organization,
           session = userContext.session
-        )(container, executionContext, materializer)
+        )(container, executionContext, system)
 
         logByEnvironment(authorization.routes)
 
@@ -89,7 +87,7 @@ class Router(
           DiscoverAuthorizationRoutes(user = userContext.user)(
             container,
             executionContext,
-            materializer
+            system
           )
         )
     }

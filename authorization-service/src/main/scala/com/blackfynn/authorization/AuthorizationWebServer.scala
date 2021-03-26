@@ -18,7 +18,6 @@ package com.pennsieve.authorization
 
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
-import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 import com.authy.AuthyApiClient
 import com.pennsieve.akka.http.{
   HealthCheck,
@@ -54,15 +53,6 @@ trait AuthyContainer { self: Container =>
 object AuthorizationWebServer extends App with WebServer with LazyLogging {
 
   override val actorSystemName: String = "authorization"
-
-  override implicit lazy val materializer: ActorMaterializer =
-    ActorMaterializer(
-      ActorMaterializerSettings(system)
-        .withSupervisionStrategy { exception: Throwable =>
-          logger.error("Unhandled exception thrown", exception)
-          Supervision.resume
-        }
-    )
 
   val container: ResourceContainer =
     new InsecureContainer(config) with RedisManagerContainer

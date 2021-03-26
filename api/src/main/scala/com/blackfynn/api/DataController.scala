@@ -16,7 +16,7 @@
 
 package com.pennsieve.api
 
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.{ Auditor, TraceId }
@@ -86,7 +86,7 @@ case class DeleteResponse(success: List[String], failures: List[BaseFailure])
 class DataController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
-  materializer: Materializer,
+  system: ActorSystem,
   asyncExecutor: ExecutionContext,
   auditLogger: Auditor,
   sqsClient: SQSClient

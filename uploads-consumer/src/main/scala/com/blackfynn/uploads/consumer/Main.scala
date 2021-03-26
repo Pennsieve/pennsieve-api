@@ -16,7 +16,7 @@
 
 package com.pennsieve.uploads.consumer
 
-import akka.stream.ActorMaterializer
+import akka.actor.ActorSystem
 import akka.stream.alpakka.sqs.SqsSourceSettings
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
@@ -61,8 +61,6 @@ object Main extends App with WebServer {
   logger.noContext.info("launching uploads-consumer...")
 
   override val actorSystemName: String = "uploads-consumer"
-
-  implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
 
   val environment: String = config.as[String]("environment")
   val isLocal: Boolean = environment.toLowerCase == "local"

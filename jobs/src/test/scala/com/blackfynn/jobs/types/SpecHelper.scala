@@ -16,8 +16,8 @@
 
 package com.pennsieve.jobs.types
 
+import akka.actor.ActorSystem
 import akka.NotUsed
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{ Flow, Sink, Source }
 import akka.util.Timeout
 import com.pennsieve.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
@@ -76,7 +76,7 @@ trait SpecHelper extends BeforeAndAfterEach with ManagerSpec {
     flow: Flow[BackgroundJob, (BackgroundJob, JobResult), NotUsed],
     job: BackgroundJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): T = {
     val future: Future[Seq[(BackgroundJob, JobResult)]] =

@@ -18,8 +18,8 @@ package com.pennsieve.helpers
 
 import java.time.{ OffsetDateTime, ZoneOffset }
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
-import akka.stream.Materializer
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.doi.client.definitions._
@@ -28,15 +28,15 @@ import com.pennsieve.doi.models._
 import io.circe.syntax._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random
 
 class MockDoiClient(
+  implicit
   httpClient: HttpRequest => Future[HttpResponse],
   ec: ExecutionContext,
-  mat: Materializer
-) extends DoiClient("mock-doi-service-host")(httpClient, ec, mat) {
+  system: ActorSystem
+) extends DoiClient("mock-doi-service-host") {
 
   val doisCreated: ArrayBuffer[DoiDTO] =
     ArrayBuffer.empty[DoiDTO]
