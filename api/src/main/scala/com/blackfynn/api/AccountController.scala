@@ -19,6 +19,11 @@ package com.pennsieve.api
 import cats.data._
 import cats.implicits._
 import com.pennsieve.aws.email.Email
+import com.pennsieve.aws.cognito.{
+  CognitoClient,
+  CognitoConfig,
+  CognitoJWTAuthenticator
+}
 import com.pennsieve.core.utilities.PasswordBuddy.passwordEntropy
 import com.pennsieve.dtos.{ Builders, UserDTO }
 import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
@@ -63,6 +68,7 @@ case class CreateUserResponse(
 
 class AccountController(
   val insecureContainer: InsecureAPIContainer,
+  cognitoConfig: CognitoConfig,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -233,17 +239,23 @@ class AccountController(
 
   val createAccountOperation
     : OperationBuilder = (apiOperation[CreateUserResponse]("createUser")
-    summary "create a new user from a create user token"
+    summary "create a new user from a user invite"
     parameter bodyParam[CreateUserRequest]("body"))
 
   post("/", operation(createAccountOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, CreateUserResponse] = for {
-        request <- parseRequestBody[CreateUserRequest].toEitherT[Future]
+        createRequest <- parseRequestBody[CreateUserRequest].toEitherT[Future]
 
-        // TODO: parse Cognito ID from Cognito JWT header
-        //        cognitoId <- AuthenticatedController.getBearerToken(request).toEitherT
-        cognitoId = CognitoId.randomId()
+        jwt <- AuthenticatedController
+          .getBearerToken(request)
+          .toEitherT[Future]
+
+        cognitoId <- CognitoJWTAuthenticator
+          .validateJwt(jwt)(cognitoConfig)
+          .map(_.id)
+          .toEitherT[Future]
+          .orUnauthorized
 
         // TODO: remove this
         password = "NO PASSWORD"
@@ -251,11 +263,11 @@ class AccountController(
         newUser <- insecureContainer.userManager
           .createFromInvite(
             cognitoId = cognitoId,
-            firstName = request.firstName,
-            middleInitial = request.middleInitial,
-            lastName = request.lastName,
-            degree = request.degree,
-            title = request.title,
+            firstName = createRequest.firstName,
+            middleInitial = createRequest.middleInitial,
+            lastName = createRequest.lastName,
+            degree = createRequest.degree,
+            title = createRequest.title,
             password = password
           )(
             insecureContainer.organizationManager,
