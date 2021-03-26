@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 
-package com.blackfynn.aws.cognito
+package com.pennsieve.aws.cognito
 
-import com.auth0.jwk.{ GuavaCachedJwkProvider, JwkProvider, UrlJwkProvider }
+import com.auth0.jwk.{ GuavaCachedJwkProvider, UrlJwkProvider }
 import io.circe.derivation.{ deriveDecoder, deriveEncoder }
-import io.circe.{ Decoder, Encoder, Json, Parser, ParsingFailure }
+import io.circe.{ Decoder, Encoder }
+import io.circe.parser.decode
 import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim, JwtOptions }
-import cats.data._
 import cats.implicits._
 import com.pennsieve.models.CognitoId
 
 import java.time.Instant
 import java.util.UUID
+import java.net.URL
 
 final case class CognitoPayload(id: CognitoId, issuedAt: Instant)
 
@@ -52,35 +53,23 @@ object CognitoPayload {
     } yield CognitoPayload(cognitoId, issuedAtInstant)
 }
 
-object CognitoJWTAuthenticator extends Parser {
+object CognitoJWTAuthenticator {
 
-  def getKeysUrl(awsRegion: String, userPoolId: String): String = {
-    s"https://cognito-idp.$awsRegion.amazonaws.com/$userPoolId/.well-known/jwks.json"
-  }
-
-  def getJwkProvider(
-    awsRegion: String,
-    userPoolId: String
-  ): GuavaCachedJwkProvider = {
-    new GuavaCachedJwkProvider(
-      new UrlJwkProvider(getKeysUrl(awsRegion, userPoolId))
-    )
-  }
+  def getJwkProvider(poolConfig: CognitoPoolConfig): GuavaCachedJwkProvider =
+    new GuavaCachedJwkProvider(new UrlJwkProvider(poolConfig.jwkUrl))
 
   def validateJwt(
-    awsRegion: String,
-    awsUserPoolId: String,
-    awsAppClientIds: String,
-    token: String,
-    jwkProvider: JwkProvider
+    token: String
+  )(implicit
+    cognitoConfig: CognitoConfig
   ): Either[Throwable, CognitoPayload] = {
     for {
       keyId <- getKeyId(token)
-      jwk <- Either.catchNonFatal(jwkProvider.get(keyId))
+      jwk <- Either.catchNonFatal(cognitoConfig.jwkProvider.get(keyId))
       claim <- JwtCirce
         .decode(token, jwk.getPublicKey, Seq(JwtAlgorithm.RS256))
         .toEither
-      _ <- validateClaim(claim, awsRegion, awsUserPoolId, awsAppClientIds)
+      _ <- validateClaim(claim)
       payload <- CognitoPayload(claim)
     } yield payload
   }
@@ -102,13 +91,6 @@ object CognitoJWTAuthenticator extends Parser {
       }
   }
 
-  private def getUserPoolEndpoint(
-    awsRegion: String,
-    awsUserPoolId: String
-  ): String = {
-    s"https://cognito-idp.$awsRegion.amazonaws.com/$awsUserPoolId"
-  }
-
   case class CognitoContent(client_id: Option[String])
 
   object CognitoContent {
@@ -121,33 +103,26 @@ object CognitoJWTAuthenticator extends Parser {
   /*
    * Verify the issuer and audience in the JWT match what was expected
    *
-   * The dropRight on the configuration User Pool endpoint removes a trailing
-   * slash which the issuer might not contain
+   * TODO: check token pool endpoint / client IDs
    */
   private def validateClaim(
-    claim: JwtClaim,
-    awsRegion: String,
-    awsUserPoolId: String,
-    awsAppClientIds: String
+    claim: JwtClaim
+  )(implicit
+    cognitoConfig: CognitoConfig
   ): Either[Throwable, Unit] =
     decode[CognitoContent](claim.content).flatMap { content =>
       (
-        claim.issuer.contains(getUserPoolEndpoint(awsRegion, awsUserPoolId)) || claim.issuer
-          .contains(getUserPoolEndpoint(awsRegion, awsUserPoolId).dropRight(1)),
-        (content.client_id.exists(a => a == awsAppClientIds) || claim.audience
-          .exists(audiences => audiences == awsAppClientIds))
+        claim.issuer.contains(cognitoConfig.userPool.endpoint),
+        content.client_id.exists(_ == cognitoConfig.userPool.appClientId)
+          || claim.audience
+            .exists(_.contains(cognitoConfig.userPool.appClientId))
       ) match {
         case (false, _) => Left(new Exception("claim contains invalid issuer"))
         case (_, false) => {
-          val audiences = claim.audience
-            .getOrElse(Set.empty)
-            .union(content.client_id.toSet)
-            .mkString(", ")
           Left(new Exception("claim contains invalid audience"))
         }
         case _ => Right(())
       }
     }
 
-  override def parse(input: String): Either[ParsingFailure, Json] = ???
 }
