@@ -20,7 +20,6 @@ import java.io._
 import java.util.UUID
 import java.util.concurrent.locks._
 
-import akka.stream.ActorMaterializer
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.{
   CopyObjectRequest,
@@ -69,6 +68,7 @@ import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.uploads.consumer.antivirus._
 import org.apache.commons.io.FilenameUtils
 import org.testcontainers.shaded.org.apache.commons.io.FileUtils
+import net.ceedubs.ficus.Ficus._
 
 import scala.concurrent.duration._
 
@@ -334,7 +334,6 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
         .handle(manifest)(
           synchronizedConsumerContainer(copyLock),
           executionContext,
-          materializer,
           system,
           log
         )
@@ -346,13 +345,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       try {
         UploadHandler
-          .handle(manifest)(
-            consumerContainer,
-            executionContext,
-            materializer,
-            system,
-            log
-          )
+          .handle(manifest)(consumerContainer, executionContext, system, log)
           .value
           .await shouldBe Right(Locked)
       } finally {
@@ -432,7 +425,6 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
         .handle(manifest)(
           synchronizedConsumerContainer(copyLock),
           executionContext,
-          materializer,
           system,
           log
         )
@@ -444,13 +436,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       try {
         UploadHandler
-          .handle(manifest)(
-            consumerContainer,
-            executionContext,
-            materializer,
-            system,
-            log
-          )
+          .handle(manifest)(consumerContainer, executionContext, system, log)
           .value
           .await shouldBe Right(Locked)
 
@@ -525,7 +511,6 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
         .handle(manifest)(
           synchronizedConsumerContainer(copyLock = copyLock),
           executionContext,
-          materializer,
           system,
           log
         )
@@ -577,11 +562,8 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       with LocalSQSContainer with LocalS3Container
       with SQSDeduplicationContainer with ClamAVContainer with LocalSNSContainer
       with MockUploadServiceContainer with MockJobSchedulingServiceContainer {
-        import net.ceedubs.ficus.Ficus._
         override lazy val jobSchedulingServiceConfigPath: String =
           "job_scheduling_service"
-        override lazy val materializer: ActorMaterializer =
-          ActorMaterializer()
         override lazy val jobSchedulingServiceHost: String =
           config.as[String](s"$jobSchedulingServiceConfigPath.host")
         override lazy val jobSchedulingServiceQueueSize: Int =
@@ -797,13 +779,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       models.Manifest(PayloadType.Upload, jobId, organization.id, payload)
 
     UploadHandler
-      .handle(manifest)(
-        consumerContainer,
-        executionContext,
-        materializer,
-        system,
-        log
-      )
+      .handle(manifest)(consumerContainer, executionContext, system, log)
       .value
       .await
   }

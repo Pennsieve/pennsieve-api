@@ -19,7 +19,6 @@ package com.pennsieve.publish
 import akka.NotUsed
 import akka.pattern.retry
 import akka.actor.ActorSystem
-import akka.stream.Materializer
 import akka.stream.scaladsl.Flow
 import akka.stream.alpakka.s3.scaladsl._
 import cats.data._
@@ -40,7 +39,6 @@ object CopyS3ObjectsFlow extends LazyLogging {
   )(implicit
     container: PublishContainer,
     ec: ExecutionContext,
-    mat: Materializer,
     system: ActorSystem
   ): Flow[CopyAction, CopyAction, NotUsed] = {
     implicit val scheduler = system.scheduler
@@ -57,7 +55,6 @@ object CopyS3ObjectsFlow extends LazyLogging {
   )(implicit
     container: PublishContainer,
     ec: ExecutionContext,
-    mat: Materializer,
     system: ActorSystem
   ): Future[CopyAction] = {
     logger

@@ -17,7 +17,6 @@
 package com.pennsieve.uploads
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import com.pennsieve.akka.consumer.AlertConfig
 import com.pennsieve.aws.queue.{ SQSContainer, SQSDeduplicationContainer }
 import com.pennsieve.aws.s3.S3Container
@@ -44,13 +43,9 @@ package object consumer {
     val config: Config
   )(implicit
     val ec: ExecutionContext,
-    val system: ActorSystem,
-    _materializer: ActorMaterializer
+    val system: ActorSystem
   ) extends ConfigContainer
       with AlertConfig {
-
-    // Here to make tests work
-    lazy val materializer: ActorMaterializer = _materializer
 
     val environment: String = config.as[String]("environment")
     val parallelism: Int = config.as[Int]("parallelism")

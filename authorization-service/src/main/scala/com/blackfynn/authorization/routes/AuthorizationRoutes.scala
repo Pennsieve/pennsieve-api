@@ -15,12 +15,13 @@
  */
 
 package com.pennsieve.authorization.routes
+
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ HttpHeader, HttpResponse }
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
 import com.pennsieve.db._
 import com.pennsieve.domain.{ FeatureNotEnabled, Sessions }
 import com.pennsieve.domain.Sessions.Session
@@ -67,7 +68,7 @@ class AuthorizationRoutes(
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
-  materializer: ActorMaterializer
+  system: ActorSystem
 ) extends RouteService
     with LazyLogging {
 

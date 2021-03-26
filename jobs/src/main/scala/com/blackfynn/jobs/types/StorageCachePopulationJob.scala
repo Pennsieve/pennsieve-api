@@ -17,7 +17,6 @@
 package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{ Sink, Source }
 import cats.data._
 import cats.implicits._
@@ -47,7 +46,7 @@ class StorageCachePopulationJob(
   private def cacheOrganizationStorage(
     organization: Organization
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): Future[Unit] = {
 
@@ -60,7 +59,7 @@ class StorageCachePopulationJob(
 
     for {
       _ <- Source
-        .fromFuture(db.run(datasetsMapper.result))
+        .future(db.run(datasetsMapper.result))
         .mapConcat(_.toList)
         .map(organization -> _)
         .mapAsync(parallelism = 1)(cacheDatasetStorage _ tupled)
@@ -91,7 +90,7 @@ class StorageCachePopulationJob(
     organization: Organization,
     dataset: Dataset
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): Future[Unit] = {
 
@@ -125,7 +124,7 @@ class StorageCachePopulationJob(
   def run(
     organizationId: Option[Int] = None
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit] =
     EitherT {

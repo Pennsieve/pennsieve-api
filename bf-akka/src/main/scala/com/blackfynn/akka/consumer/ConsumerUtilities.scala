@@ -18,7 +18,7 @@ package com.pennsieve.akka.consumer
 
 import akka.Done
 import akka.actor.ActorSystem
-import akka.stream.{ ActorMaterializerSettings, Supervision, UniqueKillSwitch }
+import akka.stream.UniqueKillSwitch
 import com.pennsieve.service.utilities.ContextLogger
 import com.typesafe.scalalogging.Logger
 
@@ -27,17 +27,6 @@ import scala.sys.ShutdownHookThread
 import scala.util.{ Failure, Success, Try }
 
 object ConsumerUtilities {
-
-  def actorMaterializerSettings(
-    actorSystem: ActorSystem,
-    logger: Logger
-  ): ActorMaterializerSettings =
-    ActorMaterializerSettings(actorSystem)
-      .withSupervisionStrategy { exception: Throwable =>
-        logger.error("Unhandled exception thrown", exception)
-
-        Supervision.resume
-      }
 
   def shutdown(
     actorSystem: ActorSystem
