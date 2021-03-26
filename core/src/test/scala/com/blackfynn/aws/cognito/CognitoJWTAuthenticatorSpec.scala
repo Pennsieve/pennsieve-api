@@ -16,11 +16,13 @@
 
 package com.pennsieve.aws.cognito
 
+import software.amazon.awssdk.regions
 import com.auth0.jwk.{ Jwk, JwkProvider }
 import com.pennsieve.models.CognitoId
 import io.circe.generic.decoding.DerivedDecoder.deriveDecoder
 import org.scalatest.{ FlatSpec, Matchers }
 import pdi.jwt.{ JwtAlgorithm, JwtCirce }
+import software.amazon.awssdk.regions.Region
 
 import java.util.UUID
 import java.time.Instant
@@ -82,17 +84,13 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
     )
   }
 
-  /*
- * TODO: Come back and finish this test fingers crossed as well as tests for
- * invalid JWTs
-
   "validateJwt" should "return CognitoPayload if supplied token is valid" in {
-    CognitoJWTAuthenticator.validateJwt(
-      "foo",
-      "bar",
-      "appuserfoo,appuserbar",
-      testToken,
-      jwkProvider
+    CognitoJWTAuthenticator.validateJwt(testToken)(
+      CognitoConfig(
+        Region.AP_SOUTH_1,
+        CognitoPoolConfig(Region.AP_SOUTH_1, "12345", "12345"),
+        CognitoPoolConfig(Region.AP_SOUTH_1, "12345", "12345")
+      )
     ) should equal(
       new CognitoPayload(
         CognitoId(UUID.fromString("0f14d0ab-9605-4a62-a9e4-5ed26688389b")),
@@ -100,6 +98,5 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
       )
     )
   }
- */
 
 }
