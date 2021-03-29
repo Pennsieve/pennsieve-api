@@ -20,7 +20,7 @@ data "terraform_remote_state" "cognito" {
 
   config = {
     bucket = "${var.aws_account}-terraform-state"
-    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/cognito/terraform.tfstate"
+    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/authentication-service/terraform.tfstate"
     region = "us-east-1"
   }
 }
