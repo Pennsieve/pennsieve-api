@@ -1,7 +1,23 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
+import akka.actor.ActorSystem
+import akka.stream.{ ActorAttributes, Supervision }
 import akka.stream.alpakka.sqs.scaladsl.{ SqsAckSink, SqsSource }
 import akka.stream.alpakka.sqs.{ MessageAction, SqsSourceSettings }
 import akka.stream.contrib.PartitionWith
@@ -18,10 +34,10 @@ import akka.stream._
 import akka.{ Done, NotUsed }
 import cats.implicits._
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
-import com.blackfynn.aws.queue.SQS
-import com.blackfynn.jobs.container._
-import com.blackfynn.messages._
-import com.blackfynn.service.utilities.{ ContextLogger, LogContext, Tier }
+import com.pennsieve.aws.queue.SQS
+import com.pennsieve.jobs.container._
+import com.pennsieve.messages._
+import com.pennsieve.service.utilities.{ ContextLogger, LogContext, Tier }
 import io.circe.parser.decode
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -88,7 +104,7 @@ object Processor {
     queue: String,
     parallelism: Int = 10
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     executionContext: ExecutionContext,
     container: Container
   ): RunnableGraph[UniqueKillSwitch] = {
@@ -145,6 +161,11 @@ object Processor {
           // @formatter:on
 
           ClosedShape
+      })
+      .withAttributes(ActorAttributes.supervisionStrategy {
+        exception: Throwable =>
+          log.noContext.error("Unhandled exception thrown", exception)
+          Supervision.resume
       })
   }
 

@@ -1,18 +1,33 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
-import com.blackfynn.models.{ Organization, Token, User }
+import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.models.{ Organization, Token, User }
 import io.github.nremond.SecureHash
 import cats.data.EitherT
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db.{ OrganizationsMapper, TokensMapper }
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db.{ OrganizationsMapper, TokensMapper }
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers
-import com.blackfynn.domain.{ CoreError, NotFound, PermissionError }
-import com.blackfynn.dtos.Secret
-import com.blackfynn.models.DBPermission.{ Read, Write }
+import com.pennsieve.core.utilities.FutureEitherHelpers
+import com.pennsieve.domain.{ CoreError, NotFound, PermissionError }
+import com.pennsieve.dtos.Secret
+import com.pennsieve.models.DBPermission.{ Read, Write }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -21,27 +36,35 @@ class TokenManager(db: Database) {
   def create(
     name: String,
     user: User,
-    organization: Organization
+    organization: Organization,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Token, Secret)] = {
     val tokenString = java.util.UUID.randomUUID.toString
-    val secret = java.util.UUID.randomUUID.toString
-    val token = Token(
-      name,
-      tokenString,
-      SecureHash.createHash(secret),
-      organization.id,
-      user.id
-    )
+    val secret = Secret(java.util.UUID.randomUUID.toString)
+
     for {
+      cognitoId <- cognitoClient
+        .createClientToken(tokenString, secret)
+        .toEitherT
+
+      token = Token(
+        name,
+        tokenString,
+        SecureHash.createHash(secret.plaintext),
+        organization.id,
+        user.id
+      )
+
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
         .toEitherT
+
       token <- db
         .run(TokensMapper.getById(tokenId))
         .whenNone[CoreError](NotFound(s"Token (${token.id}"))
-    } yield (token, Secret(secret))
+    } yield (token, secret)
   }
 
   def get(
@@ -83,11 +106,18 @@ class TokenManager(db: Database) {
     } yield token
 
   def delete(
-    token: Token
+    token: Token,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] =
-    db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
+  ): EitherT[Future, CoreError, Int] = {
+    val query = for {
+      result <- TokensMapper.filter(_.id === token.id).delete
+      _ <- DBIO.from(cognitoClient.deleteClientToken(token.token))
+    } yield result
+
+    db.run(query.transactionally).toEitherT
+  }
 
   def getOrganization(
     token: Token
@@ -96,7 +126,6 @@ class TokenManager(db: Database) {
   ): EitherT[Future, CoreError, Organization] =
     db.run(OrganizationsMapper.getById(token.organizationId))
       .whenNone[CoreError](NotFound(s"Organization ${token.organizationId}"))
-
 }
 
 class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
@@ -104,31 +133,17 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
   override def create(
     name: String,
     user: User,
-    organization: Organization
+    organization: Organization,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, (Token, Secret)] = {
-    val tokenString = java.util.UUID.randomUUID.toString
-    val secret = java.util.UUID.randomUUID.toString
-    val token = Token(
-      name,
-      tokenString,
-      SecureHash.createHash(secret),
-      organization.id,
-      user.id
-    )
+  ): EitherT[Future, CoreError, (Token, Secret)] =
     for {
-      _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
+      _ <- FutureEitherHelpers.assert[CoreError](user.id == actor.id)(
         PermissionError(actor.nodeId, Write, "")
       )
-      tokenId <- db
-        .run((TokensMapper returning TokensMapper.map(_.id)) += token)
-        .toEitherT
-      token <- db
-        .run(TokensMapper.getById(tokenId))
-        .whenNone[CoreError](NotFound(s"Token (${token.id}"))
-    } yield (token, Secret(secret))
-  }
+      result <- super.create(name, user, organization, cognitoClient)
+    } yield result
 
   override def get(
     uuid: String
@@ -151,24 +166,20 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Read, token.token)
       )
-      _ <- db
-        .run(TokensMapper.filter(_.id === token.id).update(token))
-        .toEitherT
-      _ <- db
-        .run(TokensMapper.getById(token.id))
-        .whenNone[CoreError](NotFound(s"Token (${token.id}"))
+      _ <- super.update(token)
     } yield token
 
   override def delete(
-    token: Token
+    token: Token,
+    cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] =
+  ): EitherT[Future, CoreError, Int] = {
     for {
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Read, token.token)
       )
-      result <- db.run(TokensMapper.filter(_.id === token.id).delete).toEitherT
+      result <- super.delete(token, cognitoClient)
     } yield result
-
+  }
 }

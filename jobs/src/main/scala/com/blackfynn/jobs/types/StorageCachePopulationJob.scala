@@ -1,17 +1,32 @@
-package com.blackfynn.jobs.types
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{ Sink, Source }
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities._
-import com.blackfynn.db._
-import com.blackfynn.jobs.contexts.StorageCacheContext
-import com.blackfynn.jobs.{ ExceptionError, InvalidOrganization, JobException }
-import com.blackfynn.models.{ Dataset, Organization }
-import com.blackfynn.service.utilities.{ ContextLogger, Tier }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.core.utilities._
+import com.pennsieve.db._
+import com.pennsieve.jobs.contexts.StorageCacheContext
+import com.pennsieve.jobs.{ ExceptionError, InvalidOrganization, JobException }
+import com.pennsieve.models.{ Dataset, Organization }
+import com.pennsieve.service.utilities.{ ContextLogger, Tier }
+import com.pennsieve.traits.PostgresProfile.api._
 import com.typesafe.config.Config
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -31,7 +46,7 @@ class StorageCachePopulationJob(
   private def cacheOrganizationStorage(
     organization: Organization
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): Future[Unit] = {
 
@@ -44,7 +59,7 @@ class StorageCachePopulationJob(
 
     for {
       _ <- Source
-        .fromFuture(db.run(datasetsMapper.result))
+        .future(db.run(datasetsMapper.result))
         .mapConcat(_.toList)
         .map(organization -> _)
         .mapAsync(parallelism = 1)(cacheDatasetStorage _ tupled)
@@ -75,7 +90,7 @@ class StorageCachePopulationJob(
     organization: Organization,
     dataset: Dataset
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): Future[Unit] = {
 
@@ -109,7 +124,7 @@ class StorageCachePopulationJob(
   def run(
     organizationId: Option[Int] = None
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit] =
     EitherT {

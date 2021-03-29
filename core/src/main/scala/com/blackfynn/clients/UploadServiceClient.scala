@@ -1,4 +1,20 @@
-package com.blackfynn.clients
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.clients
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -9,13 +25,12 @@ import akka.http.scaladsl.model.{
   HttpResponse,
   Uri
 }
-import akka.stream.ActorMaterializer
 import cats.data.EitherT
 import cats.instances.future._
 import cats.syntax.either._
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.utilities.Container
-import com.blackfynn.models.FileHash
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.utilities.Container
+import com.pennsieve.models.FileHash
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.Decoder
 import io.circe.parser.decode
@@ -29,7 +44,6 @@ trait UploadServiceClient {
   val uploadServiceHost: String
 
   implicit val system: ActorSystem
-  implicit val materializer: ActorMaterializer
   implicit val ec: ExecutionContext
 
   def getFileHash(
@@ -43,7 +57,6 @@ trait UploadServiceClient {
 class LocalUploadServiceClient(
 )(implicit
   override val system: ActorSystem,
-  override val materializer: ActorMaterializer,
   override val ec: ExecutionContext
 ) extends UploadServiceClient {
   override val uploadServiceHost = "test-upload-service-url"
@@ -66,7 +79,6 @@ class UploadServiceClientImpl(
   override val uploadServiceHost: String
 )(implicit
   override val system: ActorSystem,
-  override val materializer: ActorMaterializer,
   override val ec: ExecutionContext
 ) extends UploadServiceClient
     with StrictLogging {
@@ -125,7 +137,6 @@ class UploadServiceClientImpl(
 trait UploadServiceContainer { self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  implicit def materializer: ActorMaterializer
 
   val uploadServiceHost: String
   val uploadServiceClient: UploadServiceClient
@@ -135,7 +146,6 @@ trait UploadServiceContainerImpl extends UploadServiceContainer {
   self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  override implicit val materializer: ActorMaterializer
 
   val uploadServiceHost: String
   override lazy val uploadServiceClient: UploadServiceClient =
@@ -146,7 +156,6 @@ trait LocalUploadServiceContainer extends UploadServiceContainer {
   self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  implicit val materializer: ActorMaterializer
 
   val uploadServiceHost: String
   override val uploadServiceClient: UploadServiceClient =

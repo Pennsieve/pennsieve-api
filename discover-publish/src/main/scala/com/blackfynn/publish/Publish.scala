@@ -1,27 +1,42 @@
-package com.blackfynn.publish
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.publish
 
 import java.time.LocalDate
 import java.util.UUID
 
 import akka.actor.ActorSystem
-import akka.stream.Materializer
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.Sink
 import cats.data._
 import cats.implicits._
 import com.amazonaws.services.s3.model.CopyObjectRequest
-import com.blackfynn.core.utilities
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.domain.{
+import com.pennsieve.core.utilities
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.domain.{
   CoreError,
   ExceptionError,
   PredicateError,
   ServiceError,
   ThrowableError
 }
-import com.blackfynn.models._
-import com.blackfynn.publish.models._
-import com.blackfynn.publish.utils.joinKeys
+import com.pennsieve.models._
+import com.pennsieve.publish.models._
+import com.pennsieve.publish.utils.joinKeys
 import com.typesafe.scalalogging.StrictLogging
 import io.circe._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
@@ -90,7 +105,6 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer,
     system: ActorSystem
   ): EitherT[Future, CoreError, Unit] =
     for {
@@ -131,7 +145,7 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, Unit] =
     for {
       assets <- downloadFromS3[PublishAssetResult](
@@ -207,7 +221,7 @@ object Publish extends StrictLogging {
     key: String
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, T] = {
     EitherT
       .fromEither[Future](
@@ -236,7 +250,7 @@ object Publish extends StrictLogging {
     payload: Json
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, Unit] = {
     EitherT
       .fromEither[Future](
@@ -262,7 +276,7 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, (String, FileManifest)] = {
     for {
       banner <- container.datasetAssetsManager
@@ -331,7 +345,7 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, (String, FileManifest)] = {
 
     val readmeKey = joinKeys(container.s3Key, README_FILENAME)
@@ -391,7 +405,7 @@ object Publish extends StrictLogging {
     manifests: List[FileManifest]
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, Unit] = {
 
     // Self-describing metadata file to include in the file manifest.
@@ -465,7 +479,7 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, Long] =
     S3.listBucket(container.s3Bucket, Some(container.s3Key))
       .map(_.size)

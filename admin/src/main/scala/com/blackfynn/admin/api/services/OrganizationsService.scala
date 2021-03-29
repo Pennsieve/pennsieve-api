@@ -1,36 +1,50 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes.{ InternalServerError, NotFound }
 import akka.http.scaladsl.server.Directives.{ entity, _ }
 import akka.http.scaladsl.server.{ Route, ValidationRejection }
-import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.Router.{
   InsecureResourceContainer,
   SecureResourceContainer
 }
-import com.blackfynn.admin.api.dtos.UserDTO
-import com.blackfynn.akka.http.RouteService
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.clients.Quota
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.JwtAuthenticator
-import com.blackfynn.db.OrganizationsMapper
-import com.blackfynn.domain.{
+import com.pennsieve.admin.api.dtos.UserDTO
+import com.pennsieve.akka.http.RouteService
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.clients.Quota
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.JwtAuthenticator
+import com.pennsieve.db.OrganizationsMapper
+import com.pennsieve.domain.{
   CoreError,
   PredicateError,
   NotFound => ModelNotFound
 }
-import com.blackfynn.managers.StorageManager
-import com.blackfynn.models.DateVersion._
-import com.blackfynn.models.NodeCodes.{ nodeIdIsA, organizationCode }
-import com.blackfynn.models.SubscriptionStatus.PendingSubscription
-import com.blackfynn.models.{
+import com.pennsieve.managers.StorageManager
+import com.pennsieve.models.DateVersion._
+import com.pennsieve.models.NodeCodes.{ nodeIdIsA, organizationCode }
+import com.pennsieve.models.SubscriptionStatus.PendingSubscription
+import com.pennsieve.models.{
   DBPermission,
   Feature,
   FeatureFlag,
@@ -107,7 +121,7 @@ class OrganizationsService(
   insecureContainer: InsecureResourceContainer
 )(implicit
   ec: ExecutionContext,
-  mat: ActorMaterializer
+  system: ActorSystem
 ) extends RouteService
     with LazyLogging {
 
@@ -229,7 +243,7 @@ class OrganizationsService(
         value = "Organization name and slug",
         required = true,
         paramType = "body",
-        dataType = "com.blackfynn.admin.api.services.NewOrganization"
+        dataType = "com.pennsieve.admin.api.services.NewOrganization"
       )
     )
   )
@@ -346,7 +360,7 @@ class OrganizationsService(
         value = "Feature/enabled",
         required = true,
         paramType = "body",
-        dataType = "com.blackfynn.admin.api.services.UpdateFeatureFlag"
+        dataType = "com.pennsieve.admin.api.services.UpdateFeatureFlag"
       )
     )
   )
@@ -532,7 +546,7 @@ class OrganizationsService(
         required = true,
         paramType = "body",
         dataType =
-          "com.blackfynn.admin.api.services.UpdateOrganizationUserPermission"
+          "com.pennsieve.admin.api.services.UpdateOrganizationUserPermission"
       )
     )
   )
@@ -619,7 +633,7 @@ class OrganizationsService(
     httpMethod = "GET",
     response = classOf[Subscription],
     value = "Returns OK if the delete was successful",
-    responseContainer = "com.blackfynn.models.Subscription"
+    responseContainer = "com.pennsieve.models.Subscription"
   )
   @ApiImplicitParams(
     Array(
@@ -662,7 +676,7 @@ class OrganizationsService(
     httpMethod = "PUT",
     response = classOf[Subscription],
     value = "Returns OK if subscription has been updated",
-    responseContainer = "com.blackfynn.models.Subscription"
+    responseContainer = "com.pennsieve.models.Subscription"
   )
   @ApiImplicitParams(
     Array(
@@ -677,7 +691,7 @@ class OrganizationsService(
         value = "isTrial subscription flag",
         required = true,
         paramType = "body",
-        dataType = "com.blackfynn.admin.api.services.SetSubscriptionType"
+        dataType = "com.pennsieve.admin.api.services.SetSubscriptionType"
       )
     )
   )

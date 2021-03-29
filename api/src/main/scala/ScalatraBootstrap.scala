@@ -1,15 +1,28 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-import com.blackfynn.api._
-import com.blackfynn.helpers.{
+import com.pennsieve.api._
+import com.pennsieve.helpers.{
   AWSBootstrapHelper,
   BaseBootstrapHelper,
   LocalBootstrapHelper
 }
-import com.blackfynn.web.{ ResourcesApp, Settings, SwaggerApp }
+import com.pennsieve.web.{ ResourcesApp, Settings, SwaggerApp }
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.LazyLogging
 import java.io.{ PrintWriter, StringWriter }
 import javax.servlet.ServletContext
@@ -24,7 +37,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
   swagger.addAuthorization(ApiKey("api_key", "query"))
 
   implicit val system: ActorSystem = ActorSystem("appActorSystem")
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContext = system.dispatcher
 
   val bootstrapHelper: BaseBootstrapHelper = if (Settings.isLocal) {
@@ -58,7 +70,11 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       // account endpoints
       ///////////////////////////////
       val accountController =
-        new AccountController(bootstrapHelper.insecureContainer, ec)
+        new AccountController(
+          bootstrapHelper.insecureContainer,
+          bootstrapHelper.cognitoConfig,
+          ec
+        )
       context mount (accountController, "/account/*", "account")
 
       // annotation endpoints
@@ -89,6 +105,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val apiTokenController = new APITokenController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
+        bootstrapHelper.cognitoClient,
         ec
       )
 
@@ -99,7 +116,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val dataController = new DataController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
-        materializer,
+        system,
         ec,
         bootstrapHelper.auditLogger,
         bootstrapHelper.sqsClient
@@ -129,7 +146,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val dataSetsController = new DataSetsController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
-        materializer,
+        system,
         bootstrapHelper.auditLogger,
         bootstrapHelper.sqsClient,
         bootstrapHelper.modelServiceClient,
@@ -174,7 +191,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val filesController = new FilesController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
-        materializer,
+        system,
         bootstrapHelper.auditLogger,
         bootstrapHelper.objectStore,
         bootstrapHelper.modelServiceClient,
@@ -231,7 +248,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.objectStore,
         bootstrapHelper.jobSchedulingServiceClient,
         bootstrapHelper.urlShortenerClient,
-        materializer,
+        system,
         ec
       )
       context mount (packagesController, "/packages/*", "packages")
@@ -251,7 +268,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
         ec,
-        materializer
+        system
       )
       context mount (timeSeriesController, "/timeseries/*", "timeseries")
 

@@ -1,25 +1,41 @@
-package com.blackfynn.dtos
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.dtos
 
 import java.net.URL
 import java.util.UUID
 
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.clients.DatasetAssetClient
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities._
-import com.blackfynn.db.{ DatasetAndStatus, PackagesMapper }
-import com.blackfynn.domain.StorageAggregation.{ sdatasets, spackages }
-import com.blackfynn.domain._
-import com.blackfynn.dtos.FileDTO.TypeToFileDTO
-import com.blackfynn.dtos.SimpleFileDTO.TypeToSimpleFile
-import com.blackfynn.managers._
-import com.blackfynn.models.FileObjectType.{ Source, View, File => FileT }
-import com.blackfynn.models.PackageType.TimeSeries
-import com.blackfynn.models.{
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.clients.DatasetAssetClient
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities._
+import com.pennsieve.db.{ DatasetAndStatus, PackagesMapper }
+import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
+import com.pennsieve.domain._
+import com.pennsieve.dtos.FileDTO.TypeToFileDTO
+import com.pennsieve.dtos.SimpleFileDTO.TypeToSimpleFile
+import com.pennsieve.managers._
+import com.pennsieve.models.FileObjectType.{ Source, View, File => FileT }
+import com.pennsieve.models.PackageType.TimeSeries
+import com.pennsieve.models.{
   Collection,
   Contributor,
   DBPermission,
@@ -104,7 +120,7 @@ object Builders {
       CoreError,
       Map[Int, DiscoverPublishedDatasetDTO]
     ],
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, List[DataSetDTO]] = {
 
@@ -209,7 +225,7 @@ object Builders {
       CoreError,
       Map[Int, DiscoverPublishedDatasetDTO]
     ],
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DataSetDTO] = {
     for {

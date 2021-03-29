@@ -1,6 +1,20 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.jobs.types
+package com.pennsieve.jobs.types
 
 import java.util.concurrent.TimeUnit
 
@@ -15,7 +29,7 @@ import akka.stream.scaladsl.{
   Sink,
   Source
 }
-import akka.stream.{ ActorMaterializer, FlowShape }
+import akka.stream.FlowShape
 import cats.FlatMap
 import cats.data.EitherT
 import cats.implicits._
@@ -23,26 +37,26 @@ import com.amazonaws.ClientConfiguration
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.model._
 import com.amazonaws.services.s3.{ AmazonS3, AmazonS3ClientBuilder }
-import com.blackfynn.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.aws.s3._
-import com.blackfynn.clients
-import com.blackfynn.clients._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities._
-import com.blackfynn.db.{ DatasetAssetsMapper, _ }
-import com.blackfynn.domain.{ CoreError, NotFound }
-import com.blackfynn.jobs.contexts.{
+import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.aws.s3._
+import com.pennsieve.clients
+import com.pennsieve.clients._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities._
+import com.pennsieve.db.{ DatasetAssetsMapper, _ }
+import com.pennsieve.domain.{ CoreError, NotFound }
+import com.pennsieve.jobs.contexts.{
   CatalogDeleteContext,
   DatasetDeleteContext,
   PackageDeleteContext
 }
-import com.blackfynn.jobs.{ DeleteResult, _ }
-import com.blackfynn.managers._
-import com.blackfynn.messages._
-import com.blackfynn.models.FileType.Aperio
-import com.blackfynn.models.PackageType.{ Collection, TimeSeries }
-import com.blackfynn.models.{
+import com.pennsieve.jobs.{ DeleteResult, _ }
+import com.pennsieve.managers._
+import com.pennsieve.messages._
+import com.pennsieve.models.FileType.Aperio
+import com.pennsieve.models.PackageType.{ Collection, TimeSeries }
+import com.pennsieve.models.{
   Channel,
   DatasetState,
   File,
@@ -50,10 +64,10 @@ import com.blackfynn.models.{
   Package,
   PackageState
 }
-import com.blackfynn.service.utilities.{ ContextLogger, LogContext, Tier }
-import com.blackfynn.streaming.RangeLookUp
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.traits.TimeSeriesDBContainer
+import com.pennsieve.service.utilities.{ ContextLogger, LogContext, Tier }
+import com.pennsieve.streaming.RangeLookUp
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.traits.TimeSeriesDBContainer
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
 import org.apache.http.impl.client.HttpClients
@@ -93,13 +107,13 @@ trait CreditDeleteJob {
   def creditDeleteJob(
     job: CatalogDeleteJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit]
   def deleteDatasetJob(
     job: DeleteDatasetJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit]
 
@@ -119,7 +133,6 @@ object DeleteJob {
   def apply(
   )(implicit
     system: ActorSystem,
-    materializer: ActorMaterializer,
     ec: ExecutionContext,
     log: ContextLogger
   ): DeleteJob = {
@@ -579,7 +592,7 @@ class DeleteJob(
         .via(deletePackageFlow(packageTable))
 
       val timeSeriesDelete =
-        Source.fromFuture(timeseriesDeleteResults).mapConcat(identity)
+        Source.future(timeseriesDeleteResults).mapConcat(identity)
 
       Source.combine(timeSeriesDelete, deletePackage)(Concat.apply)
     }
@@ -751,7 +764,7 @@ class DeleteJob(
   def creditDeleteJob(
     job: CatalogDeleteJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit] = {
     for {
@@ -826,7 +839,7 @@ class DeleteJob(
   def deleteDatasetJobWithResult(
     job: DeleteDatasetJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, (DeleteResult, DatasetDeletionSummary)] = {
 
@@ -898,7 +911,7 @@ class DeleteJob(
   def deleteDatasetJob(
     job: DeleteDatasetJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit] =
     deleteDatasetJobWithResult(job).map(_ => ())

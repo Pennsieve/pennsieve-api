@@ -1,17 +1,31 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase
 import org.apache.http.entity.ByteArrayEntity
-import com.blackfynn.auth.middleware._
-import com.blackfynn.aws.email.LocalEmailContainer
-import com.blackfynn.aws.queue.LocalSQSContainer
-import com.blackfynn.aws.s3.LocalS3Container
-import com.blackfynn.models.{
+import com.pennsieve.auth.middleware._
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.aws.email.LocalEmailContainer
+import com.pennsieve.aws.queue.LocalSQSContainer
+import com.pennsieve.aws.s3.LocalS3Container
+import com.pennsieve.models.{
   Dataset,
   DatasetStatus,
   Degree,
@@ -25,31 +39,31 @@ import com.blackfynn.models.{
   Token,
   User
 }
-import com.blackfynn.clients.{
+import com.pennsieve.clients.{
   MockCustomTermsOfServiceClientContainer,
   MockJobSchedulingServiceContainer
 }
-import com.blackfynn.core.utilities._
-import com.blackfynn.models.DBPermission.{ Administer, BlindReviewer, Delete }
-import com.blackfynn.managers._
-import com.blackfynn.managers.DatasetManager
-import com.blackfynn.helpers._
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.core.utilities._
+import com.pennsieve.models.DBPermission.{ Administer, BlindReviewer, Delete }
+import com.pennsieve.managers._
+import com.pennsieve.managers.DatasetManager
+import com.pennsieve.helpers._
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.utilities._
-import com.blackfynn.web.SwaggerApp
-import com.blackfynn.domain.Sessions
-import com.blackfynn.dtos.Secret
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.Collection
-import com.blackfynn.models.PublishStatus.{ PublishFailed, PublishSucceeded }
-import com.blackfynn.test._
-import com.blackfynn.test.helpers._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.traits.TimeSeriesDBContainer
+import com.pennsieve.utilities._
+import com.pennsieve.web.SwaggerApp
+import com.pennsieve.domain.Sessions
+import com.pennsieve.dtos.Secret
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.Collection
+import com.pennsieve.models.PublishStatus.{ PublishFailed, PublishSucceeded }
+import com.pennsieve.test._
+import com.pennsieve.test.helpers._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.TimeSeriesDBContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import enumeratum._
 import io.circe.syntax._
@@ -57,8 +71,8 @@ import java.net.URI
 import java.time.{ Duration, ZonedDateTime }
 import java.util.UUID
 
-import com.blackfynn.audit.middleware.AuditLogger
-import com.blackfynn.auth.middleware.Jwt.Role.RoleIdentifier
+import com.pennsieve.audit.middleware.AuditLogger
+import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import com.redis.RedisClientPool
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
@@ -83,7 +97,6 @@ trait ApiSuite
     with PostgresDockerContainer {
 
   implicit lazy val system: ActorSystem = ActorSystem("ApiSuite")
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
   implicit lazy val jwtConfig: Jwt.Config = new Jwt.Config {
@@ -353,6 +366,8 @@ trait ApiSuite
   override def beforeEach(): Unit = {
     super.beforeEach()
 
+    val mockCognito: MockCognito = new MockCognito()
+
     superAdmin =
       userManager.create(superAdminUser, Some("password")).await.value
 
@@ -435,7 +450,7 @@ trait ApiSuite
     )
 
     val (_apiToken, _secret) = tokenManager
-      .create("test api token", loggedInUser, loggedInOrganization)
+      .create("test api token", loggedInUser, loggedInOrganization, mockCognito)
       .await
       .value
     apiToken = _apiToken

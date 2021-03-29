@@ -2,12 +2,12 @@ import cats.data._
 import cats.syntax._
 import cats.implicits._
 import com.amazonaws.services.s3.model._
-import com.blackfynn.aws.s3.AWSS3Container
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.db._
-import com.blackfynn.models.{Contributor, Dataset, DatasetContributor, User}
-import com.blackfynn.core.utilities.DatabaseContainer
-import com.blackfynn.utilities.{AbstractError, Container}
+import com.pennsieve.aws.s3.AWSS3Container
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.db._
+import com.pennsieve.models.{Contributor, Dataset, DatasetContributor, User}
+import com.pennsieve.core.utilities.DatabaseContainer
+import com.pennsieve.utilities.{AbstractError, Container}
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import ch.qos.logback.classic.{Level, Logger}
 import org.slf4j.LoggerFactory

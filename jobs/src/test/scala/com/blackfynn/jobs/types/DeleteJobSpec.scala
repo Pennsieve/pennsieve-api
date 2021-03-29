@@ -1,27 +1,42 @@
-package com.blackfynn.jobs.types
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.jobs.types
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
 import akka.testkit.TestKitBase
 import cats.implicits._
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.S3ObjectSummary
-import com.blackfynn.audit.middleware.{ Auditor, ToMessage, TraceId }
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.clients._
-import com.blackfynn.db.{ DatasetsMapper, PackagesMapper }
-import com.blackfynn.domain.{ CoreError, ThrowableError }
-import com.blackfynn.jobs._
-import com.blackfynn.jobs.types.DeleteJob.Container
-import com.blackfynn.managers.{ DatasetAssetsManager, ManagerSpec }
-import com.blackfynn.messages._
-import com.blackfynn.models.FileType.Aperio
-import com.blackfynn.models.PackageType.{ ExternalFile, Slide, TimeSeries }
-import com.blackfynn.models.{ DatasetState, NodeCodes, PackageState, User }
-import com.blackfynn.streaming.{ LookupResultRow, RangeLookUp }
-import com.blackfynn.test._
+import com.pennsieve.audit.middleware.{ Auditor, ToMessage, TraceId }
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.clients._
+import com.pennsieve.db.{ DatasetsMapper, PackagesMapper }
+import com.pennsieve.domain.{ CoreError, ThrowableError }
+import com.pennsieve.jobs._
+import com.pennsieve.jobs.types.DeleteJob.Container
+import com.pennsieve.managers.{ DatasetAssetsManager, ManagerSpec }
+import com.pennsieve.messages._
+import com.pennsieve.models.FileType.Aperio
+import com.pennsieve.models.PackageType.{ ExternalFile, Slide, TimeSeries }
+import com.pennsieve.models.{ DatasetState, NodeCodes, PackageState, User }
+import com.pennsieve.streaming.{ LookupResultRow, RangeLookUp }
+import com.pennsieve.test._
 import com.github.tminglei.slickpg.Range
 import com.typesafe.config.{ Config, ConfigFactory }
 import org.apache.commons.io.IOUtils
@@ -111,7 +126,6 @@ class DeleteJobSpec
   }
 
   implicit lazy val system: ActorSystem = ActorSystem("DeleteJobSpec")
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val executionContext: ExecutionContextExecutor =
     system.dispatcher
 

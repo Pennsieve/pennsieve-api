@@ -1,24 +1,39 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
+
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ HttpHeader, HttpResponse }
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
-import com.blackfynn.db._
-import com.blackfynn.domain.{ FeatureNotEnabled, Sessions }
-import com.blackfynn.domain.Sessions.Session
-import com.blackfynn.dtos.{ Builders, UserDTO }
-import com.blackfynn.models.Role.BlindReviewer
-import com.blackfynn.models._
+import com.pennsieve.db._
+import com.pennsieve.domain.{ FeatureNotEnabled, Sessions }
+import com.pennsieve.domain.Sessions.Session
+import com.pennsieve.dtos.{ Builders, UserDTO }
+import com.pennsieve.models.Role.BlindReviewer
+import com.pennsieve.models._
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.{ DBIOAction, Effect, NoStream }
 import slick.sql.FixedSqlStreamingAction
 import cats.implicits._
-import com.blackfynn.akka.http.RouteService
-import com.blackfynn.auth.middleware.{
+import com.pennsieve.akka.http.RouteService
+import com.pennsieve.auth.middleware.{
   DatasetId,
   DatasetNodeId,
   EncryptionKeyId,
@@ -31,12 +46,12 @@ import com.blackfynn.auth.middleware.{
   WorkspaceId,
   Session => JwtSession
 }
-import com.blackfynn.authorization.Router.ResourceContainer
-import com.blackfynn.authorization.utilities.exceptions._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ DatasetsMapper, OrganizationUserMapper, UserMapper }
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.authorization.Router.ResourceContainer
+import com.pennsieve.authorization.utilities.exceptions._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ DatasetsMapper, OrganizationUserMapper, UserMapper }
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.traits.PostgresProfile.api._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import shapeless.syntax.inject._
 
@@ -49,11 +64,11 @@ import scala.util.{ Failure, Success, Try }
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
-  session: Session
+  session: Option[String]
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
-  materializer: ActorMaterializer
+  system: ActorSystem
 ) extends RouteService
     with LazyLogging {
 
@@ -106,7 +121,7 @@ class AuthorizationRoutes(
       } yield {
         val roles =
           List(organizationRole.some, datasetRole, workspaceRole).flatten
-        val userClaim = getUserClaim(user, roles, session)
+        val userClaim = getUserClaim(user, roles)
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
@@ -139,18 +154,19 @@ class AuthorizationRoutes(
     (path("switch-organization") & parameters('organization_id.as[Int]) & put) {
       (organizationId) =>
         val result: Future[UserDTO] = for {
-          _ <- session.isBrowserSession match {
-            case true => Future.successful(())
-            case false => Future.failed(NonBrowserSession)
-          }
+          // TODO: Only allow users to change sessions, not client tokens
+//          _ <- session.isBrowserSession match {
+//            case true => Future.successful(())
+//            case false => Future.failed(NonBrowserSession)
+//          }
           organizationToSwitchTo <- getOrganization(user, organizationId)
-          savedSession <- Future.fromTry(
-            container.sessionManager
-              .update(
-                session.copy(organizationId = organizationToSwitchTo.nodeId)
-              )
-              .toTry
-          )
+//          savedSession <- Future.fromTry(
+//            container.sessionManager
+//              .update(
+//                session.copy(organizationId = organizationToSwitchTo.nodeId)
+//              )
+//              .toTry
+//          )
           updatedUser <- updateUserPreferredOrganization(
             user,
             organizationToSwitchTo
@@ -179,19 +195,20 @@ class AuthorizationRoutes(
 
   private def getUserClaim(
     user: User,
-    roles: List[Jwt.Role],
-    session: Session
+    roles: List[Jwt.Role]
+//    session: Session
   ): UserClaim = {
-    val jwtSession: JwtSession = session.`type` match {
-      case Sessions.APISession(_) => JwtSession.API(session.uuid)
-      case Sessions.BrowserSession => JwtSession.Browser(session.uuid)
-      case Sessions.TemporarySession => JwtSession.Temporary(session.uuid)
-    }
+//    val jwtSession: JwtSession = session.`type` match {
+//      case Sessions.APISession(_) => JwtSession.API(session.uuid)
+//      case Sessions.BrowserSession => JwtSession.Browser(session.uuid)
+//      case Sessions.TemporarySession => JwtSession.Temporary(session.uuid)
+//    }
 
     UserClaim(
       id = UserId(user.id),
       roles = roles,
-      session = Some(jwtSession),
+//      session = Some(jwtSession),
+      session = None,
       node_id = Some(UserNodeId(user.nodeId))
     )
   }

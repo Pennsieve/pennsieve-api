@@ -1,22 +1,38 @@
-package com.blackfynn.api
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.api
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 import akka.Done
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.auth.middleware.{ DatasetPermission, Jwt }
-import com.blackfynn.aws.email.{ Email, SesMessageResult }
-import com.blackfynn.clients.{ DatasetAssetClient, ModelServiceClient }
-import com.blackfynn.core.utilities.{
+import com.pennsieve.auth.middleware.{ DatasetPermission, Jwt }
+import com.pennsieve.aws.email.{ Email, SesMessageResult }
+import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
+import com.pennsieve.core.utilities.{
   checkOrError,
   checkOrErrorT,
   JwtAuthenticator
 }
-import com.blackfynn.discover.client.definitions.{
+import com.pennsieve.discover.client.definitions.{
   DatasetPublishStatus,
   DatasetsPage,
   InternalCollection,
@@ -27,30 +43,30 @@ import com.blackfynn.discover.client.definitions.{
   PublishRequest,
   ReviseRequest
 }
-import com.blackfynn.discover.client.publish.PublishClient
-import com.blackfynn.discover.client.search.SearchClient
-import com.blackfynn.domain
-import com.blackfynn.domain.{ Error => CoreServerError, _ }
-import com.blackfynn.dtos.{
+import com.pennsieve.discover.client.publish.PublishClient
+import com.pennsieve.discover.client.search.SearchClient
+import com.pennsieve.domain
+import com.pennsieve.domain.{ Error => CoreServerError, _ }
+import com.pennsieve.dtos.{
   CollectionDTO,
   ContributorDTO,
   DataSetDTO,
   DiscoverPublishedDatasetDTO
 }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer
 }
-import com.blackfynn.managers.DatasetManager
-import com.blackfynn.models.PublicationStatus.Requested
-import com.blackfynn.models.PublicationType.Revision
-import com.blackfynn.models._
-import com.blackfynn.notifications.{
+import com.pennsieve.managers.DatasetManager
+import com.pennsieve.models.PublicationStatus.Requested
+import com.pennsieve.models.PublicationType.Revision
+import com.pennsieve.models._
+import com.pennsieve.notifications.{
   DiscoverPublishNotification,
   MessageType,
   NotificationMessage
 }
-import com.blackfynn.web.Settings
+import com.pennsieve.web.Settings
 import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
 import javax.servlet.http.HttpServletRequest
@@ -548,7 +564,7 @@ case object DataSetPublishingHelper extends LazyLogging {
   )(implicit
     request: HttpServletRequest,
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, ValidatedPublicationStatusRequest] = {
 
@@ -811,7 +827,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     externalPublications: Seq[ExternalPublication]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DatasetPublishStatus] = {
     val organization = secureContainer.organization
@@ -955,7 +971,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     externalPublications: Seq[ExternalPublication]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DatasetPublishStatus] = {
 
@@ -1078,7 +1094,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     sendNotification: NotificationMessage => EitherT[Future, CoreError, Done]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, Option[DatasetPublishStatus]] = {
 
@@ -1140,7 +1156,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     sendNotification: NotificationMessage => EitherT[Future, CoreError, Done]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, Option[DatasetPublishStatus]] = {
 
@@ -1196,7 +1212,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     user: User
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DatasetPublishStatus] = {
 
@@ -1229,7 +1245,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     user: User
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, List[DatasetPublishStatus]] = {
 
@@ -1263,7 +1279,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     query: Option[String]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DatasetsPage] = {
 
@@ -1308,7 +1324,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     user: User
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, Map[Int, DiscoverPublishedDatasetDTO]] =
     getPublishedStatusForOrganization(publishClient, organization, user).map(
@@ -1327,7 +1343,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     dataset: Dataset
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): List[Authorization] = {
     val token = JwtAuthenticator.generateServiceToken(
@@ -1348,7 +1364,7 @@ case object DataSetPublishingHelper extends LazyLogging {
   private def handleGuardrailError(
     implicit
     ec: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): Either[Throwable, HttpResponse] => Future[CoreError] =
     _.fold(
       error => Future.successful(ServiceError(error.toString)),

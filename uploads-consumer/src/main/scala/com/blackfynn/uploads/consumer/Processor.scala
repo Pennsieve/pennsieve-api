@@ -1,6 +1,20 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
 import akka.actor.ActorSystem
 import akka.stream.alpakka.sqs.scaladsl.{ SqsAckSink, SqsSource }
@@ -16,7 +30,7 @@ import akka.stream.scaladsl.{
   Sink,
   Source
 }
-import akka.stream.{ ActorMaterializer, _ }
+import akka.stream._
 import akka.{ Done, NotUsed }
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.{
@@ -25,15 +39,15 @@ import software.amazon.awssdk.services.sqs.model.{
 }
 import cats.data._
 import cats.implicits._
-import com.blackfynn.akka.consumer.{
+import com.pennsieve.akka.consumer.{
   MessageExceptionPair,
   ProcessorUtilities,
   StreamContext
 }
-import com.blackfynn.aws.queue.SQS
-import com.blackfynn.models.Manifest
-import com.blackfynn.service.utilities.{ ContextLogger, Tier }
-import com.blackfynn.uploads.consumer.antivirus.{ Locked, ScanResult, Scanning }
+import com.pennsieve.aws.queue.SQS
+import com.pennsieve.models.Manifest
+import com.pennsieve.service.utilities.{ ContextLogger, Tier }
+import com.pennsieve.uploads.consumer.antivirus.{ Locked, ScanResult, Scanning }
 
 import java.util.concurrent.CompletionException
 import scala.concurrent.duration._
@@ -74,7 +88,6 @@ object Processor {
   )(implicit
     container: Container,
     executionContext: ExecutionContext,
-    materializer: ActorMaterializer,
     system: ActorSystem,
     logger: ContextLogger,
     sqsClient: SqsAsyncClient
@@ -178,7 +191,7 @@ object Processor {
                   parallelism, {
                     case (message, job) =>
                       Source
-                        .fromFuture(
+                        .future(
                           UploadHandler
                             .handle(job)
                             .value

@@ -1,8 +1,8 @@
 #!groovy
 
 timestamps {
-    def buildEnv = env.BRANCH_NAME == 'master' ? 'prod' : 'dev'
-    def tld = env.BRANCH_NAME == 'master' ? 'io' : 'net'
+    def buildEnv = env.BRANCH_NAME == 'prod' ? 'prod' : 'dev'
+    def tld = env.BRANCH_NAME == 'prod' ? 'io' : 'net'
     def pennsieveNexusCreds = usernamePassword(
         credentialsId: 'pennsieve-nexus-ci-login',
         usernameVariable: 'PENNSIEVE_NEXUS_USER',
@@ -18,7 +18,7 @@ timestamps {
         def sbt = "sbt -Dsbt.log.noformat=true -Dversion=$imageTag -Dremote-cache=$remoteCache"
 
         try {
-            if (['DEVELOPMENT', 'master'].contains(env.BRANCH_NAME)) {
+            if (['DEVELOPMENT', 'prod'].contains(env.BRANCH_NAME)) {
                 node("${buildEnv}-executor") {
                     stage('Run migrations') {
                         checkout scm
@@ -47,7 +47,7 @@ timestamps {
                 stash name: "${remoteCache}", includes: "${remoteCache}/**/*"
             }
 
-            if (!['DEVELOPMENT', 'master'].contains(env.BRANCH_NAME)) {
+            if (!['DEVELOPMENT', 'prod'].contains(env.BRANCH_NAME)) {
                 stage('Test') {
                     unstash name: "${remoteCache}"
                     withCredentials([pennsieveNexusCreds]) {

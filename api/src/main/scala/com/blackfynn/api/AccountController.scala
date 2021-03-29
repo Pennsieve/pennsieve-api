@@ -1,19 +1,38 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.aws.email.Email
-import com.blackfynn.core.utilities.PasswordBuddy.passwordEntropy
-import com.blackfynn.dtos.{ Builders, UserDTO }
-import com.blackfynn.helpers.APIContainers.InsecureAPIContainer
-import com.blackfynn.helpers.ResultHandlers.OkResult
-import com.blackfynn.helpers._
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.models.{ CognitoId, DBPermission, Degree }
-import com.blackfynn.web.Settings
+import com.pennsieve.aws.email.Email
+import com.pennsieve.aws.cognito.{
+  CognitoClient,
+  CognitoConfig,
+  CognitoJWTAuthenticator
+}
+import com.pennsieve.core.utilities.PasswordBuddy.passwordEntropy
+import com.pennsieve.dtos.{ Builders, UserDTO }
+import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
+import com.pennsieve.helpers.ResultHandlers.OkResult
+import com.pennsieve.helpers._
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.models.{ CognitoId, DBPermission, Degree }
+import com.pennsieve.web.Settings
 import javax.servlet.http.HttpServletRequest
 import org.json4s._
 import org.scalatra._
@@ -49,6 +68,7 @@ case class CreateUserResponse(
 
 class AccountController(
   val insecureContainer: InsecureAPIContainer,
+  cognitoConfig: CognitoConfig,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -219,17 +239,23 @@ class AccountController(
 
   val createAccountOperation
     : OperationBuilder = (apiOperation[CreateUserResponse]("createUser")
-    summary "create a new user from a create user token"
+    summary "create a new user from a user invite"
     parameter bodyParam[CreateUserRequest]("body"))
 
   post("/", operation(createAccountOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, CreateUserResponse] = for {
-        request <- parseRequestBody[CreateUserRequest].toEitherT[Future]
+        createRequest <- parseRequestBody[CreateUserRequest].toEitherT[Future]
 
-        // TODO: parse Cognito ID from Cognito JWT header
-        //        cognitoId <- AuthenticatedController.getBearerToken(request).toEitherT
-        cognitoId = CognitoId.randomId()
+        jwt <- AuthenticatedController
+          .getBearerToken(request)
+          .toEitherT[Future]
+
+        cognitoId <- CognitoJWTAuthenticator
+          .validateJwt(jwt)(cognitoConfig)
+          .map(_.id)
+          .toEitherT[Future]
+          .orUnauthorized
 
         // TODO: remove this
         password = "NO PASSWORD"
@@ -237,11 +263,11 @@ class AccountController(
         newUser <- insecureContainer.userManager
           .createFromInvite(
             cognitoId = cognitoId,
-            firstName = request.firstName,
-            middleInitial = request.middleInitial,
-            lastName = request.lastName,
-            degree = request.degree,
-            title = request.title,
+            firstName = createRequest.firstName,
+            middleInitial = createRequest.middleInitial,
+            lastName = createRequest.lastName,
+            degree = createRequest.degree,
+            title = createRequest.title,
             password = password
           )(
             insecureContainer.organizationManager,

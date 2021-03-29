@@ -1,27 +1,41 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.uploads.consumer
+package com.pennsieve.uploads.consumer
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import com.blackfynn.akka.consumer.ConsumerUtilities
-import com.blackfynn.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
-import com.blackfynn.aws.s3.{ LocalS3Container, S3 }
-import com.blackfynn.clients.{
+import com.pennsieve.akka.consumer.ConsumerUtilities
+import com.pennsieve.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
+import com.pennsieve.aws.s3.{ LocalS3Container, S3 }
+import com.pennsieve.clients.{
   MockJobSchedulingServiceContainer,
   MockUploadServiceContainer
 }
-import com.blackfynn.models.{ NodeCodes, Organization, User }
-import com.blackfynn.test.helpers.{ AwaitableImplicits, TestDatabase }
-import com.blackfynn.aws.sns.LocalSNSContainer
-import com.blackfynn.core.utilities.{ DatabaseContainer, RedisContainer }
-import com.blackfynn.db.{ OrganizationsMapper, UserMapper }
-import com.blackfynn.test._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.uploads.consumer.antivirus.ClamAVContainer
+import com.pennsieve.models.{ NodeCodes, Organization, User }
+import com.pennsieve.test.helpers.{ AwaitableImplicits, TestDatabase }
+import com.pennsieve.aws.sns.LocalSNSContainer
+import com.pennsieve.core.utilities.{ DatabaseContainer, RedisContainer }
+import com.pennsieve.db.{ OrganizationsMapper, UserMapper }
+import com.pennsieve.test._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.uploads.consumer.antivirus.ClamAVContainer
 import com.redis.RedisClientPool
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import com.typesafe.scalalogging.LazyLogging
+import net.ceedubs.ficus.Ficus._
 import org.scalatest._
 
 import scala.concurrent.ExecutionContext
@@ -46,9 +60,6 @@ trait UploadsConsumerSpecHarness
     "uploads-consumer-spec-harness"
   )
   implicit lazy val executionContext: ExecutionContext = system.dispatcher
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer(
-    ConsumerUtilities.actorMaterializerSettings(system, logger)
-  )
 
   val queueName: String = "test-etl-queue"
   val notificationsQueueName: String = "test-notifications-queue"
@@ -107,11 +118,8 @@ trait UploadsConsumerSpecHarness
     with RedisContainer with LocalSQSContainer with LocalS3Container
     with SQSDeduplicationContainer with ClamAVContainer with LocalSNSContainer
     with MockUploadServiceContainer with MockJobSchedulingServiceContainer {
-      import net.ceedubs.ficus.Ficus._
       override lazy val jobSchedulingServiceConfigPath: String =
         "job_scheduling_service"
-      override lazy val materializer: ActorMaterializer =
-        ActorMaterializer()
       override lazy val jobSchedulingServiceHost: String =
         config.as[String](s"$jobSchedulingServiceConfigPath.host")
       override lazy val jobSchedulingServiceQueueSize: Int =
