@@ -21,7 +21,6 @@ import java.net.URI
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import akka.stream.{ ActorMaterializer, Materializer }
 import akka.util.ByteString
 import cats.data.EitherT
 import cats.instances.future._
@@ -134,7 +133,6 @@ class JobSchedulingClientImpl(
 trait JobSchedulingServiceContainer { self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  implicit def materializer: ActorMaterializer
 
   val jobSchedulingServiceHost: String
   val jobSchedulingServiceQueueSize: Int
@@ -147,7 +145,6 @@ trait JobSchedulingServiceContainerImpl extends JobSchedulingServiceContainer {
   self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  override implicit val materializer: ActorMaterializer
 
   val jobSchedulingServiceHost: String
   val jobSchedulingServiceQueueSize: Int
@@ -171,7 +168,6 @@ trait LocalJobSchedulingServiceContainer extends JobSchedulingServiceContainer {
   self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  implicit val materializer: ActorMaterializer
 
   val jobSchedulingServiceHost: String
   val jobSchedulingServiceQueueSize: Int

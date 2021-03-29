@@ -19,7 +19,6 @@ package com.pennsieve.helpers
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import akka.stream.ActorMaterializer
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.S3ClientOptions
@@ -101,7 +100,6 @@ trait BaseBootstrapHelper {
 
   implicit val ec: ExecutionContext
   implicit val system: ActorSystem
-  implicit val materializer: ActorMaterializer
 
   val config: Config = Settings.config
 
@@ -193,12 +191,8 @@ trait BaseBootstrapHelper {
 class LocalBootstrapHelper(
 )(implicit
   override val ec: ExecutionContext,
-  override val system: ActorSystem,
-  override val materializer: ActorMaterializer
+  override val system: ActorSystem
 ) extends BaseBootstrapHelper {
-
-  // Alias needed to prevent NPE from circular reference in JSS container
-  val _materializer = materializer
 
   lazy val objectStore: ObjectStore = new S3ObjectStore(insecureContainer.s3)
 
@@ -207,7 +201,6 @@ class LocalBootstrapHelper(
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with LocalSQSContainer with LocalS3Container
     with ApiSQSContainer with JobSchedulingServiceContainerImpl {
-      override implicit val materializer: ActorMaterializer = _materializer
       override val jobSchedulingServiceHost: String =
         config.as[String]("pennsieve.job_scheduling_service.host")
       override val jobSchedulingServiceQueueSize: Int =
@@ -249,12 +242,8 @@ class LocalBootstrapHelper(
 class AWSBootstrapHelper(
 )(implicit
   override val system: ActorSystem,
-  override val ec: ExecutionContext,
-  override val materializer: ActorMaterializer
+  override val ec: ExecutionContext
 ) extends BaseBootstrapHelper {
-
-  // Alias needed to prevent NPE from circular reference in JSS container
-  val _materializer = materializer
 
   lazy val objectStore: ObjectStore = new S3ObjectStore(insecureContainer.s3)
 
@@ -263,7 +252,6 @@ class AWSBootstrapHelper(
     with AWSEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with AWSSQSContainer with AWSS3Container
     with ApiSQSContainer with JobSchedulingServiceContainerImpl {
-      override implicit val materializer: ActorMaterializer = _materializer
       override val jobSchedulingServiceHost: String =
         config.as[String]("pennsieve.job_scheduling_service.host")
       override val jobSchedulingServiceQueueSize: Int =

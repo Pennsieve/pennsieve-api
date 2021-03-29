@@ -73,7 +73,7 @@ import scala.concurrent.{ Await, Future }
 
 class TestPackagesController extends BaseApiTest with DataSetTestMixin {
 
-  val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
+  implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
     Future.successful(HttpResponse())
   }
 
@@ -82,7 +82,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
   val mockAuditLogger = new MockAuditLogger()
 
   val mockJobSchedulingServiceClient: MockJobSchedulingServiceClient =
-    new MockJobSchedulingServiceClient(httpClient, ec, materializer)
+    new MockJobSchedulingServiceClient()
 
   val mockUrlShortenerClient: MockUrlShortenerClient =
     new MockUrlShortenerClient()
@@ -98,7 +98,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         new MockObjectStore("test.avi"),
         mockJobSchedulingServiceClient,
         mockUrlShortenerClient,
-        materializer,
+        system,
         system.dispatcher
       ),
       "/*"

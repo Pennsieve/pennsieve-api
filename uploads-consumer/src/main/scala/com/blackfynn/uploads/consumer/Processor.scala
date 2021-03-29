@@ -30,7 +30,7 @@ import akka.stream.scaladsl.{
   Sink,
   Source
 }
-import akka.stream.{ ActorMaterializer, _ }
+import akka.stream._
 import akka.{ Done, NotUsed }
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.{
@@ -88,7 +88,6 @@ object Processor {
   )(implicit
     container: Container,
     executionContext: ExecutionContext,
-    materializer: ActorMaterializer,
     system: ActorSystem,
     logger: ContextLogger,
     sqsClient: SqsAsyncClient
@@ -192,7 +191,7 @@ object Processor {
                   parallelism, {
                     case (message, job) =>
                       Source
-                        .fromFuture(
+                        .future(
                           UploadHandler
                             .handle(job)
                             .value
