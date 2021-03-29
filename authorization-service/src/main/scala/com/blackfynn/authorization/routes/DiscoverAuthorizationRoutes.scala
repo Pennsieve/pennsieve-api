@@ -1,24 +1,39 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
+
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.{ OK, Unauthorized }
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
-import com.blackfynn.db._
-import com.blackfynn.models._
+import com.pennsieve.db._
+import com.pennsieve.models._
 import cats.implicits._
-import com.blackfynn.authorization.Router.ResourceContainer
-import com.blackfynn.authorization.utilities.exceptions.{
+import com.pennsieve.authorization.Router.ResourceContainer
+import com.pennsieve.authorization.utilities.exceptions.{
   InvalidDatasetId,
   PreviewNotAllowed
 }
-import com.blackfynn.authorization.utilities.exceptions._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{ DatasetsMapper, OrganizationUserMapper, UserMapper }
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.authorization.utilities.exceptions._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{ DatasetsMapper, OrganizationUserMapper, UserMapper }
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
@@ -50,7 +65,7 @@ object DiscoverAuthorizationRoutes {
   )(implicit
     container: ResourceContainer,
     executionContext: ExecutionContext,
-    materializer: ActorMaterializer
+    system: ActorSystem
   ): Route =
     path(
       "authorization" / "organizations" / IntNumber / "datasets" / IntNumber / "discover" / "preview"

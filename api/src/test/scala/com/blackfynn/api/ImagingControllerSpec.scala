@@ -1,19 +1,33 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.dtos.DimensionDTO
-import com.blackfynn.helpers.DataSetTestMixin
-import com.blackfynn.models.{
+import com.pennsieve.dtos.DimensionDTO
+import com.pennsieve.helpers.DataSetTestMixin
+import com.pennsieve.models.{
   Dataset,
   Dimension,
   DimensionAssignment,
   DimensionProperties,
   Package
 }
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.models.PackageType
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.models.PackageType
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization.write

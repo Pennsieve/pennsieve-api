@@ -1,18 +1,32 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.jobs.types
+package com.pennsieve.jobs.types
 
+import akka.actor.ActorSystem
 import akka.NotUsed
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{ Flow, Sink, Source }
 import akka.util.Timeout
-import com.blackfynn.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
-import com.blackfynn.core.utilities.RedisContainer
-import com.blackfynn.jobs._
-import com.blackfynn.jobs.container.{ Container, JobContainer }
-import com.blackfynn.managers.ManagerSpec
-import com.blackfynn.messages._
-import com.blackfynn.service.utilities.ContextLogger
+import com.pennsieve.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
+import com.pennsieve.core.utilities.RedisContainer
+import com.pennsieve.jobs._
+import com.pennsieve.jobs.container.{ Container, JobContainer }
+import com.pennsieve.managers.ManagerSpec
+import com.pennsieve.messages._
+import com.pennsieve.service.utilities.ContextLogger
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._
 import org.scalatest.EitherValues._
@@ -62,7 +76,7 @@ trait SpecHelper extends BeforeAndAfterEach with ManagerSpec {
     flow: Flow[BackgroundJob, (BackgroundJob, JobResult), NotUsed],
     job: BackgroundJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): T = {
     val future: Future[Seq[(BackgroundJob, JobResult)]] =

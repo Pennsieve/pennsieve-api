@@ -1,16 +1,31 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.dtos.{ APITokenDTO, APITokenSecretDTO }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.dtos.{ APITokenDTO, APITokenSecretDTO }
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.ResultHandlers.{ CreatedResult, OkResult }
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.ResultHandlers.{ CreatedResult, OkResult }
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 
@@ -22,6 +37,7 @@ case class UpdateTokenRequest(name: String)
 class APITokenController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
+  cognitoClient: CognitoClient,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -56,7 +72,7 @@ class APITokenController(
         organization = secureContainer.organization
         body <- extractOrError[CreateTokenRequest](parsedBody).toEitherT[Future]
         token_secret <- secureContainer.tokenManager
-          .create(body.name, secureContainer.user, organization)
+          .create(body.name, secureContainer.user, organization, cognitoClient)
           .orError
       } yield APITokenSecretDTO(token_secret)
 
@@ -119,13 +135,14 @@ class APITokenController(
         parameters pathParam[String]("uuid").description("API Token UUID")
     )
   ) {
-
     new AsyncResult {
       val result = for {
         tokenUUID <- paramT[String]("uuid")
         secureContainer <- getSecureContainer
         token <- secureContainer.tokenManager.get(tokenUUID).orError
-        deleted <- secureContainer.tokenManager.delete(token).orError
+        deleted <- secureContainer.tokenManager
+          .delete(token, cognitoClient)
+          .orError
       } yield deleted
 
       override val is = result.value.map(OkResult)

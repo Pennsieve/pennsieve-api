@@ -1,17 +1,30 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.jobs
+package com.pennsieve.jobs
 
 import akka.actor.ActorSystem
-import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
-import com.blackfynn.aws.queue.{
+import com.pennsieve.aws.queue.{
   AWSSQSContainer,
   LocalSQSContainer,
   SQSDeduplicationContainer
 }
-import com.blackfynn.jobs.container._
-import com.blackfynn.jobs.types._
-import com.blackfynn.service.utilities.ContextLogger
+import com.pennsieve.jobs.container._
+import com.pennsieve.jobs.types._
+import com.pennsieve.service.utilities.ContextLogger
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
 import scalikejdbc.config.DBsWithEnv
@@ -23,13 +36,6 @@ object Main extends App {
   implicit val actorSystem = ActorSystem("jobs")
   implicit val ec: ExecutionContext = actorSystem.dispatcher
   implicit val log: ContextLogger = new ContextLogger()
-  implicit val materializer: ActorMaterializer = ActorMaterializer(
-    ActorMaterializerSettings(actorSystem)
-      .withSupervisionStrategy { exception: Throwable =>
-        log.noContext.error("Unhandled exception thrown", exception)
-        Supervision.resume
-      }
-  )
 
   val config: Config = ConfigFactory.load()
 

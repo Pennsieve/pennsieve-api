@@ -1,61 +1,75 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import java.net.URL
 import java.time.{ LocalDate, OffsetDateTime, ZonedDateTime }
 
 import akka.Done
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
-import com.blackfynn.audit.middleware.Auditor
-import com.blackfynn.auth.middleware.DatasetPermission
-import com.blackfynn.aws.email.{ Email, SesMessageResult }
-import com.blackfynn.aws.queue.SQSClient
-import com.blackfynn.clients.{ DatasetAssetClient, ModelServiceClient }
-import com.blackfynn.core.utilities
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.core.utilities.{ checkOrErrorT, JwtAuthenticator }
-import com.blackfynn.discover.client.definitions.{
+import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.auth.middleware.DatasetPermission
+import com.pennsieve.aws.email.{ Email, SesMessageResult }
+import com.pennsieve.aws.queue.SQSClient
+import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
+import com.pennsieve.core.utilities
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.{ checkOrErrorT, JwtAuthenticator }
+import com.pennsieve.discover.client.definitions.{
   DatasetPublishStatus,
   PublicDatasetDTO
 }
-import com.blackfynn.discover.client.publish.PublishClient
-import com.blackfynn.discover.client.search.SearchClient
-import com.blackfynn.doi.client.definitions.{
+import com.pennsieve.discover.client.publish.PublishClient
+import com.pennsieve.discover.client.search.SearchClient
+import com.pennsieve.doi.client.definitions.{
   CreateDraftDoiRequest,
   CreatorDTO
 }
-import com.blackfynn.doi.client.doi._
-import com.blackfynn.doi.models._
-import com.blackfynn.domain
-import com.blackfynn.domain.StorageAggregation.{ sdatasets, spackages }
-import com.blackfynn.domain._
-import com.blackfynn.dtos.Builders._
-import com.blackfynn.dtos._
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.doi.client.doi._
+import com.pennsieve.doi.models._
+import com.pennsieve.domain
+import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
+import com.pennsieve.domain._
+import com.pennsieve.dtos.Builders._
+import com.pennsieve.dtos._
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.Param
-import com.blackfynn.helpers.ResultHandlers._
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherThrowableErrorConverter.implicits._
-import com.blackfynn.managers.{
+import com.pennsieve.helpers.Param
+import com.pennsieve.helpers.ResultHandlers._
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherThrowableErrorConverter.implicits._
+import com.pennsieve.managers.{
   ChangelogManager,
   CollaboratorChanges,
   DatasetManager
 }
-import com.blackfynn.models._
-import com.blackfynn.notifications.{
+import com.pennsieve.models._
+import com.pennsieve.notifications.{
   DiscoverPublishNotification,
   MessageType,
   NotificationMessage
 }
-import com.blackfynn.web.Settings
+import com.pennsieve.web.Settings
 import io.circe.syntax._
 import javax.servlet.http.{ HttpServletRequest, HttpServletResponse }
 import mouse.all._
@@ -258,7 +272,8 @@ case class ChangelogEventPage(
 class DataSetsController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
-  materializer: Materializer,
+  implicit
+  val system: ActorSystem,
   auditLogger: Auditor,
   sqsClient: SQSClient,
   modelServiceClient: ModelServiceClient,
@@ -275,8 +290,6 @@ class DataSetsController(
     with FileUploadSupport {
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
-
-  implicit val mat: Materializer = materializer
 
   override val swaggerTag = "DataSets"
 
@@ -476,7 +489,7 @@ class DataSetsController(
           DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
             publishClient
           ),
-          materializer,
+          system,
           jwtConfig
         ).coreErrorToActionResult
 
@@ -600,7 +613,7 @@ class DataSetsController(
               DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
                 publishClient
               ),
-              materializer,
+              system,
               jwtConfig
             ).orError
           }
@@ -802,7 +815,7 @@ class DataSetsController(
             DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
               publishClient
             ),
-            materializer,
+            system,
             jwtConfig
           ).orError
 
@@ -885,7 +898,7 @@ class DataSetsController(
           DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
             publishClient
           ),
-          materializer,
+          system,
           jwtConfig
         ).orError
       } yield dto
@@ -1073,7 +1086,7 @@ class DataSetsController(
           DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
             publishClient
           ),
-          materializer,
+          system,
           jwtConfig
         ).orError
 
@@ -1190,7 +1203,7 @@ class DataSetsController(
             secureContainer.user,
             publishClient,
             sendNotification
-          )(ec, materializer, jwtConfig)
+          )(ec, system, jwtConfig)
           .coreErrorToActionResult
 
         deleteMessage <- secureContainer.datasetManager
@@ -2689,7 +2702,7 @@ class DataSetsController(
               organization,
               dataset,
               secureContainer.user
-            )(ec, materializer, jwtConfig)
+            )(ec, system, jwtConfig)
             .coreErrorToActionResult
         } yield status
 
@@ -2712,7 +2725,7 @@ class DataSetsController(
               publishClient,
               secureContainer.organization,
               secureContainer.user
-            )(ec, materializer, jwtConfig)
+            )(ec, system, jwtConfig)
             .coreErrorToActionResult
 
         } yield statuses
@@ -2770,7 +2783,7 @@ class DataSetsController(
               datasetId,
               PublicationStatus.Requested,
               publicationType
-            )(request, ec, materializer, jwtConfig)
+            )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
           embargoReleaseDate <- embargoReleaseDate match {
@@ -2858,7 +2871,7 @@ class DataSetsController(
               datasetId,
               PublicationStatus.Cancelled,
               publicationType
-            )(request, ec, materializer, jwtConfig)
+            )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
           _ <- DataSetPublishingHelper
@@ -2909,7 +2922,7 @@ class DataSetsController(
               datasetId,
               PublicationStatus.Rejected,
               publicationType
-            )(request, ec, materializer, jwtConfig)
+            )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
           contributors <- secureContainer.datasetManager
@@ -2979,7 +2992,7 @@ class DataSetsController(
               datasetId,
               PublicationStatus.Accepted,
               publicationType
-            )(request, ec, materializer, jwtConfig)
+            )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
           contributors <- secureContainer.datasetManager
@@ -3002,7 +3015,7 @@ class DataSetsController(
               secureContainer.organization,
               validated.dataset,
               secureContainer.user
-            )(ec, materializer, jwtConfig)
+            )(ec, system, jwtConfig)
             .coreErrorToActionResult
 
           response <- validated.publicationType match {
@@ -3028,7 +3041,7 @@ class DataSetsController(
                     validated.embargoReleaseDate,
                     collections,
                     externalPublications
-                  )(ec, materializer, jwtConfig)
+                  )(ec, system, jwtConfig)
                   .coreErrorToActionResult
 
                 response <- secureContainer.datasetPublicationStatusManager
@@ -3071,7 +3084,7 @@ class DataSetsController(
                     sendNotification,
                     collections,
                     externalPublications
-                  )(ec, materializer, jwtConfig)
+                  )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
                 _ <- secureContainer.datasetPublicationStatusManager
@@ -3118,7 +3131,7 @@ class DataSetsController(
                     secureContainer.user,
                     publishClient,
                     sendNotification
-                  )(ec, materializer, jwtConfig)
+                  )(ec, system, jwtConfig)
                   .coreErrorToActionResult
 
                 _ <- secureContainer.datasetPublicationStatusManager
@@ -3157,7 +3170,7 @@ class DataSetsController(
                     secureContainer.user,
                     publishClient,
                     sendNotification
-                  )(ec, materializer, jwtConfig)
+                  )(ec, system, jwtConfig)
                   .coreErrorToActionResult
 
                 response <- secureContainer.datasetPublicationStatusManager
@@ -3406,7 +3419,7 @@ class DataSetsController(
               secureContainer.user,
               publishClient,
               sendNotification
-            )(ec, materializer, jwtConfig)
+            )(ec, system, jwtConfig)
             .coreErrorToActionResult
 
           _ <- secureContainer.datasetPublicationStatusManager
@@ -4295,7 +4308,7 @@ class DataSetsController(
             DataSetPublishingHelper.getPublishedDatasetsFromDiscover(
               publishClient
             ),
-            materializer,
+            system,
             jwtConfig
           ).map(_.map(dto => (dto.content.intId, dto)).toMap).orError
 

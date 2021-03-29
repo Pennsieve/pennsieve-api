@@ -1,16 +1,32 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.domain.NotFound
-import com.blackfynn.dtos.{ APITokenDTO, APITokenSecretDTO }
-import com.blackfynn.managers.SecureTokenManager
-import com.blackfynn.models.DBPermission.Administer
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.domain.NotFound
+import com.pennsieve.dtos.{ APITokenDTO, APITokenSecretDTO }
+import com.pennsieve.managers.SecureTokenManager
+import com.pennsieve.models.DBPermission.Administer
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 
 class APITokenControllerSpecs extends BaseApiTest {
+  val mockCognito: MockCognito = new MockCognito()
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -19,6 +35,7 @@ class APITokenControllerSpecs extends BaseApiTest {
       new APITokenController(
         insecureContainer,
         secureContainerBuilder,
+        mockCognito,
         system.dispatcher
       ),
       "/*"
@@ -51,6 +68,8 @@ class APITokenControllerSpecs extends BaseApiTest {
       status should be(201)
       response.name should be("test api token")
 
+      mockCognito.sentTokenInvites.length should be(1)
+
       val secureTokenManager =
         new SecureTokenManager(loggedInUser, insecureContainer.db)
       val token = secureTokenManager.get(response.key).await.right.value
@@ -62,7 +81,12 @@ class APITokenControllerSpecs extends BaseApiTest {
 
   test("should get all user's API tokens") {
     val (apiTokenTwo, secret) = tokenManager
-      .create("test api token 2", loggedInUser, loggedInOrganization)
+      .create(
+        "test api token 2",
+        loggedInUser,
+        loggedInOrganization,
+        mockCognito
+      )
       .await
       .right
       .value
@@ -87,7 +111,7 @@ class APITokenControllerSpecs extends BaseApiTest {
 
   test("should not get user's API tokens from another organization") {
     val (pennsieveToken, secret) = tokenManager
-      .create("pennsieve api token", loggedInUser, pennsieve)
+      .create("pennsieve api token", loggedInUser, pennsieve, mockCognito)
       .await
       .right
       .value
@@ -142,6 +166,8 @@ class APITokenControllerSpecs extends BaseApiTest {
       val secureTokenManager =
         new SecureTokenManager(loggedInUser, insecureContainer.db)
 
+      mockCognito.sentDeletes.length should be(1)
+
       secureTokenManager.get(uuid).await.left.value should equal(
         NotFound(s"Token ($uuid)")
       )
@@ -163,5 +189,4 @@ class APITokenControllerSpecs extends BaseApiTest {
       }
     }
   }
-
 }
