@@ -17,7 +17,6 @@
 package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
 import com.pennsieve.managers.ManagerSpec
@@ -50,7 +49,6 @@ class DatasetChangelogEventJobSpec
   implicit lazy val system: ActorSystem = ActorSystem(
     "DatasetChangelogEventJobSpec"
   )
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
   var insecureContainer: DatabaseContainer = _

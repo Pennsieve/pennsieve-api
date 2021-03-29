@@ -17,7 +17,6 @@
 package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
 import com.pennsieve.domain.StorageAggregation
@@ -45,7 +44,6 @@ class CachePopulationJobSpec
     with ManagerSpec {
 
   implicit lazy val system: ActorSystem = ActorSystem("CachePopulationJobSpec")
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
   var pkg: Package = _

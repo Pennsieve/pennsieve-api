@@ -16,8 +16,8 @@
 
 package com.pennsieve.helpers
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
-import akka.stream.Materializer
 import cats.implicits._
 import cats.data.EitherT
 import com.pennsieve.discover.client.definitions
@@ -32,15 +32,15 @@ import com.pennsieve.discover.client.definitions.{
 import com.pennsieve.models.{ Dataset, Organization, PublishStatus, User }
 
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 class MockSearchClient(
+  implicit
   httpClient: HttpRequest => Future[HttpResponse],
   ec: ExecutionContext,
-  mat: Materializer
-) extends SearchClient("mock-discover-service-host")(httpClient, ec, mat) {
+  system: ActorSystem
+) extends SearchClient("mock-discover-service-host") {
 
   def clear: Unit = {
     publishedDatasets.clear

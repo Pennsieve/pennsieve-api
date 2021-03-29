@@ -18,7 +18,6 @@ package com.pennsieve.uploads.consumer
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{ Sink, Source }
 import cats.data._
 import cats.implicits._
@@ -140,7 +139,6 @@ object UploadHandler {
   )(implicit
     container: Container,
     executionContext: ExecutionContext,
-    materializer: ActorMaterializer,
     system: ActorSystem,
     log: ContextLogger
   ): EitherT[Future, Throwable, ScanResult] = {

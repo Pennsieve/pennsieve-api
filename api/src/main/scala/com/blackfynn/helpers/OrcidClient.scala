@@ -16,6 +16,7 @@
 
 package com.pennsieve.helpers
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.FormData
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Accept
@@ -23,7 +24,6 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import com.pennsieve.models.OrcidAuthorization
 import akka.http.scaladsl.HttpExt
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
 import com.pennsieve.domain.PredicateError
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
@@ -65,7 +65,7 @@ class OrcidClientImpl(
   orcidClientConfig: OrcidClientConfig
 )(implicit
   executionContext: ExecutionContext,
-  materializer: Materializer
+  system: ActorSystem
 ) extends OrcidClient {
 
   def createBody(authorizationCode: String, orcidConfig: OrcidClientConfig) =

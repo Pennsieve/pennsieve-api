@@ -20,7 +20,6 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
 
@@ -31,8 +30,6 @@ trait WebServer {
   def actorSystemName: String
 
   implicit lazy val system: ActorSystem = ActorSystem(actorSystemName)
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
-
   implicit lazy val executionContext: ExecutionContextExecutor =
     system.dispatcher
 

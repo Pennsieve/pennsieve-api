@@ -16,8 +16,8 @@
 
 package com.pennsieve.admin.api.services
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
-import akka.stream.Materializer
 import cats.implicits._
 import cats.data.EitherT
 import com.pennsieve.discover.client.definitions
@@ -38,13 +38,13 @@ import com.pennsieve.discover.client.definitions.{
 }
 
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class MockPublishClient(
+)(implicit
   httpClient: HttpRequest => Future[HttpResponse],
   ec: ExecutionContext,
-  mat: Materializer
-) extends PublishClient("mock-discover-service-host")(httpClient, ec, mat) {
+  system: ActorSystem
+) extends PublishClient("mock-discover-service-host") {
 
   override def getStatuses(
     organizationId: Int,
