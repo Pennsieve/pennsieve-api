@@ -1,10 +1,24 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
-import com.blackfynn.models.{ Channel, PackageType }
-import com.blackfynn.db.TimeSeriesLayer
-import com.blackfynn.models.{
+import com.pennsieve.models.{ Channel, PackageType }
+import com.pennsieve.db.TimeSeriesLayer
+import com.pennsieve.models.{
   File,
   FileObjectType,
   FileProcessingState,
@@ -13,17 +27,17 @@ import com.blackfynn.models.{
   PackageState
 }
 import org.json4s.JsonAST.JValue
-import com.blackfynn.timeseries.{ AnnotationAggregateWindowResult, Integer }
-import com.blackfynn.helpers.TimeSeriesHelper
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.{ Slide, TimeSeries }
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.timeseries.{ AnnotationAggregateWindowResult, Integer }
+import com.pennsieve.helpers.TimeSeriesHelper
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.{ Slide, TimeSeries }
+import com.pennsieve.test.helpers.EitherValue._
 import com.github.tminglei.slickpg.Range
 import org.json4s.jackson.Serialization.write
 import org.scalatest.OptionValues._
 import org.scalatest.{ BeforeAndAfterEach, FlatSpec, Matchers }
-import com.blackfynn.dtos.PagedResponse
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.dtos.PagedResponse
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.collection.SortedSet
 

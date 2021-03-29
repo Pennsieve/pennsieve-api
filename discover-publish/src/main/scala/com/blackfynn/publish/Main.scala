@@ -1,23 +1,39 @@
-package com.blackfynn.publish
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.publish
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.StrictLogging
 import com.typesafe.config.{ Config, ConfigFactory }
 import cats.implicits._
-import com.blackfynn.utilities.AbstractError
+import com.pennsieve.utilities.AbstractError
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
-import com.blackfynn.aws.s3.S3
+import com.pennsieve.aws.s3.S3
 import net.ceedubs.ficus.Ficus._
 
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
 import akka.dispatch.MessageDispatcher
 import cats.data.EitherT
-import com.blackfynn.domain.CoreError
+import com.pennsieve.domain.CoreError
 
 case class PublishError(message: String) extends AbstractError {
   final override def getMessage: String = message

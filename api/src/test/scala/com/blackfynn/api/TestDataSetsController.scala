@@ -1,6 +1,20 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import java.io.File
 import java.net.URLEncoder
@@ -9,30 +23,30 @@ import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import cats.implicits._
-import com.blackfynn.auth.middleware.{ Jwt, OrganizationId, UserClaim, UserId }
-import com.blackfynn.aws.email.LoggingEmailer
-import com.blackfynn.clients.{ MockDatasetAssetClient, MockModelServiceClient }
-import com.blackfynn.discover.client.definitions.DatasetPublishStatus
-import com.blackfynn.doi.client.definitions._
-import com.blackfynn.doi.models.{ DoiDTO, DoiState }
-import com.blackfynn.dtos.SimpleFileDTO.TypeToSimpleFile
-import com.blackfynn.dtos._
-import com.blackfynn.helpers._
-import com.blackfynn.managers.{ CollaboratorChanges, TeamManager }
-import com.blackfynn.models.FileObjectType.Source
-import com.blackfynn.models.PackageType.{
+import com.pennsieve.auth.middleware.{ Jwt, OrganizationId, UserClaim, UserId }
+import com.pennsieve.aws.email.LoggingEmailer
+import com.pennsieve.clients.{ MockDatasetAssetClient, MockModelServiceClient }
+import com.pennsieve.discover.client.definitions.DatasetPublishStatus
+import com.pennsieve.doi.client.definitions._
+import com.pennsieve.doi.models.{ DoiDTO, DoiState }
+import com.pennsieve.dtos.SimpleFileDTO.TypeToSimpleFile
+import com.pennsieve.dtos._
+import com.pennsieve.helpers._
+import com.pennsieve.managers.{ CollaboratorChanges, TeamManager }
+import com.pennsieve.models.FileObjectType.Source
+import com.pennsieve.models.PackageType.{
   CSV,
   Collection,
   PDF,
   Slide,
   TimeSeries
 }
-import com.blackfynn.models._
-import com.blackfynn.notifications.{
+import com.pennsieve.models._
+import com.pennsieve.notifications.{
   DiscoverPublishNotification,
   NotificationMessage
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.parser.decode
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils

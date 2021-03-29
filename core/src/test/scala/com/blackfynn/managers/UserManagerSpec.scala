@@ -1,14 +1,29 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.managers
+package com.pennsieve.managers
 
 import java.time.Duration
 
-import com.blackfynn.aws.cognito.MockCognito
-import com.blackfynn.domain.PredicateError
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.db.CognitoUserMapper
+import com.pennsieve.domain.PredicateError
 
-import com.blackfynn.models._
-import com.blackfynn.test.helpers.EitherValue._
+import com.pennsieve.models._
+import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.EitherValues._
 import org.scalatest.Matchers._
 
@@ -189,6 +204,32 @@ class UserManagerSpec extends BaseManagerSpec {
     createdOrgIds.size should equal(5)
 
     allOrgIds should contain theSameElementsAs createdOrgIds
+  }
+
+  // TODO: create this as part of createUser?
+  def createCognitoUser(user: User): CognitoId =
+    database
+      .run(CognitoUserMapper.create(CognitoId.randomId(), user))
+      .await
+      .cognitoId
+
+  "getByCognitoId" should "get the correct user" in {
+
+    val alice = createUser(email = "alice@pennsieve.net")
+    val bob = createUser(email = "bob@pennsieve.net")
+    val charlie = createUser(email = "charlie@pennsieve.net")
+
+    val aliceCognitoId = createCognitoUser(alice)
+    val bobCognitoId = createCognitoUser(bob)
+    val charlieCognitoId = createCognitoUser(charlie)
+
+    userManager.getByCognitoId(aliceCognitoId).await.map(_._1) shouldBe Right(
+      alice
+    )
+    userManager.getByCognitoId(bobCognitoId).await.map(_._1) shouldBe Right(bob)
+    userManager.getByCognitoId(charlieCognitoId).await.map(_._1) shouldBe Right(
+      charlie
+    )
   }
 
   "creating a new user" should "select a random avatar color" in {

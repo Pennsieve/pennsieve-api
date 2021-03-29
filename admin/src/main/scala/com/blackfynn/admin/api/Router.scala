@@ -1,31 +1,45 @@
-// Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.admin.api
+package com.pennsieve.admin.api
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.Router.{
   InsecureResourceContainer,
   SecureResourceContainer,
   SecureResourceContainerBuilder
 }
-import com.blackfynn.admin.api.services._
-import com.blackfynn.akka.http.directives.AuthorizationDirectives.admin
-import com.blackfynn.akka.http.{ RouteService, SwaggerDocService }
-import com.blackfynn.aws.email.EmailContainer
-import com.blackfynn.aws.cognito.{ CognitoClient, CognitoContainer }
-import com.blackfynn.aws.queue.SQSContainer
-import com.blackfynn.clients.{
+import com.pennsieve.admin.api.services._
+import com.pennsieve.akka.http.directives.AuthorizationDirectives.admin
+import com.pennsieve.akka.http.{ RouteService, SwaggerDocService }
+import com.pennsieve.aws.email.EmailContainer
+import com.pennsieve.aws.cognito.{ CognitoClient, CognitoContainer }
+import com.pennsieve.aws.queue.SQSContainer
+import com.pennsieve.clients.{
   CustomTermsOfServiceClientContainer,
   JobSchedulingServiceContainer,
   JobSchedulingServiceContainerImpl
 }
-import com.blackfynn.core.utilities._
-import com.blackfynn.discover.client.publish.PublishClient
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.utilities._
+import com.pennsieve.core.utilities._
+import com.pennsieve.discover.client.publish.PublishClient
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.utilities._
 import io.swagger.models.Scheme
 import net.ceedubs.ficus.Ficus._
 
@@ -104,6 +118,7 @@ class Router(
   val adminOnlyRoutes: Route =
     admin(insecureContainer, realm = "admin")(
       insecureContainer.jwtConfig,
+      insecureContainer.cognitoConfig,
       executionContext
     ) {
       case context =>

@@ -1,9 +1,25 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.aws.cognito
+package com.pennsieve.aws.cognito
 
-import com.blackfynn.models.CognitoId
-import com.blackfynn.domain.{ NotFound, PredicateError }
+import com.pennsieve.aws.email.Email
+import com.pennsieve.models.CognitoId
+import com.pennsieve.domain.{ NotFound, PredicateError }
+import com.pennsieve.dtos.Secret
 import cats.data._
 import cats.implicits._
 import scala.compat.java8.FutureConverters._
@@ -14,6 +30,9 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserRequest,
   AdminCreateUserResponse,
+  AdminDeleteUserRequest,
+  AdminDeleteUserResponse,
+  AdminSetUserPasswordRequest,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
@@ -27,79 +46,122 @@ import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
 
 trait CognitoClient {
-  def adminCreateUser(
-    email: String
+  def inviteUser(
+    email: Email
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId]
 
   def resendUserInvite(
-    email: String,
+    email: Email,
     cognitoId: CognitoId
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId]
+
+  def createClientToken(
+    token: String,
+    secret: Secret
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId]
+
+  def deleteClientToken(
+    token: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
 }
 
 object Cognito {
 
-  def fromConfig(config: Config): Cognito = {
-
-    val region: Region = config
-      .as[Option[String]]("cognito.region")
-      .map(Region.of(_))
-      .getOrElse(Region.US_EAST_1)
-
-    val userPoolId = config.as[String]("cognito.user_pool_id")
-
-    val tokenPoolId = config.as[String]("cognito.token_pool_id")
-
+  def apply(cognitoConfig: CognitoConfig): Cognito =
     new Cognito(
-      client = CognitoIdentityProviderAsyncClient
+      CognitoIdentityProviderAsyncClient
         .builder()
-        .region(region)
+        .region(cognitoConfig.region)
         .httpClientBuilder(NettyNioAsyncHttpClient.builder())
         .build(),
-      userPoolId = userPoolId,
-      tokenPoolId = tokenPoolId
+      cognitoConfig
     )
-  }
+
+  def apply(config: Config): Cognito =
+    Cognito(CognitoConfig(config))
 }
 
 class Cognito(
   val client: CognitoIdentityProviderAsyncClient,
-  userPoolId: String,
-  tokenPoolId: String
+  val cognitoConfig: CognitoConfig
 ) extends CognitoClient {
 
-  def adminCreateUser(
-    email: String
+  def inviteUser(
+    email: Email
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId] = {
+    val request = AdminCreateUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(email.address)
+      .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
+      .build()
+    adminCreateUser(request)
+  }
+
+  /**
+    * The client token pool is configured to only allow username + password
+    * auth, and users cannot reset passwords.
+    */
+  def createClientToken(
+    token: String,
+    secret: Secret
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId] = {
 
-    val request = AdminCreateUserRequest
+    val createUserRequest = AdminCreateUserRequest
       .builder()
-      .userPoolId(userPoolId)
-      .username(email)
-      .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
+      .userPoolId(cognitoConfig.tokenPool.id)
+      .username(token)
+      .build()
+
+    val setPasswordRequest = AdminSetUserPasswordRequest
+      .builder()
+      .password(secret.plaintext)
+      .permanent(true)
+      .userPoolId(cognitoConfig.tokenPool.id)
+      .username(token)
       .build()
 
     for {
-      cognitoResponse <- client
-        .adminCreateUser(request)
+      cognitoId <- adminCreateUser(createUserRequest)
+
+      _ <- client
+        .adminSetUserPassword(setPasswordRequest)
         .toScala
 
-      cognitoId <- parseCognitoId(cognitoResponse.user()) match {
-        case Some(cognitoId) => Future.successful(cognitoId)
-        case None =>
-          Future.failed(NotFound("Could not parse Cognito ID from respoonse"))
-      }
     } yield cognitoId
   }
 
+  def deleteClientToken(
+    token: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDeleteUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.tokenPool.id)
+      .username(token)
+      .build()
+
+    client
+      .adminDeleteUser(request)
+      .toScala
+      .map(_ => ())
+  }
+
   def resendUserInvite(
-    email: String,
+    email: Email,
     cognitoId: CognitoId
   )(implicit
     ec: ExecutionContext
@@ -108,36 +170,52 @@ class Cognito(
     // TODO: sanity check if user already exists before sending?
     val resendRequest = AdminCreateUserRequest
       .builder()
-      .userPoolId(userPoolId)
-      .username(email)
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(email.address)
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
       .messageAction(MessageActionType.RESEND)
       .build()
 
     for {
-      response <- client
-        .adminCreateUser(resendRequest)
+      responseId <- adminCreateUser(resendRequest)
+
+      _ <- if (responseId != cognitoId)
+        Future.failed(
+          PredicateError(
+            s"Mismatched Cognito ID: expected $cognitoId but got $responseId"
+          )
+        )
+      else
+        Future.successful(())
+
+    } yield cognitoId
+  }
+
+  /**
+    * Create Cognito user and parse Cognito ID from response.
+    */
+  private def adminCreateUser(
+    request: AdminCreateUserRequest
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId] = {
+    for {
+      cognitoResponse <- client
+        .adminCreateUser(request)
         .toScala
 
-      _ <- parseCognitoId(response.user()) match {
-        case Some(responseId) if responseId != cognitoId =>
-          Future.failed(
-            PredicateError(
-              s"Mismatched Cognito ID: expected $cognitoId but got $responseId"
-            )
-          )
-        case Some(_) => Future.successful(())
+      cognitoId <- parseCognitoId(cognitoResponse.user()) match {
+        case Some(cognitoId) => Future.successful(cognitoId)
         case None =>
           Future.failed(NotFound("Could not parse Cognito ID from response"))
       }
-
     } yield cognitoId
   }
 
   /**
     * Parse Cognito ID from the "sub" user attribute
     */
-  def parseCognitoId(user: UserType): Option[CognitoId] =
+  private def parseCognitoId(user: UserType): Option[CognitoId] =
     user
       .attributes()
       .asScala

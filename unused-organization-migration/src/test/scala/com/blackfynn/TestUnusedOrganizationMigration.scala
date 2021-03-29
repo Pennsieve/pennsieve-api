@@ -1,15 +1,31 @@
-package com.blackfynn.migrations.organizations
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-import com.blackfynn.core.utilities.DatabaseContainer
-import com.blackfynn.db.UserMapper
-import com.blackfynn.managers.BaseManagerSpec
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.test.S3DockerContainer
-import com.blackfynn.utilities.`unused-organization-migration`.UnusedOrganizationMigrationContainer
+package com.pennsieve.migrations.organizations
+
+import com.pennsieve.core.utilities.DatabaseContainer
+import com.pennsieve.db.UserMapper
+import com.pennsieve.managers.BaseManagerSpec
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.test.S3DockerContainer
+import com.pennsieve.utilities.`unused-organization-migration`.UnusedOrganizationMigrationContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._
 import matchers._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

@@ -1,17 +1,33 @@
-package com.blackfynn.jobs.types
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
-import com.blackfynn.core.utilities.{ DatabaseContainer, InsecureContainer }
-import com.blackfynn.managers.ManagerSpec
-import com.blackfynn.messages.BackgroundJob._
-import com.blackfynn.messages.{
+import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
+import com.pennsieve.managers.ManagerSpec
+import com.pennsieve.messages.BackgroundJob._
+import com.pennsieve.messages.{
   BackgroundJob,
   DatasetChangelogEventJob,
   EventInstance
 }
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   ChangelogEventCursor,
   ChangelogEventDetail,
   ChangelogEventName

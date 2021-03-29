@@ -1,6 +1,20 @@
-// Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.admin.api
+package com.pennsieve.admin.api
 
 import akka.http.scaladsl.model.HttpMethods
 import akka.http.scaladsl.server.Route
@@ -9,28 +23,28 @@ import akka.http.scaladsl.server.directives.ExecutionDirectives.handleRejections
 import akka.http.scaladsl.model.headers.{ HttpOrigin, HttpOriginRange }
 import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainerImpl,
   InsecureResourceContainer,
   SecureResourceContainer
 }
-import com.blackfynn.akka.http.{
+import com.pennsieve.akka.http.{
   HealthCheck,
   HealthCheckService,
   RouteService,
   WebServer
 }
-import com.blackfynn.auth.middleware.Jwt
-import com.blackfynn.aws.email.{ AWSEmailContainer, LocalEmailContainer }
-import com.blackfynn.aws.queue.{ AWSSQSContainer, LocalSQSContainer }
-import com.blackfynn.aws.s3.{ AWSS3Container, LocalS3Container }
-import com.blackfynn.aws.cognito.{ AWSCognitoContainer, LocalCognitoContainer }
-import com.blackfynn.clients.S3CustomTermsOfServiceClientContainer
-import com.blackfynn.core.utilities._
-import com.blackfynn.discover.client.publish.PublishClient
-import com.blackfynn.models.{ Organization, User }
-import com.blackfynn.service.utilities.SingleHttpResponder
-import com.blackfynn.utilities.Container
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.aws.email.{ AWSEmailContainer, LocalEmailContainer }
+import com.pennsieve.aws.queue.{ AWSSQSContainer, LocalSQSContainer }
+import com.pennsieve.aws.s3.{ AWSS3Container, LocalS3Container }
+import com.pennsieve.aws.cognito.{ AWSCognitoContainer, LocalCognitoContainer }
+import com.pennsieve.clients.S3CustomTermsOfServiceClientContainer
+import com.pennsieve.core.utilities._
+import com.pennsieve.discover.client.publish.PublishClient
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.service.utilities.SingleHttpResponder
+import com.pennsieve.utilities.Container
 import com.redis.RedisClientPool
 import com.typesafe.scalalogging.LazyLogging
 import net.ceedubs.ficus.Ficus._

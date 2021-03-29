@@ -1,37 +1,52 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
-import com.blackfynn.aws.cognito.MockCognito
-import com.blackfynn.db.UserInvitesMapper
-import com.blackfynn.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
-import com.blackfynn.managers.{
+import com.pennsieve.aws.email.Email
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.db.UserInvitesMapper
+import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
+import com.pennsieve.managers.{
   DatasetStatusManager,
   SecureOrganizationManager,
   UpdateOrganization
 }
-import com.blackfynn.models.DBPermission.{ Administer, Delete, Owner }
-import com.blackfynn.models.PackageState.READY
-import com.blackfynn.models.PackageType.Collection
-import com.blackfynn.models.SubscriptionStatus.{
+import com.pennsieve.models.DBPermission.{ Administer, Delete, Owner }
+import com.pennsieve.models.PackageState.READY
+import com.pennsieve.models.PackageType.Collection
+import com.pennsieve.models.SubscriptionStatus.{
   ConfirmedSubscription,
   PendingSubscription
 }
-import com.blackfynn.models._
-import com.blackfynn.models.DateVersion._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.models._
+import com.pennsieve.models.DateVersion._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.PostgresProfile.api._
 import java.time.{ Duration, ZonedDateTime }
 
-import com.blackfynn.audit.middleware.Auditor
-import com.blackfynn.clients.{
+import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.clients.{
   CustomTermsOfServiceClient,
   MockCustomTermsOfServiceClient
 }
-import com.blackfynn.helpers.{ DataSetTestMixin, MockAuditLogger }
-import com.blackfynn.managers.OrganizationManager.Invite
+import com.pennsieve.helpers.{ DataSetTestMixin, MockAuditLogger }
+import com.pennsieve.managers.OrganizationManager.Invite
 import org.apache.http.impl.client.HttpClients
 import org.json4s.jackson.Serialization.{ read, write }
 import org.scalatest.EitherValues._
@@ -428,7 +443,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       results.get(email).value.success should be(true)
     }
 
-    mockCognito.sentInvites.toList shouldBe List(email)
+    mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
 
     // existing user
     val createReq2 = write(
@@ -454,7 +469,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
 
     // Should not send another request to Cognito
-    mockCognito.sentInvites.toList shouldBe List(email)
+    mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
   }
 
   test("add an organization member as a blind reviewer") {
@@ -662,7 +677,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       status should be(200)
       val response = parsedBody.extract[AddUserResponse]
 
-      mockCognito.reSentInvites.get(email) shouldBe Some(
+      mockCognito.reSentInvites.get(Email(email)) shouldBe Some(
         invalidInvite.cognitoId
       )
     }
