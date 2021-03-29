@@ -16,10 +16,12 @@
 
 package com.pennsieve.api
 
+import com.pennsieve.aws.cognito._
 import com.pennsieve.aws.email.LoggingEmailer
 import com.pennsieve.models.DBPermission
 import com.pennsieve.web.Settings
 import com.pennsieve.aws.cognito.MockCognito
+import software.amazon.awssdk.regions.Region
 
 import java.time.Duration
 
@@ -30,11 +32,21 @@ import org.scalatest._
 
 class TestAccountController extends BaseApiTest {
 
+  val cognitoConfig = CognitoConfig(
+    Region.US_EAST_1,
+    CognitoPoolConfig(Region.US_EAST_1, "user-pool-id", "client-id"),
+    CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
+  )
+
   override def afterStart(): Unit = {
     super.afterStart()
 
     addServlet(
-      new AccountController(insecureContainer, system.dispatcher),
+      new AccountController(
+        insecureContainer,
+        cognitoConfig,
+        system.dispatcher
+      ),
       "/*"
     )
   }

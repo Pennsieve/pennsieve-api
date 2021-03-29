@@ -72,7 +72,11 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       // account endpoints
       ///////////////////////////////
       val accountController =
-        new AccountController(bootstrapHelper.insecureContainer, ec)
+        new AccountController(
+          bootstrapHelper.insecureContainer,
+          bootstrapHelper.cognitoConfig,
+          ec
+        )
       context mount (accountController, "/account/*", "account")
 
       // annotation endpoints

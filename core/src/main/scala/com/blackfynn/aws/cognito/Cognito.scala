@@ -75,10 +75,7 @@ trait CognitoClient {
 
 object Cognito {
 
-  def apply(config: Config): Cognito = {
-
-    val cognitoConfig = CognitoConfig(config)
-
+  def apply(cognitoConfig: CognitoConfig): Cognito =
     new Cognito(
       CognitoIdentityProviderAsyncClient
         .builder()
@@ -87,12 +84,14 @@ object Cognito {
         .build(),
       cognitoConfig
     )
-  }
+
+  def apply(config: Config): Cognito =
+    Cognito(CognitoConfig(config))
 }
 
 class Cognito(
   val client: CognitoIdentityProviderAsyncClient,
-  cognitoConfig: CognitoConfig
+  val cognitoConfig: CognitoConfig
 ) extends CognitoClient {
 
   def inviteUser(
