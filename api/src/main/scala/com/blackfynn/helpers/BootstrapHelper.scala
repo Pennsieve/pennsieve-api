@@ -24,11 +24,10 @@ import com.amazonaws.ClientConfiguration
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.S3ClientOptions
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderAsyncClient
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import com.authy.AuthyApiClient
-import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.cognito.{ CognitoClient, CognitoConfig }
 import com.pennsieve.aws.s3.AWSS3Container
 import com.pennsieve.aws.s3.LocalS3Container
 import net.ceedubs.ficus.Ficus._
@@ -132,7 +131,8 @@ trait BaseBootstrapHelper {
 
   lazy val sqsClient: SQSClient = new SQS(awsSQSClient)
 
-  lazy val cognitoClient: CognitoClient = Cognito(config)
+  lazy val cognitoConfig: CognitoConfig = CognitoConfig(config)
+  lazy val cognitoClient: CognitoClient = Cognito(cognitoConfig)
 
   lazy val modelServiceClient = {
 

@@ -86,8 +86,10 @@ case class Error(message: String) extends CoreError {
   final override def getMessage: String = message
 }
 
-case class InvalidJWT(token: String) extends CoreError {
-  final override def getMessage: String = s"Not a JWT: ${token}"
+case class InvalidJWT(token: String, reason: Option[String] = None)
+    extends CoreError {
+  final override def getMessage: String =
+    s"""Invalid JWT: ${reason.map(_ + ":").getOrElse("")} $token"""
 }
 
 case class UnsupportedJWTClaimType(`type`: String) extends CoreError {

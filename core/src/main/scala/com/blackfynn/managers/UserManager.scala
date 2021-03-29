@@ -246,12 +246,7 @@ class UserManager(db: Database) {
 
       newUser <- create(user, Some(password))
       cognitoUser <- db
-        .run(
-          CognitoUserMapper returning CognitoUserMapper += CognitoUser(
-            cognitoId = cognitoId,
-            userId = newUser.id
-          )
-        )
+        .run(CognitoUserMapper.create(cognitoId, newUser))
         .toEitherT
 
       organizations <- invites.traverse(
