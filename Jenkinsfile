@@ -1,8 +1,6 @@
 #!groovy
 
 timestamps {
-    def buildEnv = env.BRANCH_NAME == 'prod' ? 'prod' : 'dev'
-    def tld = env.BRANCH_NAME == 'prod' ? 'io' : 'net'
     def pennsieveNexusCreds = usernamePassword(
         credentialsId: 'pennsieve-nexus-ci-login',
         usernameVariable: 'PENNSIEVE_NEXUS_USER',
@@ -18,23 +16,11 @@ timestamps {
         def sbt = "sbt -Dsbt.log.noformat=true -Dversion=$imageTag -Dremote-cache=$remoteCache"
 
         try {
-            if (['DEVELOPMENT', 'prod'].contains(env.BRANCH_NAME)) {
-                node("${buildEnv}-executor") {
-                    stage('Run migrations') {
-                        checkout scm
-
-                        withCredentials([pennsieveNexusCreds]) {
-                            sh "${sbt} migrations/docker"
-                        }
-                        sh "docker run -e CLOUDWRAP_ENVIRONMENT=${buildEnv} -e MIGRATION_TYPE=core pennsieve/migrations:latest"
-                    }
-                }
-            }
 
             stage('Build DB Image') {
                 timeout(20) {
                     withCredentials([pennsieveNexusCreds]) {
-                        sh "ENVIRONMENT=${buildEnv} ./build-postgres.sh"
+                        sh "ENVIRONMENT=jenkins ./build-postgres.sh"
                     }
                 }
                 sh 'docker-compose down'
@@ -47,7 +33,7 @@ timestamps {
                 stash name: "${remoteCache}", includes: "${remoteCache}/**/*"
             }
 
-            if (!['DEVELOPMENT', 'prod'].contains(env.BRANCH_NAME)) {
+            if (env.BRANCH_NAME != 'main') {
                 stage('Test') {
                     unstash name: "${remoteCache}"
                     withCredentials([pennsieveNexusCreds]) {
@@ -97,6 +83,13 @@ timestamps {
                     }
                     publishContainerSteps.failFast = true
                     parallel publishContainerSteps
+                }
+
+                stage('Run Migrations') {
+                    build job: "Migrations/dev-migrations/dev-postgres-migrations",
+                    parameters: [
+                        string(name: 'IMAGE_TAG', value: imageTag)
+                    ]
                 }
 
                 stage('Deploy') {
