@@ -123,6 +123,7 @@ class UserManagerSpec extends BaseManagerSpec {
       .value
 
     assert(user.email == email)
+    assert(user.preferredOrganizationId == Some(testOrganization.id))
 
     val secureOrganizationManager = organizationManager(user)
     secureOrganizationManager.get(testOrganization.id).await.value
@@ -189,6 +190,7 @@ class UserManagerSpec extends BaseManagerSpec {
       .value
 
     assert(user.email == email)
+    assert(user.preferredOrganizationId == Some(orgsInvites.last._1.id))
 
     val secureOrganizationManager =
       new SecureOrganizationManager(database, user)
@@ -207,6 +209,7 @@ class UserManagerSpec extends BaseManagerSpec {
   }
 
   // TODO: create this as part of createUser?
+
   def createCognitoUser(user: User): CognitoId =
     database
       .run(CognitoUserMapper.create(CognitoId.randomId(), user))
