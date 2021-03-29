@@ -14,16 +14,12 @@ timestamps {
 
                 echo "Running Database Migrations"
 
-                def sbt = "sbt -Dsbt.log.noformat=true"
-
-                withCredentials([pennsieveNexusCreds]) {
-                    sh "${sbt} migrations/docker"
-                }
-                sh "docker run -e CLOUDWRAP_ENVIRONMENT=prod pennsieve/migrations:latest"
-
                 if (params.RUN_ORG_MIGRATIONS) {
-                    echo "Running PROD Organization Schema Migrations"
-                    build job: "migrations/prod-organization-migration"
+                    echo "Running PROD Postgres Schema Migrations"
+                    build job: "Migrations/prod-migrations/prod-postgres-migrations",
+                    parameters: [
+                        string(name: 'IMAGE_TAG', value: params.IMAGE_TAG)
+                    ]
                 }
             }
 
