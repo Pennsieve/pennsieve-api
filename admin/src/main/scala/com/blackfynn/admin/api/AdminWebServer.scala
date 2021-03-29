@@ -21,7 +21,6 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
 import akka.http.scaladsl.server.directives.ExecutionDirectives.handleRejections
 import akka.http.scaladsl.model.headers.{ HttpOrigin, HttpOriginRange }
-import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 
 import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainerImpl,
@@ -59,15 +58,6 @@ trait AdminContainer { self: Container =>
 object AdminWebServer extends App with WebServer with LazyLogging {
 
   override val actorSystemName: String = "admin"
-
-  override implicit lazy val materializer: ActorMaterializer =
-    ActorMaterializer(
-      ActorMaterializerSettings(system)
-        .withSupervisionStrategy { (exception: Throwable) =>
-          logger.error("Unhandled exception thrown", exception)
-          Supervision.resume
-        }
-    )
 
   val insecureContainer: InsecureResourceContainer =
     if (Settings.isLocal) {

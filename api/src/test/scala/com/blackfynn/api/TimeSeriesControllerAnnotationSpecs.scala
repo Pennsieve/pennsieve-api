@@ -59,7 +59,7 @@ class TimeSeriesControllerAnnotationSpecs
       insecureContainer,
       secureContainerBuilder,
       ec,
-      materializer
+      system
     )(swagger)
     addServlet(controller, "/*")
   }

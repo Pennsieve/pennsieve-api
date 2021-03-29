@@ -20,7 +20,7 @@ import java.net.URL
 import java.util.UUID
 
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.auth.middleware.Jwt
@@ -120,7 +120,7 @@ object Builders {
       CoreError,
       Map[Int, DiscoverPublishedDatasetDTO]
     ],
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, List[DataSetDTO]] = {
 
@@ -225,7 +225,7 @@ object Builders {
       CoreError,
       Map[Int, DiscoverPublishedDatasetDTO]
     ],
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DataSetDTO] = {
     for {

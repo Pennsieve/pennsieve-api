@@ -15,6 +15,8 @@
  */
 
 package com.pennsieve.admin.api.services
+
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.{
   BadRequest,
   Forbidden,
@@ -27,7 +29,6 @@ import akka.http.scaladsl.model.{ HttpResponse, StatusCode }
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.http.scaladsl.server.Directives.path
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
 import cats.implicits._
 import com.pennsieve.admin.api.Router.SecureResourceContainer
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -85,7 +86,7 @@ class DatasetsService(
   publishClient: PublishClient
 )(implicit
   ec: ExecutionContext,
-  mat: ActorMaterializer
+  actorSystem: ActorSystem
 ) extends RouteService {
 
   implicit val jwtConfig: Jwt.Config = new Jwt.Config {
@@ -374,7 +375,7 @@ class DatasetsService(
         _.fold(
           error => Future.successful(ServiceError(error.toString)),
           resp =>
-            resp.entity.toStrict(5.seconds)(mat).map { entity =>
+            resp.entity.toStrict(5.seconds).map { entity =>
               ServiceError(s"HTTP ${resp.status}: ${entity.data.utf8String}")
             }
         )

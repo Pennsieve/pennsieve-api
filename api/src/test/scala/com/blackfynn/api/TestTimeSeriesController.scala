@@ -41,7 +41,7 @@ class TestTimeSeriesController
         insecureContainer,
         secureContainerBuilder,
         system.dispatcher,
-        materializer
+        system
       ),
       "/*"
     )
