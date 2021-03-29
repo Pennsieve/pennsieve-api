@@ -56,9 +56,6 @@ variable "deployment_maximum_percent" {
   default = 200
 }
 
-# Deprecated
-variable "sentry_dsn" {}
-
 variable "uploads_consumer_container_cpu" {
   default = "1024"
 }
