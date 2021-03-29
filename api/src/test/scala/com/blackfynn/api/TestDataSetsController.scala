@@ -83,25 +83,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   override def afterStart(): Unit = {
     super.afterStart()
 
-    val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
+    implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
       Future.successful(HttpResponse())
     }
 
-    mockPublishClient = new MockPublishClient(httpClient, ec, materializer)
+    mockPublishClient = new MockPublishClient()
 
-    mockSearchClient = new MockSearchClient(httpClient, ec, materializer)
+    mockSearchClient = new MockSearchClient()
 
     addServlet(
       new DataSetsController(
         insecureContainer,
         secureContainerBuilder,
-        materializer,
+        system,
         mockAuditLogger,
         mockSqsClient,
         new MockModelServiceClient(),
         mockPublishClient,
         mockSearchClient,
-        new MockDoiClient(httpClient, ec, materializer),
+        new MockDoiClient(),
         mockDatasetAssetClient,
         maxFileUploadSize,
         system.dispatcher

@@ -21,7 +21,7 @@ import java.time.format.DateTimeFormatter
 import akka.Done
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.auth.middleware.{ DatasetPermission, Jwt }
@@ -564,7 +564,7 @@ case object DataSetPublishingHelper extends LazyLogging {
   )(implicit
     request: HttpServletRequest,
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, ValidatedPublicationStatusRequest] = {
 
@@ -828,7 +828,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     externalPublications: Seq[ExternalPublication]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DatasetPublishStatus] = {
     val organization = secureContainer.organization
@@ -962,7 +962,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     externalPublications: Seq[ExternalPublication]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DatasetPublishStatus] = {
 
@@ -1085,7 +1085,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     sendNotification: NotificationMessage => EitherT[Future, CoreError, Done]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, Option[DatasetPublishStatus]] = {
 
@@ -1147,7 +1147,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     sendNotification: NotificationMessage => EitherT[Future, CoreError, Done]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, Option[DatasetPublishStatus]] = {
 
@@ -1203,7 +1203,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     user: User
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DatasetPublishStatus] = {
 
@@ -1236,7 +1236,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     user: User
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, List[DatasetPublishStatus]] = {
 
@@ -1270,7 +1270,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     query: Option[String]
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, DatasetsPage] = {
 
@@ -1315,7 +1315,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     user: User
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): EitherT[Future, CoreError, Map[Int, DiscoverPublishedDatasetDTO]] =
     getPublishedStatusForOrganization(publishClient, organization, user).map(
@@ -1334,7 +1334,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     dataset: Dataset
   )(implicit
     ec: ExecutionContext,
-    materializer: Materializer,
+    system: ActorSystem,
     jwtConfig: Jwt.Config
   ): List[Authorization] = {
     val token = JwtAuthenticator.generateServiceToken(
@@ -1355,7 +1355,7 @@ case object DataSetPublishingHelper extends LazyLogging {
   private def handleGuardrailError(
     implicit
     ec: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): Either[Throwable, HttpResponse] => Future[CoreError] =
     _.fold(
       error => Future.successful(ServiceError(error.toString)),

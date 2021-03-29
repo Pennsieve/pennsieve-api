@@ -132,7 +132,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
       new FilesController(
         insecureContainer,
         secureContainerBuilder,
-        materializer,
+        system,
         new MockAuditLogger(),
         new MockObjectStore("test.avi"),
         mockModelServiceClient,

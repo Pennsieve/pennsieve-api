@@ -17,7 +17,6 @@
 package com.pennsieve.jobs
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import cats.data._
 import cats.implicits._
 import com.pennsieve.jobs.container._
@@ -35,7 +34,6 @@ object ProcessJob {
     logChangeEventRunner: DatasetChangelogEvent
   )(implicit
     system: ActorSystem,
-    mat: ActorMaterializer,
     ec: ExecutionContext
   ): ProcessJob = {
     new ProcessJob(deleteRunner, cacheRunner, logChangeEventRunner)
@@ -52,7 +50,7 @@ class ProcessJob(
   def processJob(
     job: BackgroundJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     executionContext: ExecutionContext,
     container: Container
   ): EitherT[Future, JobException, Unit] = {

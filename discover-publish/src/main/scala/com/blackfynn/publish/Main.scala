@@ -17,7 +17,6 @@
 package com.pennsieve.publish
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.StrictLogging
 import com.typesafe.config.{ Config, ConfigFactory }
 import cats.implicits._
@@ -69,8 +68,6 @@ object Main extends App with StrictLogging {
     val config: Config = ConfigFactory.load()
 
     implicit lazy val system: ActorSystem = ActorSystem("discover-publish")
-    implicit lazy val materializer: ActorMaterializer =
-      ActorMaterializer()
     implicit lazy val executionContext: ExecutionContext =
       system.dispatcher
 

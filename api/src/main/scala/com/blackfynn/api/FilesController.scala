@@ -16,8 +16,8 @@
 
 package com.pennsieve.api
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
 import cats.data.{ EitherT, _ }
 import cats.implicits._
 import com.pennsieve.audit.middleware.{ Auditor, TraceId }
@@ -162,7 +162,7 @@ case class ProxyLinkPayload(
 class FilesController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
-  materializer: Materializer,
+  system: ActorSystem,
   auditLogger: Auditor,
   objectStore: ObjectStore,
   modelServiceClient: ModelServiceClient,

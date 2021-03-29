@@ -17,7 +17,6 @@
 package com.pennsieve.api
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase
 import org.apache.http.entity.ByteArrayEntity
@@ -98,7 +97,6 @@ trait ApiSuite
     with PostgresDockerContainer {
 
   implicit lazy val system: ActorSystem = ActorSystem("ApiSuite")
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
   implicit lazy val jwtConfig: Jwt.Config = new Jwt.Config {
