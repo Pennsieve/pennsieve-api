@@ -1,6 +1,20 @@
-// Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.publish
+package com.pennsieve.publish
 
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.TestSink
@@ -17,17 +31,17 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.auth.{ AWSStaticCredentialsProvider, BasicAWSCredentials }
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.model.{ Bucket, S3ObjectSummary }
-import com.blackfynn.aws.s3.S3
-import com.blackfynn.core.utilities._
-import com.blackfynn.domain.{ CoreError, ServiceError }
-import com.blackfynn.managers.DatasetStatusManager
-import com.blackfynn.models._
-import com.blackfynn.publish.models.CopyAction
-import com.blackfynn.test._
-import com.blackfynn.test.helpers._
-import com.blackfynn.test.helpers.EitherValue._
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.utilities.Container
+import com.pennsieve.aws.s3.S3
+import com.pennsieve.core.utilities._
+import com.pennsieve.domain.{ CoreError, ServiceError }
+import com.pennsieve.managers.DatasetStatusManager
+import com.pennsieve.models._
+import com.pennsieve.publish.models.CopyAction
+import com.pennsieve.test._
+import com.pennsieve.test.helpers._
+import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.utilities.Container
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import io.circe.Json
 import io.circe.parser.decode

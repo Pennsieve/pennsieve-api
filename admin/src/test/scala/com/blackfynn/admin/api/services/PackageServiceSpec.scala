@@ -1,29 +1,43 @@
-// Copyright (c) 2019 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.admin.api.services
+package com.pennsieve.admin.api.services
 
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.testkit.TestKitBase
-import com.blackfynn.admin.api.Router.{
+import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainer,
   InsecureResourceContainer,
   SecureResourceContainer
 }
-import com.blackfynn.aws.s3.LocalS3Container
-import com.blackfynn.admin.api.dtos.{
+import com.pennsieve.aws.s3.LocalS3Container
+import com.pennsieve.admin.api.dtos.{
   JobDTO,
   SimpleDatasetDTO,
   SimpleOrganizationDTO,
   UserDTO
 }
-import com.blackfynn.admin.api.{ AdminContainer, Router }
-import com.blackfynn.aws.email.LocalEmailContainer
-import com.blackfynn.aws.queue.LocalSQSContainer
-import com.blackfynn.clients._
-import com.blackfynn.core.utilities._
-import com.blackfynn.dtos.{ Builders, PackageDTO }
-import com.blackfynn.models._
+import com.pennsieve.admin.api.{ AdminContainer, Router }
+import com.pennsieve.aws.email.LocalEmailContainer
+import com.pennsieve.aws.queue.LocalSQSContainer
+import com.pennsieve.clients._
+import com.pennsieve.core.utilities._
+import com.pennsieve.dtos.{ Builders, PackageDTO }
+import com.pennsieve.models._
 import io.circe.syntax._
 
 class PackageServiceSpec extends AdminServiceSpec with TestKitBase {

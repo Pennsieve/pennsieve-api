@@ -1,11 +1,27 @@
-package com.blackfynn.managers
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.pennsieve.managers
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import cats.data._
 import cats.implicits._
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.db.{
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.db.{
   ChannelGroup,
   ChannelGroupTable,
   DBTimeSeriesAnnotation,
@@ -14,8 +30,8 @@ import com.blackfynn.db.{
   TimeSeriesLayer,
   TimeSeriesLayerTable
 }
-import com.blackfynn.domain.CoreError
-import com.blackfynn.timeseries.{
+import com.pennsieve.domain.CoreError
+import com.pennsieve.timeseries.{
   AnnotationAggregateWindowResult,
   AnnotationChunker,
   AnnotationData,
@@ -24,8 +40,8 @@ import com.blackfynn.timeseries.{
   WindowAggregator
 }
 import com.github.tminglei.slickpg.Range
-import com.blackfynn.traits.PostgresProfile.api._
-import com.blackfynn.models.Package
+import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.models.Package
 import slick.dbio.Effect
 import slick.sql.FixedSqlAction
 import slick.jdbc.{ ResultSetConcurrency, ResultSetType }

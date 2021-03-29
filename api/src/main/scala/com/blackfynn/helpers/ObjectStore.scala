@@ -1,12 +1,26 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.helpers
+package com.pennsieve.helpers
 
-import com.blackfynn.api.Error
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.web.Settings
+import com.pennsieve.api.Error
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.web.Settings
 
-import com.blackfynn.aws.s3.S3
+import com.pennsieve.aws.s3.S3
 import com.amazonaws.services.s3.model._
 import cats.syntax.either._
 import java.net.URL

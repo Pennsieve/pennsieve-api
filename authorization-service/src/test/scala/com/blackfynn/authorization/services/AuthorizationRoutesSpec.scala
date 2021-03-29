@@ -1,6 +1,20 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.authorization.routes
+package com.pennsieve.authorization.routes
 
 import akka.http.javadsl.model.HttpRequest
 import akka.http.scaladsl.model._
@@ -19,8 +33,8 @@ import akka.stream._
 import akka.testkit.TestKitBase
 import cats.data._
 import cats.implicits._
-import com.blackfynn.akka.http.EitherValue._
-import com.blackfynn.auth.middleware.{
+import com.pennsieve.akka.http.EitherValue._
+import com.pennsieve.auth.middleware.{
   DatasetId,
   DatasetNodeId,
   EncryptionKeyId,
@@ -29,16 +43,17 @@ import com.blackfynn.auth.middleware.{
   Permission,
   UserClaim
 }
-import com.blackfynn.auth.middleware.Jwt.DatasetRole
-import com.blackfynn.db.{
+import com.pennsieve.auth.middleware.Jwt.DatasetRole
+import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.db.{
   ChangelogEventMapper,
   ContributorMapper,
   DatasetPublicationStatusMapper,
   DatasetsMapper
 }
-import com.blackfynn.domain.Sessions.APISession
-import com.blackfynn.dtos.UserDTO
-import com.blackfynn.managers.{
+import com.pennsieve.domain.Sessions.APISession
+import com.pennsieve.dtos.UserDTO
+import com.pennsieve.managers.{
   ContributorManager,
   DatasetManager,
   DatasetPreviewManager,
@@ -46,7 +61,7 @@ import com.blackfynn.managers.{
   TeamManager,
   UserManager
 }
-import com.blackfynn.models.{
+import com.pennsieve.models.{
   DBPermission,
   DatasetPreviewer,
   EmbargoAccess,
@@ -58,11 +73,11 @@ import com.blackfynn.models.{
   PublicationType,
   Role
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import java.util.UUID
 
-import com.blackfynn.auth.middleware.Jwt.Role.RoleIdentifier
+import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import shapeless._
 
 import scala.collection.immutable.{ Seq => ImmutableSeq }
@@ -72,6 +87,8 @@ import scala.concurrent._
 class AuthorizationRoutesSpec
     extends AuthorizationServiceSpec
     with TestKitBase {
+
+  val mockCognito: MockCognito = new MockCognito()
 
   def withXOriginalURI(uri: String): ImmutableSeq[HttpHeader] =
     ImmutableSeq(RawHeader("X-Original-URI", uri))
@@ -844,7 +861,12 @@ class AuthorizationRoutesSpec
     "reject a request using an API session" in {
       // Create an API session that belongs to Organization Two
       val token = testDIContainer.tokenManager
-        .create("switch-organization-test", nonAdmin, organizationTwo)
+        .create(
+          "switch-organization-test",
+          nonAdmin,
+          organizationTwo,
+          mockCognito
+        )
         .await
         .value
         ._1

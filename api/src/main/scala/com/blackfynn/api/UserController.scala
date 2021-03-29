@@ -1,26 +1,40 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.api
+package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
 import com.authy.AuthyApiClient
-import com.blackfynn.audit.middleware.Auditor
-import com.blackfynn.core.utilities.FutureEitherHelpers
-import com.blackfynn.core.utilities.FutureEitherHelpers.implicits._
-import com.blackfynn.domain.StorageAggregation.susers
-import com.blackfynn.dtos.{ Builders, OrcidDTO, UserDTO }
-import com.blackfynn.helpers.APIContainers.{
+import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.core.utilities.FutureEitherHelpers
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.domain.StorageAggregation.susers
+import com.pennsieve.dtos.{ Builders, OrcidDTO, UserDTO }
+import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.blackfynn.helpers.OrcidClient
-import com.blackfynn.helpers.ResultHandlers.{ HandleResult, OkResult }
-import com.blackfynn.helpers.either.EitherErrorHandler.implicits._
-import com.blackfynn.helpers.either.EitherTErrorHandler.implicits._
-import com.blackfynn.managers.{ AuthyManager, StorageServiceClientTrait }
-import com.blackfynn.models.{ DateVersion, Degree, User }
-import com.blackfynn.web.Settings
+import com.pennsieve.helpers.OrcidClient
+import com.pennsieve.helpers.ResultHandlers.{ HandleResult, OkResult }
+import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.managers.{ AuthyManager, StorageServiceClientTrait }
+import com.pennsieve.models.{ DateVersion, Degree, User }
+import com.pennsieve.web.Settings
 import org.json4s.JValue
 import org.json4s.JsonAST.JNothing
 import org.scalatra._

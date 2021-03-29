@@ -1,25 +1,39 @@
-// Copyright (c) 2017 Blackfynn, Inc. All Rights Reserved.
+/*
+ * Copyright 2021 University of Pennsylvania
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.blackfynn.etl.`data-cli`
+package com.pennsieve.etl.`data-cli`
 
-import com.blackfynn.db.{ FilesMapper, OrganizationsMapper, PackagesMapper }
-import com.blackfynn.etl.`data-cli`.container._
-import com.blackfynn.etl.`data-cli`.exceptions._
-import com.blackfynn.models.{
+import com.pennsieve.db.{ FilesMapper, OrganizationsMapper, PackagesMapper }
+import com.pennsieve.etl.`data-cli`.container._
+import com.pennsieve.etl.`data-cli`.exceptions._
+import com.pennsieve.models.{
   File,
   FileExtensions,
   FileObjectType,
   FileProcessingState,
   Organization
 }
-import com.blackfynn.traits.PostgresProfile.api._
+import com.pennsieve.traits.PostgresProfile.api._
 import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
 import io.circe.parser.decode
 import io.circe.syntax._
 import java.io.{ File => JavaFile }
 
-import com.blackfynn.core.utilities
+import com.pennsieve.core.utilities
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 
