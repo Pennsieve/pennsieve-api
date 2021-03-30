@@ -31,7 +31,7 @@ final class UserInvitesTable(tag: Tag)
 
   def organizationId = column[Int]("organization_id")
   def email = column[String]("email")
-  def cognitoId = column[CognitoId]("cognito_id")
+  def cognitoId = column[CognitoId.UserPoolId]("cognito_id")
 
   def firstName = column[String]("first_name")
   def lastName = column[String]("last_name")
@@ -69,7 +69,7 @@ object UserInvitesMapper extends TableQuery(new UserInvitesTable(_)) {
   def getByNodeId(nodeId: String) =
     this.filter(_.nodeId === nodeId).result.headOption
 
-  def getByCognitoId(cognitoId: CognitoId) =
+  def getByCognitoId(cognitoId: CognitoId.UserPoolId) =
     this.filter(_.cognitoId === cognitoId).sortBy(_.createdAt.desc).result
 
   def getByEmail(email: String) =

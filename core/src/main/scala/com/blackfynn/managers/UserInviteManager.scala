@@ -154,7 +154,7 @@ class UserInviteManager(db: Database) {
   }
 
   def getByCognitoId(
-    cognitoId: CognitoId
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, List[UserInvite]] =
