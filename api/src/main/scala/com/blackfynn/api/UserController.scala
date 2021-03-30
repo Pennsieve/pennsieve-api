@@ -276,47 +276,6 @@ class UserController(
     }
   }
 
-  val apiHost: String = insecureContainer.config.getString("pennsieve.api_host")
-  val switchOrganizationOperation = (apiOperation[Option[UserDTO]](
-    "switchOrganization"
-  )
-    summary "switch the organization active for the user and session"
-    parameter pathParam[String]("organizationId").required
-      .description("the organization id to switch to"))
-
-  put(
-    "/organization/:organizationId/switch",
-    operation(switchOrganizationOperation)
-  ) {
-    new AsyncResult {
-      val result: EitherT[Future, ActionResult, String] = for {
-        secureContainer <- getSecureContainer
-        user = secureContainer.user
-        sessionId <- getSessionId(request)
-          .orBadRequest("request must be session-based")
-          .toEitherT[Future]
-
-        organizationId <- param[String]("organizationId").toEitherT[Future]
-
-        organization <- if (user.isSuperAdmin) {
-          secureContainer.organizationManager
-            .getByNodeId(organizationId)
-            .orNotFound
-        } else {
-          insecureContainer.userManager
-            .getOrganizationByNodeId(user, organizationId)
-            .orNotFound
-        }
-      } yield
-        s"$apiHost/session/switch-organization?organization_id=${organization.id}&api_key=$sessionId"
-
-      val is = result.value.map {
-        case Right(location) => MovedPermanently(location)
-        case Left(response) => response
-      }
-    }
-  }
-
   // Create authy account endpoint
   val createTwoFactorOperation = (apiOperation[AuthyUserResponse](
     "createTwoFactor"

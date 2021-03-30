@@ -18,6 +18,7 @@ package com.pennsieve.helpers
 
 import cats.implicits._
 import com.pennsieve.auth.middleware.{
+  CognitoSession,
   DatasetId,
   DatasetNodeId,
   EncryptionKeyId,
@@ -25,7 +26,6 @@ import com.pennsieve.auth.middleware.{
   OrganizationId,
   OrganizationNodeId,
   ServiceClaim,
-  Session,
   UserClaim,
   UserId
 }
@@ -39,6 +39,7 @@ import com.pennsieve.db.{
   UserMapper
 }
 import com.pennsieve.models.{
+  CognitoId,
   DBPermission,
   Dataset,
   Feature,
@@ -64,7 +65,8 @@ object Authenticator {
     user: User,
     organization: Organization,
     datasetId: Option[Int] = None,
-    session: Session = Session.Browser(UUID.randomUUID.toString),
+    cognito: CognitoSession =
+      CognitoSession.Browser(CognitoId.UserPoolId.randomId),
     duration: FiniteDuration = 60.seconds
   )(implicit
     config: Jwt.Config,
@@ -80,7 +82,7 @@ object Authenticator {
       val roles =
         List(organizationRole.some, datasetRole).flatten
       val userClaim =
-        UserClaim(id = UserId(user.id), roles = roles, session = Some(session))
+        UserClaim(id = UserId(user.id), roles = roles, cognito = Some(cognito))
       val claim =
         Jwt.generateClaim(userClaim, duration)
 
