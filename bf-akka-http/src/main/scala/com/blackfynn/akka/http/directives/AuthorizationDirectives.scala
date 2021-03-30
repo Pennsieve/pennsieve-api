@@ -101,7 +101,7 @@ object AuthorizationDirectives {
         UserAuthContext(
           user = user,
           organization = organization,
-          session = Some(session.uuid)
+          cognitoId = None
         )
     }
   }
