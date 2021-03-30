@@ -61,12 +61,3 @@ INSERT INTO "pennsieve"."organization_user" (organization_id, user_id, permissio
     (2, 1, 8), -- Test Organization, test@pennsieve.com, delete
     (1, 2, 8), -- Pennsieve, test2@pennsieve.com, delete
     (2, 2, 32); -- Test Organization, test2@pennsieve.com, owner
-
----
---- seed API tokens
----
-
-INSERT INTO "pennsieve"."tokens" (id, name, token, secret, organization_id, user_id) VALUES
-(1, 'for pennsieve client unit tests', 'c535152c-0564-4865-8fa0-addebb07e020', '$pbkdf2-sha512$20000$ENHVG67NOt8kbtsoJHt3eB90Ff/sRzKi$yI93E2XBh8IoAiOqWSRq2onjLEfqkrCIWQVj35qTMZI', 1, 3),
-(2, 'local', '43db6624-68ac-4e60-8ee6-d248b0db0445', '$pbkdf2-sha512$20000$KnP3rPutIN0w1r8AE5VqGG/lskTocw.V$SsXTKk9e5cT0L/ms7D58CIcfcXZP0jnLRET1FqFEVeE', 1, 1),
-(3, 'etl_user', '136a239b-40ed-4d91-a2cf-51cde0636f2d', '$pbkdf2-sha512$20000$.3AJaQ/qErlxtAEGZtCkRK1/yTdP1NCq$TYUkJBY1xSHDtArlAxJLg57IBrdWpaJEquTnk5IZOwA', 1, 3);

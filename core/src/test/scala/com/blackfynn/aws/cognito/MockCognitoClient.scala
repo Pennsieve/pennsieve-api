@@ -34,24 +34,24 @@ class MockCognito() extends CognitoClient {
   val sentDeletes: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
-  val reSentInvites: mutable.Map[Email, CognitoId] =
+  val reSentInvites: mutable.Map[Email, CognitoId.UserPoolId] =
     mutable.Map.empty
 
   def inviteUser(
     email: Email
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[CognitoId.UserPoolId] = {
     sentInvites.append(email)
-    Future.successful(CognitoId.randomId())
+    Future.successful(CognitoId.UserPoolId.randomId())
   }
 
   def resendUserInvite(
     email: Email,
-    cognitoId: CognitoId
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[CognitoId.UserPoolId] = {
     reSentInvites.update(email, cognitoId)
     Future.successful(cognitoId)
   }
@@ -61,9 +61,9 @@ class MockCognito() extends CognitoClient {
     secret: Secret
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[CognitoId.TokenPoolId] = {
     sentTokenInvites.append(token)
-    Future.successful(CognitoId.randomId())
+    Future.successful(CognitoId.TokenPoolId.randomId())
   }
 
   def deleteClientToken(

@@ -248,9 +248,19 @@ trait PostgresProfile
           s => ChangelogEventName.withName(s)
         )
 
-    implicit val cognitoIdMapper =
+    implicit val cognitoUserPoolIdMapper =
       MappedColumnType
-        .base[CognitoId, UUID](id => id.value, uuid => CognitoId(uuid))
+        .base[CognitoId.UserPoolId, UUID](
+          id => id.value,
+          uuid => CognitoId.UserPoolId(uuid)
+        )
+
+    implicit val cognitoTokenPoolIdMapper =
+      MappedColumnType
+        .base[CognitoId.TokenPoolId, UUID](
+          id => id.value,
+          uuid => CognitoId.TokenPoolId(uuid)
+        )
 
     // https://github.com/tminglei/slick-pg/issues/289
     // Declare the name of an aggregate function:
