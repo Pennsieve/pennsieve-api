@@ -54,6 +54,8 @@ case class CognitoPoolConfig(region: Region, id: String, appClientId: String) {
     new URL(
       s"https://cognito-idp.${region.toString}.amazonaws.com/$id/.well-known/jwks.json"
     )
+
+  lazy val jwkProvider = CognitoJWTAuthenticator.getJwkProvider(this)
 }
 
 object CognitoConfig {

@@ -34,7 +34,11 @@ services:
       upgrade
       head
     environment:
-      - PENNSIEVE_POSTGRES_HOST=postgres
+      PENNSIEVE_POSTGRES_HOST: postgres
+      PENNSIEVE_POSTGRES_PORT: 5432
+      PENNSIEVE_POSTGRES_USER: postgres
+      PENNSIEVE_POSTGRES_PASSWORD: password
+      PENNSIEVE_POSTGRES_USE_SSL: "false"
     hostname: alembic
     image: pennsieve/timeseries-migrations:0782992177f4
     links:

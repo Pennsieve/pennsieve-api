@@ -50,21 +50,21 @@ trait CognitoClient {
     email: Email
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId]
+  ): Future[CognitoId.UserPoolId]
 
   def resendUserInvite(
     email: Email,
-    cognitoId: CognitoId
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId]
+  ): Future[CognitoId.UserPoolId]
 
   def createClientToken(
     token: String,
     secret: Secret
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId]
+  ): Future[CognitoId.TokenPoolId]
 
   def deleteClientToken(
     token: String
@@ -98,14 +98,14 @@ class Cognito(
     email: Email
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[CognitoId.UserPoolId] = {
     val request = AdminCreateUserRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
       .build()
-    adminCreateUser(request)
+    adminCreateUser(request).map(CognitoId.UserPoolId(_))
   }
 
   /**
@@ -117,7 +117,7 @@ class Cognito(
     secret: Secret
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[CognitoId.TokenPoolId] = {
 
     val createUserRequest = AdminCreateUserRequest
       .builder()
@@ -140,7 +140,7 @@ class Cognito(
         .adminSetUserPassword(setPasswordRequest)
         .toScala
 
-    } yield cognitoId
+    } yield CognitoId.TokenPoolId(cognitoId)
   }
 
   def deleteClientToken(
@@ -162,10 +162,10 @@ class Cognito(
 
   def resendUserInvite(
     email: Email,
-    cognitoId: CognitoId
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[CognitoId.UserPoolId] = {
 
     // TODO: sanity check if user already exists before sending?
     val resendRequest = AdminCreateUserRequest
@@ -177,7 +177,7 @@ class Cognito(
       .build()
 
     for {
-      responseId <- adminCreateUser(resendRequest)
+      responseId <- adminCreateUser(resendRequest).map(CognitoId.UserPoolId(_))
 
       _ <- if (responseId != cognitoId)
         Future.failed(
@@ -198,7 +198,7 @@ class Cognito(
     request: AdminCreateUserRequest
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[UUID] = {
     for {
       cognitoResponse <- client
         .adminCreateUser(request)
@@ -215,12 +215,11 @@ class Cognito(
   /**
     * Parse Cognito ID from the "sub" user attribute
     */
-  private def parseCognitoId(user: UserType): Option[CognitoId] =
+  private def parseCognitoId(user: UserType): Option[UUID] =
     user
       .attributes()
       .asScala
       .find(_.name() == "sub")
       .map(_.value())
       .flatMap(s => Either.catchNonFatal(UUID.fromString(s)).toOption)
-      .map(CognitoId(_))
 }

@@ -22,17 +22,50 @@ import io.circe.{ Decoder, Encoder }
 
 import java.util.UUID
 
-final case class CognitoId(value: UUID) extends AnyVal {
+import CognitoId._
+
+sealed trait CognitoId {
+  val value: UUID
   override def toString: String = value.toString
+
+  def asUserPoolId: Either[Throwable, CognitoId.UserPoolId]
+  def asTokenPoolId: Either[Throwable, CognitoId.TokenPoolId]
 }
 
 object CognitoId {
-  implicit val cognitoIdEncoder: Encoder[CognitoId] =
-    Encoder[UUID].contramap(_.value)
 
-  implicit val cognitoIdDecoder: Decoder[CognitoId] =
-    Decoder.decodeUUID.map(CognitoId(_))
+  final case class UserPoolId(value: UUID) extends CognitoId {
+    def asUserPoolId = Right(this)
+    def asTokenPoolId = Left(InvalidCognitoId("token", "user"))
+  }
 
-  def randomId() = CognitoId(UUID.randomUUID())
+  final case class TokenPoolId(value: UUID) extends CognitoId {
+    def asUserPoolId = Left(InvalidCognitoId("user", "token"))
+    def asTokenPoolId = Right(this)
+  }
 
+  case class InvalidCognitoId(expected: String, got: String) extends Throwable {
+    override def getMessage: String =
+      s"Expected ${expected} pool Cognito ID but got ${got} pool ID"
+  }
+
+  object UserPoolId {
+    implicit val cognitoIdEncoder: Encoder[UserPoolId] =
+      Encoder[UUID].contramap(_.value)
+
+    implicit val cognitoIdDecoder: Decoder[UserPoolId] =
+      Decoder.decodeUUID.map(CognitoId.UserPoolId(_))
+
+    def randomId() = CognitoId.UserPoolId(UUID.randomUUID())
+  }
+
+  object TokenPoolId {
+    implicit val cognitoIdEncoder: Encoder[TokenPoolId] =
+      Encoder[UUID].contramap(_.value)
+
+    implicit val cognitoIdDecoder: Decoder[TokenPoolId] =
+      Decoder.decodeUUID.map(CognitoId.TokenPoolId(_))
+
+    def randomId() = CognitoId.TokenPoolId(UUID.randomUUID())
+  }
 }
