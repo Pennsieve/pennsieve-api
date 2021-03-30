@@ -51,7 +51,7 @@ object CognitoPayload {
         claim.subject,
         InvalidJWT(claim.content, Some("JWT claim missing 'sub' field"))
       )
-      cognitoId = CognitoId(UUID.fromString(subject))
+      cognitoId = CognitoId.UserPoolId(UUID.fromString(subject))
       issuedAt <- Either.fromOption(
         claim.issuedAt,
         InvalidJWT(claim.content, Some("JWT claim missing 'iat' field"))

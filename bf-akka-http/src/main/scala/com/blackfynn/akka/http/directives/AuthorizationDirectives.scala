@@ -192,11 +192,13 @@ object AuthorizationDirectives {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, UserAuthContext] = {
     for {
-      cognitoContext <- CognitoJWTAuthenticator
+      cognitoId <- CognitoJWTAuthenticator
         .validateJwt(token)
+        // TODO: handle token pool ID
+        .flatMap(_.id.asUserPoolId)
         .leftMap(ThrowableError(_))
         .toEitherT[Future]
-      user <- container.userManager.getByCognitoId(cognitoContext.id)
+      user <- container.userManager.getByCognitoId(cognitoId)
       // TODO: Better tracking of organizations w/ sessions etc
       preferredOrganizationId <- user._1.preferredOrganizationId match {
         case Some(id) => EitherT.rightT[Future, CoreError](id)
