@@ -50,9 +50,6 @@ variable "pennsieve_postgres_database" {
   default = "pennsieve_postgres"
 }
 
-# Deprecated
-variable "sentry_dsn" {}
-
 # Catalina Opts
 
 variable "initial_heap_size" {

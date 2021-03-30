@@ -70,7 +70,7 @@ object UserInvitesMapper extends TableQuery(new UserInvitesTable(_)) {
     this.filter(_.nodeId === nodeId).result.headOption
 
   def getByCognitoId(cognitoId: CognitoId) =
-    this.filter(_.cognitoId === cognitoId).result
+    this.filter(_.cognitoId === cognitoId).sortBy(_.createdAt.desc).result
 
   def getByEmail(email: String) =
     this.filter(_.email.toLowerCase === email.toLowerCase)

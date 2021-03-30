@@ -19,6 +19,7 @@ package com.pennsieve.managers
 import java.time.Duration
 
 import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.db.CognitoUserMapper
 import com.pennsieve.domain.PredicateError
 
 import com.pennsieve.models._
@@ -122,6 +123,7 @@ class UserManagerSpec extends BaseManagerSpec {
       .value
 
     assert(user.email == email)
+    assert(user.preferredOrganizationId == Some(testOrganization.id))
 
     val secureOrganizationManager = organizationManager(user)
     secureOrganizationManager.get(testOrganization.id).await.value
@@ -188,6 +190,7 @@ class UserManagerSpec extends BaseManagerSpec {
       .value
 
     assert(user.email == email)
+    assert(user.preferredOrganizationId == Some(orgsInvites.last._1.id))
 
     val secureOrganizationManager =
       new SecureOrganizationManager(database, user)
@@ -203,6 +206,33 @@ class UserManagerSpec extends BaseManagerSpec {
     createdOrgIds.size should equal(5)
 
     allOrgIds should contain theSameElementsAs createdOrgIds
+  }
+
+  // TODO: create this as part of createUser?
+
+  def createCognitoUser(user: User): CognitoId =
+    database
+      .run(CognitoUserMapper.create(CognitoId.randomId(), user))
+      .await
+      .cognitoId
+
+  "getByCognitoId" should "get the correct user" in {
+
+    val alice = createUser(email = "alice@pennsieve.net")
+    val bob = createUser(email = "bob@pennsieve.net")
+    val charlie = createUser(email = "charlie@pennsieve.net")
+
+    val aliceCognitoId = createCognitoUser(alice)
+    val bobCognitoId = createCognitoUser(bob)
+    val charlieCognitoId = createCognitoUser(charlie)
+
+    userManager.getByCognitoId(aliceCognitoId).await.map(_._1) shouldBe Right(
+      alice
+    )
+    userManager.getByCognitoId(bobCognitoId).await.map(_._1) shouldBe Right(bob)
+    userManager.getByCognitoId(charlieCognitoId).await.map(_._1) shouldBe Right(
+      charlie
+    )
   }
 
   "creating a new user" should "select a random avatar color" in {
