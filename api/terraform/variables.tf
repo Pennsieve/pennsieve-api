@@ -24,8 +24,6 @@ variable "analytics_service_rate_limit" {
   default = "100"
 }
 
-variable "pennsieve_authy_api_url" {}
-
 variable "pennsieve_environment" {}
 
 variable "data_postgres_database" {
