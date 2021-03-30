@@ -17,7 +17,7 @@
 package com.pennsieve.api
 
 import akka.NotUsed
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import akka.stream.scaladsl.Source
 import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.dtos.{
@@ -112,7 +112,7 @@ class TimeSeriesController(
   implicit
   protected val executor: ExecutionContext,
   implicit
-  val materializer: Materializer
+  val system: ActorSystem
 )(implicit
   val swagger: Swagger
 ) extends ScalatraServlet

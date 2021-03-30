@@ -147,15 +147,12 @@ trait AdminServiceSpec
         override val postgresUseSSL = false
       }
 
-    val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
+    implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
       Future.successful(HttpResponse())
     }
 
-    routeService = new Router(
-      diContainer,
-      secureContainerBuilder,
-      new MockPublishClient(httpClient, executor, materializer)
-    )
+    routeService =
+      new Router(diContainer, secureContainerBuilder, new MockPublishClient())
 
     diContainer
   }

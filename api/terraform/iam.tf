@@ -114,7 +114,7 @@ data "aws_iam_policy_document" "cognito_iam_policy_document" {
     ]
 
     resources = [
-      data.terraform_remote_state.cognito.outputs.user_pool_arn,
+      data.terraform_remote_state.authentication_service.outputs.user_pool_arn,
     ]
   }
 
@@ -128,7 +128,7 @@ data "aws_iam_policy_document" "cognito_iam_policy_document" {
     ]
 
     resources = [
-      data.terraform_remote_state.cognito.outputs.token_pool_arn,
+      data.terraform_remote_state.authentication_service.outputs.token_pool_arn,
     ]
   }
 }

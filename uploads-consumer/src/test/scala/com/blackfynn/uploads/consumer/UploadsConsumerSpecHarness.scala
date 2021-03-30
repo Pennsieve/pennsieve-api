@@ -17,7 +17,6 @@
 package com.pennsieve.uploads.consumer
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import com.pennsieve.akka.consumer.ConsumerUtilities
 import com.pennsieve.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
 import com.pennsieve.aws.s3.{ LocalS3Container, S3 }
@@ -36,6 +35,7 @@ import com.pennsieve.uploads.consumer.antivirus.ClamAVContainer
 import com.redis.RedisClientPool
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import com.typesafe.scalalogging.LazyLogging
+import net.ceedubs.ficus.Ficus._
 import org.scalatest._
 
 import scala.concurrent.ExecutionContext
@@ -60,9 +60,6 @@ trait UploadsConsumerSpecHarness
     "uploads-consumer-spec-harness"
   )
   implicit lazy val executionContext: ExecutionContext = system.dispatcher
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer(
-    ConsumerUtilities.actorMaterializerSettings(system, logger)
-  )
 
   val queueName: String = "test-etl-queue"
   val notificationsQueueName: String = "test-notifications-queue"
@@ -121,11 +118,8 @@ trait UploadsConsumerSpecHarness
     with RedisContainer with LocalSQSContainer with LocalS3Container
     with SQSDeduplicationContainer with ClamAVContainer with LocalSNSContainer
     with MockUploadServiceContainer with MockJobSchedulingServiceContainer {
-      import net.ceedubs.ficus.Ficus._
       override lazy val jobSchedulingServiceConfigPath: String =
         "job_scheduling_service"
-      override lazy val materializer: ActorMaterializer =
-        ActorMaterializer()
       override lazy val jobSchedulingServiceHost: String =
         config.as[String](s"$jobSchedulingServiceConfigPath.host")
       override lazy val jobSchedulingServiceQueueSize: Int =

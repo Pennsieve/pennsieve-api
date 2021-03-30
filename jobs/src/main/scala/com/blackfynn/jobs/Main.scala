@@ -17,7 +17,6 @@
 package com.pennsieve.jobs
 
 import akka.actor.ActorSystem
-import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 import com.pennsieve.aws.queue.{
   AWSSQSContainer,
   LocalSQSContainer,
@@ -37,13 +36,6 @@ object Main extends App {
   implicit val actorSystem = ActorSystem("jobs")
   implicit val ec: ExecutionContext = actorSystem.dispatcher
   implicit val log: ContextLogger = new ContextLogger()
-  implicit val materializer: ActorMaterializer = ActorMaterializer(
-    ActorMaterializerSettings(actorSystem)
-      .withSupervisionStrategy { exception: Throwable =>
-        log.noContext.error("Unhandled exception thrown", exception)
-        Supervision.resume
-      }
-  )
 
   val config: Config = ConfigFactory.load()
 

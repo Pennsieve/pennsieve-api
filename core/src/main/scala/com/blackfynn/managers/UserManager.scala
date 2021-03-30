@@ -233,6 +233,8 @@ class UserManager(db: Database) {
 
       middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
 
+      // TODO: set preferred organization
+
       user: User = User(
         NodeCodes.generateId(NodeCodes.userCode),
         headInvite.email.trim.toLowerCase,
@@ -241,17 +243,13 @@ class UserManager(db: Database) {
         lastName,
         degree,
         password = "",
-        credential = title
+        credential = title,
+        preferredOrganizationId = Some(headInvite.organizationId)
       )
 
       newUser <- create(user, Some(password))
       cognitoUser <- db
-        .run(
-          CognitoUserMapper returning CognitoUserMapper += CognitoUser(
-            cognitoId = cognitoId,
-            userId = newUser.id
-          )
-        )
+        .run(CognitoUserMapper.create(cognitoId, newUser))
         .toEitherT
 
       organizations <- invites.traverse(
