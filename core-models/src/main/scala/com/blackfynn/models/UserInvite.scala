@@ -29,7 +29,7 @@ final case class UserInvite(
   firstName: String,
   lastName: String,
   permission: DBPermission,
-  cognitoId: CognitoId,
+  cognitoId: CognitoId.UserPoolId,
   validUntil: ZonedDateTime = ZonedDateTime.now(),
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   updatedAt: ZonedDateTime = ZonedDateTime.now(),

@@ -204,7 +204,7 @@ class UserManager(db: Database) {
     * @return
     */
   def createFromInvite(
-    cognitoId: CognitoId,
+    cognitoId: CognitoId.UserPoolId,
     firstName: String,
     middleInitial: Option[String],
     lastName: String,
@@ -306,7 +306,7 @@ class UserManager(db: Database) {
   }
 
   def getByCognitoId(
-    cognitoId: CognitoId
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (User, CognitoUser)] = {
