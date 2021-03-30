@@ -14,8 +14,8 @@ data "terraform_remote_state" "account" {
   }
 }
 
-# Import Cognito Data
-data "terraform_remote_state" "cognito" {
+# Import Cognito Authentication Data
+data "terraform_remote_state" "authentication_service" {
   backend = "s3"
 
   config = {
