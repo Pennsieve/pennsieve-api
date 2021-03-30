@@ -210,9 +210,9 @@ class UserManagerSpec extends BaseManagerSpec {
 
   // TODO: create this as part of createUser?
 
-  def createCognitoUser(user: User): CognitoId =
+  def createCognitoUser(user: User): CognitoId.UserPoolId =
     database
-      .run(CognitoUserMapper.create(CognitoId.randomId(), user))
+      .run(CognitoUserMapper.create(CognitoId.UserPoolId.randomId(), user))
       .await
       .cognitoId
 
