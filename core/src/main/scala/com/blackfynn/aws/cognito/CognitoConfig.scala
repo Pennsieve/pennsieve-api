@@ -25,12 +25,18 @@ import java.net.URL
 case class CognitoConfig(
   region: Region,
   userPool: CognitoPoolConfig, // Pennsieve users
-  tokenPool: CognitoPoolConfig // Client token pool
+  tokenPool: CognitoPoolConfig, // Client token pool,
+  _jwk: JwkProvider = null
 ) {
 
-  // TODO: separate providers for each pool
-  lazy val jwkProvider = CognitoJWTAuthenticator.getJwkProvider(userPool)
+  private var _jwkProvider = _jwk
 
+  if (_jwk == null) {
+    _jwkProvider = CognitoJWTAuthenticator.getJwkProvider(userPool)
+  }
+
+  // TODO: separate providers for each pool
+  lazy val jwkProvider: JwkProvider = _jwkProvider
 }
 
 /**
