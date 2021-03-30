@@ -26,12 +26,11 @@ case class CognitoConfig(
   region: Region,
   userPool: CognitoPoolConfig, // Pennsieve users
   tokenPool: CognitoPoolConfig, // Client token pool,
-  _jwk: JwkProvider = null
+  mockJwkProvider: JwkProvider = null
 ) {
+  private var _jwkProvider = mockJwkProvider
 
-  private var _jwkProvider = _jwk
-
-  if (_jwk == null) {
+  if (_jwkProvider == null) {
     _jwkProvider = CognitoJWTAuthenticator.getJwkProvider(userPool)
   }
 
