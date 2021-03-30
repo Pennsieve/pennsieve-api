@@ -37,31 +37,6 @@ import java.net.URL
 
 final case class CognitoPayload(id: CognitoId, issuedAt: Instant)
 
-object CognitoPayload {
-
-  /** Create a CognitoPayload from the given claim
-    *
-    * @param claim The claim to parse into a CognitoPayload
-    * @param resourceServer All scopes that are not related to the
-    *        given resource server will be filtered out
-    */
-  def apply(claim: JwtClaim): Either[CoreError, CognitoPayload] =
-    for {
-      subject <- Either.fromOption(
-        claim.subject,
-        InvalidJWT(claim.content, Some("JWT claim missing 'sub' field"))
-      )
-      cognitoId = CognitoId.UserPoolId(UUID.fromString(subject))
-      issuedAt <- Either.fromOption(
-        claim.issuedAt,
-        InvalidJWT(claim.content, Some("JWT claim missing 'iat' field"))
-      )
-      issuedAtInstant <- Either
-        .catchNonFatal(Instant.ofEpochSecond(issuedAt))
-        .leftMap(ThrowableError(_))
-    } yield CognitoPayload(cognitoId, issuedAtInstant)
-}
-
 object CognitoJWTAuthenticator {
 
   def getJwkProvider(poolConfig: CognitoPoolConfig): GuavaCachedJwkProvider =
@@ -81,8 +56,7 @@ object CognitoJWTAuthenticator {
         .decode(token, jwk.getPublicKey, Seq(JwtAlgorithm.RS256))
         .toEither
         .leftMap(_ => InvalidJWT(token))
-      _ <- validateClaim(claim)
-      payload <- CognitoPayload(claim)
+      payload <- validateClaim(claim)
     } yield payload
   }
 
@@ -116,25 +90,77 @@ object CognitoJWTAuthenticator {
   /*
    * Verify the issuer and audience in the JWT match what was expected
    *
-   * TODO: check token pool endpoint / client IDs
+   * TODO: unit test this
    */
   private def validateClaim(
     claim: JwtClaim
   )(implicit
     cognitoConfig: CognitoConfig
-  ): Either[CoreError, Unit] =
+  ): Either[CoreError, CognitoPayload] =
     for {
       content <- decode[CognitoContent](claim.content).leftMap(ParseError(_))
 
-      _ <- checkOrError(claim.issuer.contains(cognitoConfig.userPool.endpoint))(
-        InvalidJWT(claim.content, Some("claim contains invalid issuer"))
+      issuer <- claim.issuer match {
+        case Some(iss) if iss == cognitoConfig.userPool.endpoint =>
+          Right(UserPool)
+        case Some(iss) if iss == cognitoConfig.tokenPool.endpoint =>
+          Right(TokenPool)
+        case _ =>
+          Left(InvalidJWT(claim.content, Some("claim contains invalid issuer")))
+      }
+
+      _ <- issuer match {
+        case UserPool =>
+          validateAppClientId(claim, content, cognitoConfig.userPool)
+        case TokenPool =>
+          validateAppClientId(claim, content, cognitoConfig.tokenPool)
+      }
+
+      subject <- Either.fromOption(
+        claim.subject,
+        InvalidJWT(claim.content, Some("JWT claim missing 'sub' field"))
       )
 
-      _ <- checkOrError(
-        content.client_id.exists(_ == cognitoConfig.userPool.appClientId)
-          || claim.audience
-            .exists(_.contains(cognitoConfig.userPool.appClientId))
-      )(InvalidJWT(claim.content, Some("claim contains invalid audience")))
+      cognitoId <- Either
+        .catchNonFatal(UUID.fromString(subject))
+        .map { uuid =>
+          issuer match {
+            case UserPool => CognitoId.UserPoolId(uuid)
+            case TokenPool => CognitoId.TokenPoolId(uuid)
+          }
+        }
+        .leftMap(ThrowableError(_))
 
-    } yield ()
+      issuedAt <- Either.fromOption(
+        claim.issuedAt,
+        InvalidJWT(claim.content, Some("JWT claim missing 'iat' field"))
+      )
+      issuedAtInstant <- Either
+        .catchNonFatal(Instant.ofEpochSecond(issuedAt))
+        .leftMap(ThrowableError(_))
+
+    } yield CognitoPayload(cognitoId, issuedAtInstant)
+
+  private sealed trait Issuer
+  private case object TokenPool extends Issuer
+  private case object UserPool extends Issuer
+
+  /**
+    * Assert that the app client ID is either in the JWT audiences or the special Cognito `client_id` field
+    */
+  private def validateAppClientId(
+    claim: JwtClaim,
+    content: CognitoContent,
+    userPool: CognitoPoolConfig
+  ): Either[CoreError, Unit] =
+    checkOrError[CoreError](
+      getAudiencesAndAppClientId(claim, content).contains(userPool.appClientId)
+    )(InvalidJWT(claim.content, Some("claim contains invalid audience")))
+      .map(_ => ())
+
+  private def getAudiencesAndAppClientId(
+    claim: JwtClaim,
+    content: CognitoContent
+  ): Set[String] =
+    content.client_id.toSet.union(claim.audience.getOrElse(Set.empty))
 }

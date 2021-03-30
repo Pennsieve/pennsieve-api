@@ -41,7 +41,7 @@ import com.pennsieve.domain.Sessions.{
   Session,
   TemporarySession
 }
-import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.models.{ CognitoId, Organization, User }
 import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
 
@@ -194,23 +194,42 @@ object AuthorizationDirectives {
     for {
       cognitoId <- CognitoJWTAuthenticator
         .validateJwt(token)
-        // TODO: handle token pool ID
-        .flatMap(_.id.asUserPoolId)
+        .map(_.id)
         .leftMap(ThrowableError(_))
         .toEitherT[Future]
-      user <- container.userManager.getByCognitoId(cognitoId)
-      // TODO: Better tracking of organizations w/ sessions etc
-      preferredOrganizationId <- user._1.preferredOrganizationId match {
-        case Some(id) => EitherT.rightT[Future, CoreError](id)
-        case None =>
-          EitherT.leftT[Future, Int](
-            com.pennsieve.domain.NotFound("User has no preferred organzation.")
-          )
+
+      authContext <- cognitoId match {
+        case id: CognitoId.UserPoolId =>
+          for {
+            // TODO: single query for all this
+            user <- container.userManager.getByCognitoId(id)
+            // TODO: Better tracking of organizations w/ sessions etc
+            preferredOrganizationId <- user._1.preferredOrganizationId match {
+              case Some(id) => EitherT.rightT[Future, CoreError](id)
+              case None =>
+                EitherT.leftT[Future, Int](
+                  com.pennsieve.domain
+                    .NotFound("User has no preferred organzation.")
+                )
+            }
+            organization <- container.organizationManager.get(
+              preferredOrganizationId
+            )
+          } yield UserAuthContext(user._1, organization, None)
+
+        case id: CognitoId.TokenPoolId =>
+          for {
+            // TODO: single query for all this
+            token <- container.tokenManager.getByCognitoId(id)
+            user <- container.userManager.get(token.userId)
+            organization <- container.organizationManager.get(
+              token.organizationId
+            )
+          } yield UserAuthContext(user, organization, None)
+
       }
-      organization <- container.organizationManager.get(preferredOrganizationId)
-    } yield {
-      UserAuthContext(user._1, organization, None)
-    }
+    } yield authContext
+
   }
 
   /**
