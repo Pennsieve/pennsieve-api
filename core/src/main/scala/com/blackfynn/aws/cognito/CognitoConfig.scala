@@ -25,23 +25,18 @@ import java.net.URL
 case class CognitoConfig(
   region: Region,
   userPool: CognitoPoolConfig, // Pennsieve users
-  tokenPool: CognitoPoolConfig, // Client token pool,
-  mockJwkProvider: JwkProvider = null
-) {
-  private var _jwkProvider = mockJwkProvider
-
-  if (_jwkProvider == null) {
-    _jwkProvider = CognitoJWTAuthenticator.getJwkProvider(userPool)
-  }
-
-  // TODO: separate providers for each pool
-  lazy val jwkProvider: JwkProvider = _jwkProvider
-}
+  tokenPool: CognitoPoolConfig // Client token pool,
+) {}
 
 /**
   * Config for a single Cognito User Pool
   */
-case class CognitoPoolConfig(region: Region, id: String, appClientId: String) {
+case class CognitoPoolConfig(
+  region: Region,
+  id: String,
+  appClientId: String,
+  mockJwkProvider: JwkProvider = null
+) {
 
   def endpoint: String =
     s"https://cognito-idp.${region.toString}.amazonaws.com/$id"
@@ -55,7 +50,15 @@ case class CognitoPoolConfig(region: Region, id: String, appClientId: String) {
       s"https://cognito-idp.${region.toString}.amazonaws.com/$id/.well-known/jwks.json"
     )
 
-  lazy val jwkProvider = CognitoJWTAuthenticator.getJwkProvider(this)
+  private var _jwkProvider: JwkProvider = null
+
+  if (mockJwkProvider == null) {
+    _jwkProvider = CognitoJWTAuthenticator.getJwkProvider(this)
+  } else {
+    _jwkProvider = mockJwkProvider
+  }
+
+  lazy val jwkProvider: JwkProvider = _jwkProvider
 }
 
 object CognitoConfig {
