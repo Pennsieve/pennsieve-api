@@ -49,14 +49,19 @@ object CognitoJWTAuthenticator {
   ): Either[CoreError, CognitoPayload] = {
     for {
       keyId <- getKeyId(token)
+
+      issuer <- getIssuer(token)
+
       jwk <- Either
-        .catchNonFatal(cognitoConfig.jwkProvider.get(keyId))
+        .catchNonFatal(issuer.pool.jwkProvider.get(keyId))
         .leftMap(ThrowableError(_))
+
       claim <- JwtCirce
         .decode(token, jwk.getPublicKey, Seq(JwtAlgorithm.RS256))
         .toEither
         .leftMap(_ => InvalidJWT(token))
-      payload <- validateClaim(claim)
+
+      payload <- validateClaim(claim, issuer)
     } yield payload
   }
 
@@ -64,7 +69,7 @@ object CognitoJWTAuthenticator {
    * Parse the JWT without verifying the signature here only to retrieve the
    * header's kid for use in later validation
    */
-  def getKeyId(token: String): Either[CoreError, String] = {
+  def getKeyId(token: String): Either[CoreError, String] =
     JwtCirce
       .decodeAll(token, options = JwtOptions(signature = false))
       .toEither
@@ -76,7 +81,36 @@ object CognitoJWTAuthenticator {
             InvalidJWT(token, Some("kid not present in JWT header"))
           )
       }
-  }
+
+  /*
+   * Similarly get the issuing Cognito pool without validating the signature.
+   */
+  private def getIssuer(
+    token: String
+  )(implicit
+    cognitoConfig: CognitoConfig
+  ): Either[CoreError, Issuer] =
+    JwtCirce
+      .decodeAll(token, options = JwtOptions(signature = false))
+      .toEither
+      .leftMap(_ => InvalidJWT(token))
+      .flatMap {
+        case (_, claim, _) =>
+          claim.issuer match {
+            case Some(iss) if iss == cognitoConfig.userPool.endpoint =>
+              Right(UserPool(cognitoConfig.userPool))
+            case Some(iss) if iss == cognitoConfig.tokenPool.endpoint =>
+              Right(TokenPool(cognitoConfig.tokenPool))
+            case _ =>
+              Left(
+                InvalidJWT(claim.content, Some("claim contains invalid issuer"))
+              )
+          }
+      }
+
+  private sealed trait Issuer { val pool: CognitoPoolConfig }
+  private case class TokenPool(pool: CognitoPoolConfig) extends Issuer
+  private case class UserPool(pool: CognitoPoolConfig) extends Issuer
 
   case class CognitoContent(client_id: Option[String])
 
@@ -93,28 +127,13 @@ object CognitoJWTAuthenticator {
    * TODO: unit test this
    */
   private def validateClaim(
-    claim: JwtClaim
-  )(implicit
-    cognitoConfig: CognitoConfig
+    claim: JwtClaim,
+    issuer: Issuer
   ): Either[CoreError, CognitoPayload] =
     for {
       content <- decode[CognitoContent](claim.content).leftMap(ParseError(_))
 
-      issuer <- claim.issuer match {
-        case Some(iss) if iss == cognitoConfig.userPool.endpoint =>
-          Right(UserPool)
-        case Some(iss) if iss == cognitoConfig.tokenPool.endpoint =>
-          Right(TokenPool)
-        case _ =>
-          Left(InvalidJWT(claim.content, Some("claim contains invalid issuer")))
-      }
-
-      _ <- issuer match {
-        case UserPool =>
-          validateAppClientId(claim, content, cognitoConfig.userPool)
-        case TokenPool =>
-          validateAppClientId(claim, content, cognitoConfig.tokenPool)
-      }
+      _ <- validateAppClientId(claim, content, issuer)
 
       subject <- Either.fromOption(
         claim.subject,
@@ -125,8 +144,8 @@ object CognitoJWTAuthenticator {
         .catchNonFatal(UUID.fromString(subject))
         .map { uuid =>
           issuer match {
-            case UserPool => CognitoId.UserPoolId(uuid)
-            case TokenPool => CognitoId.TokenPoolId(uuid)
+            case UserPool(_) => CognitoId.UserPoolId(uuid)
+            case TokenPool(_) => CognitoId.TokenPoolId(uuid)
           }
         }
         .leftMap(ThrowableError(_))
@@ -141,20 +160,17 @@ object CognitoJWTAuthenticator {
 
     } yield CognitoPayload(cognitoId, issuedAtInstant)
 
-  private sealed trait Issuer
-  private case object TokenPool extends Issuer
-  private case object UserPool extends Issuer
-
   /**
     * Assert that the app client ID is either in the JWT audiences or the special Cognito `client_id` field
     */
   private def validateAppClientId(
     claim: JwtClaim,
     content: CognitoContent,
-    userPool: CognitoPoolConfig
+    issuer: Issuer
   ): Either[CoreError, Unit] =
     checkOrError[CoreError](
-      getAudiencesAndAppClientId(claim, content).contains(userPool.appClientId)
+      getAudiencesAndAppClientId(claim, content)
+        .contains(issuer.pool.appClientId)
     )(InvalidJWT(claim.content, Some("claim contains invalid audience")))
       .map(_ => ())
 
