@@ -17,7 +17,7 @@
 package com.pennsieve.managers
 
 import com.pennsieve.aws.cognito.CognitoClient
-import com.pennsieve.models.{ Organization, Token, User }
+import com.pennsieve.models.{ CognitoId, Organization, Token, User }
 import io.github.nremond.SecureHash
 import cats.data.EitherT
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
@@ -53,6 +53,7 @@ class TokenManager(db: Database) {
         name,
         tokenString,
         SecureHash.createHash(secret.plaintext),
+        cognitoId,
         organization.id,
         user.id
       )
@@ -90,6 +91,14 @@ class TokenManager(db: Database) {
   ): EitherT[Future, CoreError, Token] =
     db.run(TokensMapper.getByToken(uuid))
       .whenNone[CoreError](NotFound(s"Token ($uuid)"))
+
+  def getByCognitoId(
+    cognitoId: CognitoId.TokenPoolId
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Token] =
+    db.run(TokensMapper.getByCognitoId(cognitoId))
+      .whenNone[CoreError](NotFound(s"Token by Cognito ID ($cognitoId)"))
 
   def update(
     token: Token
@@ -152,6 +161,18 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
   ): EitherT[Future, CoreError, Token] =
     for {
       token <- super.get(uuid)(ec)
+      _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
+        PermissionError(actor.nodeId, Read, token.token)
+      )
+    } yield token
+
+  override def getByCognitoId(
+    cognitoId: CognitoId.TokenPoolId
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Token] =
+    for {
+      token <- super.getByCognitoId(cognitoId)
       _ <- FutureEitherHelpers.assert[CoreError](token.userId == actor.id)(
         PermissionError(actor.nodeId, Read, token.token)
       )
