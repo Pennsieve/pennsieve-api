@@ -43,7 +43,6 @@ object Router {
     with RedisManagerContainer
     with AuthorizationContainer
     with JwtContainer
-    with AuthyContainer
     with TermsOfServiceManagerContainer
     with TokenManagerContainer
 }

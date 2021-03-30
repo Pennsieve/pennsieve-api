@@ -19,10 +19,8 @@ package com.pennsieve.api
 import java.time.LocalDateTime
 
 import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
-import com.pennsieve.clients.{
-  MockAuthyApiClient,
-  MockCustomTermsOfServiceClient
-}
+import com.pennsieve.clients.MockCustomTermsOfServiceClient
+
 import com.pennsieve.db.CustomTermsOfService
 import com.pennsieve.dtos.{
   CustomTermsOfServiceDTO,
@@ -38,12 +36,6 @@ import org.scalatest.EitherValues._
 import scala.concurrent.Future
 
 class TestUsersController extends BaseApiTest {
-
-  val authyClient = new MockAuthyApiClient(
-    "f45ec9af9dcb7419dc52b05889c858e9",
-    "http://sandbox-api.authy.com",
-    true
-  )
 
   val auditLogger = new MockAuditLogger()
 
@@ -83,7 +75,6 @@ class TestUsersController extends BaseApiTest {
         insecureContainer,
         secureContainerBuilder,
         auditLogger,
-        authyClient,
         system.dispatcher,
         orcidClient
       ),
@@ -223,38 +214,6 @@ class TestUsersController extends BaseApiTest {
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(400)
-    }
-  }
-
-  test("two factor creation") {
-    val twoFactorReq = write(AddAuthyRequest(Some("111-111-1111"), Some("1")))
-
-    postJson(
-      s"/twofactor",
-      twoFactorReq,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      body should include("authyId")
-      status should equal(200)
-    }
-  }
-
-  test("two factor deletion") {
-    val twoFactorReq = write(AddAuthyRequest(Some("111-111-1112"), Some("1")))
-
-    postJson(
-      s"/twofactor",
-      twoFactorReq,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      delete(
-        s"/twofactor",
-        headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-      ) {
-        body shouldBe empty
-        status should equal(200)
-      }
     }
   }
 

@@ -25,7 +25,6 @@ import com.amazonaws.services.s3.S3ClientOptions
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
-import com.authy.AuthyApiClient
 import com.pennsieve.auth.middleware.{ Jwt, UserClaim, UserId }
 import com.pennsieve.aws.cognito.{ CognitoClient, CognitoConfig }
 import com.pennsieve.aws.s3.AWSS3Container
@@ -115,12 +114,6 @@ trait BaseBootstrapHelper {
     val host = config.as[String]("pennsieve.gateway.host")
     new AuditLogger(GatewayHost(host))
   }
-
-  lazy val authyClient: AuthyApiClient = new AuthyApiClient(
-    Settings.authyKey,
-    Settings.authyApiUrl,
-    !Settings.isProduction
-  )
 
   lazy val awsSQSClient: SqsAsyncClient =
     SqsAsyncClient
