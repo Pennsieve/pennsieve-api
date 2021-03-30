@@ -226,43 +226,6 @@ class TestUsersController extends BaseApiTest {
     }
   }
 
-  test(
-    "switch rejects request when user is not a member of the specified organization"
-  ) {
-    putJson(
-      s"/organization/${externalOrganization.nodeId}/switch",
-      "",
-      headers = authorizationHeader(loggedInJwt)
-    ) {
-      response.status shouldBe 404
-    }
-  }
-
-  test(
-    "switch correctly redirects request when user is a member of the specified organization"
-  ) {
-    organizationManager
-      .addUser(externalOrganization, loggedInUser, Delete)
-      .await
-
-    val sessionId: String =
-      Jwt.parseClaim(Jwt.Token(loggedInJwt))(jwtConfig).map(_.content) match {
-        case Right(UserClaim(_, _, Some(session), _)) => session.id
-        case _ =>
-          throw new Exception(
-            "invalid JWT in test must be UserClaim with Session."
-          )
-      }
-
-    putJson(
-      s"/organization/${externalOrganization.nodeId}/switch",
-      headers = authorizationHeader(loggedInJwt)
-    ) {
-      response.status shouldBe 301
-      response.getHeader("Location") shouldBe s"http://localhost/session/switch-organization?organization_id=${externalOrganization.id}&api_key=$sessionId"
-    }
-  }
-
   test("two factor creation") {
     val twoFactorReq = write(AddAuthyRequest(Some("111-111-1111"), Some("1")))
 
