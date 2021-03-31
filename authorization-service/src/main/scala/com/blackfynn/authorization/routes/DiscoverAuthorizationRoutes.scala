@@ -96,7 +96,8 @@ object DiscoverAuthorizationRoutes {
       .run(OrganizationsMapper.get(organizationId))
       .flatMap {
         case Some(org) => Future.successful((org))
-        case None => Future.failed(new OrganizationNotFound(organizationId))
+        case None =>
+          Future.failed(new OrganizationNotFound(organizationId.toString))
       }
   }
 

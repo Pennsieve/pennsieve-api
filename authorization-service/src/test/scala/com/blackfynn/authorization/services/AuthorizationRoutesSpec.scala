@@ -67,11 +67,13 @@ import com.pennsieve.models.{
   EmbargoAccess,
   Feature,
   FeatureFlag,
+  Organization,
   OrganizationNodeId,
   PackageState,
   PublicationStatus,
   PublicationType,
-  Role
+  Role,
+  User
 }
 import com.pennsieve.traits.PostgresProfile.api._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -734,13 +736,12 @@ class AuthorizationRoutesSpec
 
   "PUT /session/switch-organization route" should {
 
+    def preferredOrganization(user: User): Organization =
+      userManager.getPreferredOrganization(user).awaitFinite().right.get
+
     "switch the organization in a user's session" in {
       // Confirm the session starts belonging to Organization Two
-      sessionManager
-        .get(nonAdminSession.get)
-        .right
-        .get
-        .organizationId shouldBe organizationTwo.nodeId
+      preferredOrganization(nonAdmin) shouldBe organizationTwo
 
       testRequest(
         PUT,
@@ -751,11 +752,26 @@ class AuthorizationRoutesSpec
         status shouldEqual OK
 
         // Verify the session now belonging to Organization One
-        sessionManager
-          .get(nonAdminSession.get)
-          .right
-          .get
-          .organizationId shouldBe organizationOne.nodeId
+        preferredOrganization(nonAdmin) shouldBe organizationOne
+
+        responseAs[UserDTO].preferredOrganization.get shouldBe organizationOne.nodeId
+      }
+    }
+
+    "switch the organization in a user's session with a node ID" in {
+      // Confirm the session starts belonging to Organization Two
+      preferredOrganization(nonAdmin) shouldBe organizationTwo
+
+      testRequest(
+        PUT,
+        s"/session/switch-organization?organization_id=${organizationOne.nodeId}",
+        session = nonAdminSession
+      ) ~>
+        routes ~> check {
+        status shouldEqual OK
+
+        // Verify the session now belonging to Organization One
+        preferredOrganization(nonAdmin) shouldBe organizationOne
 
         responseAs[UserDTO].preferredOrganization.get shouldBe organizationOne.nodeId
       }
@@ -763,11 +779,7 @@ class AuthorizationRoutesSpec
 
     "switch the organization in an admin user's session to which it does not belong" in {
       // Confirm the session starts belonging to Organization One
-      sessionManager
-        .get(adminSession.get)
-        .right
-        .get
-        .organizationId shouldBe organizationOne.nodeId
+      preferredOrganization(admin) shouldBe organizationOne
 
       testRequest(
         PUT,
@@ -778,11 +790,7 @@ class AuthorizationRoutesSpec
         status shouldEqual OK
 
         // Verify the session now belonging to Organization Two
-        sessionManager
-          .get(adminSession.get)
-          .right
-          .get
-          .organizationId shouldBe organizationTwo.nodeId
+        preferredOrganization(admin) shouldBe organizationTwo
 
         responseAs[UserDTO].preferredOrganization.get shouldBe organizationTwo.nodeId
       }
@@ -790,12 +798,8 @@ class AuthorizationRoutesSpec
 
     "reject a request to switch to an organization a user does not have access to" in {
 
-      // Confirm the session starts belonging to Organization Onep
-      sessionManager
-        .get(ownerSession.get)
-        .right
-        .get
-        .organizationId shouldBe organizationOne.nodeId
+      // Confirm the session starts belonging to Organization One
+      preferredOrganization(owner) shouldBe organizationOne
 
       testRequest(
         PUT,
@@ -806,13 +810,11 @@ class AuthorizationRoutesSpec
         status shouldEqual Unauthorized
 
         // Verify the session does not belong to Organization Two
-        sessionManager
-          .get(ownerSession.get)
-          .right
-          .get
-          .organizationId should not be organizationTwo.nodeId
+        preferredOrganization(owner) should not be organizationTwo
       }
     }
+
+    // TODO: update test to use Cognito JWT
 
     "reject a request using an API session" in {
       // Create an API session that belongs to Organization Two
