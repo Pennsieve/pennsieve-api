@@ -26,12 +26,7 @@ case class CognitoConfig(
   region: Region,
   userPool: CognitoPoolConfig, // Pennsieve users
   tokenPool: CognitoPoolConfig // Client token pool
-) {
-
-  // TODO: separate providers for each pool
-  lazy val jwkProvider = CognitoJWTAuthenticator.getJwkProvider(userPool)
-
-}
+)
 
 /**
   * Config for a single Cognito User Pool
@@ -49,6 +44,8 @@ case class CognitoPoolConfig(region: Region, id: String, appClientId: String) {
     new URL(
       s"https://cognito-idp.${region.toString}.amazonaws.com/$id/.well-known/jwks.json"
     )
+
+  lazy val jwkProvider = CognitoJWTAuthenticator.getJwkProvider(this)
 }
 
 object CognitoConfig {

@@ -33,6 +33,7 @@ import slick.sql.FixedSqlStreamingAction
 import cats.implicits._
 import com.pennsieve.akka.http.RouteService
 import com.pennsieve.auth.middleware.{
+  CognitoSession,
   DatasetId,
   DatasetNodeId,
   EncryptionKeyId,
@@ -42,8 +43,7 @@ import com.pennsieve.auth.middleware.{
   UserClaim,
   UserId,
   UserNodeId,
-  WorkspaceId,
-  Session => JwtSession
+  WorkspaceId
 }
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.utilities.exceptions._
@@ -63,7 +63,7 @@ import scala.util.{ Failure, Success, Try }
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
-  session: Option[String]
+  cognitoId: Option[CognitoId]
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
@@ -102,7 +102,7 @@ class AuthorizationRoutes(
       } yield {
         val roles =
           List(organizationRole.some, datasetRole, workspaceRole).flatten
-        val userClaim = getUserClaim(user, roles)
+        val userClaim = getUserClaim(user, roles, cognitoId)
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
@@ -135,19 +135,13 @@ class AuthorizationRoutes(
     (path("switch-organization") & parameters('organization_id.as[Int]) & put) {
       (organizationId) =>
         val result: Future[UserDTO] = for {
-          // TODO: Only allow users to change sessions, not client tokens
-//          _ <- session.isBrowserSession match {
-//            case true => Future.successful(())
-//            case false => Future.failed(NonBrowserSession)
-//          }
+
+          // Only users logged in from the browser / user pool can switch organizations
+          _ <- cognitoId.map(_.asUserPoolId) match {
+            case Some(Right(_)) => Future.successful(())
+            case _ => Future.failed(NonBrowserSession)
+          }
           organizationToSwitchTo <- getOrganization(user, organizationId)
-//          savedSession <- Future.fromTry(
-//            container.sessionManager
-//              .update(
-//                session.copy(organizationId = organizationToSwitchTo.nodeId)
-//              )
-//              .toTry
-//          )
           updatedUser <- updateUserPreferredOrganization(
             user,
             organizationToSwitchTo
@@ -176,20 +170,18 @@ class AuthorizationRoutes(
 
   private def getUserClaim(
     user: User,
-    roles: List[Jwt.Role]
-//    session: Session
+    roles: List[Jwt.Role],
+    cognitoId: Option[CognitoId]
   ): UserClaim = {
-//    val jwtSession: JwtSession = session.`type` match {
-//      case Sessions.APISession(_) => JwtSession.API(session.uuid)
-//      case Sessions.BrowserSession => JwtSession.Browser(session.uuid)
-//      case Sessions.TemporarySession => JwtSession.Temporary(session.uuid)
-//    }
+    val cognitoSession = cognitoId.map {
+      case id: CognitoId.TokenPoolId => CognitoSession.API(id)
+      case id: CognitoId.UserPoolId => CognitoSession.Browser(id)
+    }
 
     UserClaim(
       id = UserId(user.id),
       roles = roles,
-//      session = Some(jwtSession),
-      session = None,
+      cognito = cognitoSession,
       node_id = Some(UserNodeId(user.nodeId))
     )
   }

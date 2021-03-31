@@ -19,10 +19,8 @@ package com.pennsieve.api
 import java.time.LocalDateTime
 
 import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
-import com.pennsieve.clients.{
-  MockAuthyApiClient,
-  MockCustomTermsOfServiceClient
-}
+import com.pennsieve.clients.MockCustomTermsOfServiceClient
+
 import com.pennsieve.db.CustomTermsOfService
 import com.pennsieve.dtos.{
   CustomTermsOfServiceDTO,
@@ -38,12 +36,6 @@ import org.scalatest.EitherValues._
 import scala.concurrent.Future
 
 class TestUsersController extends BaseApiTest {
-
-  val authyClient = new MockAuthyApiClient(
-    "f45ec9af9dcb7419dc52b05889c858e9",
-    "http://sandbox-api.authy.com",
-    true
-  )
 
   val auditLogger = new MockAuditLogger()
 
@@ -83,7 +75,6 @@ class TestUsersController extends BaseApiTest {
         insecureContainer,
         secureContainerBuilder,
         auditLogger,
-        authyClient,
         system.dispatcher,
         orcidClient
       ),
@@ -223,75 +214,6 @@ class TestUsersController extends BaseApiTest {
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(400)
-    }
-  }
-
-  test(
-    "switch rejects request when user is not a member of the specified organization"
-  ) {
-    putJson(
-      s"/organization/${externalOrganization.nodeId}/switch",
-      "",
-      headers = authorizationHeader(loggedInJwt)
-    ) {
-      response.status shouldBe 404
-    }
-  }
-
-  test(
-    "switch correctly redirects request when user is a member of the specified organization"
-  ) {
-    organizationManager
-      .addUser(externalOrganization, loggedInUser, Delete)
-      .await
-
-    val sessionId: String =
-      Jwt.parseClaim(Jwt.Token(loggedInJwt))(jwtConfig).map(_.content) match {
-        case Right(UserClaim(_, _, Some(session), _)) => session.id
-        case _ =>
-          throw new Exception(
-            "invalid JWT in test must be UserClaim with Session."
-          )
-      }
-
-    putJson(
-      s"/organization/${externalOrganization.nodeId}/switch",
-      headers = authorizationHeader(loggedInJwt)
-    ) {
-      response.status shouldBe 301
-      response.getHeader("Location") shouldBe s"http://localhost/session/switch-organization?organization_id=${externalOrganization.id}&api_key=$sessionId"
-    }
-  }
-
-  test("two factor creation") {
-    val twoFactorReq = write(AddAuthyRequest(Some("111-111-1111"), Some("1")))
-
-    postJson(
-      s"/twofactor",
-      twoFactorReq,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      body should include("authyId")
-      status should equal(200)
-    }
-  }
-
-  test("two factor deletion") {
-    val twoFactorReq = write(AddAuthyRequest(Some("111-111-1112"), Some("1")))
-
-    postJson(
-      s"/twofactor",
-      twoFactorReq,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      delete(
-        s"/twofactor",
-        headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-      ) {
-        body shouldBe empty
-        status should equal(200)
-      }
     }
   }
 

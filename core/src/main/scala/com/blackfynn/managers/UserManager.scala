@@ -204,7 +204,7 @@ class UserManager(db: Database) {
     * @return
     */
   def createFromInvite(
-    cognitoId: CognitoId,
+    cognitoId: CognitoId.UserPoolId,
     firstName: String,
     middleInitial: Option[String],
     lastName: String,
@@ -233,6 +233,8 @@ class UserManager(db: Database) {
 
       middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
 
+      // TODO: set preferred organization
+
       user: User = User(
         NodeCodes.generateId(NodeCodes.userCode),
         headInvite.email.trim.toLowerCase,
@@ -241,7 +243,8 @@ class UserManager(db: Database) {
         lastName,
         degree,
         password = "",
-        credential = title
+        credential = title,
+        preferredOrganizationId = Some(headInvite.organizationId)
       )
 
       newUser <- create(user, Some(password))
@@ -303,7 +306,7 @@ class UserManager(db: Database) {
   }
 
   def getByCognitoId(
-    cognitoId: CognitoId
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (User, CognitoUser)] = {
