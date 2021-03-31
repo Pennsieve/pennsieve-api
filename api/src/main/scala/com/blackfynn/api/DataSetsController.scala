@@ -577,15 +577,9 @@ class DataSetsController(
             default = false
           )
 
-          maybeOverridingRole = {
-            secureContainer.organizationRoleOverrides
-              .get(secureContainer.organization.id)
-              .flatten
-          }
-
           datasets <- {
             secureContainer.datasetManager
-              .find(Role.Viewer, maybeOverridingRole)
+              .find(Role.Viewer)
               .coreErrorToActionResult()
           }
 
@@ -764,14 +758,9 @@ class DataSetsController(
 
           canPublish <- optParamT[Boolean]("canPublish")
 
-          maybeOverridingRole = secureContainer.organizationRoleOverrides
-            .get(secureContainer.organization.id)
-            .flatten
-
           datasetsAndCount <- secureContainer.datasetManager
             .getDatasetPaginated(
               withRole = ownerOnly.getOrElse(withRole.getOrElse(Role.Viewer)),
-              overrideRole = maybeOverridingRole,
               limit = limit.some,
               offset = offset.some,
               orderBy = (orderBy, orderByDirection),
@@ -3018,6 +3007,10 @@ class DataSetsController(
             )(ec, system, jwtConfig)
             .coreErrorToActionResult
 
+          bearerToken <- AuthenticatedController
+            .getBearerToken(request)
+            .toEitherT[Future]
+
           response <- validated.publicationType match {
             case PublicationType.Publication | PublicationType.Embargo =>
               for {
@@ -3028,19 +3021,20 @@ class DataSetsController(
                 _ <- DataSetPublishingHelper
                   .sendPublishRequest(
                     secureContainer,
-                    validated.dataset,
-                    validated.owner,
-                    publicationInfo.ownerOrcid,
-                    publicationInfo.description,
-                    publicationInfo.license,
-                    contributors.toList,
-                    validated.publicationType == PublicationType.Embargo,
-                    modelServiceClient,
-                    publishClient,
-                    sendNotification,
-                    validated.embargoReleaseDate,
-                    collections,
-                    externalPublications
+                    dataset = validated.dataset,
+                    owner = validated.owner,
+                    ownerBearerToken = bearerToken,
+                    ownerOrcid = publicationInfo.ownerOrcid,
+                    description = publicationInfo.description,
+                    license = publicationInfo.license,
+                    contributors = contributors.toList,
+                    embargo = (validated.publicationType == PublicationType.Embargo),
+                    modelServiceClient = modelServiceClient,
+                    publishClient = publishClient,
+                    sendNotification = sendNotification,
+                    embargoReleaseDate = validated.embargoReleaseDate,
+                    collections = collections,
+                    externalPublications = externalPublications
                   )(ec, system, jwtConfig)
                   .coreErrorToActionResult
 
@@ -4288,7 +4282,6 @@ class DataSetsController(
             .find(
               user = user,
               withRole = Role.Viewer,
-              overrideRole = None,
               datasetIds = Some(
                 publishedDatasetsForOrganization.datasets.toList
                   .flatMap(_.sourceDatasetId)

@@ -127,7 +127,7 @@ object DiscoverAuthorizationRoutes {
     executionContext: ExecutionContext
   ): Future[Unit] =
     for {
-      organizationRole <- getOrganizationRole(user, organization, None)
+      organizationRole <- getOrganizationRole(user, organization)
 
       datasetRole <- getDatasetRole(user, organization, datasetId.toString)
         .recoverWith {

@@ -23,10 +23,12 @@ import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import com.pennsieve.auth.middleware.{
   CognitoSession,
   DatasetId,
+  DatasetNodeId,
   EncryptionKeyId,
   Extractor,
   Jwt,
   OrganizationId,
+  OrganizationNodeId,
   ServiceClaim,
   UserClaim,
   UserId,
@@ -40,7 +42,7 @@ import com.pennsieve.domain.{
   Sessions,
   UnsupportedJWTClaimType
 }
-import com.pennsieve.models.{ CognitoId, Organization, Role, User }
+import com.pennsieve.models.{ CognitoId, Dataset, Organization, Role, User }
 import com.pennsieve.utilities.Container
 import shapeless.syntax.inject._
 
@@ -82,6 +84,34 @@ object JwtAuthenticator {
       )
     val claim = Jwt.generateClaim(content = userClaim, duration = duration)
     Jwt.generateToken(claim)
+  }
+
+  def generateUserToken(
+    duration: FiniteDuration,
+    user: User,
+    organization: Organization,
+    organizationRole: Role,
+    dataset: Dataset,
+    datasetRole: Role
+  )(implicit
+    config: Jwt.Config
+  ): Jwt.Token = {
+    val roles = List(
+      Jwt.OrganizationRole(
+        id = OrganizationId(organization.id)
+          .inject[RoleIdentifier[OrganizationId]],
+        node_id = Some(OrganizationNodeId(organization.nodeId)),
+        role = organizationRole,
+        encryption_key_id =
+          organization.encryptionKeyId.map(EncryptionKeyId.apply)
+      ),
+      Jwt.DatasetRole(
+        id = DatasetId(dataset.id).inject[Jwt.Role.RoleIdentifier[DatasetId]],
+        node_id = Some(DatasetNodeId(dataset.nodeId)),
+        role = datasetRole
+      )
+    )
+    JwtAuthenticator.generateUserToken(duration, user, roles)
   }
 
   /**
