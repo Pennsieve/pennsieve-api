@@ -77,7 +77,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
   var keyId: String = "9bed6ab5-3c35-498b-8802-6992333f889c"
   var userId: String = "0f14d0ab-9605-4a62-a9e4-5ed26688389b"
   var poolId: String = "12345"
-  var appClientId: String = "12345"
+  var appClientId: String = "67890"
 
   val gen: KeyPairGenerator = KeyPairGenerator.getInstance("RSA")
   gen.initialize(2048)
