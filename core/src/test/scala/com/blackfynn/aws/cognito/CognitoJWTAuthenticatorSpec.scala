@@ -100,7 +100,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   var jwkProvider: JwkProvider = new MockJwkProvider(mockJwk)
 
-  var cConfig = CognitoConfig(
+  implicit var cConfig = CognitoConfig(
     Region.AP_SOUTH_1,
     CognitoPoolConfig(Region.AP_SOUTH_1, poolId, appClientId, jwkProvider),
     CognitoPoolConfig(Region.AP_SOUTH_1, poolId, appClientId, jwkProvider)
@@ -131,7 +131,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   "validateJwt" should "return CognitoPayload w/ correct data if supplied token is valid" in {
     var tokenValidatorResponse =
-      CognitoJWTAuthenticator.validateJwt(validToken)(cConfig)
+      CognitoJWTAuthenticator.validateJwt(validToken)
 
     tokenValidatorResponse.isRight should be(true)
     tokenValidatorResponse.right.get.id.toString should be(
@@ -162,7 +162,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   "validateJWT" should "return false / error if the token passed in has expired" in {
     CognitoJWTAuthenticator
-      .validateJwt(invalidToken_Expired)(cConfig)
+      .validateJwt(invalidToken_Expired)
       .isRight should be(false)
   }
 
@@ -184,7 +184,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   "validateJWT" should "return false / error if the audience is invalid" in {
     CognitoJWTAuthenticator
-      .validateJwt(invalidToken_Audience)(cConfig)
+      .validateJwt(invalidToken_Audience)
       .isRight should be(false)
   }
 
@@ -206,7 +206,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   "validateJWT" should "return false / error if the issuer is invalid" in {
     CognitoJWTAuthenticator
-      .validateJwt(invalidToken_Issuer)(cConfig)
+      .validateJwt(invalidToken_Issuer)
       .isLeft should be(true)
   }
 
