@@ -31,7 +31,7 @@ import java.security.KeyPairGenerator
 import java.util.UUID
 import java.security.interfaces.{ RSAPrivateKey, RSAPublicKey }
 import java.time.Instant
-import scala.collection.JavaConverters.mapAsJavaMap
+import scala.collection.JavaConverters._
 
 class MockJwkProvider(jwk: Jwk) extends JwkProvider {
   def get(keyId: String): Jwk = {
@@ -52,7 +52,7 @@ case class CognitoPublicKey(
   dq: String,
   n: String
 ) extends Product {
-  def toMap: Map[String, String] =
+  def toMap: Map[String, Object] =
     Map(
       "p" -> p,
       "kty" -> kty,
@@ -74,10 +74,12 @@ object CognitoPublicKey {
 
 class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
-  var keyId: String = "9bed6ab5-3c35-498b-8802-6992333f889c"
-  var userId: String = "0f14d0ab-9605-4a62-a9e4-5ed26688389b"
-  var poolId: String = "12345"
-  var appClientId: String = "67890"
+  val jwkKeyId: String = "9bed6ab5-3c35-498b-8802-6992333f889c"
+  val pennsieveUserId: String = "0f14d0ab-9605-4a62-a9e4-5ed26688389b"
+  val cognitoPoolId: String = "12345"
+  val cognitoAppClientId: String = "67890"
+  val cognitoPoolId2: String = "abcdef"
+  val cognitoAppClientId2: String = "ghijkl"
 
   val gen: KeyPairGenerator = KeyPairGenerator.getInstance("RSA")
   gen.initialize(2048)
@@ -87,35 +89,50 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
     new RSAKey.Builder(keyPair.getPublic.asInstanceOf[RSAPublicKey])
       .privateKey(keyPair.getPrivate.asInstanceOf[RSAPrivateKey])
       .keyUse(KeyUse.SIGNATURE)
-      .keyID(userId)
+      .keyID(jwkKeyId)
       .build
 
-  var jsonMap: Either[io.circe.Error, CognitoPublicKey] =
-    io.circe.parser.decode[CognitoPublicKey](nimbusJwk.toJSONString)
+//  val jsonMap: Either[io.circe.Error, CognitoPublicKey] =
+//    io.circe.parser.decode[CognitoPublicKey](nimbusJwk.toJSONString)
 
-  var mockJwk: Jwk = Jwk.fromValues(mapAsJavaMap(jsonMap.right.get.toMap))
+  val jsonMap: Either[io.circe.Error, Map[String, String]] =
+    io.circe.parser.decode[Map[String, String]](nimbusJwk.toJSONString)
 
-  var jwkProvider: JwkProvider = new MockJwkProvider(mockJwk)
-
-  implicit var cConfig = CognitoConfig(
-    Region.AP_SOUTH_1,
-    CognitoPoolConfig(Region.AP_SOUTH_1, poolId, appClientId, _ => jwkProvider),
-    CognitoPoolConfig(Region.AP_SOUTH_1, poolId, appClientId, _ => jwkProvider)
+  val mockJwk: Jwk = Jwk.fromValues(
+    jsonMap.right.get.asJava.asInstanceOf[java.util.Map[String, Object]]
   )
 
-  var issuedAtTime: Long = Instant.now().toEpochMilli() / 1000 - 90
-  var validTokenTime: Long = Instant.now().toEpochMilli() / 1000 + 9999
+  val jwkProvider: JwkProvider = new MockJwkProvider(mockJwk)
+
+  implicit val cConfig = CognitoConfig(
+    Region.AP_SOUTH_1,
+    CognitoPoolConfig(
+      Region.AP_SOUTH_1,
+      cognitoPoolId,
+      cognitoAppClientId,
+      _ => jwkProvider
+    ),
+    CognitoPoolConfig(
+      Region.AP_SOUTH_1,
+      cognitoPoolId2,
+      cognitoAppClientId2,
+      _ => jwkProvider
+    )
+  )
+
+  val issuedAtTime: Long = Instant.now().toEpochMilli() / 1000 - 90
+  val validTokenTime: Long = Instant.now().toEpochMilli() / 1000 + 9999
 
   var validToken: String = JwtCirce.encode(
-    header = s"""{"kid": "$keyId", "alg": "RS256"}""",
+    header = s"""{"kid": "$jwkKeyId", "alg": "RS256"}""",
     claim = s"""
       {
-        "sub": "$userId",
-        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$poolId",
+        "sub": "$pennsieveUserId",
+        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$cognitoPoolId",
         "iat": $issuedAtTime,
         "exp": $validTokenTime,
-        "aud": "$appClientId",
-        "cognito:username": "$userId"
+        "aud": "$cognitoAppClientId",
+        "cognito:username": "$pennsieveUserId"
       }
     """,
     key = keyPair.getPrivate.asInstanceOf[RSAPrivateKey],
@@ -123,7 +140,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
   )
 
   "getKeyId" should "return the correct jwk key id from the token" in {
-    CognitoJWTAuthenticator.getKeyId(validToken) should equal(Right(keyId))
+    CognitoJWTAuthenticator.getKeyId(validToken) should equal(Right(jwkKeyId))
   }
 
   "validateJwt" should "return CognitoPayload w/ correct data if supplied token is valid" in {
@@ -132,7 +149,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
     tokenValidatorResponse.isRight should be(true)
     tokenValidatorResponse.right.get.id.toString should be(
-      UUID.fromString(userId).toString
+      UUID.fromString(pennsieveUserId).toString
     )
     tokenValidatorResponse.right.get.issuedAt should be(
       Instant.ofEpochSecond(issuedAtTime)
@@ -142,15 +159,15 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
   var invalidTokenTime: Long = Instant.now().toEpochMilli() / 1000 - 9999999
 
   var invalidToken_Expired: String = JwtCirce.encode(
-    header = s"""{"kid": "$keyId", "alg": "RS256"}""",
+    header = s"""{"kid": "$jwkKeyId", "alg": "RS256"}""",
     claim = s"""
       {
-        "sub": "$userId",
-        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$poolId",
+        "sub": "$pennsieveUserId",
+        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$cognitoPoolId",
         "iat": $issuedAtTime,
         "exp": $invalidTokenTime,
-        "aud": "$appClientId",
-        "cognito:username": "$userId"
+        "aud": "$cognitoAppClientId",
+        "cognito:username": "$pennsieveUserId"
       }
     """,
     key = keyPair.getPrivate.asInstanceOf[RSAPrivateKey],
@@ -164,15 +181,15 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
   }
 
   var invalidToken_Audience: String = JwtCirce.encode(
-    header = s"""{"kid": "$keyId", "alg": "RS256"}""",
+    header = s"""{"kid": "$jwkKeyId", "alg": "RS256"}""",
     claim = s"""
       {
-        "sub": "$userId",
-        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$poolId",
+        "sub": "$pennsieveUserId",
+        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$cognitoPoolId",
         "iat": $issuedAtTime,
         "exp": $validTokenTime,
         "aud": "notAnAudience",
-        "cognito:username": "$userId"
+        "cognito:username": "$pennsieveUserId"
       }
     """,
     key = keyPair.getPrivate.asInstanceOf[RSAPrivateKey],
@@ -186,15 +203,15 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
   }
 
   var invalidToken_Issuer: String = JwtCirce.encode(
-    header = s"""{"kid": "$keyId", "alg": "RS256"}""",
+    header = s"""{"kid": "$jwkKeyId", "alg": "RS256"}""",
     claim = s"""
       {
-        "sub": "$userId",
-        "iss": "https://cognito-idp.${Region.AP_SOUTHEAST_2}.amazonaws.com/$poolId",
+        "sub": "$pennsieveUserId",
+        "iss": "https://cognito-idp.${Region.AP_SOUTHEAST_2}.amazonaws.com/$cognitoPoolId",
         "iat": $issuedAtTime,
         "exp": $validTokenTime,
-        "aud": "$appClientId",
-        "cognito:username": "$userId"
+        "aud": "$cognitoAppClientId",
+        "cognito:username": "$pennsieveUserId"
       }
     """,
     key = keyPair.getPrivate.asInstanceOf[RSAPrivateKey],
