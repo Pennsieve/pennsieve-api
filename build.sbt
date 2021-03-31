@@ -57,9 +57,8 @@ lazy val akkaHttpVersion = "10.1.11"
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
 lazy val auditMiddlewareVersion = "1.0.1"
-lazy val authMiddlewareVersion = "4.2.3"
+lazy val authMiddlewareVersion = "5.0.1"
 
-lazy val authyVersion = "1.5.1"
 lazy val awsVersion = "1.11.931"
 lazy val awsV2Version = "2.15.58"
 lazy val catsVersion = "1.1.0"
@@ -227,7 +226,6 @@ lazy val apiSettings = Seq(
   excludeFilter := HiddenFileFilter -- ".ebextensions",
   libraryDependencies ++= Seq(
     "commons-codec" % "commons-codec" % "1.7",
-    "com.authy" % "authy-java" % authyVersion,
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
     "com.pennsieve" %% "doi-service-client" % doiServiceClientVersion,
@@ -266,7 +264,6 @@ lazy val coreSettings = Seq(
     "com.pennsieve" %% "job-scheduling-service-client" % jobSchedulingServiceClientVersion,
     "com.pennsieve" %% "service-utilities" % serviceUtilitiesVersion,
     "com.pennsieve" %% "utilities" % utilitiesVersion,
-    "com.authy" % "authy-java" % authyVersion % Test,
     "commons-codec" % "commons-codec" % "1.10",
     "commons-validator" % "commons-validator" % "1.6",
     "com.chuusai" %% "shapeless" % "2.3.3",
@@ -376,7 +373,6 @@ lazy val authorizationServiceSettings = Seq(
   name := "authorization-service",
   publishTo := publishToNexus.value,
   libraryDependencies ++= Seq(
-    "com.authy" % "authy-java" % authyVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.iheart" %% "ficus" % ficusVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,

@@ -101,7 +101,7 @@ object AuthorizationDirectives {
         UserAuthContext(
           user = user,
           organization = organization,
-          session = Some(session.uuid)
+          cognitoId = None
         )
     }
   }
@@ -215,7 +215,7 @@ object AuthorizationDirectives {
             organization <- container.organizationManager.get(
               preferredOrganizationId
             )
-          } yield UserAuthContext(user._1, organization, None)
+          } yield UserAuthContext(user._1, organization, Some(cognitoId))
 
         case id: CognitoId.TokenPoolId =>
           for {
@@ -225,7 +225,7 @@ object AuthorizationDirectives {
             organization <- container.organizationManager.get(
               token.organizationId
             )
-          } yield UserAuthContext(user, organization, None)
+          } yield UserAuthContext(user, organization, Some(cognitoId))
 
       }
     } yield authContext

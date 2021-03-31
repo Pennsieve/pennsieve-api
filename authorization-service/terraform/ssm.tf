@@ -1,20 +1,3 @@
-resource "aws_ssm_parameter" "authy_api_key" {
-  name      = "/${var.environment_name}/${var.service_name}/authy-api-key"
-  overwrite = false
-  type      = "SecureString"
-  value     = "dummy"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
-}
-
-resource "aws_ssm_parameter" "authy_api_url" {
-  name  = "/${var.environment_name}/${var.service_name}/authy-api-url"
-  type  = "String"
-  value = var.authy_api_url
-}
-
 resource "aws_ssm_parameter" "cognito_user_pool_id" {
   name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-id"
   type  = "String"

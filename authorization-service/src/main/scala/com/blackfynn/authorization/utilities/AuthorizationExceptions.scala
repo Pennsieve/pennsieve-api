@@ -43,13 +43,6 @@ trait AuthorizationException {
       case BadSecret =>
         HttpResponse(Forbidden, entity = "Incorrect secret supplied.") // 403
 
-      case _: BadTwoFactorToken =>
-        logger.warn(exception.getMessage)
-        HttpResponse(
-          Unauthorized, // 401
-          entity = "Incorrect token provided for two-factor authentication."
-        )
-
       case _: FeatureNotEnabled =>
         logger.warn(exception.getMessage)
         HttpResponse(Forbidden, entity = "Forbidden.") // 403
@@ -110,11 +103,6 @@ trait AuthorizationException {
 
   object BadPassword extends Exception
   object BadSecret extends Exception
-
-  class BadTwoFactorToken(error: String) extends Exception {
-    override def getMessage: String =
-      s"Two-factor validation failed: $error"
-  }
 
   object InvalidLoginAttemps extends Exception {
     override def getMessage: String =

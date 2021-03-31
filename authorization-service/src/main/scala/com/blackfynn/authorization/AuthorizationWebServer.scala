@@ -18,7 +18,6 @@ package com.pennsieve.authorization
 
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
-import com.authy.AuthyApiClient
 import com.pennsieve.akka.http.{
   HealthCheck,
   HealthCheckService,
@@ -41,15 +40,6 @@ trait JwtContainer extends Jwt.Config { self: Container =>
   val duration: FiniteDuration = config.as[FiniteDuration]("jwt.duration")
 }
 
-trait AuthyContainer { self: Container =>
-  val authyKey: String = config.as[String]("authy.key")
-  val authyUrl: String = config.as[String]("authy.url")
-  val authyDebugMode: Boolean = config.as[String]("environment") != "prod"
-
-  val authy: AuthyApiClient =
-    new AuthyApiClient(authyKey, authyUrl, authyDebugMode)
-}
-
 object AuthorizationWebServer extends App with WebServer with LazyLogging {
 
   override val actorSystemName: String = "authorization"
@@ -57,7 +47,7 @@ object AuthorizationWebServer extends App with WebServer with LazyLogging {
   val container: ResourceContainer =
     new InsecureContainer(config) with RedisManagerContainer
     with DatabaseContainer with SessionManagerContainer
-    with OrganizationManagerContainer with JwtContainer with AuthyContainer
+    with OrganizationManagerContainer with JwtContainer
     with TermsOfServiceManagerContainer with TokenManagerContainer
 
   val healthCheck = new HealthCheckService(

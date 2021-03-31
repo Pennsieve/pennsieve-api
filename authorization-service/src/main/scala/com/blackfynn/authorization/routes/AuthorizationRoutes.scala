@@ -26,7 +26,6 @@ import com.pennsieve.db._
 import com.pennsieve.domain.{ FeatureNotEnabled, Sessions }
 import com.pennsieve.domain.Sessions.Session
 import com.pennsieve.dtos.{ Builders, UserDTO }
-import com.pennsieve.models.Role.BlindReviewer
 import com.pennsieve.models._
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.{ DBIOAction, Effect, NoStream }
@@ -34,6 +33,7 @@ import slick.sql.FixedSqlStreamingAction
 import cats.implicits._
 import com.pennsieve.akka.http.RouteService
 import com.pennsieve.auth.middleware.{
+  CognitoSession,
   DatasetId,
   DatasetNodeId,
   EncryptionKeyId,
@@ -43,8 +43,7 @@ import com.pennsieve.auth.middleware.{
   UserClaim,
   UserId,
   UserNodeId,
-  WorkspaceId,
-  Session => JwtSession
+  WorkspaceId
 }
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.utilities.exceptions._
@@ -64,7 +63,7 @@ import scala.util.{ Failure, Success, Try }
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
-  session: Option[String]
+  cognitoId: Option[CognitoId]
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
@@ -78,24 +77,10 @@ class AuthorizationRoutes(
     container.config.as[List[Int]]("workspaces.allowed")
 
   val routes: Route = pathPrefix("authorization") {
-    // See https://github.com/Blackfynn/gateway/blob/master/templates/nginx.conf.tmpl
-    //
-    // nginx will route requests from /internal-auth/ to /authorization, setting the
-    // `X-Original-URI` to the full, originating request.
-    //
-    // Based on the `nginx.conf.tmpl` configuration for the gateway, the `X-Original-URI"` header
-    // MUST exist when a request is made for authentication/authorization.
-    headerValueByName("X-Original-URI") { originalURI: String =>
-      {
-        logger.info(
-          s"authorization route: got X-Original-URI header = $originalURI"
-        )
-        authorization(originalURI)
-      }
-    }
+    authorization
   } ~ pathPrefix("session") { switchOrganization }
 
-  def authorization(originalURI: String): Route =
+  def authorization: Route =
     (pathEndOrSingleSlash & get & parameters(
       'organization_id
         .as[String]
@@ -109,11 +94,7 @@ class AuthorizationRoutes(
         _ <- organizationId.traverse(
           assertOrganizationIdMatches(user, organization, _)
         )
-        organizationRole <- getOrganizationRole(
-          user,
-          organization,
-          originalURI.some
-        )
+        organizationRole <- getOrganizationRole(user, organization)
         datasetRole <- datasetId.traverse(getDatasetRole(user, organization, _))
         workspaceRole <- workspaceId.traverse(
           getWorkspaceRole(user, _, allowedWorkspaces)
@@ -121,7 +102,7 @@ class AuthorizationRoutes(
       } yield {
         val roles =
           List(organizationRole.some, datasetRole, workspaceRole).flatten
-        val userClaim = getUserClaim(user, roles)
+        val userClaim = getUserClaim(user, roles, cognitoId)
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
@@ -154,19 +135,13 @@ class AuthorizationRoutes(
     (path("switch-organization") & parameters('organization_id.as[Int]) & put) {
       (organizationId) =>
         val result: Future[UserDTO] = for {
-          // TODO: Only allow users to change sessions, not client tokens
-//          _ <- session.isBrowserSession match {
-//            case true => Future.successful(())
-//            case false => Future.failed(NonBrowserSession)
-//          }
+
+          // Only users logged in from the browser / user pool can switch organizations
+          _ <- cognitoId.map(_.asUserPoolId) match {
+            case Some(Right(_)) => Future.successful(())
+            case _ => Future.failed(NonBrowserSession)
+          }
           organizationToSwitchTo <- getOrganization(user, organizationId)
-//          savedSession <- Future.fromTry(
-//            container.sessionManager
-//              .update(
-//                session.copy(organizationId = organizationToSwitchTo.nodeId)
-//              )
-//              .toTry
-//          )
           updatedUser <- updateUserPreferredOrganization(
             user,
             organizationToSwitchTo
@@ -195,20 +170,18 @@ class AuthorizationRoutes(
 
   private def getUserClaim(
     user: User,
-    roles: List[Jwt.Role]
-//    session: Session
+    roles: List[Jwt.Role],
+    cognitoId: Option[CognitoId]
   ): UserClaim = {
-//    val jwtSession: JwtSession = session.`type` match {
-//      case Sessions.APISession(_) => JwtSession.API(session.uuid)
-//      case Sessions.BrowserSession => JwtSession.Browser(session.uuid)
-//      case Sessions.TemporarySession => JwtSession.Temporary(session.uuid)
-//    }
+    val cognitoSession = cognitoId.map {
+      case id: CognitoId.TokenPoolId => CognitoSession.API(id)
+      case id: CognitoId.UserPoolId => CognitoSession.Browser(id)
+    }
 
     UserClaim(
       id = UserId(user.id),
       roles = roles,
-//      session = Some(jwtSession),
-      session = None,
+      cognito = cognitoSession,
       node_id = Some(UserNodeId(user.nodeId))
     )
   }
@@ -302,8 +275,7 @@ private[routes] object AuthorizationQueries {
 
   def getOrganizationRole(
     user: User,
-    organization: Organization,
-    originalURI: Option[String]
+    organization: Organization
   )(implicit
     container: ResourceContainer,
     executionContext: ExecutionContext
@@ -338,19 +310,12 @@ private[routes] object AuthorizationQueries {
       : FixedSqlStreamingAction[Seq[Feature], Feature, Effect.Read] =
       FeatureFlagsMapper.getActiveFeatures(organization.id).result
 
-    def isTrials: Boolean =
-      (user.isSuperAdmin || originalURI.exists(_.contains("/trials")))
-
     val result: Future[(Role, Option[String], Seq[Feature])] =
       container.db
         .run(for {
           permission <- getPermission
           role <- {
             permission.toRole match {
-              case Some(BlindReviewer) if !isTrials =>
-                DBIO.failed(
-                  FeatureNotEnabled("non trials feature for trials user")
-                )
               case Some(role) => DBIO.successful(role)
               case None => DBIO.failed(new InvalidSession(user, organization))
             }

@@ -21,6 +21,7 @@ import java.time.ZonedDateTime
 import com.pennsieve.models.{ CognitoId, Token }
 import com.pennsieve.traits.PostgresProfile.api._
 
+// TODO: unique cognito_id
 final class TokenTable(tag: Tag)
     extends Table[Token](tag, Some("pennsieve"), "tokens") {
 

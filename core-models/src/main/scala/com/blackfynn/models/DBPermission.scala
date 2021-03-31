@@ -41,7 +41,6 @@ sealed abstract class DBPermission(val value: Int)
     case DBPermission.Administer => Some(Role.Manager)
     case DBPermission.Delete => Some(Role.Editor)
     case DBPermission.NoPermission => None
-    case DBPermission.BlindReviewer => Some(Role.BlindReviewer)
     case _ => Some(Role.Viewer)
   }
 }
@@ -56,7 +55,6 @@ object DBPermission
 
   val values: immutable.IndexedSeq[DBPermission] = findValues
 
-  case object BlindReviewer extends DBPermission(-1)
   case object NoPermission extends DBPermission(0)
   case object Collaborate extends DBPermission(1)
   case object Read extends DBPermission(2)
@@ -76,7 +74,6 @@ object DBPermission
     case Some(Role.Manager) => DBPermission.Administer
     case Some(Role.Editor) => DBPermission.Delete
     case Some(Role.Viewer) => DBPermission.Read
-    case Some(Role.BlindReviewer) => DBPermission.BlindReviewer
     case None => DBPermission.NoPermission
   }
 }

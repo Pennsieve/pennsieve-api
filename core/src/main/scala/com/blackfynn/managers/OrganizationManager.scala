@@ -446,11 +446,8 @@ case class UpdateOrganization(
   subscription: Option[Subscription]
 )
 
-class SecureOrganizationManager(
-  val db: Database,
-  val actor: User,
-  val permissionOverrides: Map[Int, Option[Role]] = Map.empty
-) extends OrganizationManager(db) {
+class SecureOrganizationManager(val db: Database, val actor: User)
+    extends OrganizationManager(db) {
 
   import OrganizationManager.AddEmailResult
 
@@ -476,11 +473,6 @@ class SecureOrganizationManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Unit] = {
     if (actor.isSuperAdmin) FutureEitherHelpers.unit
-    else if (permissionOverrides
-        .get(organization.id)
-        .map(role => DBPermission.fromRole(role) >= permission)
-        .getOrElse(false))
-      FutureEitherHelpers.unit
     else {
       db.run {
           OrganizationUserMapper
@@ -585,10 +577,7 @@ class SecureOrganizationManager(
         .whenNone(NotFound(nodeId))
       (organization, userPermission) = result
       _ <- FutureEitherHelpers.assert[CoreError](
-        actor.isSuperAdmin || permissionOverrides
-          .get(organization.id)
-          .map(role => DBPermission.fromRole(role) >= withPermission)
-          .getOrElse(false) || userPermission >= withPermission
+        actor.isSuperAdmin || userPermission >= withPermission
       )(PermissionError(actor.nodeId, withPermission, organization.nodeId))
     } yield organization
 

@@ -43,7 +43,6 @@ object Router {
     with RedisManagerContainer
     with AuthorizationContainer
     with JwtContainer
-    with AuthyContainer
     with TermsOfServiceManagerContainer
     with TokenManagerContainer
 }
@@ -72,7 +71,7 @@ class Router(
         val authorization = new AuthorizationRoutes(
           user = userContext.user,
           organization = userContext.organization,
-          session = userContext.session
+          cognitoId = userContext.cognitoId
         )(container, executionContext, system)
 
         logByEnvironment(authorization.routes)

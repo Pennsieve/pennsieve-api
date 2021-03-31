@@ -25,8 +25,8 @@ import java.net.URL
 case class CognitoConfig(
   region: Region,
   userPool: CognitoPoolConfig, // Pennsieve users
-  tokenPool: CognitoPoolConfig // Client token pool,
-) {}
+  tokenPool: CognitoPoolConfig // Client token pool
+)
 
 /**
   * Config for a single Cognito User Pool

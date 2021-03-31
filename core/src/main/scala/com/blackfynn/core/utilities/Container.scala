@@ -128,8 +128,7 @@ class SecureContainer(
   _db: Database,
   _redisClientPool: RedisClientPool,
   val user: User,
-  val organization: Organization,
-  val roleOverrides: List[Jwt.Role] = List.empty
+  val organization: Organization
 )(implicit
   val ec: ExecutionContext,
   val system: ActorSystem
@@ -140,36 +139,6 @@ class SecureContainer(
 
   override lazy val db: Database = _db
   override lazy val redisClientPool: RedisClientPool = _redisClientPool
-
-  /**
-    * Generate a user-level JWT from the user, organization, and roles that were provided to construct this secure
-    * container.
-    *
-    * By default, the token will expire after 2 minutes.
-    *
-    * @param config
-    * @return
-    */
-  def generateUserToken()(implicit config: Jwt.Config): Jwt.Token =
-    JwtAuthenticator.generateUserToken(2.minutes, user, roleOverrides)
-
-  def generateUserToken(
-    dataset: Dataset,
-    role: Role
-  )(implicit
-    config: Jwt.Config
-  ): Jwt.Token = {
-    val datasetRole = Jwt.DatasetRole(
-      id = DatasetId(dataset.id).inject[Jwt.Role.RoleIdentifier[DatasetId]],
-      role = role,
-      node_id = Some(DatasetNodeId(dataset.nodeId))
-    )
-    JwtAuthenticator.generateUserToken(
-      2.minutes,
-      user,
-      datasetRole :: roleOverrides
-    )
-  }
 }
 
 object RedisContainer {
@@ -246,12 +215,6 @@ trait SecureCoreContainer
     with ExternalPublicationContainer
     with DatasetAssetsContainer { self: SecureContainer =>
 
-  // A JWT can be used to temporarily elevate a user's role in order
-  // to allow this user to perform tasks in a specific context (e.g. a
-  // blind reviewer)
-  val datasetRoleOverrides: Map[Int, Option[Role]]
-  val organizationRoleOverrides: Map[Int, Option[Role]]
-
   lazy val annotationManager: AnnotationManager =
     new AnnotationManager(self.organization, db)
 
@@ -260,7 +223,7 @@ trait SecureCoreContainer
     new DiscussionManager(self.organization, db)
   lazy val onboardingManager = new OnboardingManager(db)
   override lazy val organizationManager: SecureOrganizationManager =
-    new SecureOrganizationManager(db, user, organizationRoleOverrides)
+    new SecureOrganizationManager(db, user)
   lazy val tokenManager: SecureTokenManager = new SecureTokenManager(user, db)
   lazy val teamManager: TeamManager = TeamManager(organizationManager)
   lazy val userInviteManager: UserInviteManager = new UserInviteManager(db)
@@ -290,7 +253,7 @@ trait SecureCoreContainer
     new DatasetTeamMapper(self.organization)
 
   lazy val userRoles: Future[Map[Int, Option[Role]]] =
-    db.run(datasetsMapper.maxRoles(user.id)).map(_ ++ datasetRoleOverrides)
+    db.run(datasetsMapper.maxRoles(user.id))
 
   def authorizeDataset(
     permissions: Set[Permission]
@@ -338,25 +301,6 @@ trait SecureCoreContainer
       `package` <- packageManager.get(packageId)
       _ <- authorizePackage(permissions)(`package`)
     } yield ()
-}
-
-trait RoleOverrideContainer {
-  val roleOverrides: List[Jwt.Role]
-
-  val (
-    datasetRoleOverrides: Map[Int, Option[Role]],
-    organizationRoleOverrides: Map[Int, Option[Role]]
-  ) = roleOverrides
-    .foldLeft(Map.empty[Int, Option[Role]] -> Map.empty[Int, Option[Role]]) {
-      case ((datasetMap, organizationMap), role) =>
-        role match {
-          case Jwt.DatasetRole(Inl(DatasetId(id)), role, _, _) =>
-            (datasetMap + (id -> Some(role)), organizationMap)
-          case Jwt.OrganizationRole(Inl(OrganizationId(id)), role, _, _, _) =>
-            (datasetMap, organizationMap + (id -> Some(role)))
-          case _ => datasetMap -> organizationMap
-        }
-    }
 }
 
 trait StorageContainer {
