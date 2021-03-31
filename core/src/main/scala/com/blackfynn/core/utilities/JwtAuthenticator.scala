@@ -42,7 +42,7 @@ import com.pennsieve.domain.{
   Sessions,
   UnsupportedJWTClaimType
 }
-import com.pennsieve.models.{ CognitoId, Organization, Role, User }
+import com.pennsieve.models.{ CognitoId, Dataset, Organization, Role, User }
 import com.pennsieve.utilities.Container
 import shapeless.syntax.inject._
 
