@@ -16,9 +16,7 @@
 
 package com.pennsieve.aws.cognito
 
-import cats.data.OptionT.some
 import com.auth0.jwk.{ Jwk, JwkProvider }
-import com.pennsieve.models.CognitoId
 import io.circe.Decoder
 import io.circe.generic.decoding.DerivedDecoder.deriveDecoder
 import org.scalatest.{ FlatSpec, Matchers }
@@ -27,7 +25,6 @@ import software.amazon.awssdk.regions.Region
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.JWK
-import com.pennsieve.domain.CoreError
 
 import java.security.KeyPair
 import java.security.KeyPairGenerator
