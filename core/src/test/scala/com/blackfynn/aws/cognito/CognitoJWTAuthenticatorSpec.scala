@@ -184,7 +184,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   "validateJWT" should "return false / error if the audience is invalid" in {
     CognitoJWTAuthenticator
-      .validateJwt(invalidToken_Expired)(cConfig)
+      .validateJwt(invalidToken_Audience)(cConfig)
       .isRight should be(false)
   }
 
@@ -206,7 +206,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   "validateJWT" should "return false / error if the issuer is invalid" in {
     CognitoJWTAuthenticator
-      .validateJwt(invalidToken_Expired)(cConfig)
+      .validateJwt(invalidToken_Issuer)(cConfig)
       .isLeft should be(true)
   }
 
