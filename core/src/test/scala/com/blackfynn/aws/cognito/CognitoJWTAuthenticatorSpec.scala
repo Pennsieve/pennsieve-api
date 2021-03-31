@@ -99,8 +99,8 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   implicit var cConfig = CognitoConfig(
     Region.AP_SOUTH_1,
-    CognitoPoolConfig(Region.AP_SOUTH_1, poolId, appClientId, jwkProvider),
-    CognitoPoolConfig(Region.AP_SOUTH_1, poolId, appClientId, jwkProvider)
+    CognitoPoolConfig(Region.AP_SOUTH_1, poolId, appClientId, _ => jwkProvider),
+    CognitoPoolConfig(Region.AP_SOUTH_1, poolId, appClientId, _ => jwkProvider)
   )
 
   var issuedAtTime: Long = Instant.now().toEpochMilli() / 1000 - 90

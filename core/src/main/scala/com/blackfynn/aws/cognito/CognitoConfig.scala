@@ -35,7 +35,8 @@ case class CognitoPoolConfig(
   region: Region,
   id: String,
   appClientId: String,
-  mockJwkProvider: JwkProvider = null
+  getJwkProvider: CognitoPoolConfig => JwkProvider =
+    CognitoJWTAuthenticator.getJwkProvider(_)
 ) {
 
   def endpoint: String =
@@ -50,15 +51,7 @@ case class CognitoPoolConfig(
       s"https://cognito-idp.${region.toString}.amazonaws.com/$id/.well-known/jwks.json"
     )
 
-  private var _jwkProvider: JwkProvider = null
-
-  if (mockJwkProvider == null) {
-    _jwkProvider = CognitoJWTAuthenticator.getJwkProvider(this)
-  } else {
-    _jwkProvider = mockJwkProvider
-  }
-
-  lazy val jwkProvider: JwkProvider = _jwkProvider
+  lazy val jwkProvider: JwkProvider = getJwkProvider(this)
 }
 
 object CognitoConfig {
