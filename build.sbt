@@ -293,7 +293,7 @@ lazy val coreSettings = Seq(
     "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.auth0" % "jwks-rsa" % "0.8.3",
-    "com.nimbusds" % "nimbus-jose-jwt" % "9.7"
+    "com.nimbusds" % "nimbus-jose-jwt" % "9.7" % Test
   ),
   excludeDependencies ++= unwantedDependencies
 )
