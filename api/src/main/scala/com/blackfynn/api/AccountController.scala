@@ -286,9 +286,13 @@ class AccountController(
           .getOrganizations(newUser)
           .orError
 
+        preferredOrganization = newUser.preferredOrganizationId.flatMap(
+          id => organizations.find(_.id == id)
+        )
+
         dto = Builders.userDTO(
           user = newUser,
-          organizationNodeId = None,
+          organizationNodeId = preferredOrganization.map(_.nodeId),
           permission = None,
           storage = None,
           pennsieveTermsOfService = None,
