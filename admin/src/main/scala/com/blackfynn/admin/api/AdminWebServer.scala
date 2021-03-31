@@ -87,7 +87,6 @@ object AdminWebServer extends App with WebServer with LazyLogging {
         organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
       with MessageTemplatesContainer with Router.AdminETLServiceContainerImpl
-      with RoleOverrideContainer
     } else {
       new SecureContainer(
         config = insecureContainer.config,
@@ -98,7 +97,7 @@ object AdminWebServer extends App with WebServer with LazyLogging {
       ) with SecureCoreContainer with AWSEmailContainer
       with MessageTemplatesContainer with LocalS3Container
       with S3CustomTermsOfServiceClientContainer
-      with Router.AdminETLServiceContainerImpl with RoleOverrideContainer
+      with Router.AdminETLServiceContainerImpl
     }
   }
 
