@@ -112,6 +112,10 @@ object CognitoJWTAuthenticator {
   private case class TokenPool(pool: CognitoPoolConfig) extends Issuer
   private case class UserPool(pool: CognitoPoolConfig) extends Issuer
 
+  /**
+    * Cognito adds a `client_id` to the JWT which is not part of the JWT
+    * standard.  This case class is needed to parse the id.
+    */
   case class CognitoContent(client_id: Option[String])
 
   object CognitoContent {
