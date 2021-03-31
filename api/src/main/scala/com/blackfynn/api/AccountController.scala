@@ -26,6 +26,7 @@ import com.pennsieve.aws.cognito.{
 }
 import com.pennsieve.core.utilities.PasswordBuddy.passwordEntropy
 import com.pennsieve.dtos.{ Builders, UserDTO }
+import com.pennsieve.domain.{ CoreError, ThrowableError }
 import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
 import com.pennsieve.helpers.ResultHandlers.OkResult
 import com.pennsieve.helpers._
@@ -253,7 +254,8 @@ class AccountController(
 
         cognitoId <- CognitoJWTAuthenticator
           .validateJwt(jwt)(cognitoConfig)
-          .map(_.id)
+          .flatMap(_.id.asUserPoolId)
+          .leftMap[CoreError](ThrowableError(_))
           .toEitherT[Future]
           .orUnauthorized
 

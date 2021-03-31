@@ -88,7 +88,6 @@ class UserInviteManager(db: Database) {
           // TODO: clean this up. Move Cognito IDs and emails to a separate
           // table with proper constraints.
           case None =>
-            val token = UUID.randomUUID().toString
             val nodeId = NodeCodes.generateId(NodeCodes.userCode)
             val validUntil = ZonedDateTime.now().plus(ttl)
 
@@ -155,7 +154,7 @@ class UserInviteManager(db: Database) {
   }
 
   def getByCognitoId(
-    cognitoId: CognitoId
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, List[UserInvite]] =

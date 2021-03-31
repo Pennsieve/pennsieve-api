@@ -26,6 +26,7 @@ import com.pennsieve.aws.email.LocalEmailContainer
 import com.pennsieve.aws.queue.LocalSQSContainer
 import com.pennsieve.aws.s3.LocalS3Container
 import com.pennsieve.models.{
+  CognitoId,
   Dataset,
   DatasetStatus,
   Degree,
@@ -426,7 +427,7 @@ trait ApiSuite
     apiJwt = Authenticator.createUserToken(
       loggedInUser,
       loggedInOrganization,
-      session = Session.API(UUID.randomUUID.toString)
+      cognito = CognitoSession.API(CognitoId.TokenPoolId.randomId)
     )(jwtConfig, insecureContainer.db, ec)
 
     secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value
@@ -516,7 +517,7 @@ trait ApiSuite
     datasetRole: Role = Role.Owner,
     expiration: FiniteDuration = 10.seconds,
     userId: Int = loggedInUser.id,
-    session: Option[Session] = None
+    cognito: Option[CognitoSession] = None
   ): Map[String, String] = {
     val jwtClaim = Jwt.generateClaim(
       UserClaim(
@@ -533,7 +534,7 @@ trait ApiSuite
             role = datasetRole
           )
         ),
-        session = session
+        cognito = cognito
       ),
       expiration
     )

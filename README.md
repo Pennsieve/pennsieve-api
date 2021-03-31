@@ -81,3 +81,13 @@ SQL migration files live in the `migrations` subproject. There are two types of 
 Jenkins runs the migrations against Postgres.
 
 Use the `generate-migration-file.sh` script to create an empty migration file in the appropriate place.
+
+
+## Deployment
+
+Merging to `main` deploys all services in this repo to the dev environment and runs the Postgres migrations.
+
+Individual services are deployed to production via Jenkins service-deploy jobs. Use the
+[pennsieve-api-release](https://jenkins.pennsieve.cc/job/service-deploy/job/pennsieve-prod/job/us-east-1/job/prod-vpc-use1/job/prod/job/pennsieve-api-release/)
+job to deploy _all_ services to production and (optionally) run the Postgres
+migrations.
