@@ -18,7 +18,6 @@ package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
-import com.authy.AuthyApiClient
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
@@ -32,7 +31,7 @@ import com.pennsieve.helpers.OrcidClient
 import com.pennsieve.helpers.ResultHandlers.{ HandleResult, OkResult }
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.managers.{ AuthyManager, StorageServiceClientTrait }
+import com.pennsieve.managers.StorageServiceClientTrait
 import com.pennsieve.models.{ DateVersion, Degree, User }
 import com.pennsieve.web.Settings
 import org.json4s.JValue
@@ -56,13 +55,6 @@ case class UpdateUserRequest(
 
 case class UpdatePennsieveTermsOfServiceRequest(version: String)
 
-case class AddAuthyRequest(
-  phoneNumber: Option[String],
-  countryCode: Option[String]
-)
-
-case class AuthyUserResponse(authyId: Int)
-
 case class ORCIDRequest(authorizationCode: String)
 
 // `version` expected to be a date in the same format as DateVersion:
@@ -79,7 +71,6 @@ class UserController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
   auditLogger: Auditor,
-  authyClient: AuthyApiClient,
   asyncExecutor: ExecutionContext,
   orcidClient: OrcidClient
 )(implicit
@@ -273,111 +264,6 @@ class UserController(
       } yield dto
 
       val is = result.value.map(OkResult)
-    }
-  }
-
-  // Create authy account endpoint
-  val createTwoFactorOperation = (apiOperation[AuthyUserResponse](
-    "createTwoFactor"
-  )
-    summary "create two factor for the current user"
-    parameter bodyParam[AddAuthyRequest]("twoFactorCredentials").required)
-
-  post("/twofactor", operation(createTwoFactorOperation)) {
-    new AsyncResult {
-      val authyDetails = parsedBody.extract[AddAuthyRequest]
-
-      val result: EitherT[Future, ActionResult, AuthyUserResponse] = for {
-        secureContainer <- getSecureContainer
-        traceId <- getTraceId(request)
-        loggedInUser = secureContainer.user
-
-        _ <- if (loggedInUser.authyId == 0)
-          Right(loggedInUser).toEitherT[Future]
-        else
-          Left(BadRequest(Error("Two factor already setup"))).toEitherT[Future]
-
-        phoneNumber <- authyDetails.phoneNumber
-          .orBadRequest("No phone number specified")
-          .toEitherT[Future]
-        countryCode <- authyDetails.countryCode
-          .orBadRequest("No country code specified")
-          .toEitherT[Future]
-
-        authyUser <- AuthyManager
-          .createAuthyUser(loggedInUser, phoneNumber, countryCode)(
-            authyClient.getUsers
-          )
-          .toEitherT[Future]
-        updatedUser = loggedInUser.copy(authyId = authyUser.getId)
-
-        savedUser <- insecureContainer.userManager.update(updatedUser).orError
-        dto <- Builders
-          .userDTO(
-            savedUser,
-            storage = None,
-            pennsieveTermsOfService = None,
-            customTermsOfService = Seq.empty
-          )(secureContainer.organizationManager, executor)
-          .orError
-
-        _ <- auditLogger
-          .message()
-          .append("user-node-id", loggedInUser.nodeId)
-          .append("user-id", loggedInUser.id)
-          .log(traceId)
-          .toEitherT
-          .coreErrorToActionResult
-
-      } yield AuthyUserResponse(dto.authyId)
-
-      val is = result.value.map(OkResult)
-    }
-  }
-
-  // Delete authy account endpoint
-  val deleteTwoFactorOperation = (apiOperation[Unit]("deleteTwoFactor")
-    summary "delete two factor for the current user")
-
-  delete("/twofactor", operation(deleteTwoFactorOperation)) {
-    new AsyncResult {
-      val result: EitherT[Future, ActionResult, UserDTO] = for {
-        secureContainer <- getSecureContainer
-        traceId <- getTraceId(request)
-        loggedInUser = secureContainer.user
-
-        _ <- if (loggedInUser.authyId != 0)
-          Right(loggedInUser).toEitherT[Future]
-        else Left(BadRequest(Error("Two factor not setup"))).toEitherT[Future]
-
-        updatedUser <- AuthyManager
-          .deleteAuthyUser(loggedInUser)(authyClient)
-          .toEitherT[Future]
-        savedUser <- insecureContainer.userManager.update(updatedUser).orError
-        dto <- Builders
-          .userDTO(
-            savedUser,
-            storage = None,
-            pennsieveTermsOfService = None,
-            customTermsOfService = Seq.empty
-          )(insecureContainer.organizationManager, executor)
-          .orError
-
-        _ <- auditLogger
-          .message()
-          .append("user-node-id", loggedInUser.nodeId)
-          .append("user-id", loggedInUser.id)
-          .log(traceId)
-          .toEitherT
-          .coreErrorToActionResult
-      } yield dto
-
-      val is = result.value.map(
-        u =>
-          HandleResult(u) { _ =>
-            Ok()
-          }
-      )
     }
   }
 

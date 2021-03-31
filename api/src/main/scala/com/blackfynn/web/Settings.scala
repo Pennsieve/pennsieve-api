@@ -63,10 +63,6 @@ object Settings {
   val region = Regions.US_EAST_1
   val regionV2 = Region.US_EAST_1
 
-  val authyKey: String = config.as[String]("pennsieve.authy.authyKey")
-
-  val authyApiUrl: String = config.as[String]("pennsieve.authy.apiUrl")
-
   val password_validation_error_message: String =
     config.as[String]("pennsieve.password.validation_error_message")
 
