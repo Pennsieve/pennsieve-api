@@ -39,39 +39,6 @@ class MockJwkProvider(jwk: Jwk) extends JwkProvider {
   }
 }
 
-case class CognitoPublicKey(
-  p: String,
-  kty: String,
-  q: String,
-  d: String,
-  e: String,
-  use: String,
-  kid: String,
-  qi: String,
-  dp: String,
-  dq: String,
-  n: String
-) extends Product {
-  def toMap: Map[String, Object] =
-    Map(
-      "p" -> p,
-      "kty" -> kty,
-      "q" -> q,
-      "d" -> d,
-      "e" -> e,
-      "use" -> use,
-      "kid" -> kid,
-      "qi" -> qi,
-      "dp" -> dp,
-      "dq" -> dq,
-      "n" -> n
-    )
-}
-
-object CognitoPublicKey {
-  implicit val decoder: Decoder[CognitoPublicKey] = deriveDecoder
-}
-
 class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
   val jwkKeyId: String = "9bed6ab5-3c35-498b-8802-6992333f889c"
@@ -91,9 +58,6 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
       .keyUse(KeyUse.SIGNATURE)
       .keyID(jwkKeyId)
       .build
-
-//  val jsonMap: Either[io.circe.Error, CognitoPublicKey] =
-//    io.circe.parser.decode[CognitoPublicKey](nimbusJwk.toJSONString)
 
   val jsonMap: Either[io.circe.Error, Map[String, String]] =
     io.circe.parser.decode[Map[String, String]](nimbusJwk.toJSONString)
