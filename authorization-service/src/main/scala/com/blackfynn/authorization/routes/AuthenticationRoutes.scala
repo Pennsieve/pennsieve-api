@@ -102,14 +102,6 @@ object TemporaryLoginResponse {
     deriveDecoder[TemporaryLoginResponse]
 }
 
-case class TwoFactorLoginRequest(token: String)
-object TwoFactorLoginRequest {
-  implicit val encoder: Encoder[TwoFactorLoginRequest] =
-    deriveEncoder[TwoFactorLoginRequest]
-  implicit val decoder: Decoder[TwoFactorLoginRequest] =
-    deriveDecoder[TwoFactorLoginRequest]
-}
-
 class AuthenticationRoutes(
   implicit
   container: ResourceContainer,
@@ -136,7 +128,7 @@ class AuthenticationRoutes(
       .result()
 
   val routes: Route = pathPrefix("authentication") {
-    handleRejections(malformedRequestRejectionHandler) { login ~ apiLogin } ~ twoFactorLogin ~ logout
+    handleRejections(malformedRequestRejectionHandler) { login ~ apiLogin } ~ logout
   }
   val sessionTokenName: String =
     container.config.as[String]("authentication.session_token")
@@ -168,10 +160,7 @@ class AuthenticationRoutes(
 
   def login: Route =
     (path("login") & post & entity(as[LoginRequest])) { body =>
-      val result: EitherT[Future, Throwable, Either[
-        TemporaryLoginResponse,
-        LoginResponse
-      ]] = for {
+      val result: EitherT[Future, Throwable, LoginResponse] = for {
         user <- container.userManager
           .getByEmail(body.email)
           .leftMap[Throwable](_ => new UserNotFound(body.email))
@@ -183,15 +172,9 @@ class AuthenticationRoutes(
           .leftMap[Throwable](_ => BadPassword)
           .toEitherT[Future]
 
-        session <- if (user.hasTwoFactorConfigured) {
-          container.sessionManager
-            .generateTemporarySession(user, temporarySessionTimeout)
-            .leftMap[Throwable](identity)
-        } else {
-          container.sessionManager
-            .generateBrowserSession(user, sessionTimeout)
-            .leftMap[Throwable](identity)
-        }
+        session <- container.sessionManager
+          .generateBrowserSession(user, sessionTimeout)
+          .leftMap[Throwable](identity)
 
         dto <- Builders
           .userDTO(user, storage = None)(
@@ -202,36 +185,23 @@ class AuthenticationRoutes(
           )
           .leftMap[Throwable](identity)
 
-      } yield {
-        if (user.hasTwoFactorConfigured) {
-          TemporaryLoginResponse(
-            Some(session.uuid),
-            "Please complete login with two factor authentication"
-          ).asLeft
-        } else {
-          LoginResponse(
-            Some(session.uuid),
-            Some(session.organizationId),
-            Some(dto)
-          ).asRight
-        }
-      }
+      } yield
+        LoginResponse(
+          Some(session.uuid),
+          Some(session.organizationId),
+          Some(dto)
+        )
 
       onSuccess(result.value) {
-        case Right(response) =>
-          response match {
-            case Right(login) => {
-              setCookie(
-                HttpCookie(
-                  sessionTokenName,
-                  value = login.sessionToken.get,
-                  domain = Some(parentDomain)
-                )
-              ) {
-                complete((OK, login))
-              }
-            }
-            case Left(temporaryLogin) => complete((Accepted, temporaryLogin))
+        case Right(login) =>
+          setCookie(
+            HttpCookie(
+              sessionTokenName,
+              value = login.sessionToken.get,
+              domain = Some(parentDomain)
+            )
+          ) {
+            complete((OK, login))
           }
         case Left(error) => complete(error.toResponse)
       }
@@ -292,68 +262,4 @@ class AuthenticationRoutes(
         case Left(error) => complete(error.toResponse)
       }
     }
-
-  def twoFactorLogin: Route =
-    (path("login" / "twofactor") & post & entity(as[TwoFactorLoginRequest]) & headerValue(
-      extractSessionToken
-    )) { (body, sessionToken) =>
-      val result: EitherT[Future, Throwable, LoginResponse] = for {
-        temporarySession <- container.sessionManager
-          .get(sessionToken)
-          .leftMap[Throwable](_ => new SessionTokenNotFound(sessionToken))
-          .toEitherT[Future]
-
-        user <- temporarySession
-          .user()(container.userManager, executionContext)
-          .leftMap[Throwable](identity)
-
-        verification = container.authy.getTokens
-          .verify(user.authyId, body.token)
-        _ <- Right(())
-          .ensure(new BadTwoFactorToken(verification.getError.getMessage))(
-            _ => verification.isOk
-          )
-          .toEitherT[Future]
-
-        _ <- container.sessionManager
-          .remove(sessionToken)
-          .leftMap[Throwable](identity)
-          .toEitherT[Future]
-
-        session <- container.sessionManager
-          .generateBrowserSession(user)
-          .leftMap[Throwable](identity)
-
-        dto <- Builders
-          .userDTO(user, storage = None)(
-            container.organizationManager,
-            container.pennsieveTermsOfServiceManager,
-            container.customTermsOfServiceManager,
-            executionContext
-          )
-          .leftMap[Throwable](identity)
-      } yield
-        LoginResponse(
-          Some(session.uuid),
-          Some(session.organizationId),
-          Some(dto)
-        )
-
-      onSuccess(result.value) {
-        case Right(session) => {
-          setCookie(
-            HttpCookie(
-              sessionTokenName,
-              value = session.sessionToken.get,
-              domain = Some(parentDomain)
-            )
-          ) {
-            complete((OK, session))
-          }
-
-        }
-        case Left(error) => complete(error.toResponse)
-      }
-    }
-
 }

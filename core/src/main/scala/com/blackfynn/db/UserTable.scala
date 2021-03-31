@@ -47,7 +47,7 @@ final class UserTable(tag: Tag)
   def credential = column[String]("credential")
   def color = column[String]("color")
   def url = column[String]("url")
-  def authyId = column[Int]("authy_id")
+  def authyId = column[Int]("authy_id") // TODO drop column
   def isSuperAdmin = column[Boolean]("is_super_admin")
   def preferredOrganizationId = column[Option[Int]]("preferred_org_id")
   def status = column[Boolean]("status")

@@ -41,7 +41,6 @@ final case class User(
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0
 ) {
-  def hasTwoFactorConfigured: Boolean = authyId != 0
   def fullName: String = s"$firstName $lastName".trim
 }
 
