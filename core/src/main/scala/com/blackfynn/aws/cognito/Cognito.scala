@@ -111,7 +111,7 @@ class Cognito(
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
-          AttributeType.builder().name("email_verified").value("True").build()
+          AttributeType.builder().name("email_verified").value("true").build()
         ).asJava
       )
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
