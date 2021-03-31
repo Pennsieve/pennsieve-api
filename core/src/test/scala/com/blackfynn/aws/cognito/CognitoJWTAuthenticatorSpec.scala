@@ -129,18 +129,16 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
     CognitoJWTAuthenticator.getKeyId(validToken) should equal(Right(keyId))
   }
 
-  "validateJwt" should "return CognitoPayload if supplied token is valid" in {
-//    CognitoJWTAuthenticator.validateJwt(validToken)(cConfig) should equal(
-//      Right(
-//        new CognitoPayload(
-//          CognitoId(UUID.fromString(userId)),
-//          Instant.ofEpochSecond(issuedAtTime)
-//        )
-//      )
-//    )
+  "validateJwt" should "return CognitoPayload w/ correct data if supplied token is valid" in {
+    var tokenValidatorResponse =
+      CognitoJWTAuthenticator.validateJwt(validToken)(cConfig)
 
-    CognitoJWTAuthenticator.validateJwt(validToken)(cConfig).isRight should be(
-      true
+    tokenValidatorResponse.isRight should be(true)
+    tokenValidatorResponse.right.get.id.toString should be(
+      UUID.fromString(userId).toString
+    )
+    tokenValidatorResponse.right.get.issuedAt should be(
+      Instant.ofEpochSecond(issuedAtTime)
     )
   }
 
