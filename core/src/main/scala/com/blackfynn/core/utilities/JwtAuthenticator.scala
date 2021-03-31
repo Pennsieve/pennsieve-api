@@ -21,13 +21,15 @@ import cats.implicits._
 import com.pennsieve.auth.middleware.Jwt.Claim
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import com.pennsieve.auth.middleware.{
+  CognitoSession,
   DatasetId,
+  DatasetNodeId,
   EncryptionKeyId,
   Extractor,
   Jwt,
   OrganizationId,
+  OrganizationNodeId,
   ServiceClaim,
-  Session,
   UserClaim,
   UserId,
   UserNodeId,
@@ -40,17 +42,18 @@ import com.pennsieve.domain.{
   Sessions,
   UnsupportedJWTClaimType
 }
-import com.pennsieve.models.{ Organization, Role, User }
+import com.pennsieve.models.{ CognitoId, Dataset, Organization, Role, User }
 import com.pennsieve.utilities.Container
 import shapeless.syntax.inject._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ ExecutionContext, Future }
 
+// TODO: make cognitoId non-optional
 case class UserAuthContext(
   user: User,
   organization: Organization,
-  session: Option[String]
+  cognitoId: Option[CognitoId]
 )
 
 object JwtAuthenticator {
@@ -68,27 +71,47 @@ object JwtAuthenticator {
   def generateUserToken(
     duration: FiniteDuration,
     user: User,
-    roles: List[Jwt.Role],
-    session: Option[Sessions.Session] = None
+    roles: List[Jwt.Role]
   )(implicit
     jwtConfig: Jwt.Config
   ): Jwt.Token = {
-    val _session: Option[Session] = session.map { s =>
-      s.`type` match {
-        case Sessions.APISession(_) => Session.API(s.uuid)
-        case Sessions.BrowserSession => Session.Browser(s.uuid)
-        case Sessions.TemporarySession => Session.Temporary(s.uuid)
-      }
-    }
     val userClaim =
       UserClaim(
         id = UserId(user.id),
         roles = roles,
-        session = _session,
+        cognito = None,
         node_id = Some(UserNodeId(user.nodeId))
       )
     val claim = Jwt.generateClaim(content = userClaim, duration = duration)
     Jwt.generateToken(claim)
+  }
+
+  def generateUserToken(
+    duration: FiniteDuration,
+    user: User,
+    organization: Organization,
+    organizationRole: Role,
+    dataset: Dataset,
+    datasetRole: Role
+  )(implicit
+    config: Jwt.Config
+  ): Jwt.Token = {
+    val roles = List(
+      Jwt.OrganizationRole(
+        id = OrganizationId(organization.id)
+          .inject[RoleIdentifier[OrganizationId]],
+        node_id = Some(OrganizationNodeId(organization.nodeId)),
+        role = organizationRole,
+        encryption_key_id =
+          organization.encryptionKeyId.map(EncryptionKeyId.apply)
+      ),
+      Jwt.DatasetRole(
+        id = DatasetId(dataset.id).inject[Jwt.Role.RoleIdentifier[DatasetId]],
+        node_id = Some(DatasetNodeId(dataset.nodeId)),
+        role = datasetRole
+      )
+    )
+    JwtAuthenticator.generateUserToken(duration, user, roles)
   }
 
   /**
@@ -166,7 +189,7 @@ object JwtAuthenticator {
   }
 
   /**
-    * Check if the supplied claim is a user claim, extracting the (user, organization, session) from the claim.
+    * Check if the supplied claim is a user claim, extracting the (user, organization, Cognito ID) from the claim.
     *
     * @param container
     * @param claim
@@ -184,7 +207,7 @@ object JwtAuthenticator {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, UserAuthContext] =
     claim.content match {
-      case UserClaim(UserId(userId), _, session, _) =>
+      case UserClaim(UserId(userId), _, cognito, _) =>
         for {
           user <- container.userManager.get(userId)
           organizationId <- Extractor
@@ -198,7 +221,7 @@ object JwtAuthenticator {
           UserAuthContext(
             user = user,
             organization = organization,
-            session = session.map(_.id)
+            cognitoId = cognito.map(_.id)
           )
       case ServiceClaim(_) =>
         EitherT.leftT[Future, UserAuthContext](

@@ -38,15 +38,6 @@ final case class CognitoPayload(id: CognitoId, issuedAt: Instant)
 
 object CognitoJWTAuthenticator {
 
-  case class CognitoContent(client_id: Option[String])
-
-  object CognitoContent {
-    implicit def encoder: Encoder[CognitoContent] =
-      deriveEncoder[CognitoContent]
-    implicit def decoder: Decoder[CognitoContent] =
-      deriveDecoder[CognitoContent]
-  }
-
   def getJwkProvider(poolConfig: CognitoPoolConfig): GuavaCachedJwkProvider =
     new GuavaCachedJwkProvider(new UrlJwkProvider(poolConfig.jwkUrl))
 
@@ -119,6 +110,19 @@ object CognitoJWTAuthenticator {
   private sealed trait Issuer { val pool: CognitoPoolConfig }
   private case class TokenPool(pool: CognitoPoolConfig) extends Issuer
   private case class UserPool(pool: CognitoPoolConfig) extends Issuer
+
+  /**
+    * Cognito adds a `client_id` to the JWT which is not part of the JWT
+    * standard.  This case class is needed to parse the id.
+    */
+  case class CognitoContent(client_id: Option[String])
+
+  object CognitoContent {
+    implicit def encoder: Encoder[CognitoContent] =
+      deriveEncoder[CognitoContent]
+    implicit def decoder: Decoder[CognitoContent] =
+      deriveDecoder[CognitoContent]
+  }
 
   /*
    * Verify the issuer and audience in the JWT match what was expected

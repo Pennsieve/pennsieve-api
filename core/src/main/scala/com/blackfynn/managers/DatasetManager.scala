@@ -351,23 +351,20 @@ class DatasetManager(
     db.run(datasetsMapper.nameExists(name))
 
   def find(
-    withRole: Role,
-    overrideRole: Option[Role]
+    withRole: Role
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Seq[DatasetAndStatus]] =
-    find(actor, withRole, overrideRole, None)
+    find(actor, withRole, None)
 
   def find(
     user: User,
     withRole: Role,
-    overrideRole: Option[Role] = None,
     datasetIds: Option[List[Int]] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Seq[DatasetAndStatus]] =
-    db.run(datasetsMapper.find(user, Some(withRole), overrideRole, datasetIds))
-      .toEitherT
+    db.run(datasetsMapper.find(user, Some(withRole), datasetIds)).toEitherT
 
   def getStatusLog(
     dataset: Dataset,
@@ -1404,7 +1401,6 @@ class DatasetManager(
 
   def getDatasetPaginated(
     withRole: Role,
-    overrideRole: Option[Role],
     limit: Option[Int],
     offset: Option[Int],
     orderBy: (OrderByColumn, OrderByDirection),
@@ -1426,7 +1422,7 @@ class DatasetManager(
             .filter {
               case (_, Some(role)) =>
                 if (restrictToRole) role == withRole
-                else role >= withRole || overrideRole >= Some(withRole)
+                else role >= withRole
               case (_, None) => false
             }
             .keys

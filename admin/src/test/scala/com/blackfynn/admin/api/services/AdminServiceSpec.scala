@@ -141,7 +141,7 @@ trait AdminServiceSpec
         organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
       with MessageTemplatesContainer with MockJobSchedulingServiceContainer
-      with AdminETLServiceContainer with RoleOverrideContainer {
+      with AdminETLServiceContainer {
         override val jobSchedulingServiceClient: JobSchedulingServiceClient =
           diContainer.jobSchedulingServiceClient
         override val postgresUseSSL = false
