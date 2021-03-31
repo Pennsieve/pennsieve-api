@@ -94,6 +94,11 @@ class Cognito(
   val cognitoConfig: CognitoConfig
 ) extends CognitoClient {
 
+  /**
+    * Verify user email addresses on Cognito account creation. Users only need
+    * to use the verification flow if they sign themselves up, which we don't
+    * support yet.
+    */
   def inviteUser(
     email: Email
   )(implicit
@@ -103,6 +108,12 @@ class Cognito(
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
+      .userAttributes(
+        List(
+          AttributeType.builder().name("email").value(email.address).build(),
+          AttributeType.builder().name("email_verified").value("True").build()
+        ).asJava
+      )
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
       .build()
     adminCreateUser(request).map(CognitoId.UserPoolId(_))
