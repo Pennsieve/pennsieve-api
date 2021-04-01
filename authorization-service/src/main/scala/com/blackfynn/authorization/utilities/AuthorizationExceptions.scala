@@ -135,7 +135,7 @@ trait AuthorizationException {
       s"invalid session -- API sessions are not permitted to switch organizations"
   }
 
-  class OrganizationNotFound(organizationId: Int) extends Exception {
+  class OrganizationNotFound(organizationId: String) extends Exception {
     override def getMessage: String = s"No such organization: $organizationId"
   }
 
