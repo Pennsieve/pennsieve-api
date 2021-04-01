@@ -26,10 +26,10 @@ INSERT INTO "pennsieve"."subscriptions" (id, organization_id, status) VALUES
 --- seed users table
 ---
 
-INSERT INTO "pennsieve"."users" (id, email, password, first_name, last_name, credential, color, url, authy_id, is_super_admin, preferred_org_id, status, node_id) VALUES
-(1, 'test@pennsieve.com', '$pbkdf2-sha512$20000$7uEuHPlGHowzgxW7DS3GKrZaAuQ6EnYz$WlEt3eWz8YMM9xkgBHkndRr6t/wFJwgakI/mjYe5mF8', 'Philip', 'Fry', '', '#5FBFF9', '', 0, false, 2, true, 'N:user:99f02be5-009c-4ecd-9006-f016d48628bf'),
-(2, 'test2@pennsieve.com', '$pbkdf2-sha512$20000$ulzFKkKxjbLQDOOWedqWeC8Fr/.cUHVl$/jHfgeTh4iT7PlOhycRbcqfGTjRO3hPdT1Nyg4EpQuU', 'John', 'Zoidberg', '', '#5FBFF9', '', 0, false, 2, true, 'N:user:29cb5354-b471-4a72-adae-6fcb262447d9'),
-(3, 'etluser@pennsieve.com', '$pbkdf2-sha512$20000$Aw1nrmonWnmFg/u0Wu1P8z3FtQTlhWu.$zbi477nQZiPGXwyZVhLfOKffCRmIF1uHgZFOqj8SHg4', 'ETL', 'User', '', '#474647', '', 0, true, 2, true, 'N:user:4e8c459b-bffb-49e1-8c6a-de2d8190d84e');
+INSERT INTO "pennsieve"."users" (id, email, first_name, last_name, credential, color, url, authy_id, is_super_admin, preferred_org_id, status, node_id) VALUES
+(1, 'test@pennsieve.com', 'Philip', 'Fry', '', '#5FBFF9', '', 0, false, 2, true, 'N:user:99f02be5-009c-4ecd-9006-f016d48628bf'),
+(2, 'test2@pennsieve.com', 'John', 'Zoidberg', '', '#5FBFF9', '', 0, false, 2, true, 'N:user:29cb5354-b471-4a72-adae-6fcb262447d9'),
+(3, 'etluser@pennsieve.com', 'ETL', 'User', '', '#474647', '', 0, true, 2, true, 'N:user:4e8c459b-bffb-49e1-8c6a-de2d8190d84e');
 
 --
 --- seed first organization

@@ -44,11 +44,6 @@ object Settings {
 
   val s3_host: String = config.as[String]("pennsieve.s3.host")
 
-  // val s3_access_key: String = config.as[String]("pennsieve.s3.access_key")
-
-  // val s3_secret_access_key: String =
-  //   config.as[String]("pennsieve.s3.secret_access_key")
-
   val uploader_role: String = config.as[String]("pennsieve.s3.uploader_role")
 
   val url_time_limit: Int = config.as[Int]("pennsieve.url_time_limit")

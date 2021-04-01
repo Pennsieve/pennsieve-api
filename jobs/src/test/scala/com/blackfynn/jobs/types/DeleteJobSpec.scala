@@ -158,7 +158,6 @@ class DeleteJobSpec
     middleInitial = None,
     lastName = "snavely",
     degree = None,
-    password = "password",
     credential = "cred",
     color = "red",
     url = ""

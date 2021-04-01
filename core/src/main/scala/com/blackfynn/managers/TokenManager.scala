@@ -48,7 +48,7 @@ class TokenManager(db: Database) {
         .createClientToken(tokenString, secret)
         .toEitherT
 
-      token = Token(name, tokenString, "", cognitoId, organization.id, user.id)
+      token = Token(name, tokenString, cognitoId, organization.id, user.id)
 
       tokenId <- db
         .run((TokensMapper returning TokensMapper.map(_.id)) += token)
