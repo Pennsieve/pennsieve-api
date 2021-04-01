@@ -23,8 +23,7 @@ import akka.http.scaladsl.model.{ HttpHeader, HttpResponse }
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.pennsieve.db._
-import com.pennsieve.domain.{ FeatureNotEnabled, Sessions }
-import com.pennsieve.domain.Sessions.Session
+import com.pennsieve.domain.FeatureNotEnabled
 import com.pennsieve.dtos.{ Builders, UserDTO }
 import com.pennsieve.models._
 import com.typesafe.scalalogging.LazyLogging

@@ -83,13 +83,11 @@ trait CoreSeed[
           middleInitial = None,
           lastName = "Admin",
           degree = None,
-          password = "password",
           credential = "fake-credentials",
           color = "",
           url = "",
           isSuperAdmin = true
-        ),
-        Some("password")
+        )
       )
       .await
       .value
@@ -117,14 +115,12 @@ trait CoreSeed[
           middleInitial = None,
           lastName = "User",
           degree = None,
-          password = "password",
           credential = "fake-credentials",
           color = "",
           url = "",
           isSuperAdmin = false,
           preferredOrganizationId = Some(organizationTwo.id)
-        ),
-        Some("password")
+        )
       )
       .await
       .value
@@ -142,13 +138,11 @@ trait CoreSeed[
           middleInitial = None,
           lastName = "owner",
           degree = None,
-          password = "password",
           credential = "fake-credentials",
           color = "",
           url = "",
           isSuperAdmin = true
-        ),
-        Some("password")
+        )
       )
       .await
       .value

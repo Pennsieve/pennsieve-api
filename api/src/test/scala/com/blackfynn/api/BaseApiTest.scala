@@ -56,7 +56,6 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.utilities._
 import com.pennsieve.web.SwaggerApp
-import com.pennsieve.domain.Sessions
 import com.pennsieve.dtos.Secret
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
@@ -74,7 +73,6 @@ import java.util.UUID
 
 import com.pennsieve.audit.middleware.AuditLogger
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
-import com.redis.RedisClientPool
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, FunSuite }
@@ -94,7 +92,6 @@ trait ApiSuite
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with RedisDockerContainer
     with PostgresDockerContainer {
 
   implicit lazy val system: ActorSystem = ActorSystem("ApiSuite")
@@ -121,7 +118,6 @@ trait ApiSuite
 
     config = ConfigFactory
       .empty()
-      .withFallback(redisContainer.config)
       .withFallback(postgresContainer.config)
       .withValue("sqs.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
       .withValue(
@@ -198,7 +194,6 @@ trait ApiSuite
       new SecureContainer(
         config = config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
         organization = org
       ) with SecureCoreContainer with LocalEmailContainer {
@@ -209,7 +204,6 @@ trait ApiSuite
 
     userManager = insecureContainer.userManager
     userInviteManager = insecureContainer.userInviteManager
-    sessionManager = insecureContainer.sessionManager
     tokenManager = insecureContainer.tokenManager
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
@@ -225,7 +219,6 @@ trait ApiSuite
 
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
-  var sessionManager: SessionManager = _
   var organizationManager: SecureOrganizationManager = _
   var teamManager: TeamManager = _
   var fileManager: FileManager = _
@@ -280,7 +273,6 @@ trait ApiSuite
     Some("M"),
     "last",
     Some(Degree.MS),
-    "password",
     "cred",
     "",
     "http://test.com",
@@ -295,7 +287,6 @@ trait ApiSuite
     None,
     "last",
     None,
-    "password",
     "cred",
     "",
     "http://test.com",
@@ -310,7 +301,6 @@ trait ApiSuite
     None,
     "last",
     None,
-    "password",
     "cred",
     "",
     "http://other.com",
@@ -325,7 +315,6 @@ trait ApiSuite
     None,
     "last",
     None,
-    "password",
     "cred",
     "",
     "http://other.com",
@@ -349,8 +338,7 @@ trait ApiSuite
 
     val mockCognito: MockCognito = new MockCognito()
 
-    superAdmin =
-      userManager.create(superAdminUser, Some("password")).await.value
+    superAdmin = userManager.create(superAdminUser).await.value
 
     organizationManager =
       new TestableSecureOrganizationManager(superAdmin, insecureContainer.db)
@@ -361,9 +349,9 @@ trait ApiSuite
     externalOrganization = createOrganization("External Organization")
     pennsieve = createOrganization("Pennsieve", "pennsieve")
 
-    loggedInUser = userManager.create(me, Some("password")).await.value
-    colleagueUser = userManager.create(colleague, Some("password")).await.value
-    externalUser = userManager.create(other, Some("password")).await.value
+    loggedInUser = userManager.create(me).await.value
+    colleagueUser = userManager.create(colleague).await.value
+    externalUser = userManager.create(other).await.value
 
     secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
 

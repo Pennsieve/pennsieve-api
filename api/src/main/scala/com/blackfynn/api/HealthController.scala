@@ -70,21 +70,6 @@ class HealthController(
           ServiceError("DB connection unavailable")
         ).coreErrorToActionResult
 
-        checkUUID = randomUUID().toString
-
-        _ <- checkOrErrorT[CoreError](
-          insecureContainer.redisClientPool
-            .withClient { client =>
-              {
-                client.select(1)
-                client.set(checkUUID, checkUUID)
-                client.expire(checkUUID, 10)
-                client.get(checkUUID)
-
-              }
-            }
-            .exists(_ == checkUUID)
-        )(ServiceError("Redis connection unavailable")).coreErrorToActionResult
       } yield ()
 
       override val is = result.value.map(OkResult)

@@ -89,7 +89,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       middleInitial = Some("I"),
       lastName = "lasty",
       degree = None,
-      password = "pwd",
       credential = "cred",
       color = "color",
       url = "https://user.com"
@@ -444,7 +443,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
   test("remove an organization member") {
 
     val user = userManager
-      .create(makeUser("remove@test.com"), Some("pwd"))
+      .create(makeUser("remove@test.com"))
       .await
       .right
       .value
@@ -517,7 +516,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val member =
       userManager
-        .create(makeUser("another@test.com"), Some("pwd"))
+        .create(makeUser("another@test.com"))
         .await
         .right
         .value
@@ -539,7 +538,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val user =
       userManager
-        .create(makeUser("another@test.com"), Some("pwd"))
+        .create(makeUser("another@test.com"))
         .await
         .right
         .value
@@ -632,7 +631,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .value
 
     val invitedUser = userManager
-      .create(makeUser(email), cleartextPassword = Some("test"))
+      .create(makeUser(email))
       .await
       .right
       .value
@@ -679,7 +678,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val user =
       userManager
-        .create(makeUser("another@test.com"), Some("pwd"))
+        .create(makeUser("another@test.com"))
         .await
         .right
         .value
@@ -687,7 +686,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val owner =
       userManager
-        .create(makeUser("owner@test.com"), Some("pwd"))
+        .create(makeUser("owner@test.com"))
         .await
         .right
         .value
@@ -733,7 +732,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val user =
       userManager
-        .create(makeUser("another@test.com"), Some("pwd"))
+        .create(makeUser("another@test.com"))
         .await
         .right
         .value

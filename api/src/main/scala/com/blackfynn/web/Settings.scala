@@ -37,17 +37,10 @@ object Settings {
 
   val respondWithStackTrace: Boolean = (isDevelopment || isLocal)
 
-  val sessionTimeout: Int = config.as[Int]("pennsieve.session_timeout")
-
   val s3_upload_bucketName: String =
     config.as[String]("pennsieve.s3.upload_bucket_name")
 
   val s3_host: String = config.as[String]("pennsieve.s3.host")
-
-  // val s3_access_key: String = config.as[String]("pennsieve.s3.access_key")
-
-  // val s3_secret_access_key: String =
-  //   config.as[String]("pennsieve.s3.secret_access_key")
 
   val uploader_role: String = config.as[String]("pennsieve.s3.uploader_role")
 
@@ -55,16 +48,10 @@ object Settings {
   val bitly_url_time_limit: Int =
     config.as[Int]("bitly.url_time_limit")
 
-  val password_reset_time_limit: Int =
-    config.as[Int]("pennsieve.password.reset_time_limit")
-
   val support_email: Email = Email(config.as[String]("email.support_email"))
 
   val region = Regions.US_EAST_1
   val regionV2 = Region.US_EAST_1
-
-  val password_validation_error_message: String =
-    config.as[String]("pennsieve.password.validation_error_message")
 
   val newUserTokenTTL: Int = config.as[Int]("new_user_token_ttl")
 

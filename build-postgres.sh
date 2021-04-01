@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Create a postgres Docker image that contains the Pennsieve API schema.
 
 set -eu
@@ -81,7 +82,7 @@ seed_db_container() {
 
   container=$(docker-compose ps postgres | tail -n 1 | awk '{print $1}')
   docker cp local-seed.sql $container:/local-seed.sql
-  docker-compose exec -T postgres sh -c "psql postgres < /local-seed.sql"
+  docker-compose exec -T postgres sh -c "psql -v ON_ERROR_STOP=1 postgres < /local-seed.sql"
 }
 ###################################
 

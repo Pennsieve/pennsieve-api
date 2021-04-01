@@ -32,7 +32,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class UserManagerSpec extends BaseManagerSpec {
 
   "updateUser" should "update an existing user node" in {
-    val password = "password1"
     val user = User(
       nodeId = NodeCodes.generateId(NodeCodes.userCode),
       email = "test@test.com",
@@ -40,48 +39,23 @@ class UserManagerSpec extends BaseManagerSpec {
       middleInitial = None,
       lastName = "",
       degree = None,
-      password = password,
       credential = "",
       color = "",
       url = ""
     )
 
-    val savedUser = userManager.create(user, None).await.value
+    val savedUser = userManager.create(user).await.value
     val savedUpdatedUser =
       userManager.updateEmail(savedUser, "new-email").await.value
 
     assert(savedUpdatedUser.email == "new-email")
   }
 
-  "validatePassword" should "properly validate a clear text password against a hashed one" in {
-    val password = "password1"
-    val user = User(
-      nodeId = NodeCodes.generateId(NodeCodes.userCode),
-      email = "test@test.com",
-      firstName = "",
-      middleInitial = None,
-      lastName = "",
-      degree = None,
-      password = password,
-      credential = "",
-      color = "",
-      url = ""
-    )
-
-    val savedUser = userManager.create(user, Some(password)).await.value
-
-    assert(
-      sessionManager
-        .validateSecret(savedUser.nodeId, password, savedUser.password)
-        .isRight
-    )
-  }
-
   "updating or creating a user with an email already in the system" should "return an error" in {
     val user = createUser()
 
     val error =
-      userManager.create(user.copy(nodeId = ""), None).await.left.value
+      userManager.create(user.copy(nodeId = "")).await.left.value
     assert(error.isInstanceOf[PredicateError])
 
     val anotherUser = createUser(email = "test")
@@ -116,8 +90,7 @@ class UserManagerSpec extends BaseManagerSpec {
         lastName = "tester",
         middleInitial = None,
         degree = None,
-        title = "title",
-        password = "password"
+        title = "title"
       )(organizationManager(), userInviteManager, global)
       .await
       .value
@@ -183,8 +156,7 @@ class UserManagerSpec extends BaseManagerSpec {
         lastName = "tester",
         title = "title",
         middleInitial = None,
-        degree = None,
-        password = "password"
+        degree = None
       )(organizationManager(), userInviteManager, global)
       .await
       .value
