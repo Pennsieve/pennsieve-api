@@ -139,6 +139,7 @@ class AuthorizationRoutes(
             user,
             organizationToSwitchTo
           )
+
           userDTO <- Builders
             .userDTO(updatedUser, storage = None)(
               container.organizationManager,
@@ -199,9 +200,8 @@ private[routes] object AuthorizationQueries {
     val query = for {
       _ <- UserMapper
         .filter(_.id === user.id)
-        .update(
-          user.copy(preferredOrganizationId = Some(preferredOrganization.id))
-        )
+        .map(_.preferredOrganizationId)
+        .update(Some(preferredOrganization.id))
       updatedUser <- UserMapper.getById(user.id)
       result <- updatedUser match {
         case Some(u) => DBIO.successful(u)
