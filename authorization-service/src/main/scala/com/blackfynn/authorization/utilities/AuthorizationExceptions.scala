@@ -67,10 +67,6 @@ trait AuthorizationException {
         logger.warn(exception.getMessage)
         HttpResponse(Unauthorized)
 
-      case _: InvalidWorkspaceId =>
-        logger.warn(exception.getMessage)
-        HttpResponse(Unauthorized) // 401
-
       case NonBrowserSession =>
         logger.warn(exception.getMessage)
         HttpResponse(Forbidden)
@@ -123,11 +119,6 @@ trait AuthorizationException {
   class InvalidDatasetId(user: User, datasetId: String) extends Exception {
     override def getMessage: String =
       s"invalid dataset_id $datasetId -- either the dataset does not exist or user ${user.id} does not have permissions to access it."
-  }
-
-  class InvalidWorkspaceId(user: User, workspaceId: Int) extends Exception {
-    override def getMessage: String =
-      s"invalid workspace_id $workspaceId -- either the workspace does not exist or user ${user.id} does not have permissions to access it."
   }
 
   object NonBrowserSession extends Exception {
