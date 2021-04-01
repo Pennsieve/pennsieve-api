@@ -94,7 +94,6 @@ class TestUsersController extends BaseApiTest {
       body should include(loggedInUser.middleInitial.get)
       body should include(loggedInUser.lastName)
       body should include(loggedInUser.degree.get.entryName)
-      body should not include (loggedInUser.password)
     }
   }
 
@@ -135,7 +134,6 @@ class TestUsersController extends BaseApiTest {
       body should include("newfirstname")
       body should include("newlastname")
       body should include("M")
-      body should not include (loggedInUser.password)
 
       val updatedUser =
         insecureContainer.userManager.get(loggedInUser.id).await.right.value

@@ -69,12 +69,6 @@ resource "aws_ssm_parameter" "jwt_secret_key" {
   }
 }
 
-resource "aws_ssm_parameter" "parent_domain" {
-  name  = "/${var.environment_name}/${var.service_name}/parent-domain"
-  type  = "String"
-  value = data.terraform_remote_state.account.outputs.domain_name
-}
-
 resource "aws_ssm_parameter" "redis_host" {
   name  = "/${var.environment_name}/${var.service_name}/redis-host"
   type  = "String"
@@ -97,12 +91,6 @@ resource "aws_ssm_parameter" "redis_max_connections" {
   name  = "/${var.environment_name}/${var.service_name}/redis-max-connections"
   type  = "String"
   value = "128"
-}
-
-resource "aws_ssm_parameter" "session_token" {
-  name  = "/${var.environment_name}/${var.service_name}/session-token"
-  type  = "String"
-  value = "Pennsieve-Token"
 }
 
 // NEW RELIC CONFIGURATION

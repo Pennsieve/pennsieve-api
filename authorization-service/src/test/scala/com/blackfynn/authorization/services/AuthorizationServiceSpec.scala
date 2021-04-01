@@ -23,7 +23,6 @@ import com.pennsieve.core.utilities._
 import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import akka.testkit.TestKitBase
-import com.redis.RedisClientPool
 import com.typesafe.config.{ Config, ConfigValueFactory }
 
 import scala.collection.JavaConverters._
@@ -52,38 +51,14 @@ trait AuthorizationServiceSpec
   lazy val authorizationConfig: Config = config
     .withValue("jwt.key", ConfigValueFactory.fromAnyRef(s"test-jwt-key"))
     .withValue("jwt.duration", ConfigValueFactory.fromAnyRef(s"1800 seconds"))
-    .withValue(
-      "authentication.bad_login_limit",
-      ConfigValueFactory.fromAnyRef(s"5")
-    )
-    .withValue(
-      "authentication.api_session_timeout",
-      ConfigValueFactory.fromAnyRef(s"7200")
-    )
-    .withValue(
-      "authentication.session_timeout",
-      ConfigValueFactory.fromAnyRef(s"28800")
-    )
-    .withValue(
-      "authentication.session_token",
-      ConfigValueFactory.fromAnyRef(sessionTokenName)
-    )
-    .withValue(
-      "authentication.parent_domain",
-      ConfigValueFactory.fromAnyRef(parentDomain)
-    )
-    .withValue(
-      "authentication.temporary_session_timeout",
-      ConfigValueFactory.fromAnyRef(s"600")
-    )
 
   override def createTestDIContainer: ResourceContainer = {
 
     val diContainer =
-      new InsecureContainer(authorizationConfig) with RedisManagerContainer
-      with DatabaseContainer with SessionManagerContainer
-      with OrganizationManagerContainer with JwtContainer
-      with TermsOfServiceManagerContainer with TokenManagerContainer {
+      new InsecureContainer(authorizationConfig) with DatabaseContainer
+      with UserManagerContainer with OrganizationManagerContainer
+      with JwtContainer with TermsOfServiceManagerContainer
+      with TokenManagerContainer {
         override val postgresUseSSL = false
       }
 

@@ -28,7 +28,7 @@ final case class User(
   middleInitial: Option[String],
   lastName: String,
   degree: Option[Degree],
-  password: String,
+  password: String = "", // TODO remove this field
   credential: String = "",
   color: String = "",
   url: String = "",

@@ -209,7 +209,6 @@ trait ApiSuite
 
     userManager = insecureContainer.userManager
     userInviteManager = insecureContainer.userInviteManager
-    sessionManager = insecureContainer.sessionManager
     tokenManager = insecureContainer.tokenManager
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
@@ -225,7 +224,6 @@ trait ApiSuite
 
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
-  var sessionManager: SessionManager = _
   var organizationManager: SecureOrganizationManager = _
   var teamManager: TeamManager = _
   var fileManager: FileManager = _
@@ -349,8 +347,7 @@ trait ApiSuite
 
     val mockCognito: MockCognito = new MockCognito()
 
-    superAdmin =
-      userManager.create(superAdminUser, Some("password")).await.value
+    superAdmin = userManager.create(superAdminUser).await.value
 
     organizationManager =
       new TestableSecureOrganizationManager(superAdmin, insecureContainer.db)
@@ -361,9 +358,9 @@ trait ApiSuite
     externalOrganization = createOrganization("External Organization")
     pennsieve = createOrganization("Pennsieve", "pennsieve")
 
-    loggedInUser = userManager.create(me, Some("password")).await.value
-    colleagueUser = userManager.create(colleague, Some("password")).await.value
-    externalUser = userManager.create(other, Some("password")).await.value
+    loggedInUser = userManager.create(me).await.value
+    colleagueUser = userManager.create(colleague).await.value
+    externalUser = userManager.create(other).await.value
 
     secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
 

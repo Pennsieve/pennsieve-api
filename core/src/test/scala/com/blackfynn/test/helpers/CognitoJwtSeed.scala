@@ -31,7 +31,7 @@ import software.amazon.awssdk.regions.Region
 import scala.concurrent.ExecutionContext.Implicits.global
 
 trait CognitoJwtSeed[
-  SeedContainer <: SessionManagerContainer with OrganizationManagerContainer with UserManagerContainer
+  SeedContainer <: OrganizationManagerContainer with UserManagerContainer
 ] extends CoreSeed[SeedContainer] {
 
   var adminCognitoJwt: Option[String] = None

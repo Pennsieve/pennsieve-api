@@ -51,66 +51,7 @@ class TestAccountController extends BaseApiTest {
     )
   }
 
-  test("reset password") {
-    val temporarySession =
-      sessionManager.generateTemporarySession(loggedInUser).await.right.value
-
-    val request =
-      write(ResetPasswordRequest(temporarySession.uuid, "okPassword1!"))
-
-    postJson("/reset", request) {
-      status should equal(200)
-      parse(body)
-        .extract[ResetPasswordResponse]
-        .profile
-        .id should equal(loggedInUser.nodeId)
-    }
-
-    post("/reset", request) {
-      status should equal(401)
-    }
-  }
-
-  test("reset password should validate a password") {
-    val temporarySession =
-      sessionManager.generateTemporarySession(loggedInUser).await.right.value
-
-    val request =
-      write(ResetPasswordRequest(temporarySession.uuid, "badP"))
-
-    postJson("/reset", request) {
-      status should equal(400)
-      body should include(Settings.password_validation_error_message)
-    }
-  }
-
-  test("bad json should not log password") {
-    val temporarySession =
-      sessionManager.generateTemporarySession(loggedInUser).await.right.value
-
-    val request: String =
-      s"""{"resetToken":"${temporarySession.uuid}", "newPassword:"secret-password"}"""
-
-    postJson("/reset", request) {
-      status should equal(400)
-      body should equal("invalid json in request body")
-    }
-  }
-
-  test("bad reset request should not log password") {
-    val temporarySession =
-      sessionManager.generateTemporarySession(loggedInUser).await.right.value
-
-    val request: String =
-      s"""{"resetToke":"${temporarySession.uuid}", "newPassword":"secret-password"}"""
-
-    postJson("/reset", request) {
-      status should equal(400)
-      body should equal("invalid request body")
-    }
-  }
-
-  // TODO update
+  // TODO update this
   ignore("create new account with Cognito JWT") {
     val mockCognito = new MockCognito()
     val invite = userInviteManager

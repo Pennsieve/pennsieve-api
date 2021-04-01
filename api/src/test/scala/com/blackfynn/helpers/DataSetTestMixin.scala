@@ -268,7 +268,7 @@ trait DataSetTestMixin { self: ApiSuite =>
       middleInitial,
       lastName,
       degree,
-      "password",
+      "",
       "cred",
       "",
       "http://blind.com",
@@ -279,7 +279,7 @@ trait DataSetTestMixin { self: ApiSuite =>
     )
 
     val user = secureContainer.userManager
-      .create(newUser, Some("password"))
+      .create(newUser)
       .await
       .right
       .value

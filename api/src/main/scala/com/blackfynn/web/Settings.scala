@@ -55,16 +55,10 @@ object Settings {
   val bitly_url_time_limit: Int =
     config.as[Int]("bitly.url_time_limit")
 
-  val password_reset_time_limit: Int =
-    config.as[Int]("pennsieve.password.reset_time_limit")
-
   val support_email: Email = Email(config.as[String]("email.support_email"))
 
   val region = Regions.US_EAST_1
   val regionV2 = Region.US_EAST_1
-
-  val password_validation_error_message: String =
-    config.as[String]("pennsieve.password.validation_error_message")
 
   val newUserTokenTTL: Int = config.as[Int]("new_user_token_ttl")
 

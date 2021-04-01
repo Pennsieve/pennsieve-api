@@ -1480,8 +1480,7 @@ class TestPublish
           degree = None,
           password = password,
           isSuperAdmin = isSuperAdmin
-        ),
-        Some(password)
+        )
       )
       .await
       .value
