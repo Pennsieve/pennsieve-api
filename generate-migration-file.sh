@@ -12,8 +12,10 @@ if [[ "$MIGRATION_TYPE" == "core" ]]; then
     DIRECTORY="migrations/src/main/resources/db/migrations"
 elif [[ "$MIGRATION_TYPE" == "organization" ]]; then
     DIRECTORY="migrations/src/main/resources/db/organization-schema-migrations"
+elif [[ "$MIGRATION_TYPE" == "timeseries" ]]; then
+    DIRECTORY="migrations/src/main/resources/db/timeseries-migrations"
 else
-    >&2 echo "usage: migration type must be one of 'core' or 'organization'"
+    >&2 echo "usage: migration type must be one of 'core', 'timeseries' or 'organization'"
     exit 1
 fi
 
