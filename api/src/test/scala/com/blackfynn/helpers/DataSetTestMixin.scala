@@ -268,7 +268,6 @@ trait DataSetTestMixin { self: ApiSuite =>
       middleInitial,
       lastName,
       degree,
-      "",
       "cred",
       "",
       "http://blind.com",

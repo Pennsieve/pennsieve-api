@@ -132,7 +132,6 @@ object PublishContainer {
         middleInitial = None,
         lastName = userLastName,
         degree = None,
-        password = "",
         id = userId
       )
 

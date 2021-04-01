@@ -28,7 +28,6 @@ final case class User(
   middleInitial: Option[String],
   lastName: String,
   degree: Option[Degree],
-  password: String = "", // TODO remove this field
   credential: String = "",
   color: String = "",
   url: String = "",
@@ -53,7 +52,6 @@ object User {
       middleInitial = None,
       lastName = "Pennsieve",
       degree = None,
-      password = "",
       isSuperAdmin = true
     )
 

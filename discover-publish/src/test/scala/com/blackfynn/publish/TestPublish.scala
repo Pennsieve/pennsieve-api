@@ -1466,7 +1466,6 @@ class TestPublish
 
   def createUser(
     email: String = s"test+${generateRandomString()}@pennsieve.org",
-    password: String = "password",
     isSuperAdmin: Boolean = false
   ): User =
     databaseContainer.userManager
@@ -1478,7 +1477,6 @@ class TestPublish
           middleInitial = None,
           lastName = "User",
           degree = None,
-          password = password,
           isSuperAdmin = isSuperAdmin
         )
       )
