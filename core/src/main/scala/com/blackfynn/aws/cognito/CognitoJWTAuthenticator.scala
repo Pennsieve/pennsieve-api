@@ -33,7 +33,6 @@ import com.pennsieve.models.CognitoId
 
 import java.time.Instant
 import java.util.UUID
-import java.net.URL
 
 final case class CognitoPayload(id: CognitoId, issuedAt: Instant)
 
