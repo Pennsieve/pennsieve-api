@@ -78,10 +78,6 @@ trait AuthorizationServiceSpec
       "authentication.temporary_session_timeout",
       ConfigValueFactory.fromAnyRef(s"600")
     )
-    .withValue(
-      "workspaces.allowed",
-      ConfigValueFactory.fromIterable(List(1).asJava)
-    )
 
   override def createTestDIContainer: ResourceContainer = {
 
