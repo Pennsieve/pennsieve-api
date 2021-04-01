@@ -17,14 +17,21 @@
 package com.pennsieve.aws.cognito
 
 import com.auth0.jwk.{ Jwk, JwkProvider }
-import com.pennsieve.models.CognitoId
+import io.circe.Decoder
 import io.circe.generic.decoding.DerivedDecoder.deriveDecoder
 import org.scalatest.{ FlatSpec, Matchers }
 import pdi.jwt.{ JwtAlgorithm, JwtCirce }
+import software.amazon.awssdk.regions.Region
+import com.nimbusds.jose.jwk.KeyUse
+import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.jwk.JWK
 
+import java.security.KeyPair
+import java.security.KeyPairGenerator
 import java.util.UUID
+import java.security.interfaces.{ RSAPrivateKey, RSAPublicKey }
 import java.time.Instant
-import scala.collection.JavaConverters.mapAsJavaMap
+import scala.collection.JavaConverters._
 
 class MockJwkProvider(jwk: Jwk) extends JwkProvider {
   def get(keyId: String): Jwk = {
@@ -34,72 +41,151 @@ class MockJwkProvider(jwk: Jwk) extends JwkProvider {
 
 class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
 
-  case class CognitoPublicKey(
-    kid: String,
-    alg: String,
-    kty: String,
-    e: String,
-    n: String,
-    use: String
-  ) {
-    def toMap: Map[String, Object] = Map(
-      "kid" -> kid,
-      "alg" -> alg,
-      "kty" -> kty,
-      "e" -> e,
-      "n" -> n,
-      "use" -> use
+  val jwkKeyId: String = "9bed6ab5-3c35-498b-8802-6992333f889c"
+  val pennsieveUserId: String = "0f14d0ab-9605-4a62-a9e4-5ed26688389b"
+  val cognitoPoolId: String = "12345"
+  val cognitoAppClientId: String = "67890"
+  val cognitoPoolId2: String = "abcdef"
+  val cognitoAppClientId2: String = "ghijkl"
+
+  val gen: KeyPairGenerator = KeyPairGenerator.getInstance("RSA")
+  gen.initialize(2048)
+  val keyPair: KeyPair = gen.generateKeyPair
+
+  val nimbusJwk: JWK =
+    new RSAKey.Builder(keyPair.getPublic.asInstanceOf[RSAPublicKey])
+      .privateKey(keyPair.getPrivate.asInstanceOf[RSAPrivateKey])
+      .keyUse(KeyUse.SIGNATURE)
+      .keyID(jwkKeyId)
+      .build
+
+  val jsonMap: Either[io.circe.Error, Map[String, String]] =
+    io.circe.parser.decode[Map[String, String]](nimbusJwk.toJSONString)
+
+  val mockJwk: Jwk = Jwk.fromValues(
+    jsonMap.right.get.asJava.asInstanceOf[java.util.Map[String, Object]]
+  )
+
+  val jwkProvider: JwkProvider = new MockJwkProvider(mockJwk)
+
+  implicit val cConfig = CognitoConfig(
+    Region.AP_SOUTH_1,
+    CognitoPoolConfig(
+      Region.AP_SOUTH_1,
+      cognitoPoolId,
+      cognitoAppClientId,
+      _ => jwkProvider
+    ),
+    CognitoPoolConfig(
+      Region.AP_SOUTH_1,
+      cognitoPoolId2,
+      cognitoAppClientId2,
+      _ => jwkProvider
     )
-  }
+  )
 
-  var testPublicKeyJson: String =
-    "{\n  \"kty\" : \"RSA\",\n \"alg\" : \"RS256\", \"kid\" : \"cc34c0a0-bd5a-4a3c-a50d-a2a7db7643df\",\n  \"use\" " +
-      ": \"sig\",\n  \"n\"   " +
-      ": \"pjdss8ZaDfEH6K6U7GeW2nxDqR4IP049fk1fK0lndimbMMVBdPv_hSpm8T8EtBDxrUdi1OHZfMhUixGaut-3nQ4GG9nM249oxhCtxqqNvEXrmQRGqczyLxuh-fKn9Fg--hS9UpazHpfVAFnB5aCfXoNhPuI8oByyFKMKaOVgHNqP5NBEqabiLftZD3W_lsFCPGuzr4Vp0YS7zS2hDYScC2oOMu4rGU1LcMZf39p3153Cq7bS2Xh6Y-vw5pwzFYZdjQxDn8x8BG3fJ6j8TGLXQsbKH1218_HcUJRvMwdpbUQG5nvA2GXVqLqdwp054Lzk9_B_f1lVrmOKuHjTNHq48w\",\n  \"e\"   : \"AQAB\",\n  \"d\"   : \"ksDmucdMJXkFGZxiomNHnroOZxe8AmDLDGO1vhs-POa5PZM7mtUPonxwjVmthmpbZzla-kg55OFfO7YcXhg-Hm2OWTKwm73_rLh3JavaHjvBqsVKuorX3V3RYkSro6HyYIzFJ1Ek7sLxbjDRcDOj4ievSX0oN9l-JZhaDYlPlci5uJsoqro_YrE0PRRWVhtGynd-_aWgQv1YzkfZuMD-hJtDi1Im2humOWxA4eZrFs9eG-whXcOvaSwO4sSGbS99ecQZHM2TcdXeAs1PvjVgQ_dKnZlGN3lTWoWfQP55Z7Tgt8Nf1q4ZAKd-NlMe-7iqCFfsnFwXjSiaOa2CRGZn-Q\",\n  \"p\"   : \"4A5nU4ahEww7B65yuzmGeCUUi8ikWzv1C81pSyUKvKzu8CX41hp9J6oRaLGesKImYiuVQK47FhZ--wwfpRwHvSxtNU9qXb8ewo-BvadyO1eVrIk4tNV543QlSe7pQAoJGkxCia5rfznAE3InKF4JvIlchyqs0RQ8wx7lULqwnn0\",\n  \"q\"   : \"ven83GM6SfrmO-TBHbjTk6JhP_3CMsIvmSdo4KrbQNvp4vHO3w1_0zJ3URkmkYGhz2tgPlfd7v1l2I6QkIh4Bumdj6FyFZEBpxjE4MpfdNVcNINvVj87cLyTRmIcaGxmfylY7QErP8GFA-k4UoH_eQmGKGK44TRzYj5hZYGWIC8\",\n  \"dp\"  : \"lmmU_AG5SGxBhJqb8wxfNXDPJjf__i92BgJT2Vp4pskBbr5PGoyV0HbfUQVMnw977RONEurkR6O6gxZUeCclGt4kQlGZ-m0_XSWx13v9t9DIbheAtgVJ2mQyVDvK4m7aRYlEceFh0PsX8vYDS5o1txgPwb3oXkPTtrmbAGMUBpE\",\n  \"dq\"  : \"mxRTU3QDyR2EnCv0Nl0TCF90oliJGAHR9HJmBe__EjuCBbwHfcT8OG3hWOv8vpzokQPRl5cQt3NckzX3fs6xlJN4Ai2Hh2zduKFVQ2p-AF2p6Yfahscjtq-GY9cB85NxLy2IXCC0PF--Sq9LOrTE9QV988SJy_yUrAjcZ5MmECk\",\n  \"qi\"  : \"ldHXIrEmMZVaNwGzDF9WG8sHj2mOZmQpw9yrjLK9hAsmsNr5LTyqWAqJIYZSwPTYWhY4nu2O0EY9G9uYiqewXfCKw_UngrJt8Xwfq1Zruz0YY869zPN4GiE9-9rzdZB33RBw8kIOquY3MK74FMwCihYx_LiU2YTHkaoJ3ncvtvg\"\n}"
+  val issuedAtTime: Long = Instant.now().toEpochMilli() / 1000 - 90
+  val validTokenTime: Long = Instant.now().toEpochMilli() / 1000 + 9999
 
-  var jsonMap: Either[io.circe.Error, CognitoPublicKey] =
-    io.circe.parser.decode[CognitoPublicKey](testPublicKeyJson)
-
-  var jwk: Jwk = Jwk.fromValues(mapAsJavaMap(jsonMap.right.get.toMap))
-
-  var testToken: String = JwtCirce.encode(
-    header = "{\"kid\": \"cc34c0a0-bd5a-4a3c-a50d-a2a7db7643df\"}",
-    claim = "{\"sub\": \"0f14d0ab-9605-4a62-a9e4-5ed26688389b\", \"iat\": " + (Instant
-      .now()
-      .toEpochMilli() / 1000 + 9999)
-      + "}",
-    key = jwk.getPublicKey.toString,
+  var validToken: String = JwtCirce.encode(
+    header = s"""{"kid": "$jwkKeyId", "alg": "RS256"}""",
+    claim = s"""
+      {
+        "sub": "$pennsieveUserId",
+        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$cognitoPoolId",
+        "iat": $issuedAtTime,
+        "exp": $validTokenTime,
+        "aud": "$cognitoAppClientId",
+        "cognito:username": "$pennsieveUserId"
+      }
+    """,
+    key = keyPair.getPrivate.asInstanceOf[RSAPrivateKey],
     algorithm = JwtAlgorithm.RS256
   )
 
-  //  var invalidToken: String = JwtCirce.encode
+  "getKeyId" should "return the correct jwk key id from the token" in {
+    CognitoJWTAuthenticator.getKeyId(validToken) should equal(Right(jwkKeyId))
+  }
 
-  var jwkProvider: JwkProvider = new MockJwkProvider(jwk)
+  "validateJwt" should "return CognitoPayload w/ correct data if supplied token is valid" in {
+    var tokenValidatorResponse =
+      CognitoJWTAuthenticator.validateJwt(validToken)
 
-  "getKeyId" should "work" in {
-    CognitoJWTAuthenticator.getKeyId(testToken) should equal(
-      Right("cc34c0a0-bd5a-4a3c-a50d-a2a7db7643df")
+    tokenValidatorResponse.isRight should be(true)
+    tokenValidatorResponse.right.get.id.toString should be(
+      UUID.fromString(pennsieveUserId).toString
+    )
+    tokenValidatorResponse.right.get.issuedAt should be(
+      Instant.ofEpochSecond(issuedAtTime)
     )
   }
 
-  /*
- * TODO: Come back and finish this test fingers crossed as well as tests for
- * invalid JWTs
+  var invalidTokenTime: Long = Instant.now().toEpochMilli() / 1000 - 9999999
 
-  "validateJwt" should "return CognitoPayload if supplied token is valid" in {
-    CognitoJWTAuthenticator.validateJwt(
-      "foo",
-      "bar",
-      "appuserfoo,appuserbar",
-      testToken,
-      jwkProvider
-    ) should equal(
-      new CognitoPayload(
-        CognitoId(UUID.fromString("0f14d0ab-9605-4a62-a9e4-5ed26688389b")),
-        java.time.Instant.now()
-      )
-    )
+  var invalidToken_Expired: String = JwtCirce.encode(
+    header = s"""{"kid": "$jwkKeyId", "alg": "RS256"}""",
+    claim = s"""
+      {
+        "sub": "$pennsieveUserId",
+        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$cognitoPoolId",
+        "iat": $issuedAtTime,
+        "exp": $invalidTokenTime,
+        "aud": "$cognitoAppClientId",
+        "cognito:username": "$pennsieveUserId"
+      }
+    """,
+    key = keyPair.getPrivate.asInstanceOf[RSAPrivateKey],
+    algorithm = JwtAlgorithm.RS256
+  )
+
+  "validateJWT" should "return false / error if the token passed in has expired" in {
+    CognitoJWTAuthenticator
+      .validateJwt(invalidToken_Expired)
+      .isRight should be(false)
   }
- */
+
+  var invalidToken_Audience: String = JwtCirce.encode(
+    header = s"""{"kid": "$jwkKeyId", "alg": "RS256"}""",
+    claim = s"""
+      {
+        "sub": "$pennsieveUserId",
+        "iss": "https://cognito-idp.${Region.AP_SOUTH_1}.amazonaws.com/$cognitoPoolId",
+        "iat": $issuedAtTime,
+        "exp": $validTokenTime,
+        "aud": "notAnAudience",
+        "cognito:username": "$pennsieveUserId"
+      }
+    """,
+    key = keyPair.getPrivate.asInstanceOf[RSAPrivateKey],
+    algorithm = JwtAlgorithm.RS256
+  )
+
+  "validateJWT" should "return false / error if the audience is invalid" in {
+    CognitoJWTAuthenticator
+      .validateJwt(invalidToken_Audience)
+      .isRight should be(false)
+  }
+
+  var invalidToken_Issuer: String = JwtCirce.encode(
+    header = s"""{"kid": "$jwkKeyId", "alg": "RS256"}""",
+    claim = s"""
+      {
+        "sub": "$pennsieveUserId",
+        "iss": "https://cognito-idp.${Region.AP_SOUTHEAST_2}.amazonaws.com/$cognitoPoolId",
+        "iat": $issuedAtTime,
+        "exp": $validTokenTime,
+        "aud": "$cognitoAppClientId",
+        "cognito:username": "$pennsieveUserId"
+      }
+    """,
+    key = keyPair.getPrivate.asInstanceOf[RSAPrivateKey],
+    algorithm = JwtAlgorithm.RS256
+  )
+
+  "validateJWT" should "return false / error if the issuer is invalid" in {
+    CognitoJWTAuthenticator
+      .validateJwt(invalidToken_Issuer)
+      .isLeft should be(true)
+  }
 
 }

@@ -31,7 +31,13 @@ case class CognitoConfig(
 /**
   * Config for a single Cognito User Pool
   */
-case class CognitoPoolConfig(region: Region, id: String, appClientId: String) {
+case class CognitoPoolConfig(
+  region: Region,
+  id: String,
+  appClientId: String,
+  getJwkProvider: CognitoPoolConfig => JwkProvider =
+    CognitoJWTAuthenticator.getJwkProvider(_)
+) {
 
   def endpoint: String =
     s"https://cognito-idp.${region.toString}.amazonaws.com/$id"
@@ -45,7 +51,7 @@ case class CognitoPoolConfig(region: Region, id: String, appClientId: String) {
       s"https://cognito-idp.${region.toString}.amazonaws.com/$id/.well-known/jwks.json"
     )
 
-  lazy val jwkProvider = CognitoJWTAuthenticator.getJwkProvider(this)
+  lazy val jwkProvider: JwkProvider = getJwkProvider(this)
 }
 
 object CognitoConfig {
