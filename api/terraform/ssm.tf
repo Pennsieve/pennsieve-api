@@ -1,21 +1,3 @@
-# resource "aws_ssm_parameter" "analytics_host" {
-#   name  = "/${var.environment_name}/${var.service_name}/analytics-host"
-#   type  = "String"
-#   value = data.terraform_remote_state.analytics_service.outputs.internal_fqdn
-# }
-
-# resource "aws_ssm_parameter" "analytics_service_queue_size" {
-#   name  = "/${var.environment_name}/${var.service_name}/analytics-service-queue-size"
-#   type  = "String"
-#   value = var.analytics_service_queue_size
-# }
-
-# resource "aws_ssm_parameter" "analytics_service_rate_limit" {
-#   name  = "/${var.environment_name}/${var.service_name}/analytics-service-rate-limit"
-#   type  = "String"
-#   value = var.analytics_service_rate_limit
-# }
-
 resource "aws_ssm_parameter" "bitly_access_token" {
   name      = "/${var.environment_name}/${var.service_name}/bitly-access-token"
   overwrite = false
@@ -299,42 +281,12 @@ resource "aws_ssm_parameter" "pennsieve_postgres_user" {
   value = "${var.environment_name}_${var.service_name}_user"
 }
 
-resource "aws_ssm_parameter" "redis_host" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-host"
-  type  = "String"
-  value = data.terraform_remote_state.pennsieve_redis.outputs.primary_endpoint_address
-}
-
-resource "aws_ssm_parameter" "redis_auth_token" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-auth-token"
-  type  = "String"
-  value = data.aws_ssm_parameter.redis_auth_token.value
-}
-
-resource "aws_ssm_parameter" "redis_use_ssl" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-use-ssl"
-  type  = "String"
-  value = "true"
-}
-
-resource "aws_ssm_parameter" "redis_max_connections" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-max-connections"
-  type  = "String"
-  value = "128"
-}
-
 # $env-jobs-queue
 resource "aws_ssm_parameter" "sqs_queue" {
   name  = "/${var.environment_name}/${var.service_name}/sqs-queue"
   type  = "String"
   value = data.terraform_remote_state.platform_infrastructure.outputs.jobs_queue_id
 }
-
-# resource "aws_ssm_parameter" "trials_host" {
-#   name  = "/${var.environment_name}/${var.service_name}/trials-host"
-#   type  = "String"
-#   value = "trials.${data.terraform_remote_state.account.domain_name}"
-# }
 
 # $env-etl-uploads-queue
 resource "aws_ssm_parameter" "uploads_queue" {

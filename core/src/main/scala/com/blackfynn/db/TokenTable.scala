@@ -28,7 +28,6 @@ final class TokenTable(tag: Tag)
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name")
   def token = column[String]("token")
-  def secret = column[String]("secret")
   def cognitoId = column[CognitoId.TokenPoolId]("cognito_id")
   def organizationId = column[Int]("organization_id")
   def userId = column[Int]("user_id")
@@ -37,17 +36,8 @@ final class TokenTable(tag: Tag)
     column[ZonedDateTime]("created_at", O.AutoInc) // set by the database on insert
 
   def * =
-    (
-      name,
-      token,
-      secret,
-      cognitoId,
-      organizationId,
-      userId,
-      lastUsed,
-      createdAt,
-      id
-    ).mapTo[Token]
+    (name, token, cognitoId, organizationId, userId, lastUsed, createdAt, id)
+      .mapTo[Token]
 }
 
 object TokensMapper extends TableQuery(new TokenTable(_)) {

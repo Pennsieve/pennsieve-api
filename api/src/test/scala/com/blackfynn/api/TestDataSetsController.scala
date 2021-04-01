@@ -2162,7 +2162,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   test("fail to create and retrieve DOI without proper permissions") {
 
     val colleagueUserTwo = userManager
-      .create(externalUser.copy(email = "another"), Some("password"))
+      .create(externalUser.copy(email = "another"))
       .await
       .right
       .value
@@ -2372,7 +2372,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // colleague without direct permission should not see it
     val colleagueUserTwo = userManager
-      .create(externalUser.copy(email = "another"), Some("password"))
+      .create(externalUser.copy(email = "another"))
       .await
       .right
       .value
@@ -3357,7 +3357,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // colleague without direct permission should not see it
     val colleagueUserTwo = userManager
-      .create(externalUser.copy(email = "another"), Some("password"))
+      .create(externalUser.copy(email = "another"))
       .await
       .right
       .value

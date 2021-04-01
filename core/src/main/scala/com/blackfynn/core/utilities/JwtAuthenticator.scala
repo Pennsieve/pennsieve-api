@@ -39,7 +39,6 @@ import com.pennsieve.domain.{
   CoreError,
   InvalidJWT,
   MissingOrganization,
-  Sessions,
   UnsupportedJWTClaimType
 }
 import com.pennsieve.models.{ CognitoId, Dataset, Organization, Role, User }
@@ -62,9 +61,8 @@ object JwtAuthenticator {
     * Generate a user-level JWT.
     *
     * @param duration
-    * @param userId
+    * @param user
     * @param roles
-    * @param session
     * @param jwtConfig
     * @return
     */

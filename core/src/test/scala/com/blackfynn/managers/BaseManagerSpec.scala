@@ -58,7 +58,6 @@ trait ManagerSpec
     with PostgresDockerContainer { self: TestSuite =>
 
   var redisManager: RedisManager = _
-  var sessionManager: SessionManager = _
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
   var tokenManager: TokenManager = _
@@ -128,7 +127,6 @@ trait ManagerSpec
     userManager = new UserManager(database)
     userInviteManager = new UserInviteManager(database)
     redisManager = new RedisManager(redisPool, 0)
-    sessionManager = new SessionManager(redisManager, userManager)
     tokenManager = new TokenManager(database)
   }
 
@@ -278,7 +276,6 @@ trait ManagerSpec
 
   def createUser(
     email: String = "test+" + generateRandomString() + "@pennsieve.org",
-    password: String = "password",
     isSuperAdmin: Boolean = false,
     organization: Option[Organization] = Some(testOrganization),
     datasets: List[Dataset] = List(testDataset),
@@ -291,14 +288,13 @@ trait ManagerSpec
       middleInitial = None,
       lastName = "ADMIN",
       degree = None,
-      password = password,
       credential = "",
       color = "",
       url = "",
       isSuperAdmin = isSuperAdmin
     )
 
-    val user = userManager.create(unsavedUser, Some(password)).await.value
+    val user = userManager.create(unsavedUser).await.value
 
     // necessary because the in-memory manager is by default insecure
     // TODO: delete!!

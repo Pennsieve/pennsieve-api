@@ -83,7 +83,6 @@ trait UploadsConsumerSpecHarness
     middleInitial = None,
     lastName = "Test User",
     degree = None,
-    password = "test-password",
     id = 1
   )
 

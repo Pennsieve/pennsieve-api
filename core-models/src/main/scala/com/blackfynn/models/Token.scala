@@ -21,7 +21,6 @@ import java.time.ZonedDateTime
 final case class Token(
   name: String,
   token: String,
-  secret: String,
   cognitoId: CognitoId.TokenPoolId,
   organizationId: Int,
   userId: Int,

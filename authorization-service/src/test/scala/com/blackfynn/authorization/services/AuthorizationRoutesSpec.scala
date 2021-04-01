@@ -52,7 +52,6 @@ import com.pennsieve.db.{
   DatasetPublicationStatusMapper,
   DatasetsMapper
 }
-import com.pennsieve.domain.Sessions.APISession
 import com.pennsieve.dtos.UserDTO
 import com.pennsieve.managers.{
   ContributorManager,

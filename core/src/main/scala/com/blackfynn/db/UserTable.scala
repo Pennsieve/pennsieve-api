@@ -39,7 +39,6 @@ final class UserTable(tag: Tag)
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
 
   def email = column[String]("email")
-  def password = column[String]("password")
   def firstName = column[String]("first_name")
   def middleInitial = column[Option[String]]("middle_initial")
   def lastName = column[String]("last_name")
@@ -63,7 +62,6 @@ final class UserTable(tag: Tag)
       middleInitial,
       lastName,
       degree,
-      password,
       credential,
       color,
       url,

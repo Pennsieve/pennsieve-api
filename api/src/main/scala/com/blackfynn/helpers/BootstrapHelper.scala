@@ -66,7 +66,6 @@ import java.util.concurrent.TimeUnit
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 
 import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
-import com.redis.RedisClientPool
 import org.apache.http.ssl.SSLContexts
 import java.util.Date
 import scala.concurrent.{ ExecutionContext, Future }
@@ -225,7 +224,6 @@ class LocalBootstrapHelper(
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
         organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
@@ -269,7 +267,6 @@ class AWSBootstrapHelper(
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
         organization = organization
       ) with SecureCoreContainer with AWSEmailContainer
