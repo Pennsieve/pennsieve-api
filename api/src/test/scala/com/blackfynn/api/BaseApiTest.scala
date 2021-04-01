@@ -56,7 +56,6 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.utilities._
 import com.pennsieve.web.SwaggerApp
-import com.pennsieve.domain.Sessions
 import com.pennsieve.dtos.Secret
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
@@ -74,7 +73,6 @@ import java.util.UUID
 
 import com.pennsieve.audit.middleware.AuditLogger
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
-import com.redis.RedisClientPool
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, FunSuite }
@@ -94,7 +92,6 @@ trait ApiSuite
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with RedisDockerContainer
     with PostgresDockerContainer {
 
   implicit lazy val system: ActorSystem = ActorSystem("ApiSuite")
@@ -121,7 +118,6 @@ trait ApiSuite
 
     config = ConfigFactory
       .empty()
-      .withFallback(redisContainer.config)
       .withFallback(postgresContainer.config)
       .withValue("sqs.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
       .withValue(
@@ -198,7 +194,6 @@ trait ApiSuite
       new SecureContainer(
         config = config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
         organization = org
       ) with SecureCoreContainer with LocalEmailContainer {

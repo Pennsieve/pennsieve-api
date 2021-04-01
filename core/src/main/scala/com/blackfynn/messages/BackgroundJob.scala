@@ -47,8 +47,7 @@ object BackgroundJob {
 case class CachePopulationJob(
   dryRun: Boolean,
   organizationId: Option[Int] = None,
-  id: String = UUID.randomUUID().toString,
-  deleteRedisData: Option[Boolean] = None
+  id: String = UUID.randomUUID().toString
 ) extends BackgroundJob
 
 sealed trait CatalogDeleteJob extends BackgroundJob {

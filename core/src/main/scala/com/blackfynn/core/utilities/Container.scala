@@ -126,7 +126,6 @@ class InsecureContainer(
 class SecureContainer(
   val config: Config,
   _db: Database,
-  _redisClientPool: RedisClientPool,
   val user: User,
   val organization: Organization
 )(implicit
@@ -134,11 +133,9 @@ class SecureContainer(
   val system: ActorSystem
 ) extends Container
     with RequestContextContainer
-    with DatabaseContainer
-    with RedisContainer {
+    with DatabaseContainer {
 
   override lazy val db: Database = _db
-  override lazy val redisClientPool: RedisClientPool = _redisClientPool
 }
 
 object RedisContainer {
@@ -189,7 +186,6 @@ trait InsecureCoreContainer
     with DatabaseContainer
     with OrganizationManagerContainer
     with TermsOfServiceManagerContainer
-    with RedisManagerContainer
     with TokenManagerContainer
     with ContextLoggingContainer { self: Container =>
 
@@ -205,7 +201,6 @@ trait SecureCoreContainer
     with StorageContainer
     with PackagesMapperContainer
     with DataDBContainer
-    with RedisContainer
     with TimeSeriesManagerContainer
     with FilesManagerContainer
     with OrganizationManagerContainer
@@ -442,8 +437,7 @@ trait FilesManagerContainer
     with PackagesMapperContainer
     with DatabaseContainer
     with DataDBContainer
-    with StorageContainer
-    with RedisContainer { self: Container =>
+    with StorageContainer { self: Container =>
   lazy val fileManager: FileManager =
     new FileManager(packageManager, organization)
 }

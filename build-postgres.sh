@@ -30,7 +30,7 @@ run_migrations() {
 
   echo -e "\nRunning migrations....\n"
 
-#  docker-compose run timeseries-migrations
+  docker-compose run timeseries-migrations
   docker-compose run -e MIGRATION_TYPE=core -e MIGRATION_BASELINE=true migrations
 
   while true; do

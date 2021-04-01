@@ -25,21 +25,6 @@ data "terraform_remote_state" "authentication_service" {
   }
 }
 
-# Import API Redis Data
-data "terraform_remote_state" "pennsieve_redis" {
-  backend = "s3"
-
-  config = {
-    bucket = "${var.aws_account}-terraform-state"
-    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/pennsieve-redis/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
-data "aws_ssm_parameter" "redis_auth_token" {
-  name = "/${var.environment_name}/pennsieve-redis/auth-token"
-}
-
 # Import Pennsieve Postgres Data
 data "terraform_remote_state" "pennsieve_postgres" {
   backend = "s3"

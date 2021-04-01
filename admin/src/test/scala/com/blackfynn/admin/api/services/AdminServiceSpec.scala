@@ -137,7 +137,6 @@ trait AdminServiceSpec
       new SecureContainer(
         config = diContainer.config,
         _db = diContainer.db,
-        _redisClientPool = diContainer.redisClientPool,
         user = user,
         organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
