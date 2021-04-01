@@ -22,8 +22,6 @@ import com.typesafe.config.{ Config, ConfigFactory }
 object Settings {
   val config: Config = ConfigFactory.load()
 
-  val session_timeout: Int = config.as[Int]("session_timeout")
-
   val environment: String = config.as[String]("environment")
 
   val isLocal: Boolean = environment.toLowerCase == "local"

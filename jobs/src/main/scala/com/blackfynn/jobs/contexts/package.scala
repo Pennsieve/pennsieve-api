@@ -68,7 +68,7 @@ package object contexts {
           userId = c.userId
         )
 
-      case CachePopulationJob(_, organizationId, _, _) =>
+      case CachePopulationJob(_, organizationId, _) =>
         StorageCacheContext(organizationId)
     }
 

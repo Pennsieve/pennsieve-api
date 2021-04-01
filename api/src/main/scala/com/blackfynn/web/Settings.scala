@@ -37,8 +37,6 @@ object Settings {
 
   val respondWithStackTrace: Boolean = (isDevelopment || isLocal)
 
-  val sessionTimeout: Int = config.as[Int]("pennsieve.session_timeout")
-
   val s3_upload_bucketName: String =
     config.as[String]("pennsieve.s3.upload_bucket_name")
 

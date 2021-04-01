@@ -55,7 +55,6 @@ trait CoreSpecHarness[
         "email.support_email",
         ConfigValueFactory.fromAnyRef("support@pennsieve.org")
       )
-      .withValue("session_timeout", ConfigValueFactory.fromAnyRef(28800))
       .withValue("environment", ConfigValueFactory.fromAnyRef("test"))
     testDIContainer = createTestDIContainer
   }

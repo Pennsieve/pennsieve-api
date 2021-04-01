@@ -123,22 +123,6 @@ object AuthorizationDirectives {
             organization <- container.organizationManager.get(
               token.organizationId
             )
-
-            /**
-
-TODO update last used? Or let Cognito handle this?
-  container.tokenManager
-          .get(token)
-          .map { t =>
-            Future {
-              container.tokenManager.update(
-                t.copy(lastUsed = Some(ZonedDateTime.now))
-              )
-            }
-            ()
-          }
-            */
-
           } yield UserAuthContext(user, organization, Some(cognitoId))
 
       }

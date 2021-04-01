@@ -44,7 +44,6 @@ import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.models.{ Organization, User }
 import com.pennsieve.service.utilities.SingleHttpResponder
 import com.pennsieve.utilities.Container
-import com.redis.RedisClientPool
 import com.typesafe.scalalogging.LazyLogging
 import net.ceedubs.ficus.Ficus._
 
@@ -82,7 +81,6 @@ object AdminWebServer extends App with WebServer with LazyLogging {
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
         organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
@@ -91,7 +89,6 @@ object AdminWebServer extends App with WebServer with LazyLogging {
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
         organization = organization
       ) with SecureCoreContainer with AWSEmailContainer
@@ -102,19 +99,13 @@ object AdminWebServer extends App with WebServer with LazyLogging {
   }
 
   val healthCheck = new HealthCheckService(
-    Map(
-      "postgres" -> HealthCheck.postgresHealthCheck(insecureContainer.db),
-      "redis" -> HealthCheck.redisHealthCheck(insecureContainer.redisClientPool)
-    )
+    Map("postgres" -> HealthCheck.postgresHealthCheck(insecureContainer.db))
   )
 
   lazy val publishClient: PublishClient = PublishClient.httpClient(
     new SingleHttpResponder().responder,
     Settings.discoverHost
   )
-
-  lazy val redisClientPool: RedisClientPool =
-    RedisContainer.poolFromConfig(config)
 
   override val routeService: RouteService =
     new Router(insecureContainer, secureContainerBuilder, publishClient)
