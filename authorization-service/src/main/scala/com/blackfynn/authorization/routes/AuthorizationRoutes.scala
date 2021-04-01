@@ -132,7 +132,7 @@ class AuthorizationRoutes(
     }
 
   def switchOrganization: Route =
-    (path("switch-organization") & parameters('organization_id.as[Int]) & put) {
+    (path("switch-organization") & parameters('organization_id.as[String]) & put) {
       (organizationId) =>
         val result: Future[UserDTO] = for {
 
@@ -142,6 +142,7 @@ class AuthorizationRoutes(
             case _ => Future.failed(NonBrowserSession)
           }
           organizationToSwitchTo <- getOrganization(user, organizationId)
+
           updatedUser <- updateUserPreferredOrganization(
             user,
             organizationToSwitchTo
@@ -229,20 +230,33 @@ private[routes] object AuthorizationQueries {
     */
   def getOrganization(
     user: User,
-    organizationId: Int
+    organizationId: String // integer or node ID
   )(implicit
     container: ResourceContainer,
     executionContext: ExecutionContext
   ): Future[Organization] = {
-    val query = (if (user.isSuperAdmin) {
-                   OrganizationsMapper.get(organizationId)
-                 } else {
-                   OrganizationsMapper
-                     .get(user)(organizationId)
-                     .result
-                     .headOption
-                     .map(_.map(_._1))
-                 }).flatMap {
+    val query = (parseId(organizationId) match {
+
+      case Left(nodeId) if user.isSuperAdmin =>
+        OrganizationsMapper.getByNodeId(nodeId)
+
+      case Right(intId) if user.isSuperAdmin =>
+        OrganizationsMapper.get(intId)
+
+      case Left(nodeId) =>
+        OrganizationsMapper
+          .getByNodeId(user)(nodeId)
+          .result
+          .headOption
+          .map(_.map(_._1))
+
+      case Right(intId) =>
+        OrganizationsMapper
+          .get(user)(intId)
+          .result
+          .headOption
+          .map(_.map(_._1))
+    }).flatMap {
       case Some(organization) => DBIO.successful(organization)
       case None => DBIO.failed(new OrganizationNotFound(organizationId))
     }

@@ -456,15 +456,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
-    assert(
-      organizationManager
-        .getUsers(loggedInOrganization)
-        .await
-        .right
-        .value
-        .size == 5
-    )
-
     secureDataSetManager.addCollaborators(newDataset, Set(user.nodeId)).await
     assert(
       secureDataSetManager.find(user, Role.Viewer).await.right.value.size == 1
@@ -475,14 +466,13 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     ) {
       body should equal("")
       status should equal(200)
-      assert(
-        organizationManager
-          .getUsers(loggedInOrganization)
-          .await
-          .right
-          .value
-          .size == 4
-      )
+
+      organizationManager
+        .getUsers(loggedInOrganization)
+        .await
+        .right
+        .value should not contain user
+
       assert(
         secureDataSetManager.find(user, Role.Viewer).await.right.value.isEmpty
       )
