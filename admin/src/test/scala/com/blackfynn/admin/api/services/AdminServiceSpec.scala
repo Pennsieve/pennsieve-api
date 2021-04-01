@@ -57,6 +57,7 @@ trait AdminServiceSpec
     with SQSDockerContainer
     with CognitoJwtSeed[InsecureResourceContainer]
     with TestKitBase {
+  self =>
 
   override var routeService: RouteService = _
 
@@ -116,6 +117,10 @@ trait AdminServiceSpec
       .reset()
   }
 
+  // Hack to inject the mock JWK/JWT provider
+  // TODO: figure out a cleaner way to inject this
+  private val adminServiceSpec = self
+
   override def createTestDIContainer: InsecureResourceContainer = {
 
     val diContainer =
@@ -125,11 +130,7 @@ trait AdminServiceSpec
       with MockJobSchedulingServiceContainer with LocalCognitoContainer {
         override val postgresUseSSL = false
         override lazy val cognitoClient = new MockCognito()
-        override lazy val cognitoConfig = CognitoConfig(
-          Region.US_EAST_1,
-          CognitoPoolConfig(Region.US_EAST_1, "user-pool-id", "client-id"),
-          CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
-        )
+        override lazy val cognitoConfig = adminServiceSpec.cognitoConfig
       }
 
     secureContainerBuilder = (user: User, organization: Organization) =>
