@@ -86,7 +86,7 @@ class PackageServiceSpec extends AdminServiceSpec with TestKitBase {
       testRequest(
         GET,
         s"/packages/${packageOne.nodeId}",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._

@@ -55,7 +55,7 @@ trait AdminServiceSpec
     with BeforeAndAfterAll
     with CoreSpecHarness[InsecureResourceContainer]
     with SQSDockerContainer
-    with SessionSeed[InsecureResourceContainer]
+    with CognitoJwtSeed[InsecureResourceContainer]
     with TestKitBase {
 
   override var routeService: RouteService = _

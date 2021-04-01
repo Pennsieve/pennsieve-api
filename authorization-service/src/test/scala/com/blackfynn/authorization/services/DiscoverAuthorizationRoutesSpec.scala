@@ -66,7 +66,7 @@ class DiscoverAuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization/organizations/${organizationOne.id}/datasets/999/discover/preview",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual Forbidden
@@ -86,7 +86,7 @@ class DiscoverAuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization/organizations/${organizationTwo.id}/datasets/${dataset.id}/discover/preview",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -106,7 +106,7 @@ class DiscoverAuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization/organizations/${organizationTwo.id}/datasets/${dataset.id}/discover/preview",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual Forbidden
@@ -131,7 +131,7 @@ class DiscoverAuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization/organizations/${organizationTwo.id}/datasets/${dataset.id}/discover/preview",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -156,7 +156,7 @@ class DiscoverAuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization/organizations/${organizationTwo.id}/datasets/${dataset.id}/discover/preview",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -181,7 +181,7 @@ class DiscoverAuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization/organizations/${organizationOne.id}/datasets/${dataset.id}/discover/preview",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -215,7 +215,7 @@ class DiscoverAuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization/organizations/${organizationTwo.id}/datasets/${dataset.id}/discover/preview",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual Forbidden
@@ -249,7 +249,7 @@ class DiscoverAuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization/organizations/${organizationTwo.id}/datasets/${dataset.id}/discover/preview",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual Forbidden
