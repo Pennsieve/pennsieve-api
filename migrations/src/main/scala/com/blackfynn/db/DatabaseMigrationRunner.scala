@@ -135,11 +135,11 @@ class DatabaseMigrationRunner(
   }
 
   def migrateTimeseriesSchema(baseline: Boolean = false) = {
-    println("Migrating core Pennsieve schema")
+    println("Migrating timeseries schema")
 
     val flyway = createFlyway()
     flyway.setLocations("classpath:db/timeseries-migrations")
-    flyway.setSchemas("pennsieve")
+    flyway.setSchemas("timeseries")
     flyway.setBaselineOnMigrate(baseline)
     flyway.migrate
 
