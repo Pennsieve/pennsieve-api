@@ -22,13 +22,11 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ Directive, Route }
 import com.pennsieve.akka.http.RouteService
 import com.pennsieve.akka.http.directives.AuthorizationDirectives.{
-  session,
   user,
   AuthorizationContainer
 }
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.routes.{
-  AuthenticationRoutes,
   AuthorizationRoutes,
   DiscoverAuthorizationRoutes
 }
@@ -40,7 +38,6 @@ import scala.concurrent.ExecutionContext
 
 object Router {
   type ResourceContainer = Container
-    with RedisManagerContainer
     with AuthorizationContainer
     with JwtContainer
     with TermsOfServiceManagerContainer
@@ -56,25 +53,21 @@ class Router(
 
   implicit val executionContext: ExecutionContext = system.dispatcher
 
-  val authentication =
-    new AuthenticationRoutes()(container, executionContext)
-
   // use bf-akka-http for authorization:
   val routes: Route =
-//    authentication.routes ~ session(container, realm = "authentication")(
-    authentication.routes ~ user(container, realm = "authentication")(
+    user(container, realm = "authentication")(
       container,
       cognitoConfig,
       executionContext
     ) {
       case userContext =>
-        val authorization = new AuthorizationRoutes(
-          user = userContext.user,
-          organization = userContext.organization,
-          cognitoId = userContext.cognitoId
-        )(container, executionContext, system)
-
-        logByEnvironment(authorization.routes)
+        logByEnvironment(
+          new AuthorizationRoutes(
+            user = userContext.user,
+            organization = userContext.organization,
+            cognitoId = userContext.cognitoId
+          )(container, executionContext, system).routes
+        )
 
     } ~ user(container, realm = "authentication")(
       container,

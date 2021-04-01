@@ -37,12 +37,6 @@ trait AuthorizationException {
         logger.warn(exception.getMessage)
         HttpResponse(Unauthorized, entity = "No such API token exists.")
 
-      case BadPassword =>
-        HttpResponse(Forbidden, entity = "Incorrect password supplied.") // 403
-
-      case BadSecret =>
-        HttpResponse(Forbidden, entity = "Incorrect secret supplied.") // 403
-
       case _: FeatureNotEnabled =>
         logger.warn(exception.getMessage)
         HttpResponse(Forbidden, entity = "Forbidden.") // 403
@@ -96,9 +90,6 @@ trait AuthorizationException {
   class APITokenNotFound(token: String) extends Exception {
     override def getMessage: String = s"No such API token exists: $token"
   }
-
-  object BadPassword extends Exception
-  object BadSecret extends Exception
 
   object InvalidLoginAttemps extends Exception {
     override def getMessage: String =

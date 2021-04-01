@@ -29,7 +29,6 @@ import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.core.utilities._
 import com.pennsieve.utilities.Container
-import com.redis.RedisClientPool
 import com.typesafe.scalalogging.LazyLogging
 import net.ceedubs.ficus.Ficus._
 
@@ -45,16 +44,13 @@ object AuthorizationWebServer extends App with WebServer with LazyLogging {
   override val actorSystemName: String = "authorization"
 
   val container: ResourceContainer =
-    new InsecureContainer(config) with RedisManagerContainer
-    with DatabaseContainer with SessionManagerContainer
-    with OrganizationManagerContainer with JwtContainer
-    with TermsOfServiceManagerContainer with TokenManagerContainer
+    new InsecureContainer(config) with DatabaseContainer
+    with UserManagerContainer with OrganizationManagerContainer
+    with JwtContainer with TermsOfServiceManagerContainer
+    with TokenManagerContainer
 
   val healthCheck = new HealthCheckService(
-    Map(
-      "postgres" -> HealthCheck.postgresHealthCheck(container.db),
-      "redis" -> HealthCheck.redisHealthCheck(container.redisClientPool)
-    )
+    Map("postgres" -> HealthCheck.postgresHealthCheck(container.db))
   )
 
   implicit val cognitoConfig = CognitoConfig(config)

@@ -177,7 +177,7 @@ trait RedisContainer { self: Container =>
     RedisContainer.poolFromConfig(config)
 }
 
-trait CoreContainer extends SessionManagerContainer { self: Container =>
+trait CoreContainer extends UserManagerContainer { self: Container =>
 
   val userInviteManager: UserInviteManager
   val organizationManager: OrganizationManager
@@ -420,15 +420,6 @@ trait TermsOfServiceManagerContainer { self: DatabaseContainer =>
 
 trait UserManagerContainer extends DatabaseContainer { self: Container =>
   lazy val userManager = new UserManager(db)
-}
-
-trait SessionManagerContainer
-    extends UserManagerContainer
-    with RedisManagerContainer {
-  self: Container =>
-
-  lazy val sessionManager: SessionManager =
-    new SessionManager(redisManager, userManager)
 }
 
 trait RedisManagerContainer extends RedisContainer { self: Container =>
