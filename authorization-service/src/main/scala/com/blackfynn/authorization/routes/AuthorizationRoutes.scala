@@ -42,8 +42,7 @@ import com.pennsieve.auth.middleware.{
   OrganizationNodeId,
   UserClaim,
   UserId,
-  UserNodeId,
-  WorkspaceId
+  UserNodeId
 }
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.utilities.exceptions._
@@ -73,9 +72,6 @@ class AuthorizationRoutes(
 
   import AuthorizationQueries._
 
-  val allowedWorkspaces: List[Int] =
-    container.config.as[List[Int]]("workspaces.allowed")
-
   val routes: Route = pathPrefix("authorization") {
     authorization
   } ~ pathPrefix("session") { switchOrganization }
@@ -87,21 +83,17 @@ class AuthorizationRoutes(
         .?, // Either an organization ID (integer) or a node ID ("N:organization:123-456...")
       'dataset_id
         .as[String]
-        .?, // Either a dataset ID (integer) or a node ID ("N:dataset:123-456...")
-      'workspace_id.as[Int].?
-    )) { (organizationId, datasetId, workspaceId) =>
+        .? // Either a dataset ID (integer) or a node ID ("N:dataset:123-456...")
+    )) { (organizationId, datasetId) =>
       val result: Future[Jwt.Token] = for {
         _ <- organizationId.traverse(
           assertOrganizationIdMatches(user, organization, _)
         )
         organizationRole <- getOrganizationRole(user, organization)
         datasetRole <- datasetId.traverse(getDatasetRole(user, organization, _))
-        workspaceRole <- workspaceId.traverse(
-          getWorkspaceRole(user, _, allowedWorkspaces)
-        )
       } yield {
         val roles =
-          List(organizationRole.some, datasetRole, workspaceRole).flatten
+          List(organizationRole.some, datasetRole).flatten
         val userClaim = getUserClaim(user, roles, cognitoId)
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
@@ -401,35 +393,6 @@ private[routes] object AuthorizationQueries {
           role,
           DatasetNodeId(dataset.nodeId).some,
           Some(locked)
-        )
-    }
-  }
-
-  def getWorkspaceRole(
-    user: User,
-    workspaceId: Int,
-    allowedWorkspaces: List[Int]
-  )(implicit
-    container: ResourceContainer,
-    executionContext: ExecutionContext
-  ): Future[Jwt.WorkspaceRole] = {
-    val result: Future[(Int, Role)] =
-      if (allowedWorkspaces.contains(workspaceId)) {
-        Future.successful((workspaceId, if (user.isSuperAdmin) {
-          Role.Owner
-        } else {
-          Role.Manager
-        }))
-      } else {
-        throw new InvalidWorkspaceId(user, workspaceId)
-      }
-
-    result.map {
-      case (workspaceId, role) =>
-        Jwt.WorkspaceRole(
-          WorkspaceId(workspaceId)
-            .inject[Jwt.Role.RoleIdentifier[WorkspaceId]],
-          role
         )
     }
   }

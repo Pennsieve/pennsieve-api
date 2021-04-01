@@ -622,43 +622,12 @@ class AuthorizationRoutesSpec
       }
     }
 
-    "return a JWT for an authorized user with a workspace claim" in {
-      testRequest(
-        GET,
-        s"/authorization?workspace_id=1",
-        session = nonAdminSession,
-        headers = withXOriginalURI(s"/analytics/workspaces/1")
-      ) ~>
-        routes ~> check {
-        status shouldEqual OK
-
-        val claim: Jwt.Claim = getClaim()
-
-        claim.content shouldBe a[UserClaim]
-        claim.content.roles should have length 2
-      }
-    }
-
     "return a 404 Not Found response when an invalid dataset_id is provided" in {
       testRequest(
         GET,
         s"/authorization?dataset_id=1",
         session = nonAdminSession,
         headers = withXOriginalURI(s"/model-schema/dataset/1")
-      ) ~>
-        routes ~> check {
-        status shouldEqual Unauthorized
-
-        header("Authorization") shouldBe None
-      }
-    }
-
-    "return a 404 Not Found response when an invalid workspace_id is provided" in {
-      testRequest(
-        GET,
-        s"/authorization?workspace_id=999",
-        session = adminSession,
-        headers = withXOriginalURI(s"/analytics/workspace/999")
       ) ~>
         routes ~> check {
         status shouldEqual Unauthorized
