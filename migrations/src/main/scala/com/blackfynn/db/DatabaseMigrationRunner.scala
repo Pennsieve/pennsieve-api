@@ -40,6 +40,7 @@ object Main extends App {
   val pennsieveTimeseriesDBDatabase: String = config.as[String]("timeseries.postgres.database")
   val pennsieveTimeseriesDBHost: String = config.as[String]("timeseries.postgres.host")
   val pennsieveTimeseriesDBPort: String = config.as[String]("timeseries.postgres.port")
+  val pennsieveTimeseriesDBUseSSL: Boolean = config.as[Boolean]("timeseries.postgres.use_ssl")
 
   val pennsieveDBBaseUrl: String =
     s"jdbc:postgresql://${pennsieveDBHost}:${pennsieveDBPort}/${pennsieveDBDatabase}"
@@ -54,7 +55,7 @@ object Main extends App {
   }
 
   val pennsieveTimeseriesDBUrl = {
-    if (pennsieveDBUseSSL) pennsieveTimeseriesDBBaseUrl + "?ssl=true&sslmode=verify-ca"
+    if (pennsieveTimeseriesDBUseSSL) pennsieveTimeseriesDBBaseUrl + "?ssl=true&sslmode=verify-ca"
     else pennsieveTimeseriesDBBaseUrl
   }
 
