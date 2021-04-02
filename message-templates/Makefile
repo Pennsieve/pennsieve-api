@@ -1,5 +1,7 @@
 MJML_SRCS = $(wildcard mjml/*.mjml)
 HTML_TARGETS = $(patsubst mjml/%.mjml, html/%.html, $(MJML_SRCS))
+PENNSIEVE_AUTHENTICATION_REPO_DIR ?= ../../authentication-service/terraform/emails
+PENNSIEVE_DOMAIN ?= app\.pennsieve\.net
 
 all: $(HTML_TARGETS)
 
@@ -17,3 +19,4 @@ clean:
 
 auth_cognito_compile:
 	npm run auth-cognito-compile --dir=${PENNSIEVE_AUTHENTICATION_REPO_DIR}
+	sed -i '' -e 's/PENNSIEVE_DOMAIN/${PENNSIEVE_DOMAIN}/g' ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/new-account-creation.template.html
