@@ -11,7 +11,7 @@ data "terraform_remote_state" "pennsieve_postgres" {
   }
 }
 
-data "terraform_remote_state" "data" {
+data "terraform_remote_state" "data_postgres" {
   backend = "s3"
 
   config = {

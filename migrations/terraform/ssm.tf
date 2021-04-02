@@ -48,7 +48,7 @@ resource "aws_ssm_parameter" "data_postgres_database" {
 resource "aws_ssm_parameter" "data_postgres_host" {
   name  = "/${var.environment_name}/${var.service_name}/data-postgres-host"
   type  = "String"
-  value = data.terraform_remote_state.data_postgres.outputs.master_fqdn
+  value = data.terraform_remote_state.pennsieve_postgres.outputs.master_fqdn
 }
 
 resource "aws_ssm_parameter" "data_postgres_password" {
@@ -65,7 +65,7 @@ resource "aws_ssm_parameter" "data_postgres_password" {
 resource "aws_ssm_parameter" "data_postgres_port" {
   name  = "/${var.environment_name}/${var.service_name}/data-postgres-port"
   type  = "String"
-  value = data.terraform_remote_state.data_postgres.outputs.master_port
+  value = data.terraform_remote_state.pennsieve_postgres.outputs.master_port
 }
 
 resource "aws_ssm_parameter" "data_postgres_user" {
