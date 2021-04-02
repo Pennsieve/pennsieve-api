@@ -14,3 +14,6 @@ install:
 
 clean:
 	rm html/*
+
+auth_cognito_compile:
+	npm run auth-cognito-compile --dir=${PENNSIEVE_AUTHENTICATION_REPO_DIR}
