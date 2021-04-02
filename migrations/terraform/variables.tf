@@ -17,7 +17,7 @@ variable "pennsieve_postgres_use_ssl" {
 }
 
 variable "data_postgres_database" {
-  default = "pennsieve_postgres"
+  default = "data_postgres"
 }
 
 variable "data_postgres_user" {}
