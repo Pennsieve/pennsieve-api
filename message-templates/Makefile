@@ -22,3 +22,6 @@ auth_cognito_compile:
 	sed -i '' -e 's/PENNSIEVE_DOMAIN/${PENNSIEVE_DOMAIN}/g' ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/new-account-creation.template.html
 	sed -i '' -e 's/$${emailAddress}/\{username\}/g' ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/new-account-creation.template.html
 
+	sed -i '' -e 's/PENNSIEVE_DOMAIN/${PENNSIEVE_DOMAIN}/g' ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/password-reset.template.html
+	sed -i '' -e 's/$${emailAddress}/\{username\}/g' ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/password-reset.template.html
+
