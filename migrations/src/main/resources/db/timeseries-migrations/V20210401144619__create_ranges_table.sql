@@ -1,5 +1,3 @@
-CREATE EXTENSION btree_gist
-
 CREATE TABLE ranges (
     id SERIAL NOT NULL,
     channel VARCHAR NOT NULL,
