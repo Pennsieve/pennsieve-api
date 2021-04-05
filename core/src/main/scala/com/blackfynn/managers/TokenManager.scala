@@ -48,6 +48,10 @@ class TokenManager(db: Database) {
         .createClientToken(tokenString, secret)
         .toEitherT
 
+      _ <- cognitoClient
+        .pushUserOrganizationAttribute(user.email, organization.nodeId)
+        .toEitherT
+
       token = Token(name, tokenString, cognitoId, organization.id, user.id)
 
       tokenId <- db

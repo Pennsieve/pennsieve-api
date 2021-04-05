@@ -37,6 +37,9 @@ class MockCognito() extends CognitoClient {
   val reSentInvites: mutable.Map[Email, CognitoId.UserPoolId] =
     mutable.Map.empty
 
+  val sentOrganizationUpdates: mutable.Map[String, String] =
+    mutable.Map.empty
+
   def inviteUser(
     email: Email
   )(implicit
@@ -73,6 +76,16 @@ class MockCognito() extends CognitoClient {
   ): Future[Unit] = {
     sentDeletes.append(token)
     Future.successful(Unit)
+  }
+
+  def pushUserOrganizationAttribute(
+    username: String,
+    organization: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId.TokenPoolId] = {
+    sentOrganizationUpdates.update(username, organization)
+    FUture.successful(CognitoId.TokenPoolId.randomId())
   }
 
   def reset(): Unit = {

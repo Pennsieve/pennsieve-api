@@ -33,6 +33,8 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDeleteUserRequest,
   AdminDeleteUserResponse,
   AdminSetUserPasswordRequest,
+  AdminUpdateUserAttributesRequest,
+  AdminUpdateUserAttributesResponse,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
@@ -68,6 +70,13 @@ trait CognitoClient {
 
   def deleteClientToken(
     token: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def pushUserOrganizationAttribute(
+    username: String,
+    organization: String
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
@@ -200,6 +209,47 @@ class Cognito(
         Future.successful(())
 
     } yield cognitoId
+  }
+
+  /**
+    * Provide information in Cognito about which organization a token is scoped to.
+    */
+  def pushUserOrganizationAttribute(
+    username: String,
+    organization: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminUpdateUserAttributesRequest
+      .builder()
+      .username(username)
+      .userPoolId(cognitoConfig.userPool.id)
+      .userAttributes(
+        List(
+          AttributeType
+            .builder()
+            .name("custom:organization_node_id")
+            .value(username)
+            .build()
+        ).asJava
+      )
+      .build()
+    adminUpdateUserAttributes(request)
+  }
+
+  /**
+    * Update a user's attributes and parse Cognito ID from response.
+    */
+  private def adminUpdateUserAttributes(
+    request: AdminUpdateUserAttributesRequest
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    for {
+      cognitoResponse <- client
+        .adminUpdateUserAttributes(request)
+        .toScala
+    } yield ()
   }
 
   /**
