@@ -35,12 +35,18 @@ object Main extends App {
   val pennsieveDBDatabase: String = config.as[String]("postgres.database")
   val pennsieveDBUseSSL: Boolean = config.as[Boolean]("postgres.use_ssl")
 
-  val pennsieveTimeseriesDBUser: String = config.as[String]("timeseries.postgres.user")
-  val pennsieveTimeseriesDBPassword: String = config.as[String]("timeseries.postgres.password")
-  val pennsieveTimeseriesDBDatabase: String = config.as[String]("timeseries.postgres.database")
-  val pennsieveTimeseriesDBHost: String = config.as[String]("timeseries.postgres.host")
-  val pennsieveTimeseriesDBPort: String = config.as[String]("timeseries.postgres.port")
-  val pennsieveTimeseriesDBUseSSL: Boolean = config.as[Boolean]("timeseries.postgres.use_ssl")
+  val pennsieveTimeseriesDBUser: String =
+    config.as[String]("timeseries.postgres.user")
+  val pennsieveTimeseriesDBPassword: String =
+    config.as[String]("timeseries.postgres.password")
+  val pennsieveTimeseriesDBDatabase: String =
+    config.as[String]("timeseries.postgres.database")
+  val pennsieveTimeseriesDBHost: String =
+    config.as[String]("timeseries.postgres.host")
+  val pennsieveTimeseriesDBPort: String =
+    config.as[String]("timeseries.postgres.port")
+  val pennsieveTimeseriesDBUseSSL: Boolean =
+    config.as[Boolean]("timeseries.postgres.use_ssl")
 
   val pennsieveDBBaseUrl: String =
     s"jdbc:postgresql://${pennsieveDBHost}:${pennsieveDBPort}/${pennsieveDBDatabase}"
@@ -48,14 +54,14 @@ object Main extends App {
   val pennsieveTimeseriesDBBaseUrl: String =
     s"jdbc:postgresql://${pennsieveTimeseriesDBHost}:${pennsieveTimeseriesDBPort}/${pennsieveTimeseriesDBDatabase}"
 
-
   val pennsieveDBUrl = {
     if (pennsieveDBUseSSL) pennsieveDBBaseUrl + "?ssl=true&sslmode=verify-ca"
     else pennsieveDBBaseUrl
   }
 
   val pennsieveTimeseriesDBUrl = {
-    if (pennsieveTimeseriesDBUseSSL) pennsieveTimeseriesDBBaseUrl + "?ssl=true&sslmode=verify-ca"
+    if (pennsieveTimeseriesDBUseSSL)
+      pennsieveTimeseriesDBBaseUrl + "?ssl=true&sslmode=verify-ca"
     else pennsieveTimeseriesDBBaseUrl
   }
 
@@ -85,7 +91,9 @@ object Main extends App {
       timeseriesRunner.migrateTimeseriesSchema(baseline)
     }
     case _ =>
-      throw new Exception("expected one of 'core', 'timeseries', 'organization', 'all'")
+      throw new Exception(
+        "expected one of 'core', 'timeseries', 'organization', 'all'"
+      )
   }
 }
 
