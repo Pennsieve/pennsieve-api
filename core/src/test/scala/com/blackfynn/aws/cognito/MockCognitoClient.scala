@@ -83,9 +83,9 @@ class MockCognito() extends CognitoClient {
     organization: String
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId.TokenPoolId] = {
+  ): Future[Unit] = {
     sentOrganizationUpdates.update(username, organization)
-    FUture.successful(CognitoId.TokenPoolId.randomId())
+    Future.successful(())
   }
 
   def reset(): Unit = {
@@ -93,5 +93,6 @@ class MockCognito() extends CognitoClient {
     sentInvites.clear()
     sentTokenInvites.clear()
     reSentInvites.clear()
+    sentOrganizationUpdates.clear()
   }
 }
