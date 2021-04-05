@@ -1,7 +1,6 @@
 MJML_SRCS = $(wildcard mjml/*.mjml)
 HTML_TARGETS = $(patsubst mjml/%.mjml, html/%.html, $(MJML_SRCS))
 PENNSIEVE_AUTHENTICATION_REPO_DIR ?= ../../authentication-service/terraform/emails
-PENNSIEVE_DOMAIN ?= app\.pennsieve\.net
 
 all: $(HTML_TARGETS)
 
