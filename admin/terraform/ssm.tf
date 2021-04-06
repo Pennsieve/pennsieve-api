@@ -1,3 +1,27 @@
+resource "aws_ssm_parameter" "cognito_user_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.user_pool_id
+}
+
+resource "aws_ssm_parameter" "cognito_user_pool_app_client_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-app-client-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.user_pool_client_id
+}
+
+resource "aws_ssm_parameter" "cognito_token_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.token_pool_id
+}
+
+resource "aws_ssm_parameter" "cognito_token_pool_app_client_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-app-client-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.token_pool_client_id
+}
+
 resource "aws_ssm_parameter" "pennsieve_postgres_database" {
   name  = "/${var.environment_name}/${var.service_name}/pennsieve-postgres-database"
   type  = "String"
@@ -123,30 +147,6 @@ resource "aws_ssm_parameter" "jwt_secret_key" {
   }
 }
 
-resource "aws_ssm_parameter" "redis_host" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-host"
-  type  = "String"
-  value = data.terraform_remote_state.pennsieve_redis.outputs.primary_endpoint_address
-}
-
-resource "aws_ssm_parameter" "redis_auth_token" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-auth-token"
-  type  = "String"
-  value = data.aws_ssm_parameter.redis_auth_token.value
-}
-
-resource "aws_ssm_parameter" "redis_use_ssl" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-use-ssl"
-  type  = "String"
-  value = "true"
-}
-
-resource "aws_ssm_parameter" "redis_max_connections" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-max-connections"
-  type  = "String"
-  value = "128"
-}
-
 resource "aws_ssm_parameter" "root_account_arn" {
   name  = "/${var.environment_name}/${var.service_name}/root-account-arn"
   type  = "String"
@@ -169,28 +169,4 @@ resource "aws_ssm_parameter" "s3_terms_of_service_bucket" {
   name  = "/${var.environment_name}/${var.service_name}/terms-of-service-bucket"
   type  = "String"
   value = data.terraform_remote_state.platform_infrastructure.outputs.terms_of_service_bucket_id
-}
-
-resource "aws_ssm_parameter" "cognito_user_pool_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-id"
-  type  = "String"
-  value = data.terraform_remote_state.cognito.outputs.user_pool_id
-}
-
-resource "aws_ssm_parameter" "cognito_user_pool_app_client_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-app-client-id"
-  type  = "String"
-  value = data.terraform_remote_state.cognito.outputs.user_pool_client_id
-}
-
-resource "aws_ssm_parameter" "cognito_token_pool_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-id"
-  type  = "String"
-  value = data.terraform_remote_state.cognito.outputs.token_pool_id
-}
-
-resource "aws_ssm_parameter" "cognito_token_pool_app_client_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-app-client-id"
-  type  = "String"
-  value = data.terraform_remote_state.cognito.outputs.token_pool_client_id
 }

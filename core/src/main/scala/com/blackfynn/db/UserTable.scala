@@ -39,7 +39,6 @@ final class UserTable(tag: Tag)
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
 
   def email = column[String]("email")
-  def password = column[String]("password")
   def firstName = column[String]("first_name")
   def middleInitial = column[Option[String]]("middle_initial")
   def lastName = column[String]("last_name")
@@ -47,7 +46,7 @@ final class UserTable(tag: Tag)
   def credential = column[String]("credential")
   def color = column[String]("color")
   def url = column[String]("url")
-  def authyId = column[Int]("authy_id")
+  def authyId = column[Int]("authy_id") // TODO drop column
   def isSuperAdmin = column[Boolean]("is_super_admin")
   def preferredOrganizationId = column[Option[Int]]("preferred_org_id")
   def status = column[Boolean]("status")
@@ -63,7 +62,6 @@ final class UserTable(tag: Tag)
       middleInitial,
       lastName,
       degree,
-      password,
       credential,
       color,
       url,
@@ -89,8 +87,15 @@ object UserMapper extends TableQuery(new UserTable(_)) {
   def getByEmail(email: String) =
     this.filter(_.email.toLowerCase === email.toLowerCase).result.headOption
 
-  def getByCognitoId(cognitoId: CognitoId) =
-    this.join(CognitoUserMapper).on(_.id === _.userId).result.headOption
+  def getByCognitoId(
+    cognitoId: CognitoId.UserPoolId
+  ): DBIO[Option[(User, CognitoUser)]] =
+    this
+      .join(CognitoUserMapper)
+      .on(_.id === _.userId)
+      .filter(_._2.cognitoId === cognitoId)
+      .result
+      .headOption
 
   def getUser(
     id: Int

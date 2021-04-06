@@ -31,6 +31,7 @@ import scala.collection.mutable
 
 case class SesMessageResult(id: String)
 
+// TODO: move to models
 case class Email(address: String) extends AnyVal {
   override def toString: String = address
 }

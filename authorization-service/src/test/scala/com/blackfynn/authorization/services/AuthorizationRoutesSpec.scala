@@ -34,6 +34,7 @@ import akka.testkit.TestKitBase
 import cats.data._
 import cats.implicits._
 import com.pennsieve.akka.http.EitherValue._
+import com.pennsieve.aws.cognito.MockJwkProvider
 import com.pennsieve.auth.middleware.{
   DatasetId,
   DatasetNodeId,
@@ -51,7 +52,6 @@ import com.pennsieve.db.{
   DatasetPublicationStatusMapper,
   DatasetsMapper
 }
-import com.pennsieve.domain.Sessions.APISession
 import com.pennsieve.dtos.UserDTO
 import com.pennsieve.managers.{
   ContributorManager,
@@ -67,14 +67,17 @@ import com.pennsieve.models.{
   EmbargoAccess,
   Feature,
   FeatureFlag,
+  Organization,
   OrganizationNodeId,
   PackageState,
   PublicationStatus,
   PublicationType,
-  Role
+  Role,
+  User
 }
 import com.pennsieve.traits.PostgresProfile.api._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import java.time.Instant
 import java.util.UUID
 
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
@@ -96,10 +99,11 @@ class AuthorizationRoutesSpec
   "GET /authorization route" should {
 
     "return a JWT for an authorized user" in {
+
       testRequest(
         GET,
         "/authorization",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI("/model-schema")
       ) ~>
         routes ~> check {
@@ -120,7 +124,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.id}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.id}")
       ) ~>
         routes ~> check {
@@ -144,7 +148,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -184,7 +188,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -213,7 +217,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -242,7 +246,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -267,7 +271,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -296,7 +300,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -325,7 +329,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -354,7 +358,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -379,7 +383,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -444,7 +448,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -469,7 +473,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -500,7 +504,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
@@ -534,7 +538,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.id}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.id}")
       ) ~>
         routes ~> check {
@@ -564,7 +568,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?dataset_id=${dataset.id}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.id}")
       ) ~>
         routes ~> check {
@@ -576,7 +580,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         "/authorization",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema")
       ) ~> routes ~> check {
         status shouldEqual OK
@@ -606,7 +610,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         "/authorization",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema")
       ) ~> routes ~> check {
         status shouldEqual OK
@@ -622,28 +626,11 @@ class AuthorizationRoutesSpec
       }
     }
 
-    "return a JWT for an authorized user with a workspace claim" in {
-      testRequest(
-        GET,
-        s"/authorization?workspace_id=1",
-        session = nonAdminSession,
-        headers = withXOriginalURI(s"/analytics/workspaces/1")
-      ) ~>
-        routes ~> check {
-        status shouldEqual OK
-
-        val claim: Jwt.Claim = getClaim()
-
-        claim.content shouldBe a[UserClaim]
-        claim.content.roles should have length 2
-      }
-    }
-
     "return a 404 Not Found response when an invalid dataset_id is provided" in {
       testRequest(
         GET,
         s"/authorization?dataset_id=1",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/1")
       ) ~>
         routes ~> check {
@@ -653,21 +640,7 @@ class AuthorizationRoutesSpec
       }
     }
 
-    "return a 404 Not Found response when an invalid workspace_id is provided" in {
-      testRequest(
-        GET,
-        s"/authorization?workspace_id=999",
-        session = adminSession,
-        headers = withXOriginalURI(s"/analytics/workspace/999")
-      ) ~>
-        routes ~> check {
-        status shouldEqual Unauthorized
-
-        header("Authorization") shouldBe None
-      }
-    }
-
-    "return a 401 Unauthorized response when an invalid session is provided" in {
+    "return a 401 Unauthorized response when an invalid JWT is provided" in {
       testRequest(
         GET,
         s"/authorization?dataset_id=1",
@@ -681,11 +654,37 @@ class AuthorizationRoutesSpec
       }
     }
 
+    "return a 401 Unauthorized response when an expired JWT is provided" in {
+
+      val cognitoId = createCognitoUser(testDIContainer, nonAdmin)
+
+      val expiredJwt = cognitoJwkProvider.generateCognitoToken(
+        cognitoId,
+        cognitoConfig.userPool,
+        issuedAt = Instant.now.minusSeconds(60 * 70),
+        validUntil = Instant.now.minusSeconds(60 * 10)
+      )
+
+      testRequest(
+        GET,
+        "/authorization",
+        session = Some(expiredJwt),
+        headers = withXOriginalURI("/model-schema")
+      ) ~>
+        routes ~> check {
+        status shouldEqual Unauthorized
+
+        header("Authorization") shouldBe None
+      }
+    }
+
+    // TODO more Cognito JWT tests
+
     "return 200 when valid organization_id is provided" in {
       testRequest(
         GET,
         s"/authorization?organization_id=${organizationTwo.id}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI("/model-schema")
       ) ~>
         routes ~> check {
@@ -697,7 +696,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         s"/authorization?organization_id=${organizationTwo.nodeId}",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI("/model-schema")
       ) ~>
         routes ~> check {
@@ -709,7 +708,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         "/authorization?organization_id=5555",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI("/model-schema")
       ) ~>
         routes ~> check {
@@ -722,7 +721,7 @@ class AuthorizationRoutesSpec
       testRequest(
         GET,
         "/authorization",
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema") ++ ImmutableSeq(
           `Content-Length`(670000000)
         )
@@ -730,77 +729,49 @@ class AuthorizationRoutesSpec
         status shouldBe OK
       }
     }
-
-    "return not authorized for a blind reviewer role attempting to access anything outside trials service" in {
-      val request = testRequest(
-        GET,
-        "/authorization",
-        session = blindReviewerSession,
-        headers = withXOriginalURI(s"/model-schema")
-      )
-
-      request ~> routes ~> check(status shouldBe Forbidden)
-    }
-
-    "return ok for a blind reviewer attempting to access trials service" in {
-      val request = testRequest(
-        GET,
-        "/authorization",
-        session = blindReviewerSession,
-        headers = withXOriginalURI(s"/trials")
-      )
-
-      request ~> routes ~> check(status shouldBe OK)
-    }
-
-    "return the trial dataset for a trials request" in {
-      val datasetsMapper = new DatasetsMapper(organizationOne)
-      val datasetManager =
-        new DatasetManager(db, blindReviewer, datasetsMapper)
-      val dataset = datasetManager.create("Test Dataset").await.value
-
-      val request = testRequest(
-        GET,
-        s"/authorization?dataset_id=${dataset.id}",
-        session = blindReviewerSession,
-        headers = withXOriginalURI(s"/trials/${dataset.id}")
-      )
-
-      request ~> routes ~> check {
-        status shouldBe OK
-
-        val claim = getClaim()
-
-        claim.content shouldBe a[UserClaim]
-        claim.content.roles should have length 2
-      }
-    }
   }
 
   "PUT /session/switch-organization route" should {
 
+    def preferredOrganization(user: User): Organization =
+      (for {
+        refreshedUser <- userManager.get(user.id)
+        organization <- userManager.getPreferredOrganization(refreshedUser)
+      } yield organization).awaitFinite().right.get
+
     "switch the organization in a user's session" in {
       // Confirm the session starts belonging to Organization Two
-      sessionManager
-        .get(nonAdminSession.get)
-        .right
-        .get
-        .organizationId shouldBe organizationTwo.nodeId
+      preferredOrganization(nonAdmin) shouldBe organizationTwo
 
       testRequest(
         PUT,
         s"/session/switch-organization?organization_id=${organizationOne.id}",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
 
         // Verify the session now belonging to Organization One
-        sessionManager
-          .get(nonAdminSession.get)
-          .right
-          .get
-          .organizationId shouldBe organizationOne.nodeId
+        preferredOrganization(nonAdmin) shouldBe organizationOne
+
+        responseAs[UserDTO].preferredOrganization.get shouldBe organizationOne.nodeId
+      }
+    }
+
+    "switch the organization in a user's session with a node ID" in {
+      // Confirm the session starts belonging to Organization Two
+      preferredOrganization(nonAdmin) shouldBe organizationTwo
+
+      testRequest(
+        PUT,
+        s"/session/switch-organization?organization_id=${organizationOne.nodeId}",
+        session = nonAdminCognitoJwt
+      ) ~>
+        routes ~> check {
+        status shouldEqual OK
+
+        // Verify the session now belonging to Organization One
+        preferredOrganization(nonAdmin) shouldBe organizationOne
 
         responseAs[UserDTO].preferredOrganization.get shouldBe organizationOne.nodeId
       }
@@ -808,53 +779,39 @@ class AuthorizationRoutesSpec
 
     "switch the organization in an admin user's session to which it does not belong" in {
       // Confirm the session starts belonging to Organization One
-      sessionManager
-        .get(adminSession.get)
-        .right
-        .get
-        .organizationId shouldBe organizationOne.nodeId
+      preferredOrganization(admin) shouldBe organizationOne
 
       testRequest(
         PUT,
         s"/session/switch-organization?organization_id=${organizationTwo.id}",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
 
         // Verify the session now belonging to Organization Two
-        sessionManager
-          .get(adminSession.get)
-          .right
-          .get
-          .organizationId shouldBe organizationTwo.nodeId
+        preferredOrganization(admin) shouldBe organizationTwo
 
         responseAs[UserDTO].preferredOrganization.get shouldBe organizationTwo.nodeId
       }
     }
 
     "reject a request to switch to an organization a user does not have access to" in {
+
       // Confirm the session starts belonging to Organization One
-      sessionManager
-        .get(blindReviewerSession.get)
-        .right
-        .get
-        .organizationId shouldBe organizationOne.nodeId
+      preferredOrganization(owner) shouldBe organizationOne
 
       testRequest(
         PUT,
         s"/session/switch-organization?organization_id=${organizationTwo.id}",
-        session = blindReviewerSession
+        session = ownerCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual Unauthorized
 
         // Verify the session does not belong to Organization Two
-        sessionManager
-          .get(blindReviewerSession.get)
-          .right
-          .get
-          .organizationId should not be organizationTwo.nodeId
+
+        preferredOrganization(owner) should not be organizationTwo
       }
     }
 
@@ -871,25 +828,15 @@ class AuthorizationRoutesSpec
         .value
         ._1
 
-      val apiSession = sessionManager
-        .generateAPISession(token, 6000, testDIContainer.tokenManager)
-        .await
-        .value
+      val apiJwt = createCognitoJwtFromToken(token)
 
       testRequest(
         PUT,
         s"/session/switch-organization?organization_id=${organizationOne.id}",
-        session = Some(apiSession.uuid)
+        session = Some(apiJwt)
       ) ~>
         routes ~> check {
         status shouldEqual Forbidden
-
-        // Verify the session does not belong to Organization One
-        sessionManager
-          .get(apiSession.uuid)
-          .right
-          .get
-          .organizationId should not be organizationOne.nodeId
       }
     }
   }

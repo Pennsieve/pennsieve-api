@@ -20,19 +20,17 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ Directive, Route }
-import akka.stream.ActorMaterializer
 import com.pennsieve.akka.http.RouteService
 import com.pennsieve.akka.http.directives.AuthorizationDirectives.{
-  session,
   user,
   AuthorizationContainer
 }
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.routes.{
-  AuthenticationRoutes,
   AuthorizationRoutes,
   DiscoverAuthorizationRoutes
 }
+import com.pennsieve.aws.cognito.CognitoConfig
 import com.pennsieve.core.utilities._
 import com.pennsieve.utilities._
 
@@ -40,10 +38,8 @@ import scala.concurrent.ExecutionContext
 
 object Router {
   type ResourceContainer = Container
-    with RedisManagerContainer
     with AuthorizationContainer
     with JwtContainer
-    with AuthyContainer
     with TermsOfServiceManagerContainer
     with TokenManagerContainer
 }
@@ -52,35 +48,38 @@ class Router(
   val container: ResourceContainer
 )(implicit
   system: ActorSystem,
-  materializer: ActorMaterializer
+  cognitoConfig: CognitoConfig
 ) extends RouteService {
 
   implicit val executionContext: ExecutionContext = system.dispatcher
 
-  val authentication =
-    new AuthenticationRoutes()(container, executionContext)
-
   // use bf-akka-http for authorization:
   val routes: Route =
-    authentication.routes ~ session(container, realm = "authentication")(
+    user(container, realm = "authentication")(
+      container,
+      cognitoConfig,
       executionContext
     ) {
-      case (session, user, organization) =>
-        val authorization = new AuthorizationRoutes(
-          user = user,
-          organization = organization,
-          session = session
-        )(container, executionContext, materializer)
+      case userContext =>
+        logByEnvironment(
+          new AuthorizationRoutes(
+            user = userContext.user,
+            organization = userContext.organization,
+            cognitoId = userContext.cognitoId
+          )(container, executionContext, system).routes
+        )
 
-        logByEnvironment(authorization.routes)
-
-    } ~ user(container, realm = "authentication")(container, executionContext) {
+    } ~ user(container, realm = "authentication")(
+      container,
+      cognitoConfig,
+      executionContext
+    ) {
       case userContext =>
         logByEnvironment(
           DiscoverAuthorizationRoutes(user = userContext.user)(
             container,
             executionContext,
-            materializer
+            system
           )
         )
     }

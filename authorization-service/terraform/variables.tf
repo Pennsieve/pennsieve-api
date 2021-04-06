@@ -8,8 +8,6 @@ variable "vpc_name" {}
 
 # Service Module Vars
 
-variable "authy_api_url" {}
-
 variable "pennsieve_postgres_database" {
   default = "pennsieve_postgres"
 }

@@ -19,7 +19,6 @@ package com.pennsieve.admin.api
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
 import com.pennsieve.admin.api.Router.{
   InsecureResourceContainer,
   SecureResourceContainer,
@@ -76,8 +75,6 @@ object Router {
       with AdminETLServiceContainer {
     self: Container =>
 
-    override implicit val materializer: ActorMaterializer = ActorMaterializer()
-
     override val jobSchedulingServiceHost: String =
       config.as[String]("job_scheduling_service.host")
     override val jobSchedulingServiceQueueSize: Int =
@@ -92,8 +89,7 @@ class Router(
   secureContainerBuilder: SecureResourceContainerBuilder,
   publishClient: PublishClient
 )(implicit
-  system: ActorSystem,
-  materializer: ActorMaterializer
+  system: ActorSystem
 ) extends RouteService {
 
   implicit val executionContext: ExecutionContext = system.dispatcher
@@ -118,26 +114,20 @@ class Router(
   val adminOnlyRoutes: Route =
     admin(insecureContainer, realm = "admin")(
       insecureContainer.jwtConfig,
+      insecureContainer.cognitoConfig,
       executionContext
     ) {
       case context =>
         lazy val secureContainer: SecureResourceContainer =
           secureContainerBuilder(context.user, context.organization)
-        lazy val organizationsService = new OrganizationsService(
-          secureContainer,
-          insecureContainer
-        )(executionContext, materializer)
+        lazy val organizationsService =
+          new OrganizationsService(secureContainer, insecureContainer)
         lazy val userService =
           new UserService(secureContainer, insecureContainer)(executionContext)
-        lazy val packageService = new PackageService(
-          secureContainer,
-          insecureContainer
-        )(executionContext, materializer)
+        lazy val packageService =
+          new PackageService(secureContainer, insecureContainer)
         lazy val datasetsService =
-          new DatasetsService(secureContainer, publishClient)(
-            executionContext,
-            materializer
-          )
+          new DatasetsService(secureContainer, publishClient)
 
         lazy val adminRoutes: Seq[RouteService] =
           Seq(

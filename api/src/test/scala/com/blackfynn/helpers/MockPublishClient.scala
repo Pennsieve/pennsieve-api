@@ -18,8 +18,8 @@ package com.pennsieve.helpers
 
 import java.time.{ OffsetDateTime, ZoneOffset }
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
-import akka.stream.Materializer
 import cats.implicits._
 import cats.data.EitherT
 import com.pennsieve.discover.client.definitions
@@ -36,15 +36,15 @@ import com.pennsieve.models.PublishStatus
 import com.pennsieve.discover.client.definitions.DatasetPublishStatus
 
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
 import java.time.LocalDate
 
 class MockPublishClient(
+  implicit
   httpClient: HttpRequest => Future[HttpResponse],
   ec: ExecutionContext,
-  mat: Materializer
-) extends PublishClient("mock-discover-service-host")(httpClient, ec, mat) {
+  system: ActorSystem
+) extends PublishClient("mock-discover-service-host") {
 
   def clear: Unit = {
     nextGetStatusValue = None

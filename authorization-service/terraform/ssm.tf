@@ -1,18 +1,25 @@
-resource "aws_ssm_parameter" "authy_api_key" {
-  name      = "/${var.environment_name}/${var.service_name}/authy-api-key"
-  overwrite = false
-  type      = "SecureString"
-  value     = "dummy"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
+resource "aws_ssm_parameter" "cognito_user_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.user_pool_id
 }
 
-resource "aws_ssm_parameter" "authy_api_url" {
-  name  = "/${var.environment_name}/${var.service_name}/authy-api-url"
+resource "aws_ssm_parameter" "cognito_user_pool_app_client_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-app-client-id"
   type  = "String"
-  value = var.authy_api_url
+  value = data.terraform_remote_state.authentication_service.outputs.user_pool_client_id
+}
+
+resource "aws_ssm_parameter" "cognito_token_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.token_pool_id
+}
+
+resource "aws_ssm_parameter" "cognito_token_pool_app_client_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-app-client-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.token_pool_client_id
 }
 
 resource "aws_ssm_parameter" "pennsieve_postgres_database" {
@@ -60,42 +67,6 @@ resource "aws_ssm_parameter" "jwt_secret_key" {
   lifecycle {
     ignore_changes = [value]
   }
-}
-
-resource "aws_ssm_parameter" "parent_domain" {
-  name  = "/${var.environment_name}/${var.service_name}/parent-domain"
-  type  = "String"
-  value = data.terraform_remote_state.account.outputs.domain_name
-}
-
-resource "aws_ssm_parameter" "redis_host" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-host"
-  type  = "String"
-  value = data.terraform_remote_state.pennsieve_redis.outputs.primary_endpoint_address
-}
-
-resource "aws_ssm_parameter" "redis_auth_token" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-auth-token"
-  type  = "String"
-  value = data.aws_ssm_parameter.redis_auth_token.value
-}
-
-resource "aws_ssm_parameter" "redis_use_ssl" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-use-ssl"
-  type  = "String"
-  value = "true"
-}
-
-resource "aws_ssm_parameter" "redis_max_connections" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-max-connections"
-  type  = "String"
-  value = "128"
-}
-
-resource "aws_ssm_parameter" "session_token" {
-  name  = "/${var.environment_name}/${var.service_name}/session-token"
-  type  = "String"
-  value = "Pennsieve-Token"
 }
 
 // NEW RELIC CONFIGURATION

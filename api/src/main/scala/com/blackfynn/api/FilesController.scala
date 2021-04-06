@@ -16,8 +16,8 @@
 
 package com.pennsieve.api
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.Materializer
 import cats.data.{ EitherT, _ }
 import cats.implicits._
 import com.pennsieve.audit.middleware.{ Auditor, TraceId }
@@ -72,6 +72,7 @@ import com.pennsieve.models.{
   PackageState,
   PackageType,
   PayloadType,
+  Role,
   Upload,
   User
 }
@@ -161,7 +162,7 @@ case class ProxyLinkPayload(
 class FilesController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
-  materializer: Materializer,
+  system: ActorSystem,
   auditLogger: Auditor,
   objectStore: ObjectStore,
   modelServiceClient: ModelServiceClient,
@@ -514,7 +515,14 @@ class FilesController(
         // The previous authorization check will not let execution get to this
         // line if the user does not have permissions on the dataset, so
         // it is safe to unpack the `Option[Role]` here.
-        token = secureContainer.generateUserToken(dataset, role.get)
+        token = JwtAuthenticator.generateUserToken(
+          1.minute,
+          secureContainer.user,
+          organization = organization,
+          organizationRole = Role.Editor,
+          dataset = dataset,
+          datasetRole = role.get
+        )
 
         links <- proxyLinkRequestBody.traverse { req =>
           for {

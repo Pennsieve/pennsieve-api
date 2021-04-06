@@ -21,7 +21,6 @@ import akka.stream.testkit.scaladsl.TestSink
 import akka.actor.ActorSystem
 import akka.dispatch.MessageDispatcher
 import akka.stream.alpakka.s3.scaladsl.S3
-import akka.stream.{ ActorMaterializer, Materializer }
 import akka.stream.scaladsl.{ Sink, Source }
 import cats.data.{ EitherT, Kleisli, NonEmptyList }
 
@@ -82,7 +81,6 @@ class TestPublish
 
   implicit var system: ActorSystem = _
   implicit var executionContext: ExecutionContext = _
-  implicit var materializer: ActorMaterializer = _
 
   val sourceBucket = "test-source-bucket"
   val publishBucket = "test-publish-bucket"
@@ -149,7 +147,6 @@ class TestPublish
     *
     * @param container
     * @param executionContext
-    * @param materializer
     * @param system
     * @return
     */
@@ -157,7 +154,6 @@ class TestPublish
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer,
     system: ActorSystem
   ): EitherT[Future, CoreError, Unit] = {
     container.s3
@@ -179,7 +175,6 @@ class TestPublish
 
     system = ActorSystem("discover-publish", config)
     executionContext = system.dispatcher
-    materializer = ActorMaterializer()
 
     /*
      * Since PublishContainer is scoped to an organization, and requires a
@@ -1471,7 +1466,6 @@ class TestPublish
 
   def createUser(
     email: String = s"test+${generateRandomString()}@pennsieve.org",
-    password: String = "password",
     isSuperAdmin: Boolean = false
   ): User =
     databaseContainer.userManager
@@ -1483,10 +1477,8 @@ class TestPublish
           middleInitial = None,
           lastName = "User",
           degree = None,
-          password = password,
           isSuperAdmin = isSuperAdmin
-        ),
-        Some(password)
+        )
       )
       .await
       .value

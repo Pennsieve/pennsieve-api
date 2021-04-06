@@ -51,7 +51,7 @@ class UserServiceSpec extends AdminServiceSpec {
       val payload =
         body.copy(organizationId = organizationOne.nodeId).asJson.some
 
-      testRequest(POST, "/users/invite", payload, session = adminSession) ~>
+      testRequest(POST, "/users/invite", payload, session = adminCognitoJwt) ~>
         routes ~> check {
         status shouldEqual OK
         val invites = responseAs[List[UserInvite]]
@@ -65,7 +65,8 @@ class UserServiceSpec extends AdminServiceSpec {
           testDIContainer.cognitoClient
             .asInstanceOf[MockCognito]
             .sentInvites
-            .head == email
+            .head
+            .address == email
         )
       }
     }
@@ -81,7 +82,7 @@ class UserServiceSpec extends AdminServiceSpec {
         .asJson
         .some
 
-      testRequest(POST, "/users/invite", payload, session = adminSession) ~>
+      testRequest(POST, "/users/invite", payload, session = adminCognitoJwt) ~>
         routes ~> check {
         status shouldEqual OK
         val invites = responseAs[List[UserInvite]]
@@ -112,7 +113,7 @@ class UserServiceSpec extends AdminServiceSpec {
         .addUser(organizationOne, nonAdmin, DBPermission.Owner)
         .await
         .value
-      testRequest(POST, "/users/invite", payload, session = adminSession) ~>
+      testRequest(POST, "/users/invite", payload, session = adminCognitoJwt) ~>
         routes ~> check {
         status shouldEqual OK
         val invites = responseAs[List[User]]
