@@ -94,6 +94,16 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       url = "https://user.com"
     )
 
+  test("swagger") {
+    import com.pennsieve.web.ResourcesApp
+    addServlet(new ResourcesApp, "/api-docs/*")
+
+    get("/api-docs/swagger.json") {
+      status should equal(200)
+      println(body)
+    }
+  }
+
   test("get organizations") {
     get(s"", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
       status should equal(200)
