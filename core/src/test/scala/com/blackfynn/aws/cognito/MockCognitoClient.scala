@@ -18,7 +18,7 @@ package com.pennsieve.aws.cognito
 
 import com.pennsieve.aws.email.Email
 import com.pennsieve.dtos.Secret
-import com.pennsieve.models.CognitoId
+import com.pennsieve.models.{ CognitoId, Organization }
 import java.util.UUID
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
@@ -61,7 +61,8 @@ class MockCognito() extends CognitoClient {
 
   def createClientToken(
     token: String,
-    secret: Secret
+    secret: Secret,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId] = {
@@ -76,16 +77,6 @@ class MockCognito() extends CognitoClient {
   ): Future[Unit] = {
     sentDeletes.append(token)
     Future.successful(Unit)
-  }
-
-  def pushUserOrganizationAttribute(
-    username: String,
-    organization: String
-  )(implicit
-    ec: ExecutionContext
-  ): Future[Unit] = {
-    sentOrganizationUpdates.update(username, organization)
-    Future.successful(())
   }
 
   def reset(): Unit = {

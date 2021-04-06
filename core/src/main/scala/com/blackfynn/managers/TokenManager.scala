@@ -45,11 +45,7 @@ class TokenManager(db: Database) {
 
     for {
       cognitoId <- cognitoClient
-        .createClientToken(tokenString, secret)
-        .toEitherT
-
-      _ <- cognitoClient
-        .pushUserOrganizationAttribute(user.email, organization.nodeId)
+        .createClientToken(tokenString, secret, organization)
         .toEitherT
 
       token = Token(name, tokenString, cognitoId, organization.id, user.id)
