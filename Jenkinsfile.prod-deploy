@@ -10,20 +10,12 @@ timestamps {
     node('prod-executor') {
         try {
             stage('Run migrations') {
-                checkout scm
-
-                echo "Running Database Migrations"
-
-                def sbt = "sbt -Dsbt.log.noformat=true"
-
-                withCredentials([pennsieveNexusCreds]) {
-                    sh "${sbt} migrations/docker"
-                }
-                sh "docker run -e CLOUDWRAP_ENVIRONMENT=prod pennsieve/migrations:latest"
-
-                if (params.RUN_ORG_MIGRATIONS) {
-                    echo "Running PROD Organization Schema Migrations"
-                    build job: "migrations/prod-organization-migration"
+                if (params.RUN_MIGRATIONS) {
+                    echo "Running PROD Postgres Schema Migrations"
+                    build job: "Migrations/prod-migrations/prod-postgres-migrations",
+                    parameters: [
+                        string(name: 'IMAGE_TAG', value: params.IMAGE_TAG)
+                    ]
                 }
             }
 
@@ -57,7 +49,7 @@ def generateDeployStep(String service, String imageTag) {
     return {
         build job: "service-deploy/pennsieve-prod/us-east-1/prod-vpc-use1/prod/${service}",
         parameters: [
-            string(name: 'IMAGE_TAG', value: imageTag),
+            string(name: 'IMAGE_TAG', value: params.IMAGE_TAG),
             string(name: "TERRAFORM_ACTION", value: "apply")
         ]
     }

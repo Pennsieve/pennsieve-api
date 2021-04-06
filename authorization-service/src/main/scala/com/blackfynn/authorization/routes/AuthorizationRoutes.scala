@@ -15,17 +15,16 @@
  */
 
 package com.pennsieve.authorization.routes
+
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ HttpHeader, HttpResponse }
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
 import com.pennsieve.db._
-import com.pennsieve.domain.{ FeatureNotEnabled, Sessions }
-import com.pennsieve.domain.Sessions.Session
+import com.pennsieve.domain.FeatureNotEnabled
 import com.pennsieve.dtos.{ Builders, UserDTO }
-import com.pennsieve.models.Role.BlindReviewer
 import com.pennsieve.models._
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.{ DBIOAction, Effect, NoStream }
@@ -33,6 +32,7 @@ import slick.sql.FixedSqlStreamingAction
 import cats.implicits._
 import com.pennsieve.akka.http.RouteService
 import com.pennsieve.auth.middleware.{
+  CognitoSession,
   DatasetId,
   DatasetNodeId,
   EncryptionKeyId,
@@ -41,9 +41,7 @@ import com.pennsieve.auth.middleware.{
   OrganizationNodeId,
   UserClaim,
   UserId,
-  UserNodeId,
-  WorkspaceId,
-  Session => JwtSession
+  UserNodeId
 }
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.utilities.exceptions._
@@ -63,64 +61,39 @@ import scala.util.{ Failure, Success, Try }
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
-  session: Session
+  cognitoId: Option[CognitoId]
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
-  materializer: ActorMaterializer
+  system: ActorSystem
 ) extends RouteService
     with LazyLogging {
 
   import AuthorizationQueries._
 
-  val allowedWorkspaces: List[Int] =
-    container.config.as[List[Int]]("workspaces.allowed")
-
   val routes: Route = pathPrefix("authorization") {
-    // See https://github.com/Blackfynn/gateway/blob/master/templates/nginx.conf.tmpl
-    //
-    // nginx will route requests from /internal-auth/ to /authorization, setting the
-    // `X-Original-URI` to the full, originating request.
-    //
-    // Based on the `nginx.conf.tmpl` configuration for the gateway, the `X-Original-URI"` header
-    // MUST exist when a request is made for authentication/authorization.
-    headerValueByName("X-Original-URI") { originalURI: String =>
-      {
-        logger.info(
-          s"authorization route: got X-Original-URI header = $originalURI"
-        )
-        authorization(originalURI)
-      }
-    }
+    authorization
   } ~ pathPrefix("session") { switchOrganization }
 
-  def authorization(originalURI: String): Route =
+  def authorization: Route =
     (pathEndOrSingleSlash & get & parameters(
       'organization_id
         .as[String]
         .?, // Either an organization ID (integer) or a node ID ("N:organization:123-456...")
       'dataset_id
         .as[String]
-        .?, // Either a dataset ID (integer) or a node ID ("N:dataset:123-456...")
-      'workspace_id.as[Int].?
-    )) { (organizationId, datasetId, workspaceId) =>
+        .? // Either a dataset ID (integer) or a node ID ("N:dataset:123-456...")
+    )) { (organizationId, datasetId) =>
       val result: Future[Jwt.Token] = for {
         _ <- organizationId.traverse(
           assertOrganizationIdMatches(user, organization, _)
         )
-        organizationRole <- getOrganizationRole(
-          user,
-          organization,
-          originalURI.some
-        )
+        organizationRole <- getOrganizationRole(user, organization)
         datasetRole <- datasetId.traverse(getDatasetRole(user, organization, _))
-        workspaceRole <- workspaceId.traverse(
-          getWorkspaceRole(user, _, allowedWorkspaces)
-        )
       } yield {
         val roles =
-          List(organizationRole.some, datasetRole, workspaceRole).flatten
-        val userClaim = getUserClaim(user, roles, session)
+          List(organizationRole.some, datasetRole).flatten
+        val userClaim = getUserClaim(user, roles, cognitoId)
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
@@ -150,25 +123,22 @@ class AuthorizationRoutes(
     }
 
   def switchOrganization: Route =
-    (path("switch-organization") & parameters('organization_id.as[Int]) & put) {
+    (path("switch-organization") & parameters('organization_id.as[String]) & put) {
       (organizationId) =>
         val result: Future[UserDTO] = for {
-          _ <- session.isBrowserSession match {
-            case true => Future.successful(())
-            case false => Future.failed(NonBrowserSession)
+
+          // Only users logged in from the browser / user pool can switch organizations
+          _ <- cognitoId.map(_.asUserPoolId) match {
+            case Some(Right(_)) => Future.successful(())
+            case _ => Future.failed(NonBrowserSession)
           }
           organizationToSwitchTo <- getOrganization(user, organizationId)
-          savedSession <- Future.fromTry(
-            container.sessionManager
-              .update(
-                session.copy(organizationId = organizationToSwitchTo.nodeId)
-              )
-              .toTry
-          )
+
           updatedUser <- updateUserPreferredOrganization(
             user,
             organizationToSwitchTo
           )
+
           userDTO <- Builders
             .userDTO(updatedUser, storage = None)(
               container.organizationManager,
@@ -194,18 +164,17 @@ class AuthorizationRoutes(
   private def getUserClaim(
     user: User,
     roles: List[Jwt.Role],
-    session: Session
+    cognitoId: Option[CognitoId]
   ): UserClaim = {
-    val jwtSession: JwtSession = session.`type` match {
-      case Sessions.APISession(_) => JwtSession.API(session.uuid)
-      case Sessions.BrowserSession => JwtSession.Browser(session.uuid)
-      case Sessions.TemporarySession => JwtSession.Temporary(session.uuid)
+    val cognitoSession = cognitoId.map {
+      case id: CognitoId.TokenPoolId => CognitoSession.API(id)
+      case id: CognitoId.UserPoolId => CognitoSession.Browser(id)
     }
 
     UserClaim(
       id = UserId(user.id),
       roles = roles,
-      session = Some(jwtSession),
+      cognito = cognitoSession,
       node_id = Some(UserNodeId(user.nodeId))
     )
   }
@@ -230,9 +199,8 @@ private[routes] object AuthorizationQueries {
     val query = for {
       _ <- UserMapper
         .filter(_.id === user.id)
-        .update(
-          user.copy(preferredOrganizationId = Some(preferredOrganization.id))
-        )
+        .map(_.preferredOrganizationId)
+        .update(Some(preferredOrganization.id))
       updatedUser <- UserMapper.getById(user.id)
       result <- updatedUser match {
         case Some(u) => DBIO.successful(u)
@@ -253,20 +221,33 @@ private[routes] object AuthorizationQueries {
     */
   def getOrganization(
     user: User,
-    organizationId: Int
+    organizationId: String // integer or node ID
   )(implicit
     container: ResourceContainer,
     executionContext: ExecutionContext
   ): Future[Organization] = {
-    val query = (if (user.isSuperAdmin) {
-                   OrganizationsMapper.get(organizationId)
-                 } else {
-                   OrganizationsMapper
-                     .get(user)(organizationId)
-                     .result
-                     .headOption
-                     .map(_.map(_._1))
-                 }).flatMap {
+    val query = (parseId(organizationId) match {
+
+      case Left(nodeId) if user.isSuperAdmin =>
+        OrganizationsMapper.getByNodeId(nodeId)
+
+      case Right(intId) if user.isSuperAdmin =>
+        OrganizationsMapper.get(intId)
+
+      case Left(nodeId) =>
+        OrganizationsMapper
+          .getByNodeId(user)(nodeId)
+          .result
+          .headOption
+          .map(_.map(_._1))
+
+      case Right(intId) =>
+        OrganizationsMapper
+          .get(user)(intId)
+          .result
+          .headOption
+          .map(_.map(_._1))
+    }).flatMap {
       case Some(organization) => DBIO.successful(organization)
       case None => DBIO.failed(new OrganizationNotFound(organizationId))
     }
@@ -299,8 +280,7 @@ private[routes] object AuthorizationQueries {
 
   def getOrganizationRole(
     user: User,
-    organization: Organization,
-    originalURI: Option[String]
+    organization: Organization
   )(implicit
     container: ResourceContainer,
     executionContext: ExecutionContext
@@ -335,19 +315,12 @@ private[routes] object AuthorizationQueries {
       : FixedSqlStreamingAction[Seq[Feature], Feature, Effect.Read] =
       FeatureFlagsMapper.getActiveFeatures(organization.id).result
 
-    def isTrials: Boolean =
-      (user.isSuperAdmin || originalURI.exists(_.contains("/trials")))
-
     val result: Future[(Role, Option[String], Seq[Feature])] =
       container.db
         .run(for {
           permission <- getPermission
           role <- {
             permission.toRole match {
-              case Some(BlindReviewer) if !isTrials =>
-                DBIO.failed(
-                  FeatureNotEnabled("non trials feature for trials user")
-                )
               case Some(role) => DBIO.successful(role)
               case None => DBIO.failed(new InvalidSession(user, organization))
             }
@@ -433,35 +406,6 @@ private[routes] object AuthorizationQueries {
           role,
           DatasetNodeId(dataset.nodeId).some,
           Some(locked)
-        )
-    }
-  }
-
-  def getWorkspaceRole(
-    user: User,
-    workspaceId: Int,
-    allowedWorkspaces: List[Int]
-  )(implicit
-    container: ResourceContainer,
-    executionContext: ExecutionContext
-  ): Future[Jwt.WorkspaceRole] = {
-    val result: Future[(Int, Role)] =
-      if (allowedWorkspaces.contains(workspaceId)) {
-        Future.successful((workspaceId, if (user.isSuperAdmin) {
-          Role.Owner
-        } else {
-          Role.Manager
-        }))
-      } else {
-        throw new InvalidWorkspaceId(user, workspaceId)
-      }
-
-    result.map {
-      case (workspaceId, role) =>
-        Jwt.WorkspaceRole(
-          WorkspaceId(workspaceId)
-            .inject[Jwt.Role.RoleIdentifier[WorkspaceId]],
-          role
         )
     }
   }

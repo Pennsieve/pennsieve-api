@@ -16,6 +16,8 @@
 
 package com.pennsieve.aws.cognito
 
+import com.pennsieve.aws.email.Email
+import com.pennsieve.dtos.Secret
 import com.pennsieve.models.CognitoId
 import java.util.UUID
 import scala.collection.mutable
@@ -23,83 +25,60 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 class MockCognito() extends CognitoClient {
 
-  val sentInvites: mutable.ArrayBuffer[String] =
+  val sentInvites: mutable.ArrayBuffer[Email] =
     mutable.ArrayBuffer.empty
 
   val sentTokenInvites: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
-  val sentPasswordSets: mutable.ArrayBuffer[String] =
-    mutable.ArrayBuffer.empty
-
   val sentDeletes: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
-  val reSentInvites: mutable.Map[String, CognitoId] =
+  val reSentInvites: mutable.Map[Email, CognitoId.UserPoolId] =
     mutable.Map.empty
 
-  def adminCreateUser(
-    email: String,
-    userPoolId: String
+  def inviteUser(
+    email: Email
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[CognitoId.UserPoolId] = {
     sentInvites.append(email)
-    Future.successful(CognitoId.randomId())
-  }
-
-  def adminCreateToken(
-    email: String,
-    userPoolId: String
-  )(implicit
-    ec: ExecutionContext
-  ): Future[CognitoId] = {
-    sentTokenInvites.append(email)
-    Future.successful(CognitoId.randomId())
-  }
-
-  def adminSetUserPassword(
-    username: String,
-    password: String,
-    userPoolId: String
-  )(implicit
-    ec: ExecutionContext
-  ): Future[Unit] = {
-    sentPasswordSets.append(username)
-    Future.successful(Unit)
-  }
-
-  def adminDeleteUser(
-    email: String,
-    userPoolId: String
-  )(implicit
-    ec: ExecutionContext
-  ): Future[Unit] = {
-    sentDeletes.append(email)
-    Future.successful(Unit)
-  }
-
-  def getTokenPoolId(): String = {
-    "__MOCK__tokenPoolId"
-  }
-
-  def getUserPoolId(): String = {
-    "__MOCK__userPoolId"
+    Future.successful(CognitoId.UserPoolId.randomId())
   }
 
   def resendUserInvite(
-    email: String,
-    cognitoId: CognitoId
+    email: Email,
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
-  ): Future[CognitoId] = {
+  ): Future[CognitoId.UserPoolId] = {
     reSentInvites.update(email, cognitoId)
     Future.successful(cognitoId)
+  }
+
+  def createClientToken(
+    token: String,
+    secret: Secret
+  )(implicit
+    ec: ExecutionContext
+  ): Future[CognitoId.TokenPoolId] = {
+    sentTokenInvites.append(token)
+    Future.successful(CognitoId.TokenPoolId.randomId())
+  }
+
+  def deleteClientToken(
+    token: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    sentDeletes.append(token)
+    Future.successful(Unit)
   }
 
   def reset(): Unit = {
     sentDeletes.clear()
     sentInvites.clear()
+    sentTokenInvites.clear()
     reSentInvites.clear()
   }
 }

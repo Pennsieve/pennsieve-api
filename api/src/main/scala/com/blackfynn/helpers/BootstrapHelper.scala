@@ -19,17 +19,13 @@ package com.pennsieve.helpers
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import akka.stream.ActorMaterializer
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.S3ClientOptions
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderAsyncClient
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
-import com.authy.AuthyApiClient
-import com.pennsieve.auth.middleware.{ Jwt, UserClaim, UserId }
-import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.cognito.{ CognitoClient, CognitoConfig }
 import com.pennsieve.aws.s3.AWSS3Container
 import com.pennsieve.aws.s3.LocalS3Container
 import net.ceedubs.ficus.Ficus._
@@ -70,7 +66,6 @@ import java.util.concurrent.TimeUnit
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 
 import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
-import com.redis.RedisClientPool
 import org.apache.http.ssl.SSLContexts
 import java.util.Date
 import scala.concurrent.{ ExecutionContext, Future }
@@ -93,10 +88,9 @@ object APIContainers {
   type SecureAPIContainer = APIContainer
     with SecureContainer
     with SecureCoreContainer
-    with RoleOverrideContainer
 
   type SecureContainerBuilderType =
-    (User, Organization, List[Jwt.Role]) => SecureAPIContainer
+    (User, Organization) => SecureAPIContainer
 }
 
 trait BaseBootstrapHelper {
@@ -104,7 +98,6 @@ trait BaseBootstrapHelper {
 
   implicit val ec: ExecutionContext
   implicit val system: ActorSystem
-  implicit val materializer: ActorMaterializer
 
   val config: Config = Settings.config
 
@@ -119,12 +112,6 @@ trait BaseBootstrapHelper {
     new AuditLogger(GatewayHost(host))
   }
 
-  lazy val authyClient: AuthyApiClient = new AuthyApiClient(
-    Settings.authyKey,
-    Settings.authyApiUrl,
-    !Settings.isProduction
-  )
-
   lazy val awsSQSClient: SqsAsyncClient =
     SqsAsyncClient
       .builder()
@@ -134,7 +121,8 @@ trait BaseBootstrapHelper {
 
   lazy val sqsClient: SQSClient = new SQS(awsSQSClient)
 
-  lazy val cognitoClient: CognitoClient = Cognito(config)
+  lazy val cognitoConfig: CognitoConfig = CognitoConfig(config)
+  lazy val cognitoClient: CognitoClient = Cognito(cognitoConfig)
 
   lazy val modelServiceClient = {
 
@@ -195,12 +183,8 @@ trait BaseBootstrapHelper {
 class LocalBootstrapHelper(
 )(implicit
   override val ec: ExecutionContext,
-  override val system: ActorSystem,
-  override val materializer: ActorMaterializer
+  override val system: ActorSystem
 ) extends BaseBootstrapHelper {
-
-  // Alias needed to prevent NPE from circular reference in JSS container
-  val _materializer = materializer
 
   lazy val objectStore: ObjectStore = new S3ObjectStore(insecureContainer.s3)
 
@@ -209,7 +193,6 @@ class LocalBootstrapHelper(
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with LocalSQSContainer with LocalS3Container
     with ApiSQSContainer with JobSchedulingServiceContainerImpl {
-      override implicit val materializer: ActorMaterializer = _materializer
       override val jobSchedulingServiceHost: String =
         config.as[String]("pennsieve.job_scheduling_service.host")
       override val jobSchedulingServiceQueueSize: Int =
@@ -235,31 +218,23 @@ class LocalBootstrapHelper(
     */
   override val secureContainerBuilder: (
     User,
-    Organization,
-    List[Jwt.Role]
-  ) => SecureContainer with SecureCoreContainer with LocalEmailContainer with RoleOverrideContainer = {
-    (user: User, organization: Organization, roleOverrides: List[Jwt.Role]) =>
+    Organization
+  ) => SecureContainer with SecureCoreContainer with LocalEmailContainer = {
+    (user: User, organization: Organization) =>
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
-        organization = organization,
-        roleOverrides = roleOverrides
+        organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
-      with RoleOverrideContainer
   }
 }
 
 class AWSBootstrapHelper(
 )(implicit
   override val system: ActorSystem,
-  override val ec: ExecutionContext,
-  override val materializer: ActorMaterializer
+  override val ec: ExecutionContext
 ) extends BaseBootstrapHelper {
-
-  // Alias needed to prevent NPE from circular reference in JSS container
-  val _materializer = materializer
 
   lazy val objectStore: ObjectStore = new S3ObjectStore(insecureContainer.s3)
 
@@ -268,7 +243,6 @@ class AWSBootstrapHelper(
     with AWSEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with AWSSQSContainer with AWSS3Container
     with ApiSQSContainer with JobSchedulingServiceContainerImpl {
-      override implicit val materializer: ActorMaterializer = _materializer
       override val jobSchedulingServiceHost: String =
         config.as[String]("pennsieve.job_scheduling_service.host")
       override val jobSchedulingServiceQueueSize: Int =
@@ -289,14 +263,11 @@ class AWSBootstrapHelper(
   )
 
   override val secureContainerBuilder =
-    (user: User, organization: Organization, roleOverrides: List[Jwt.Role]) =>
+    (user: User, organization: Organization) =>
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
-        organization = organization,
-        roleOverrides = roleOverrides
+        organization = organization
       ) with SecureCoreContainer with AWSEmailContainer
-      with RoleOverrideContainer
 }

@@ -16,6 +16,8 @@
 
 package com.pennsieve.jobs
 
+import akka.actor.ActorSystem
+import akka.stream.{ ActorAttributes, Supervision }
 import akka.stream.alpakka.sqs.scaladsl.{ SqsAckSink, SqsSource }
 import akka.stream.alpakka.sqs.{ MessageAction, SqsSourceSettings }
 import akka.stream.contrib.PartitionWith
@@ -102,7 +104,7 @@ object Processor {
     queue: String,
     parallelism: Int = 10
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     executionContext: ExecutionContext,
     container: Container
   ): RunnableGraph[UniqueKillSwitch] = {
@@ -159,6 +161,11 @@ object Processor {
           // @formatter:on
 
           ClosedShape
+      })
+      .withAttributes(ActorAttributes.supervisionStrategy {
+        exception: Throwable =>
+          log.noContext.error("Unhandled exception thrown", exception)
+          Supervision.resume
       })
   }
 

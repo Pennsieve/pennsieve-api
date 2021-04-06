@@ -81,7 +81,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
   "organizations service" should {
 
     "return all organizations to an admin user" in {
-      testRequest(GET, "/organizations", session = adminSession) ~>
+      testRequest(GET, "/organizations", session = adminCognitoJwt) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
@@ -94,7 +94,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
     }
 
     "return all inactive organizations to an admin user" in {
-      testRequest(GET, "/organizations/inactive", session = adminSession) ~>
+      testRequest(GET, "/organizations/inactive", session = adminCognitoJwt) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
@@ -134,7 +134,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
     }
 
     "not return any organization to a non admin user" in {
-      testRequest(GET, "/organizations", session = nonAdminSession) ~>
+      testRequest(GET, "/organizations", session = nonAdminCognitoJwt) ~>
         routes ~> check {
         status shouldEqual Forbidden
         responseAs[String] should be(
@@ -174,7 +174,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationOne.nodeId}",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -188,7 +188,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationOne.nodeId}/owners",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -209,7 +209,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         PUT,
         s"/organizations/${organizationOne.nodeId}/users?userId=${nonAdmin.nodeId}",
         Some(body.asJson),
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -217,7 +217,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         testRequest(
           GET,
           s"/organizations/${organizationOne.nodeId}/owners",
-          session = adminSession
+          session = adminCognitoJwt
         ) ~>
           routes ~> check {
           import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -232,7 +232,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationOne.nodeId}",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual Forbidden
@@ -243,7 +243,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
     }
 
     "not return anything with an invalid id" in {
-      testRequest(GET, s"/organizations/${admin.id}", session = adminSession) ~>
+      testRequest(GET, s"/organizations/${admin.id}", session = adminCognitoJwt) ~>
         routes ~> check {
         status shouldEqual BadRequest
         responseAs[String] should be("malformed organization id")
@@ -254,7 +254,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         "/organizations/N:organization:test",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual NotFound
@@ -269,7 +269,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
 
       val body = Some(NewOrganization("new-org-name", "new-org-slug").asJson)
 
-      testRequest(POST, s"/organizations", body, session = adminSession) ~>
+      testRequest(POST, s"/organizations", body, session = adminCognitoJwt) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
@@ -285,7 +285,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         testRequest(
           GET,
           s"/organizations/${newOrganization.nodeId}",
-          session = adminSession
+          session = adminCognitoJwt
         ) ~>
           routes ~> check {
           status shouldEqual OK
@@ -301,7 +301,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         NewOrganization("new-org-name", "new-org-slug", Some("Trial")).asJson
       )
 
-      testRequest(POST, s"/organizations", body, session = adminSession) ~>
+      testRequest(POST, s"/organizations", body, session = adminCognitoJwt) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
@@ -311,7 +311,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         testRequest(
           GET,
           s"/organizations/${newOrganization.nodeId}/subscription",
-          session = adminSession
+          session = adminCognitoJwt
         ) ~>
           routes ~> check {
           status shouldEqual OK
@@ -329,7 +329,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       val updated = organizationTwo.copy(name = "updatedOrg")
       val body = Some(updated.asJson)
 
-      testRequest(PUT, s"/organizations", body, session = adminSession) ~>
+      testRequest(PUT, s"/organizations", body, session = adminCognitoJwt) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
@@ -339,7 +339,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         testRequest(
           GET,
           s"/organizations/${updatedOrganization.nodeId}",
-          session = adminSession
+          session = adminCognitoJwt
         ) ~>
           routes ~> check {
           status shouldEqual OK
@@ -362,7 +362,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         PUT,
         s"/organizations/${organizationOne.nodeId}/feature",
         body,
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -379,7 +379,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
 
       val body = Some(NewOrganization("new-org-name", "new-org-slug").asJson)
 
-      testRequest(POST, s"/organizations", body, session = nonAdminSession) ~>
+      testRequest(POST, s"/organizations", body, session = nonAdminCognitoJwt) ~>
         routes ~> check {
         status shouldEqual Forbidden
         responseAs[String] should be(
@@ -393,13 +393,13 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       val body =
         Some(NewOrganization("new-org-name", "organization_one").asJson)
 
-      testRequest(POST, s"/organizations", body, session = adminSession) ~>
+      testRequest(POST, s"/organizations", body, session = adminCognitoJwt) ~>
         routes ~> check {
         status shouldEqual BadRequest
         responseAs[String] should be("requirement failed: slug must be unique")
       }
 
-      testRequest(GET, "/organizations", session = adminSession) ~>
+      testRequest(GET, "/organizations", session = adminCognitoJwt) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
@@ -414,7 +414,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       val body =
         Some(NewOrganization("new-schemaless-org", "schemaless_org").asJson)
 
-      testRequest(POST, s"/organizations", body, session = adminSession) ~>
+      testRequest(POST, s"/organizations", body, session = adminCognitoJwt) ~>
         routes ~> check {
         status shouldEqual BadRequest
         responseAs[String] should be("requirement failed: schema not found")
@@ -426,13 +426,11 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       val nonAdminUser =
         UserWithPermission(UserDTO(nonAdmin), DBPermission.Delete)
       val ownerUser = UserWithPermission(UserDTO(owner), DBPermission.Owner)
-      val blindReviewerUser =
-        UserWithPermission(UserDTO(blindReviewer), DBPermission.BlindReviewer)
 
       testRequest(
         GET,
         s"/organizations/${organizationOne.nodeId}/users",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -441,8 +439,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         responseAs[List[UserWithPermission]] should contain theSameElementsAs List(
           user,
           nonAdminUser,
-          ownerUser,
-          blindReviewerUser
+          ownerUser
         )
       }
     }
@@ -455,7 +452,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationTwo.nodeId}/users",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
@@ -472,7 +469,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationOne.nodeId}/users",
-        session = nonAdminSession
+        session = nonAdminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual Forbidden
@@ -486,7 +483,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/invalidOrgId/users",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual NotFound
@@ -501,7 +498,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationOne.nodeId}/subscription",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -520,7 +517,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         DELETE,
         s"/organizations/${organizationOne.nodeId}/subscription",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -528,7 +525,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         testRequest(
           GET,
           s"/organizations/${organizationOne.nodeId}/subscription",
-          session = adminSession
+          session = adminCognitoJwt
         ) ~>
           routes ~> check {
           status shouldEqual OK
@@ -547,7 +544,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationOne.nodeId}/subscription",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -567,7 +564,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         PUT,
         s"/organizations/${organizationOne.nodeId}/subscription",
         Some(payload),
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -587,7 +584,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationOne.nodeId}/storage",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -615,7 +612,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationTwo.nodeId}/storage",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
         status shouldEqual OK
@@ -646,7 +643,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         PUT,
         s"/organizations/${organizationOne.nodeId}/custom-terms-of-service?isNewVersion=true",
         Some(ByteString(body)),
-        session = adminSession,
+        session = adminCognitoJwt,
         contentType = ContentTypes.`application/octet-stream`
       ) ~>
         routes ~> check {
@@ -685,7 +682,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         PUT,
         s"/organizations/${organizationOne.nodeId}/custom-terms-of-service",
         Some(ByteString(body)),
-        session = adminSession,
+        session = adminCognitoJwt,
         contentType = ContentTypes.`application/octet-stream`
       ) ~>
         routes ~> check {
@@ -719,7 +716,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         PUT,
         s"/organizations/${organizationOne.nodeId}/custom-terms-of-service",
         Some(body),
-        session = nonAdminSession,
+        session = nonAdminCognitoJwt,
         contentType = ContentTypes.`application/octet-stream`
       ) ~>
         routes ~> check {

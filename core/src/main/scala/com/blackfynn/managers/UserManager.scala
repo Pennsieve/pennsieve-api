@@ -40,22 +40,12 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve
 import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
-import io.github.nremond.SecureHash
 import java.util.UUID
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random
 
 class UserManager(db: Database) {
-
-  private def randomPassword: String = {
-    val alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
-    Stream
-      .continually(Random.nextInt(alphabet.length))
-      .map(alphabet)
-      .take(20)
-      .mkString
-  }
 
   private def randomColor: String = {
     val colors = List(
@@ -109,27 +99,6 @@ class UserManager(db: Database) {
     db.run(UserMapper.getByNodeIds(nodeIds))
       .map(_.toList)
       .toEitherT
-  }
-
-  def resetUserPassword(
-    user: User,
-    newPassword: String
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, User] = {
-    val hashedPassword = SecureHash.createHash(newPassword)
-
-    for {
-      _ <- db
-        .run(
-          UserMapper
-            .filter(_.id === user.id)
-            .map(_.password)
-            .update(hashedPassword)
-        )
-        .toEitherT
-      updatedUser <- get(user.id)
-    } yield updatedUser
   }
 
   def update(
@@ -199,18 +168,16 @@ class UserManager(db: Database) {
     * @param firstName
     * @param lastName
     * @param title
-    * @param password
     * @param organizationManager
     * @return
     */
   def createFromInvite(
-    cognitoId: CognitoId,
+    cognitoId: CognitoId.UserPoolId,
     firstName: String,
     middleInitial: Option[String],
     lastName: String,
     degree: Option[Degree],
-    title: String,
-    password: String
+    title: String
   )(implicit
     organizationManager: OrganizationManager,
     userInviteManager: UserInviteManager,
@@ -233,25 +200,21 @@ class UserManager(db: Database) {
 
       middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
 
-      user: User = User(
-        NodeCodes.generateId(NodeCodes.userCode),
-        headInvite.email.trim.toLowerCase,
-        firstName,
-        middleInit,
-        lastName,
-        degree,
-        password = "",
-        credential = title
+      user <- create(
+        User(
+          NodeCodes.generateId(NodeCodes.userCode),
+          headInvite.email.trim.toLowerCase,
+          firstName,
+          middleInit,
+          lastName,
+          degree,
+          credential = title,
+          preferredOrganizationId = Some(headInvite.organizationId)
+        )
       )
 
-      newUser <- create(user, Some(password))
       cognitoUser <- db
-        .run(
-          CognitoUserMapper returning CognitoUserMapper += CognitoUser(
-            cognitoId = cognitoId,
-            userId = newUser.id
-          )
-        )
+        .run(CognitoUserMapper.create(cognitoId, user))
         .toEitherT
 
       organizations <- invites.traverse(
@@ -262,32 +225,25 @@ class UserManager(db: Database) {
         .zip(invites)
         .map {
           case (organization, inv) =>
-            organizationManager.addUser(organization, newUser, inv.permission)
+            organizationManager.addUser(organization, user, inv.permission)
         }
         .sequence
 
       _ <- invites.traverse(invite => userInviteManager.delete(invite))
-    } yield newUser
+    } yield user
 
-  // TODO remove this
   def create(
-    user: User,
-    cleartextPassword: Option[String]
+    user: User
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, User] = {
-    val password = cleartextPassword.getOrElse(randomPassword)
-    val hashedPassword = SecureHash.createHash(password)
-    val newUser = user.copy(color = randomColor, password = hashedPassword)
-
+  ): EitherT[Future, CoreError, User] =
     for {
       exists <- emailExists(user.email)
       _ <- assert(!exists)(PredicateError("email must be unique"))
       createdUser <- db
-        .run(UserMapper.returning(UserMapper) += newUser)
+        .run(UserMapper.returning(UserMapper) += user.copy(color = randomColor))
         .toEitherT
     } yield createdUser
-  }
 
   def get(
     id: Int
@@ -308,7 +264,7 @@ class UserManager(db: Database) {
   }
 
   def getByCognitoId(
-    cognitoId: CognitoId
+    cognitoId: CognitoId.UserPoolId
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (User, CognitoUser)] = {

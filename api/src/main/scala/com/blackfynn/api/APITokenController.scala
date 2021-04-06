@@ -71,10 +71,10 @@ class APITokenController(
         secureContainer <- getSecureContainer
         organization = secureContainer.organization
         body <- extractOrError[CreateTokenRequest](parsedBody).toEitherT[Future]
-        token_secret <- secureContainer.tokenManager
+        tokenSecret <- secureContainer.tokenManager
           .create(body.name, secureContainer.user, organization, cognitoClient)
           .orError
-      } yield APITokenSecretDTO(token_secret)
+      } yield APITokenSecretDTO(tokenSecret)
 
       val is = result.value.map(CreatedResult)
     }

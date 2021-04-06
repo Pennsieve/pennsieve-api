@@ -16,7 +16,7 @@
 
 package com.pennsieve.admin.api.services
 
-import akka.stream.ActorMaterializer
+import akka.actor.ActorSystem
 import com.pennsieve.admin.api.Router.{
   InsecureResourceContainer,
   SecureResourceContainer
@@ -78,7 +78,7 @@ class PackageService(
   insecureContainer: InsecureResourceContainer
 )(implicit
   ec: ExecutionContext,
-  mat: ActorMaterializer
+  system: ActorSystem
 ) extends RouteService {
 
   def getS3Path(user: User, importId: String) = {

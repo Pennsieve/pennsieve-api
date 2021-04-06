@@ -282,12 +282,7 @@ trait AuthenticatedController
                   .userContext(insecureContainer, claim)
                   .coreErrorToActionResult()
               }
-            } yield
-              secureContainerBuilder(
-                context.user,
-                context.organization,
-                claim.content.roles
-              )
+            } yield secureContainerBuilder(context.user, context.organization)
 
           // case: Service
           //   Check for the existence of an `X-ORGANIZATION-(INT)-ID` header that defines the organizational context
@@ -300,12 +295,7 @@ trait AuthenticatedController
 
               _ <- validateJwt(request, organization.id).toEitherT[Future]
 
-            } yield
-              secureContainerBuilder(
-                User.serviceUser,
-                organization,
-                claim.content.roles
-              )
+            } yield secureContainerBuilder(User.serviceUser, organization)
         }
       }
 
@@ -335,10 +325,10 @@ trait AuthenticatedController
       Option(request.getHeader(AuditLogger.TRACE_ID_HEADER)).map(TraceId(_))
     )
 
-  def getSessionId(request: HttpServletRequest): Option[String] = {
+  def getCognitoId(request: HttpServletRequest): Option[CognitoId] = {
     getJwtClaim(request).toOption.flatMap { claim =>
       claim.content match {
-        case UserClaim(_, _, session, _) => session.map(_.id)
+        case UserClaim(_, _, cognito, _) => cognito.map(_.id)
         case _ => None
       }
     }
@@ -347,7 +337,7 @@ trait AuthenticatedController
   def isBrowserSession(request: HttpServletRequest): Boolean = {
     getJwtClaim(request).exists { claim =>
       claim.content match {
-        case UserClaim(_, _, Some(session), _) => session.isBrowser
+        case UserClaim(_, _, Some(cognito), _) => cognito.isBrowser
         case _ => false
       }
     }

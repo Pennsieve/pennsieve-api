@@ -122,14 +122,6 @@ class UserOrganizationManagerSpec
     assert(gotUser.value.email == "test@pennsieve.org")
   }
 
-  "a user object" should "get extracted from a session they created" in {
-    val user = createUser()
-
-    val session = sessionManager.generateBrowserSession(user).await.value
-    val gotUser = session.user().await.value
-    assert(gotUser.id == user.id)
-  }
-
   "a user with admin on an organization " should "be able to add people to the organization" in {
 
     val organizationOne = createOrganization()

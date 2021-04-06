@@ -23,7 +23,6 @@ import com.pennsieve.helpers.{
 import com.pennsieve.web.{ ResourcesApp, Settings, SwaggerApp }
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.LazyLogging
 import java.io.{ PrintWriter, StringWriter }
 import javax.servlet.ServletContext
@@ -38,7 +37,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
   swagger.addAuthorization(ApiKey("api_key", "query"))
 
   implicit val system: ActorSystem = ActorSystem("appActorSystem")
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val ec: ExecutionContext = system.dispatcher
 
   val bootstrapHelper: BaseBootstrapHelper = if (Settings.isLocal) {
@@ -72,7 +70,11 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       // account endpoints
       ///////////////////////////////
       val accountController =
-        new AccountController(bootstrapHelper.insecureContainer, ec)
+        new AccountController(
+          bootstrapHelper.insecureContainer,
+          bootstrapHelper.cognitoConfig,
+          ec
+        )
       context mount (accountController, "/account/*", "account")
 
       // annotation endpoints
@@ -114,7 +116,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val dataController = new DataController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
-        materializer,
+        system,
         ec,
         bootstrapHelper.auditLogger,
         bootstrapHelper.sqsClient
@@ -144,7 +146,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val dataSetsController = new DataSetsController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
-        materializer,
+        system,
         bootstrapHelper.auditLogger,
         bootstrapHelper.sqsClient,
         bootstrapHelper.modelServiceClient,
@@ -189,7 +191,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val filesController = new FilesController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
-        materializer,
+        system,
         bootstrapHelper.auditLogger,
         bootstrapHelper.objectStore,
         bootstrapHelper.modelServiceClient,
@@ -246,7 +248,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.objectStore,
         bootstrapHelper.jobSchedulingServiceClient,
         bootstrapHelper.urlShortenerClient,
-        materializer,
+        system,
         ec
       )
       context mount (packagesController, "/packages/*", "packages")
@@ -266,7 +268,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
         ec,
-        materializer
+        system
       )
       context mount (timeSeriesController, "/timeseries/*", "timeseries")
 
@@ -276,7 +278,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
         bootstrapHelper.auditLogger,
-        bootstrapHelper.authyClient,
         ec,
         bootstrapHelper.orcidClient
       )

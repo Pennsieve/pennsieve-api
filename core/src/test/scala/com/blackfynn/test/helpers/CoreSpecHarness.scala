@@ -27,15 +27,14 @@ import org.scalatest.{
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 
 trait CoreSpecHarness[
-  Container <: SessionManagerContainer with RedisContainer with OrganizationManagerContainer with UserManagerContainer
+  Container <: OrganizationManagerContainer with UserManagerContainer
 ] extends SuiteMixin
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with CoreSeed[Container]
     with TestDatabase
     with PersistantTestContainers
-    with PostgresDockerContainer
-    with RedisDockerContainer { self: Suite =>
+    with PostgresDockerContainer { self: Suite =>
 
   var config: Config = _
   var testDIContainer: Container = _
@@ -46,7 +45,6 @@ trait CoreSpecHarness[
     super.afterStart()
     config = ConfigFactory
       .empty()
-      .withFallback(redisContainer.config)
       .withFallback(postgresContainer.config)
       .withValue("email.host", ConfigValueFactory.fromAnyRef("test"))
       .withValue(
@@ -57,7 +55,6 @@ trait CoreSpecHarness[
         "email.support_email",
         ConfigValueFactory.fromAnyRef("support@pennsieve.org")
       )
-      .withValue("session_timeout", ConfigValueFactory.fromAnyRef(28800))
       .withValue("environment", ConfigValueFactory.fromAnyRef("test"))
     testDIContainer = createTestDIContainer
   }
@@ -68,9 +65,6 @@ trait CoreSpecHarness[
       throw new RuntimeException(
         s"testDIContainer property of ${this.getClass.getName} is null. Aborting tests."
       )
-    }
-    testDIContainer.redisClientPool.withClient { c =>
-      c.flushall
     }
 
     testDIContainer.db.run(clearDB).await
@@ -86,7 +80,6 @@ trait CoreSpecHarness[
   override def afterAll(): Unit = {
     if (testDIContainer != null) {
       testDIContainer.db.close()
-      testDIContainer.redisClientPool.close
     }
     super.afterAll()
   }

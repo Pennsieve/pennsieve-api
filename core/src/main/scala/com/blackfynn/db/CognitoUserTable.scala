@@ -17,12 +17,12 @@
 package com.pennsieve.db
 
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.models.CognitoId
+import com.pennsieve.models.{ CognitoId, User }
 
 import java.time.ZonedDateTime
 import java.util.UUID
 
-case class CognitoUser(cognitoId: CognitoId, userId: Int)
+case class CognitoUser(cognitoId: CognitoId.UserPoolId, userId: Int)
 
 /**
   * Correlate Cognito -> Blackfynn users.
@@ -33,10 +33,17 @@ case class CognitoUser(cognitoId: CognitoId, userId: Int)
 final class CognitoUserTable(tag: Tag)
     extends Table[CognitoUser](tag, Some("pennsieve"), "cognito_users") {
 
-  def cognitoId = column[CognitoId]("cognito_id")
+  def cognitoId = column[CognitoId.UserPoolId]("cognito_id")
   def userId = column[Int]("user_id")
 
   def * = (cognitoId, userId).mapTo[CognitoUser]
 }
 
-object CognitoUserMapper extends TableQuery(new CognitoUserTable(_)) {}
+object CognitoUserMapper extends TableQuery(new CognitoUserTable(_)) {
+
+  def create(cognitoId: CognitoId.UserPoolId, user: User) =
+    CognitoUserMapper returning CognitoUserMapper += CognitoUser(
+      cognitoId = cognitoId,
+      userId = user.id
+    )
+}

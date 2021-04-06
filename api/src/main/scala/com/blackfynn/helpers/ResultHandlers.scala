@@ -16,7 +16,7 @@
 
 package com.pennsieve.helpers
 
-import akka.stream.Materializer
+import akka.actor.ActorSystem
 import akka.stream.scaladsl.Source
 import com.pennsieve.api.Error
 import io.circe.Encoder
@@ -52,7 +52,7 @@ object ResultHandlers {
   )(implicit
     response: HttpServletResponse,
     encoder: Encoder[T],
-    materializer: Materializer,
+    system: ActorSystem,
     executionContext: ExecutionContext
   ): Future[Any] = { // have to have return type of any here to play nice with scalatra
     result match {

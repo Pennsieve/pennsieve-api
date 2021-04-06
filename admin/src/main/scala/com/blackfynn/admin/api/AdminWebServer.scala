@@ -21,7 +21,6 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
 import akka.http.scaladsl.server.directives.ExecutionDirectives.handleRejections
 import akka.http.scaladsl.model.headers.{ HttpOrigin, HttpOriginRange }
-import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 
 import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainerImpl,
@@ -45,7 +44,6 @@ import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.models.{ Organization, User }
 import com.pennsieve.service.utilities.SingleHttpResponder
 import com.pennsieve.utilities.Container
-import com.redis.RedisClientPool
 import com.typesafe.scalalogging.LazyLogging
 import net.ceedubs.ficus.Ficus._
 
@@ -59,15 +57,6 @@ trait AdminContainer { self: Container =>
 object AdminWebServer extends App with WebServer with LazyLogging {
 
   override val actorSystemName: String = "admin"
-
-  override implicit lazy val materializer: ActorMaterializer =
-    ActorMaterializer(
-      ActorMaterializerSettings(system)
-        .withSupervisionStrategy { (exception: Throwable) =>
-          logger.error("Unhandled exception thrown", exception)
-          Supervision.resume
-        }
-    )
 
   val insecureContainer: InsecureResourceContainer =
     if (Settings.isLocal) {
@@ -92,40 +81,31 @@ object AdminWebServer extends App with WebServer with LazyLogging {
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
         organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
       with MessageTemplatesContainer with Router.AdminETLServiceContainerImpl
-      with RoleOverrideContainer
     } else {
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
         organization = organization
       ) with SecureCoreContainer with AWSEmailContainer
       with MessageTemplatesContainer with LocalS3Container
       with S3CustomTermsOfServiceClientContainer
-      with Router.AdminETLServiceContainerImpl with RoleOverrideContainer
+      with Router.AdminETLServiceContainerImpl
     }
   }
 
   val healthCheck = new HealthCheckService(
-    Map(
-      "postgres" -> HealthCheck.postgresHealthCheck(insecureContainer.db),
-      "redis" -> HealthCheck.redisHealthCheck(insecureContainer.redisClientPool)
-    )
+    Map("postgres" -> HealthCheck.postgresHealthCheck(insecureContainer.db))
   )
 
   lazy val publishClient: PublishClient = PublishClient.httpClient(
     new SingleHttpResponder().responder,
     Settings.discoverHost
   )
-
-  lazy val redisClientPool: RedisClientPool =
-    RedisContainer.poolFromConfig(config)
 
   override val routeService: RouteService =
     new Router(insecureContainer, secureContainerBuilder, publishClient)

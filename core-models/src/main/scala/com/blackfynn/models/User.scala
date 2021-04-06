@@ -28,7 +28,6 @@ final case class User(
   middleInitial: Option[String],
   lastName: String,
   degree: Option[Degree],
-  password: String,
   credential: String = "",
   color: String = "",
   url: String = "",
@@ -41,7 +40,6 @@ final case class User(
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0
 ) {
-  def hasTwoFactorConfigured: Boolean = authyId != 0
   def fullName: String = s"$firstName $lastName".trim
 }
 
@@ -54,7 +52,6 @@ object User {
       middleInitial = None,
       lastName = "Pennsieve",
       degree = None,
-      password = "",
       isSuperAdmin = true
     )
 

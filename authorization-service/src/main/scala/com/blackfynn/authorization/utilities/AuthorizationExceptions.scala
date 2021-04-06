@@ -37,19 +37,6 @@ trait AuthorizationException {
         logger.warn(exception.getMessage)
         HttpResponse(Unauthorized, entity = "No such API token exists.")
 
-      case BadPassword =>
-        HttpResponse(Forbidden, entity = "Incorrect password supplied.") // 403
-
-      case BadSecret =>
-        HttpResponse(Forbidden, entity = "Incorrect secret supplied.") // 403
-
-      case _: BadTwoFactorToken =>
-        logger.warn(exception.getMessage)
-        HttpResponse(
-          Unauthorized, // 401
-          entity = "Incorrect token provided for two-factor authentication."
-        )
-
       case _: FeatureNotEnabled =>
         logger.warn(exception.getMessage)
         HttpResponse(Forbidden, entity = "Forbidden.") // 403
@@ -73,10 +60,6 @@ trait AuthorizationException {
       case _: InvalidDatasetId =>
         logger.warn(exception.getMessage)
         HttpResponse(Unauthorized)
-
-      case _: InvalidWorkspaceId =>
-        logger.warn(exception.getMessage)
-        HttpResponse(Unauthorized) // 401
 
       case NonBrowserSession =>
         logger.warn(exception.getMessage)
@@ -108,14 +91,6 @@ trait AuthorizationException {
     override def getMessage: String = s"No such API token exists: $token"
   }
 
-  object BadPassword extends Exception
-  object BadSecret extends Exception
-
-  class BadTwoFactorToken(error: String) extends Exception {
-    override def getMessage: String =
-      s"Two-factor validation failed: $error"
-  }
-
   object InvalidLoginAttemps extends Exception {
     override def getMessage: String =
       "User has exceeded the maximum number of login attempts."
@@ -137,17 +112,12 @@ trait AuthorizationException {
       s"invalid dataset_id $datasetId -- either the dataset does not exist or user ${user.id} does not have permissions to access it."
   }
 
-  class InvalidWorkspaceId(user: User, workspaceId: Int) extends Exception {
-    override def getMessage: String =
-      s"invalid workspace_id $workspaceId -- either the workspace does not exist or user ${user.id} does not have permissions to access it."
-  }
-
   object NonBrowserSession extends Exception {
     override def getMessage: String =
       s"invalid session -- API sessions are not permitted to switch organizations"
   }
 
-  class OrganizationNotFound(organizationId: Int) extends Exception {
+  class OrganizationNotFound(organizationId: String) extends Exception {
     override def getMessage: String = s"No such organization: $organizationId"
   }
 

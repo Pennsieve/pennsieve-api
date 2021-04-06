@@ -16,11 +16,11 @@
 
 package com.pennsieve.admin.api.services
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes.{ InternalServerError, NotFound }
 import akka.http.scaladsl.server.Directives.{ entity, _ }
 import akka.http.scaladsl.server.{ Route, ValidationRejection }
-import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import cats.data.EitherT
 import cats.implicits._
@@ -121,7 +121,7 @@ class OrganizationsService(
   insecureContainer: InsecureResourceContainer
 )(implicit
   ec: ExecutionContext,
-  mat: ActorMaterializer
+  system: ActorSystem
 ) extends RouteService
     with LazyLogging {
 

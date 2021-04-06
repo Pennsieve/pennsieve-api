@@ -15,11 +15,12 @@
  */
 
 package com.pennsieve.authorization.routes
+
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.{ OK, Unauthorized }
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
 import com.pennsieve.db._
 import com.pennsieve.models._
 import cats.implicits._
@@ -64,7 +65,7 @@ object DiscoverAuthorizationRoutes {
   )(implicit
     container: ResourceContainer,
     executionContext: ExecutionContext,
-    materializer: ActorMaterializer
+    system: ActorSystem
   ): Route =
     path(
       "authorization" / "organizations" / IntNumber / "datasets" / IntNumber / "discover" / "preview"
@@ -95,7 +96,8 @@ object DiscoverAuthorizationRoutes {
       .run(OrganizationsMapper.get(organizationId))
       .flatMap {
         case Some(org) => Future.successful((org))
-        case None => Future.failed(new OrganizationNotFound(organizationId))
+        case None =>
+          Future.failed(new OrganizationNotFound(organizationId.toString))
       }
   }
 
@@ -126,7 +128,7 @@ object DiscoverAuthorizationRoutes {
     executionContext: ExecutionContext
   ): Future[Unit] =
     for {
-      organizationRole <- getOrganizationRole(user, organization, None)
+      organizationRole <- getOrganizationRole(user, organization)
 
       datasetRole <- getDatasetRole(user, organization, datasetId.toString)
         .recoverWith {

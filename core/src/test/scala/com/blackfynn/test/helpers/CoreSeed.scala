@@ -25,7 +25,6 @@ import com.pennsieve.core.utilities.{
 }
 import com.pennsieve.managers.{ SecureOrganizationManager, UserManager }
 import com.pennsieve.models.DBPermission.{ Administer, Delete, Owner }
-import com.pennsieve.models.Role.BlindReviewer
 import com.pennsieve.models.SubscriptionStatus.ConfirmedSubscription
 import com.pennsieve.models._
 
@@ -43,7 +42,6 @@ trait CoreSeed[
   var admin: User = _
   var nonAdmin: User = _
   var owner: User = _
-  var blindReviewer: User = _
 
   var organizationOne: Organization = _
   var organizationTwo: Organization = _
@@ -85,13 +83,11 @@ trait CoreSeed[
           middleInitial = None,
           lastName = "Admin",
           degree = None,
-          password = "password",
           credential = "fake-credentials",
           color = "",
           url = "",
           isSuperAdmin = true
-        ),
-        Some("password")
+        )
       )
       .await
       .value
@@ -119,48 +115,18 @@ trait CoreSeed[
           middleInitial = None,
           lastName = "User",
           degree = None,
-          password = "password",
           credential = "fake-credentials",
           color = "",
           url = "",
           isSuperAdmin = false,
           preferredOrganizationId = Some(organizationTwo.id)
-        ),
-        Some("password")
+        )
       )
       .await
       .value
 
     organizationManager.addUser(organizationOne, nonAdmin, Delete).await.value
     organizationManager.addUser(organizationTwo, nonAdmin, Delete).await.value
-
-    // Create Blind Reviewer and add to Organization
-    blindReviewer = userManager
-      .create(
-        User(
-          nodeId = NodeCodes.generateId(NodeCodes.userCode),
-          email = "blindreviewer@blindplace.com",
-          firstName = "Blind",
-          middleInitial = None,
-          lastName = "Reviewer",
-          degree = None,
-          password = "password",
-          credential = "fake-credentials",
-          color = "",
-          url = "",
-          isSuperAdmin = false,
-          preferredOrganizationId = Some(organizationOne.id)
-        ),
-        Some("password")
-      )
-      .await
-      .value
-
-    organizationManager.addUser(
-      organizationOne,
-      blindReviewer,
-      DBPermission.fromRole(Some(BlindReviewer))
-    )
 
     // Create Owner and add to Organizations
     owner = userManager
@@ -172,13 +138,11 @@ trait CoreSeed[
           middleInitial = None,
           lastName = "owner",
           degree = None,
-          password = "password",
           credential = "fake-credentials",
           color = "",
           url = "",
           isSuperAdmin = true
-        ),
-        Some("password")
+        )
       )
       .await
       .value

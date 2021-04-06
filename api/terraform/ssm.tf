@@ -1,21 +1,3 @@
-# resource "aws_ssm_parameter" "analytics_host" {
-#   name  = "/${var.environment_name}/${var.service_name}/analytics-host"
-#   type  = "String"
-#   value = data.terraform_remote_state.analytics_service.outputs.internal_fqdn
-# }
-
-# resource "aws_ssm_parameter" "analytics_service_queue_size" {
-#   name  = "/${var.environment_name}/${var.service_name}/analytics-service-queue-size"
-#   type  = "String"
-#   value = var.analytics_service_queue_size
-# }
-
-# resource "aws_ssm_parameter" "analytics_service_rate_limit" {
-#   name  = "/${var.environment_name}/${var.service_name}/analytics-service-rate-limit"
-#   type  = "String"
-#   value = var.analytics_service_rate_limit
-# }
-
 resource "aws_ssm_parameter" "bitly_access_token" {
   name      = "/${var.environment_name}/${var.service_name}/bitly-access-token"
   overwrite = false
@@ -27,27 +9,34 @@ resource "aws_ssm_parameter" "bitly_access_token" {
   }
 }
 
+resource "aws_ssm_parameter" "cognito_user_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.user_pool_id
+}
+
+resource "aws_ssm_parameter" "cognito_user_pool_app_client_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-app-client-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.user_pool_client_id
+}
+
+resource "aws_ssm_parameter" "cognito_token_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.token_pool_id
+}
+
+resource "aws_ssm_parameter" "cognito_token_pool_app_client_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-app-client-id"
+  type  = "String"
+  value = data.terraform_remote_state.authentication_service.outputs.token_pool_client_id
+}
+
 resource "aws_ssm_parameter" "pennsieve_api_host" {
   name  = "/${var.environment_name}/${var.service_name}/pennsieve-api-host"
   type  = "String"
   value = "https://${data.terraform_remote_state.gateway.outputs.private_fqdn}"
-}
-
-resource "aws_ssm_parameter" "pennsieve_authy_api_key" {
-  name      = "/${var.environment_name}/${var.service_name}/pennsieve-authy-api-key"
-  overwrite = false
-  type      = "SecureString"
-  value     = "dummy"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
-}
-
-resource "aws_ssm_parameter" "pennsieve_authy_api_url" {
-  name  = "/${var.environment_name}/${var.service_name}/pennsieve-authy-api-url"
-  type  = "SecureString"
-  value = var.pennsieve_authy_api_url
 }
 
 # THIS SHOULD BE POINTING TO THE HEROKU REDIRECT
@@ -292,42 +281,12 @@ resource "aws_ssm_parameter" "pennsieve_postgres_user" {
   value = "${var.environment_name}_${var.service_name}_user"
 }
 
-resource "aws_ssm_parameter" "redis_host" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-host"
-  type  = "String"
-  value = data.terraform_remote_state.pennsieve_redis.outputs.primary_endpoint_address
-}
-
-resource "aws_ssm_parameter" "redis_auth_token" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-auth-token"
-  type  = "String"
-  value = data.aws_ssm_parameter.redis_auth_token.value
-}
-
-resource "aws_ssm_parameter" "redis_use_ssl" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-use-ssl"
-  type  = "String"
-  value = "true"
-}
-
-resource "aws_ssm_parameter" "redis_max_connections" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-max-connections"
-  type  = "String"
-  value = "128"
-}
-
 # $env-jobs-queue
 resource "aws_ssm_parameter" "sqs_queue" {
   name  = "/${var.environment_name}/${var.service_name}/sqs-queue"
   type  = "String"
   value = data.terraform_remote_state.platform_infrastructure.outputs.jobs_queue_id
 }
-
-# resource "aws_ssm_parameter" "trials_host" {
-#   name  = "/${var.environment_name}/${var.service_name}/trials-host"
-#   type  = "String"
-#   value = "trials.${data.terraform_remote_state.account.domain_name}"
-# }
 
 # $env-etl-uploads-queue
 resource "aws_ssm_parameter" "uploads_queue" {
@@ -372,28 +331,4 @@ resource "aws_ssm_parameter" "pennsieve_s3_uploader_role" {
   name  = "/${var.environment_name}/${var.service_name}/pennsieve-s3-uploader-role"
   type  = "String"
   value = aws_iam_role.uploader_iam_role.arn
-}
-
-resource "aws_ssm_parameter" "cognito_user_pool_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-id"
-  type  = "String"
-  value = data.terraform_remote_state.cognito.outputs.user_pool_id
-}
-
-resource "aws_ssm_parameter" "cognito_user_pool_app_client_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-app-client-id"
-  type  = "String"
-  value = data.terraform_remote_state.cognito.outputs.user_pool_client_id
-}
-
-resource "aws_ssm_parameter" "cognito_token_pool_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-id"
-  type  = "String"
-  value = data.terraform_remote_state.cognito.outputs.token_pool_id
-}
-
-resource "aws_ssm_parameter" "cognito_token_pool_app_client_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-token-pool-app-client-id"
-  type  = "String"
-  value = data.terraform_remote_state.cognito.outputs.token_pool_client_id
 }

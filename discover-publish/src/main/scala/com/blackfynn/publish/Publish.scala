@@ -20,7 +20,6 @@ import java.time.LocalDate
 import java.util.UUID
 
 import akka.actor.ActorSystem
-import akka.stream.Materializer
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.Sink
 import cats.data._
@@ -106,7 +105,6 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer,
     system: ActorSystem
   ): EitherT[Future, CoreError, Unit] =
     for {
@@ -147,7 +145,7 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, Unit] =
     for {
       assets <- downloadFromS3[PublishAssetResult](
@@ -223,7 +221,7 @@ object Publish extends StrictLogging {
     key: String
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, T] = {
     EitherT
       .fromEither[Future](
@@ -252,7 +250,7 @@ object Publish extends StrictLogging {
     payload: Json
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, Unit] = {
     EitherT
       .fromEither[Future](
@@ -278,7 +276,7 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, (String, FileManifest)] = {
     for {
       banner <- container.datasetAssetsManager
@@ -347,7 +345,7 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, (String, FileManifest)] = {
 
     val readmeKey = joinKeys(container.s3Key, README_FILENAME)
@@ -407,7 +405,7 @@ object Publish extends StrictLogging {
     manifests: List[FileManifest]
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, Unit] = {
 
     // Self-describing metadata file to include in the file manifest.
@@ -481,7 +479,7 @@ object Publish extends StrictLogging {
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
-    materializer: Materializer
+    system: ActorSystem
   ): EitherT[Future, CoreError, Long] =
     S3.listBucket(container.s3Bucket, Some(container.s3Key))
       .map(_.size)

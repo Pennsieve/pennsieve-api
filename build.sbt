@@ -56,10 +56,9 @@ lazy val akkaHttpVersion = "10.1.11"
 
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
-lazy val auditMiddlewareVersion = "1.0.0"
-lazy val authMiddlewareVersion = "4.2.3"
+lazy val auditMiddlewareVersion = "1.0.1"
+lazy val authMiddlewareVersion = "5.0.2"
 
-lazy val authyVersion = "1.5.1"
 lazy val awsVersion = "1.11.931"
 lazy val awsV2Version = "2.15.58"
 lazy val catsVersion = "1.1.0"
@@ -76,7 +75,7 @@ lazy val slickVersion = "3.3.3"
 lazy val testContainersVersion = "0.38.8"
 lazy val utilitiesVersion = "3-cd7539b"
 lazy val jobSchedulingServiceClientVersion = "3-1a58954"
-lazy val serviceUtilitiesVersion = "6-2a4488a"
+lazy val serviceUtilitiesVersion = "7-3a0e351"
 lazy val discoverServiceClientVersion = "6-c26717e"
 lazy val doiServiceClientVersion = "3-9436155"
 lazy val timeseriesCoreVersion = "4-d8f62a4"
@@ -227,7 +226,6 @@ lazy val apiSettings = Seq(
   excludeFilter := HiddenFileFilter -- ".ebextensions",
   libraryDependencies ++= Seq(
     "commons-codec" % "commons-codec" % "1.7",
-    "com.authy" % "authy-java" % authyVersion,
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
     "com.pennsieve" %% "doi-service-client" % doiServiceClientVersion,
@@ -266,7 +264,6 @@ lazy val coreSettings = Seq(
     "com.pennsieve" %% "job-scheduling-service-client" % jobSchedulingServiceClientVersion,
     "com.pennsieve" %% "service-utilities" % serviceUtilitiesVersion,
     "com.pennsieve" %% "utilities" % utilitiesVersion,
-    "com.authy" % "authy-java" % authyVersion % Test,
     "commons-codec" % "commons-codec" % "1.10",
     "commons-validator" % "commons-validator" % "1.6",
     "com.chuusai" %% "shapeless" % "2.3.3",
@@ -279,7 +276,6 @@ lazy val coreSettings = Seq(
     "io.circe" %% "circe-parser" % circeVersion,
     "io.circe" %% "circe-shapes" % circeVersion,
     "io.circe" %% "circe-derivation" % circeDerivationVersion,
-    "io.github.nremond" %% "pbkdf2-scala" % "0.6",
     "net.debasishg" %% "redisclient" % "3.30",
     "io.swagger" %% "swagger-scala-module" % "1.0.6",
     "com.amazonaws" % "aws-java-sdk-core" % awsVersion,
@@ -294,7 +290,9 @@ lazy val coreSettings = Seq(
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+    "com.auth0" % "jwks-rsa" % "0.8.3",
+    "com.nimbusds" % "nimbus-jose-jwt" % "9.7" % Test
   ),
   excludeDependencies ++= unwantedDependencies
 )
@@ -374,7 +372,6 @@ lazy val authorizationServiceSettings = Seq(
   name := "authorization-service",
   publishTo := publishToNexus.value,
   libraryDependencies ++= Seq(
-    "com.authy" % "authy-java" % authyVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.iheart" %% "ficus" % ficusVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,

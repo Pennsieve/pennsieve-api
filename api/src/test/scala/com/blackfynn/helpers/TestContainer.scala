@@ -43,7 +43,5 @@ class TestableSecureOrganizationManager(user: User, db: Database)
 
 trait TestCoreContainer extends InsecureCoreContainer { self: Container =>
   override lazy val userManager: UserManager = new UserManager(db)
-  override lazy val sessionManager: SessionManager =
-    new SessionManager(redisManager, userManager)
   override lazy val tokenManager: TokenManager = new TokenManager(db)
 }

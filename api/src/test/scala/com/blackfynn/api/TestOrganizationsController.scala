@@ -18,6 +18,7 @@ package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
+import com.pennsieve.aws.email.Email
 import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.db.UserInvitesMapper
 import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
@@ -88,7 +89,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       middleInitial = Some("I"),
       lastName = "lasty",
       degree = None,
-      password = "pwd",
       credential = "cred",
       color = "color",
       url = "https://user.com"
@@ -405,37 +405,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("get an organization's members as a blind reviewer via JWT") {
-    val blindReviewer = userManager
-      .create(externalUser.copy(email = "another"), Some("password"))
-      .await
-      .right
-      .value
-    organizationManager
-      .addUser(loggedInOrganization, blindReviewer, DBPermission.BlindReviewer)
-      .await
-
-    get(
-      s"/${loggedInOrganization.nodeId}/members",
-      headers = authorizationHeader(blindReviewerJwt) ++ traceIdHeader()
-    ) {
-      // blind reviewer cannot access this by default
-      status should equal(403)
-    }
-
-    get(
-      s"/${loggedInOrganization.nodeId}/members",
-      headers = jwtUserAuthorizationHeader(
-        loggedInOrganization,
-        organizationRole = Role.Viewer // elevate privileges
-      ) ++ traceIdHeader()
-    ) {
-      // blind reviewer permissions should have been overridden by the JWT
-      status should equal(200)
-      body should include(loggedInUser.nodeId)
-    }
-  }
-
   test("add an organization member") {
     // not existing user
     val email = "another@test.com"
@@ -452,7 +421,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       results.get(email).value.success should be(true)
     }
 
-    mockCognito.sentInvites.toList shouldBe List(email)
+    mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
 
     // existing user
     val createReq2 = write(
@@ -478,41 +447,13 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
 
     // Should not send another request to Cognito
-    mockCognito.sentInvites.toList shouldBe List(email)
-  }
-
-  test("add an organization member as a blind reviewer") {
-    val email = "another@test.com"
-    val inviteRequest = Invite(email, "Fynn", "Blackwell")
-    val createReq = write(
-      AddToOrganizationRequest(
-        Set(inviteRequest),
-        role = Some(Role.BlindReviewer)
-      )
-    )
-
-    postJson(
-      s"/${loggedInOrganization.nodeId}/members",
-      createReq,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val results = parsedBody.extract[Map[String, AddUserResponse]]
-      results.get(email).value.success should be(true)
-
-      val userInvite = secureContainer.db
-        .run(UserInvitesMapper.getByEmail(email).result)
-        .await
-
-      userInvite.length should be(1)
-      userInvite.head.permission should be(DBPermission.BlindReviewer)
-    }
+    mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
   }
 
   test("remove an organization member") {
 
     val user = userManager
-      .create(makeUser("remove@test.com"), Some("pwd"))
+      .create(makeUser("remove@test.com"))
       .await
       .right
       .value
@@ -524,15 +465,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
-    assert(
-      organizationManager
-        .getUsers(loggedInOrganization)
-        .await
-        .right
-        .value
-        .size == 5
-    )
-
     secureDataSetManager.addCollaborators(newDataset, Set(user.nodeId)).await
     assert(
       secureDataSetManager.find(user, Role.Viewer).await.right.value.size == 1
@@ -543,14 +475,13 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     ) {
       body should equal("")
       status should equal(200)
-      assert(
-        organizationManager
-          .getUsers(loggedInOrganization)
-          .await
-          .right
-          .value
-          .size == 4
-      )
+
+      organizationManager
+        .getUsers(loggedInOrganization)
+        .await
+        .right
+        .value should not contain user
+
       assert(
         secureDataSetManager.find(user, Role.Viewer).await.right.value.isEmpty
       )
@@ -595,7 +526,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val member =
       userManager
-        .create(makeUser("another@test.com"), Some("pwd"))
+        .create(makeUser("another@test.com"))
         .await
         .right
         .value
@@ -617,7 +548,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val user =
       userManager
-        .create(makeUser("another@test.com"), Some("pwd"))
+        .create(makeUser("another@test.com"))
         .await
         .right
         .value
@@ -686,7 +617,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       status should be(200)
       val response = parsedBody.extract[AddUserResponse]
 
-      mockCognito.reSentInvites.get(email) shouldBe Some(
+      mockCognito.reSentInvites.get(Email(email)) shouldBe Some(
         invalidInvite.cognitoId
       )
     }
@@ -710,7 +641,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .value
 
     val invitedUser = userManager
-      .create(makeUser(email), cleartextPassword = Some("test"))
+      .create(makeUser(email))
       .await
       .right
       .value
@@ -757,7 +688,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val user =
       userManager
-        .create(makeUser("another@test.com"), Some("pwd"))
+        .create(makeUser("another@test.com"))
         .await
         .right
         .value
@@ -765,7 +696,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val owner =
       userManager
-        .create(makeUser("owner@test.com"), Some("pwd"))
+        .create(makeUser("owner@test.com"))
         .await
         .right
         .value
@@ -811,7 +742,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val user =
       userManager
-        .create(makeUser("another@test.com"), Some("pwd"))
+        .create(makeUser("another@test.com"))
         .await
         .right
         .value
@@ -926,26 +857,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status should equal(200)
       body should be("VERSION-2")
-    }
-  }
-
-  test("a blind reviewer should not be able to get their organziation") {
-    get(
-      s"/${loggedInOrganization.nodeId}",
-      headers = authorizationHeader(blindReviewerJwt) ++ traceIdHeader()
-    ) {
-      status shouldBe 403
-    }
-  }
-
-  test(
-    "a blind reviewer should not be able to get the teams of an organization"
-  ) {
-    get(
-      s"/${loggedInOrganization.nodeId}/teams",
-      headers = authorizationHeader(blindReviewerJwt) ++ traceIdHeader()
-    ) {
-      status shouldBe 403
     }
   }
 

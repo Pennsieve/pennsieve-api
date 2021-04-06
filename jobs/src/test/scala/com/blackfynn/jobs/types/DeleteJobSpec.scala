@@ -18,7 +18,6 @@ package com.pennsieve.jobs.types
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
 import akka.testkit.TestKitBase
 import cats.implicits._
@@ -127,7 +126,6 @@ class DeleteJobSpec
   }
 
   implicit lazy val system: ActorSystem = ActorSystem("DeleteJobSpec")
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val executionContext: ExecutionContextExecutor =
     system.dispatcher
 
@@ -160,7 +158,6 @@ class DeleteJobSpec
     middleInitial = None,
     lastName = "snavely",
     degree = None,
-    password = "password",
     credential = "cred",
     color = "red",
     url = ""

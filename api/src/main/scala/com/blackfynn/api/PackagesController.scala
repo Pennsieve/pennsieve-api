@@ -16,8 +16,8 @@
 
 package com.pennsieve.api
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import akka.stream.ActorMaterializer
 import cats.data.{ EitherT, NonEmptyList }
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
@@ -122,7 +122,7 @@ class PackagesController(
   objectStore: ObjectStore,
   jobSchedulingServiceClient: JobsClient,
   urlShortenerClient: UrlShortenerClient,
-  materializer: ActorMaterializer,
+  system: ActorSystem,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger

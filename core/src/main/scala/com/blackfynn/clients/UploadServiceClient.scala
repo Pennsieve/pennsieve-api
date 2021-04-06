@@ -25,7 +25,6 @@ import akka.http.scaladsl.model.{
   HttpResponse,
   Uri
 }
-import akka.stream.ActorMaterializer
 import cats.data.EitherT
 import cats.instances.future._
 import cats.syntax.either._
@@ -45,7 +44,6 @@ trait UploadServiceClient {
   val uploadServiceHost: String
 
   implicit val system: ActorSystem
-  implicit val materializer: ActorMaterializer
   implicit val ec: ExecutionContext
 
   def getFileHash(
@@ -59,7 +57,6 @@ trait UploadServiceClient {
 class LocalUploadServiceClient(
 )(implicit
   override val system: ActorSystem,
-  override val materializer: ActorMaterializer,
   override val ec: ExecutionContext
 ) extends UploadServiceClient {
   override val uploadServiceHost = "test-upload-service-url"
@@ -82,7 +79,6 @@ class UploadServiceClientImpl(
   override val uploadServiceHost: String
 )(implicit
   override val system: ActorSystem,
-  override val materializer: ActorMaterializer,
   override val ec: ExecutionContext
 ) extends UploadServiceClient
     with StrictLogging {
@@ -141,7 +137,6 @@ class UploadServiceClientImpl(
 trait UploadServiceContainer { self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  implicit def materializer: ActorMaterializer
 
   val uploadServiceHost: String
   val uploadServiceClient: UploadServiceClient
@@ -151,7 +146,6 @@ trait UploadServiceContainerImpl extends UploadServiceContainer {
   self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  override implicit val materializer: ActorMaterializer
 
   val uploadServiceHost: String
   override lazy val uploadServiceClient: UploadServiceClient =
@@ -162,7 +156,6 @@ trait LocalUploadServiceContainer extends UploadServiceContainer {
   self: Container =>
   implicit val system: ActorSystem
   implicit val ec: ExecutionContext
-  implicit val materializer: ActorMaterializer
 
   val uploadServiceHost: String
   override val uploadServiceClient: UploadServiceClient =

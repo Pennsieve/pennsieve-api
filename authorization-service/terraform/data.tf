@@ -14,19 +14,15 @@ data "terraform_remote_state" "account" {
   }
 }
 
-# Import API Redis Data
-data "terraform_remote_state" "pennsieve_redis" {
+# Import Cognito Authentication Data
+data "terraform_remote_state" "authentication_service" {
   backend = "s3"
 
   config = {
     bucket = "${var.aws_account}-terraform-state"
-    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/pennsieve-redis/terraform.tfstate"
+    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/authentication-service/terraform.tfstate"
     region = "us-east-1"
   }
-}
-
-data "aws_ssm_parameter" "redis_auth_token" {
-  name = "/${var.environment_name}/pennsieve-redis/auth-token"
 }
 
 # Import Pennsieve Postgres Data

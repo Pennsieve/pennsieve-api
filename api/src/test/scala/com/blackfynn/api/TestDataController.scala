@@ -45,7 +45,7 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       new DataController(
         insecureContainer,
         secureContainerBuilder,
-        materializer,
+        system,
         system.dispatcher,
         mockAuditLogger,
         mockSqsClient

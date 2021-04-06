@@ -20,6 +20,7 @@ import java.time.ZonedDateTime
 
 import com.pennsieve.models.Token
 
+// TODO: move to models
 case class Secret(plaintext: String) extends AnyVal
 
 case class APITokenSecretDTO(

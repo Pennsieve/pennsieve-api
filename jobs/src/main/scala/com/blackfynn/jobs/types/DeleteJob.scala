@@ -29,7 +29,7 @@ import akka.stream.scaladsl.{
   Sink,
   Source
 }
-import akka.stream.{ ActorMaterializer, FlowShape }
+import akka.stream.FlowShape
 import cats.FlatMap
 import cats.data.EitherT
 import cats.implicits._
@@ -107,13 +107,13 @@ trait CreditDeleteJob {
   def creditDeleteJob(
     job: CatalogDeleteJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit]
   def deleteDatasetJob(
     job: DeleteDatasetJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit]
 
@@ -133,7 +133,6 @@ object DeleteJob {
   def apply(
   )(implicit
     system: ActorSystem,
-    materializer: ActorMaterializer,
     ec: ExecutionContext,
     log: ContextLogger
   ): DeleteJob = {
@@ -593,7 +592,7 @@ class DeleteJob(
         .via(deletePackageFlow(packageTable))
 
       val timeSeriesDelete =
-        Source.fromFuture(timeseriesDeleteResults).mapConcat(identity)
+        Source.future(timeseriesDeleteResults).mapConcat(identity)
 
       Source.combine(timeSeriesDelete, deletePackage)(Concat.apply)
     }
@@ -765,7 +764,7 @@ class DeleteJob(
   def creditDeleteJob(
     job: CatalogDeleteJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit] = {
     for {
@@ -840,7 +839,7 @@ class DeleteJob(
   def deleteDatasetJobWithResult(
     job: DeleteDatasetJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, (DeleteResult, DatasetDeletionSummary)] = {
 
@@ -912,7 +911,7 @@ class DeleteJob(
   def deleteDatasetJob(
     job: DeleteDatasetJob
   )(implicit
-    mat: ActorMaterializer,
+    system: ActorSystem,
     ec: ExecutionContext
   ): EitherT[Future, JobException, Unit] =
     deleteDatasetJobWithResult(job).map(_ => ())

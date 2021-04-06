@@ -17,7 +17,6 @@
 package com.pennsieve.api
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase
 import org.apache.http.entity.ByteArrayEntity
@@ -27,6 +26,7 @@ import com.pennsieve.aws.email.LocalEmailContainer
 import com.pennsieve.aws.queue.LocalSQSContainer
 import com.pennsieve.aws.s3.LocalS3Container
 import com.pennsieve.models.{
+  CognitoId,
   Dataset,
   DatasetStatus,
   Degree,
@@ -45,7 +45,7 @@ import com.pennsieve.clients.{
   MockJobSchedulingServiceContainer
 }
 import com.pennsieve.core.utilities._
-import com.pennsieve.models.DBPermission.{ Administer, BlindReviewer, Delete }
+import com.pennsieve.models.DBPermission.{ Administer, Delete }
 import com.pennsieve.managers._
 import com.pennsieve.managers.DatasetManager
 import com.pennsieve.helpers._
@@ -56,7 +56,6 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.utilities._
 import com.pennsieve.web.SwaggerApp
-import com.pennsieve.domain.Sessions
 import com.pennsieve.dtos.Secret
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
@@ -74,7 +73,6 @@ import java.util.UUID
 
 import com.pennsieve.audit.middleware.AuditLogger
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
-import com.redis.RedisClientPool
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, FunSuite }
@@ -94,11 +92,9 @@ trait ApiSuite
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with RedisDockerContainer
     with PostgresDockerContainer {
 
   implicit lazy val system: ActorSystem = ActorSystem("ApiSuite")
-  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
   implicit lazy val jwtConfig: Jwt.Config = new Jwt.Config {
@@ -122,7 +118,6 @@ trait ApiSuite
 
     config = ConfigFactory
       .empty()
-      .withFallback(redisContainer.config)
       .withFallback(postgresContainer.config)
       .withValue("sqs.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
       .withValue(
@@ -195,16 +190,13 @@ trait ApiSuite
       override val dataPostgresUseSSL = false
     }
 
-    secureContainerBuilder = { (user, org, roleOverrides) =>
+    secureContainerBuilder = { (user, org) =>
       new SecureContainer(
         config = config,
         _db = insecureContainer.db,
-        _redisClientPool = insecureContainer.redisClientPool,
         user = user,
-        organization = org,
-        roleOverrides = roleOverrides
-      ) with SecureCoreContainer with LocalEmailContainer
-      with RoleOverrideContainer {
+        organization = org
+      ) with SecureCoreContainer with LocalEmailContainer {
         override val postgresUseSSL = false
         override val dataPostgresUseSSL = false
       }
@@ -212,7 +204,6 @@ trait ApiSuite
 
     userManager = insecureContainer.userManager
     userInviteManager = insecureContainer.userInviteManager
-    sessionManager = insecureContainer.sessionManager
     tokenManager = insecureContainer.tokenManager
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
@@ -228,7 +219,6 @@ trait ApiSuite
 
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
-  var sessionManager: SessionManager = _
   var organizationManager: SecureOrganizationManager = _
   var teamManager: TeamManager = _
   var fileManager: FileManager = _
@@ -243,7 +233,6 @@ trait ApiSuite
   var onboardingManager: OnboardingManager = _
 
   var loggedInUser: User = _
-  var loggedInBlindReviewer: User = _
   var colleagueUser: User = _
   var externalUser: User = _
   var superAdmin: User = _
@@ -260,8 +249,6 @@ trait ApiSuite
   var colleagueJwt: String = _
 
   var externalJwt: String = _
-
-  var blindReviewerJwt: String = _
 
   var adminJwt: String = _
 
@@ -286,7 +273,6 @@ trait ApiSuite
     Some("M"),
     "last",
     Some(Degree.MS),
-    "password",
     "cred",
     "",
     "http://test.com",
@@ -301,7 +287,6 @@ trait ApiSuite
     None,
     "last",
     None,
-    "password",
     "cred",
     "",
     "http://test.com",
@@ -316,7 +301,6 @@ trait ApiSuite
     None,
     "last",
     None,
-    "password",
     "cred",
     "",
     "http://other.com",
@@ -331,7 +315,6 @@ trait ApiSuite
     None,
     "last",
     None,
-    "password",
     "cred",
     "",
     "http://other.com",
@@ -339,21 +322,6 @@ trait ApiSuite
     true,
     None,
     id = 4
-  )
-  val blindReviewerUser = User(
-    NodeCodes.generateId(NodeCodes.userCode),
-    "blind@test.com",
-    "blind",
-    None,
-    "reviewer",
-    None,
-    "password",
-    "cred",
-    "",
-    "http://blind.com",
-    0,
-    false,
-    None
   )
 
   override def afterEach(): Unit = {
@@ -370,8 +338,7 @@ trait ApiSuite
 
     val mockCognito: MockCognito = new MockCognito()
 
-    superAdmin =
-      userManager.create(superAdminUser, Some("password")).await.value
+    superAdmin = userManager.create(superAdminUser).await.value
 
     organizationManager =
       new TestableSecureOrganizationManager(superAdmin, insecureContainer.db)
@@ -382,15 +349,11 @@ trait ApiSuite
     externalOrganization = createOrganization("External Organization")
     pennsieve = createOrganization("Pennsieve", "pennsieve")
 
-    loggedInUser = userManager.create(me, Some("password")).await.value
-    colleagueUser = userManager.create(colleague, Some("password")).await.value
+    loggedInUser = userManager.create(me).await.value
+    colleagueUser = userManager.create(colleague).await.value
+    externalUser = userManager.create(other).await.value
 
-    externalUser = userManager.create(other, Some("password")).await.value
-    loggedInBlindReviewer =
-      userManager.create(blindReviewerUser, Some("password")).await.value
-
-    secureContainer =
-      secureContainerBuilder(loggedInUser, loggedInOrganization, List.empty)
+    secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
 
     secureDataSetManager = secureContainer.datasetManager
     fileManager = secureContainer.fileManager
@@ -420,18 +383,9 @@ trait ApiSuite
       .addUser(externalOrganization, externalUser, Delete)
       .await
       .value
-    organizationManager
-      .addUser(loggedInOrganization, loggedInBlindReviewer, BlindReviewer)
-      .await
-      .value
 
     loggedInJwt = Authenticator.createUserToken(
       loggedInUser,
-      loggedInOrganization
-    )(jwtConfig, insecureContainer.db, ec)
-
-    blindReviewerJwt = Authenticator.createUserToken(
-      loggedInBlindReviewer,
       loggedInOrganization
     )(jwtConfig, insecureContainer.db, ec)
 
@@ -461,7 +415,7 @@ trait ApiSuite
     apiJwt = Authenticator.createUserToken(
       loggedInUser,
       loggedInOrganization,
-      session = Session.API(UUID.randomUUID.toString)
+      cognito = CognitoSession.API(CognitoId.TokenPoolId.randomId)
     )(jwtConfig, insecureContainer.db, ec)
 
     secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value
@@ -551,7 +505,7 @@ trait ApiSuite
     datasetRole: Role = Role.Owner,
     expiration: FiniteDuration = 10.seconds,
     userId: Int = loggedInUser.id,
-    session: Option[Session] = None
+    cognito: Option[CognitoSession] = None
   ): Map[String, String] = {
     val jwtClaim = Jwt.generateClaim(
       UserClaim(
@@ -568,7 +522,7 @@ trait ApiSuite
             role = datasetRole
           )
         ),
-        session = session
+        cognito = cognito
       ),
       expiration
     )

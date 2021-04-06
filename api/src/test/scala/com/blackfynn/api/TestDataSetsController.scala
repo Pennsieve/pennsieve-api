@@ -83,25 +83,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   override def afterStart(): Unit = {
     super.afterStart()
 
-    val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
+    implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
       Future.successful(HttpResponse())
     }
 
-    mockPublishClient = new MockPublishClient(httpClient, ec, materializer)
+    mockPublishClient = new MockPublishClient()
 
-    mockSearchClient = new MockSearchClient(httpClient, ec, materializer)
+    mockSearchClient = new MockSearchClient()
 
     addServlet(
       new DataSetsController(
         insecureContainer,
         secureContainerBuilder,
-        materializer,
+        system,
         mockAuditLogger,
         mockSqsClient,
         new MockModelServiceClient(),
         mockPublishClient,
         mockSearchClient,
-        new MockDoiClient(httpClient, ec, materializer),
+        new MockDoiClient(),
         mockDatasetAssetClient,
         maxFileUploadSize,
         system.dispatcher
@@ -947,7 +947,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 400
       (parsedBody \ "message")
-        .extract[String] shouldBe ("invalid parameter withRole: must be one of Vector(blind_reviewer, viewer, editor, manager, owner)")
+        .extract[String] shouldBe ("invalid parameter withRole: must be one of Vector(viewer, editor, manager, owner)")
     }
 
     get(
@@ -2172,7 +2172,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   test("fail to create and retrieve DOI without proper permissions") {
 
     val colleagueUserTwo = userManager
-      .create(externalUser.copy(email = "another"), Some("password"))
+      .create(externalUser.copy(email = "another"))
       .await
       .right
       .value
@@ -2230,35 +2230,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(423)
-    }
-  }
-
-  test("elevate permissions using a jwt") {
-    val ds = createDataSet("Foo")
-    secureContainer.datasetManager.addUserCollaborator(
-      ds,
-      loggedInBlindReviewer,
-      Role.BlindReviewer
-    )
-
-    get(
-      s"/${ds.nodeId}",
-      headers = authorizationHeader(blindReviewerJwt) ++ traceIdHeader()
-    ) {
-      // blind reviewer cannot access this by default
-      status should equal(403)
-    }
-
-    get(
-      s"/${ds.nodeId}",
-      headers = jwtUserAuthorizationHeader(
-        loggedInOrganization,
-        organizationRole = Role.BlindReviewer,
-        dataset = ds,
-        datasetRole = Role.Viewer // elevate dataset role
-      ) ++ traceIdHeader()
-    ) {
-      status should equal(200)
     }
   }
 
@@ -2411,7 +2382,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // colleague without direct permission should not see it
     val colleagueUserTwo = userManager
-      .create(externalUser.copy(email = "another"), Some("password"))
+      .create(externalUser.copy(email = "another"))
       .await
       .right
       .value
@@ -3396,7 +3367,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // colleague without direct permission should not see it
     val colleagueUserTwo = userManager
-      .create(externalUser.copy(email = "another"), Some("password"))
+      .create(externalUser.copy(email = "another"))
       .await
       .right
       .value
@@ -7981,49 +7952,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  // test("a user with less than viewer role should not be able to view datasets") {
-  //   createBlindReviewerDataset()
-
-  //   get("/", headers = authorizationHeader(blindReviewerJwt) ++ traceIdHeader()) {
-  //     parsedBody.extract[List[DataSetDTO]] shouldBe List.empty[DataSetDTO]
-
-  //     status shouldBe 200
-  //   }
-  // }
-
-  // test(
-  //   "a user with elevated organization permissions should see all datasets they have any permissions for"
-  // ) {
-  //   val organizationId = OrganizationId(loggedInOrganization.id)
-  //   val userClaim =
-  //     UserClaim(
-  //       id = UserId(loggedInBlindReviewer.id),
-  //       roles = List(
-  //         Jwt.OrganizationRole(
-  //           id = organizationId.inject[Jwt.Role.RoleIdentifier[OrganizationId]],
-  //           role = Role.Viewer
-  //         )
-  //       )
-  //     )
-
-  //   val claim = Jwt.generateClaim(userClaim, 10 seconds)
-
-  //   val headers = authorizationHeader(Jwt.generateToken(claim).value) ++ traceIdHeader()
-
-  //   // val blindReviewerDataset = createBlindReviewerDataset()
-
-  //   // CREATE DATASET WITHOUT PERMISSIONS
-  //   // createBlindReviewerDataset(None, "LOCKED OUT")
-
-  //   get(s"/", headers = headers) {
-  //     val wrappedDatasets = parsedBody.extract[List[DataSetDTO]].map(_.content)
-
-  //     wrappedDatasets shouldBe List(
-  //       WrappedDataset(blindReviewerDataset, defaultDatasetStatus)
-  //     )
-  //   }
-  // }
-
   test("upload dataset banner") {
     val dataset = createDataSet("My Dataset")
 
@@ -8475,93 +8403,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.getHeader(HttpHeaders.ETAG) shouldBe "0"
     }
   }
-
-  // test("a change in dataset status should cause a notification to be sent") {
-  //   val ds = createDataSet("Foo")
-
-  //   val userName = s"${loggedInUser.firstName} ${loggedInUser.lastName}"
-
-  //   val organizationProducerId = s"organization:${loggedInOrganization.id}"
-
-  //   val datasetProducerId = organizationProducerId + s":dataset:${ds.id}"
-
-  //   val userProducderId = s"user:${loggedInUser.id}"
-
-  //   val message =
-  //     DatasetStatusUpdateMessage(
-  //       userName = userName,
-  //       datasetName = ds.name,
-  //       newStatus = "IN_REVIEW",
-  //       producerId = ProducerId(DigestUtils.md2Hex(datasetProducerId)),
-  //       relatedProducers = List(
-  //         RelatedProducer(
-  //           ProducerId(DigestUtils.md2Hex(userProducderId)),
-  //           ProducerType.User,
-  //           loggedInUser.email
-  //         ),
-  //         RelatedProducer(
-  //           ProducerId(DigestUtils.md2Hex(organizationProducerId)),
-  //           ProducerType.Organization,
-  //           loggedInOrganization.name
-  //         )
-  //       )
-  //     )
-
-  //   val updateReq = write(
-  //     UpdateDataSetRequest(
-  //       name = None,
-  //       description = None,
-  //       status = Some("IN_REVIEW")
-  //     )
-  //   )
-
-  //   putJson(
-  //     s"/${ds.nodeId}",
-  //     updateReq,
-  //     authorizationHeader(loggedInJwt) ++ traceIdHeader()
-  //   ) {
-  //     status should equal(200)
-
-  //     val maybeActualMessage =
-  //       mockSqsClient.sentMessages
-  //         .get("notifications-center-queue")
-  //         .flatMap(_.headOption.map(decode[EventMessage]))
-
-  //     maybeActualMessage.exists(_.isRight) shouldBe true
-
-  //     val actualMessage = maybeActualMessage.get.right.get
-
-  //     actualMessage.eventMessage shouldBe message.eventMessage
-  //     actualMessage.eventType shouldBe message.eventType
-  //     actualMessage.producerId shouldBe message.producerId
-  //     actualMessage.producerName shouldBe message.producerName
-  //     actualMessage.producerType shouldBe message.producerType
-  //     actualMessage.relatedProducers shouldBe message.relatedProducers
-  //   }
-  // }
-
-  // private def createBlindReviewerDataset(
-  //   role: Option[Role] = Some(Role.BlindReviewer),
-  //   name: String = "TRIAL DATASET"
-  // ): Dataset = {
-  //   val dataset = createDataSet(name)
-
-  //   secureContainer.db
-  //     .run(
-  //       secureContainer.datasetManager.datasetUser
-  //         .insertOrUpdate(
-  //           DatasetUser(
-  //             dataset.id,
-  //             loggedInBlindReviewer.id,
-  //             Role.BlindReviewer.toPermission,
-  //             role
-  //           )
-  //         )
-  //     )
-  //     .await
-
-  //   dataset
-  // }
 
   private def createObjects(csvPackage: Package) =
     Some(

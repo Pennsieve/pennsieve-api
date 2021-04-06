@@ -18,16 +18,17 @@ package com.pennsieve.db
 
 import java.time.ZonedDateTime
 
-import com.pennsieve.models.Token
+import com.pennsieve.models.{ CognitoId, Token }
 import com.pennsieve.traits.PostgresProfile.api._
 
+// TODO: unique cognito_id
 final class TokenTable(tag: Tag)
     extends Table[Token](tag, Some("pennsieve"), "tokens") {
 
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name")
   def token = column[String]("token")
-  def secret = column[String]("secret")
+  def cognitoId = column[CognitoId.TokenPoolId]("cognito_id")
   def organizationId = column[Int]("organization_id")
   def userId = column[Int]("user_id")
   def lastUsed = column[Option[ZonedDateTime]]("last_used")
@@ -35,7 +36,7 @@ final class TokenTable(tag: Tag)
     column[ZonedDateTime]("created_at", O.AutoInc) // set by the database on insert
 
   def * =
-    (name, token, secret, organizationId, userId, lastUsed, createdAt, id)
+    (name, token, cognitoId, organizationId, userId, lastUsed, createdAt, id)
       .mapTo[Token]
 }
 
@@ -45,4 +46,7 @@ object TokensMapper extends TableQuery(new TokenTable(_)) {
     this.filter(_.token === token).result.headOption
   def getByUser(userId: Int) =
     this.filter(_.userId === userId).result.headOption
+
+  def getByCognitoId(cognitoId: CognitoId.TokenPoolId) =
+    this.filter(_.cognitoId === cognitoId).result.headOption
 }

@@ -24,8 +24,6 @@ variable "analytics_service_rate_limit" {
   default = "100"
 }
 
-variable "pennsieve_authy_api_url" {}
-
 variable "pennsieve_environment" {}
 
 variable "data_postgres_database" {
@@ -49,9 +47,6 @@ variable "orcid_get_record_base_url" {}
 variable "pennsieve_postgres_database" {
   default = "pennsieve_postgres"
 }
-
-# Deprecated
-variable "sentry_dsn" {}
 
 # Catalina Opts
 

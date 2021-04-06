@@ -32,7 +32,7 @@ class DatasetsServiceSpec extends AdminServiceSpec {
       testRequest(
         GET,
         s"/organizations/${organizationOne.id}/datasets",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
 
@@ -69,7 +69,7 @@ class DatasetsServiceSpec extends AdminServiceSpec {
         POST,
         s"/organizations/${organizationOne.id}/datasets/1/sponsor",
         json = Some(SponsorshipRequest(Some("foo")).asJson),
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
 
@@ -85,7 +85,7 @@ class DatasetsServiceSpec extends AdminServiceSpec {
       testRequest(
         DELETE,
         s"/organizations/${organizationOne.id}/datasets/1/sponsor",
-        session = adminSession
+        session = adminCognitoJwt
       ) ~>
         routes ~> check {
 
