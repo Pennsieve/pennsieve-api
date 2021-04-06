@@ -543,9 +543,9 @@ class OrganizationsController(
     : OperationBuilder = (apiOperation[Set[ExpandedTeamResponse]]("getTeams")
     summary "get the teams that belong to an organization"
     parameters
-      pathParam[String]("id").description("organization id"))
+      pathParam[String]("organizationId").description("organization id"))
 
-  get("/:id/teams", operation(getTeamsOperation)) {
+  get("/:organizationId/teams", operation(getTeamsOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[ExpandedTeamResponse]] =
         for {
@@ -554,7 +554,7 @@ class OrganizationsController(
           traceId <- getTraceId(request)
           user = secureContainer.user
 
-          organizationId <- paramT[String]("id")
+          organizationId <- paramT[String]("organizationId")
 
           organization <- secureContainer.organizationManager
             .getByNodeId(organizationId)
