@@ -344,7 +344,7 @@ lazy val adminSettings = Seq(
   publishTo := publishToNexus.value,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
-    "com.github.swagger-akka-http" %% "swagger-akka-http" % "2.4.0",
+    "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.14.0",
     "com.iheart" %% "ficus" % ficusVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "io.circe" %% "circe-java8" % circeVersion,
@@ -422,7 +422,7 @@ lazy val bfAkkaHttpSettings = Seq(
   publishArtifact in Test := true,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
-    "com.github.swagger-akka-http" %% "swagger-akka-http" % "2.4.0",
+    "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.14.0",
     "com.iheart" %% "ficus" % ficusVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
