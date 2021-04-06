@@ -17,7 +17,7 @@
 package com.pennsieve.aws.cognito
 
 import com.pennsieve.aws.email.Email
-import com.pennsieve.models.CognitoId
+import com.pennsieve.models.{ CognitoId, Organization }
 import com.pennsieve.domain.{ NotFound, PredicateError }
 import com.pennsieve.dtos.Secret
 import cats.data._
@@ -63,20 +63,14 @@ trait CognitoClient {
 
   def createClientToken(
     token: String,
-    secret: Secret
+    secret: Secret,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId]
 
   def deleteClientToken(
     token: String
-  )(implicit
-    ec: ExecutionContext
-  ): Future[Unit]
-
-  def pushUserOrganizationAttribute(
-    username: String,
-    organization: String
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
@@ -134,7 +128,8 @@ class Cognito(
     */
   def createClientToken(
     token: String,
-    secret: Secret
+    secret: Secret,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId] = {
@@ -153,11 +148,35 @@ class Cognito(
       .username(token)
       .build()
 
+    val updateUserAttributesRequest = AdminUpdateUserAttributesRequest
+      .builder()
+      .username(token)
+      .userPoolId(cognitoConfig.userPool.id)
+      .userAttributes(
+        List(
+          AttributeType
+            .builder()
+            .name("custom:organization_node_id")
+            .value(organization.nodeId)
+            .build(),
+          AttributeType
+            .builder()
+            .name("custom:organization_id")
+            .value(organization.id.toString)
+            .build()
+        ).asJava
+      )
+      .build()
+
     for {
       cognitoId <- adminCreateUser(createUserRequest)
 
       _ <- client
         .adminSetUserPassword(setPasswordRequest)
+        .toScala
+
+      _ <- client
+        .adminUpdateUserAttributes(updateUserAttributesRequest)
         .toScala
 
     } yield CognitoId.TokenPoolId(cognitoId)
@@ -209,47 +228,6 @@ class Cognito(
         Future.successful(())
 
     } yield cognitoId
-  }
-
-  /**
-    * Provide information in Cognito about which organization a token is scoped to.
-    */
-  def pushUserOrganizationAttribute(
-    username: String,
-    organization: String
-  )(implicit
-    ec: ExecutionContext
-  ): Future[Unit] = {
-    val request = AdminUpdateUserAttributesRequest
-      .builder()
-      .username(username)
-      .userPoolId(cognitoConfig.userPool.id)
-      .userAttributes(
-        List(
-          AttributeType
-            .builder()
-            .name("custom:organization_node_id")
-            .value(username)
-            .build()
-        ).asJava
-      )
-      .build()
-    adminUpdateUserAttributes(request)
-  }
-
-  /**
-    * Update a user's attributes and parse Cognito ID from response.
-    */
-  private def adminUpdateUserAttributes(
-    request: AdminUpdateUserAttributesRequest
-  )(implicit
-    ec: ExecutionContext
-  ): Future[Unit] = {
-    for {
-      cognitoResponse <- client
-        .adminUpdateUserAttributes(request)
-        .toScala
-    } yield ()
   }
 
   /**
