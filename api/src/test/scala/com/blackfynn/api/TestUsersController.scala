@@ -96,6 +96,16 @@ class TestUsersController extends BaseApiTest {
     mockCustomToSClient.reset()
   }
 
+  test("swagger") {
+    import com.pennsieve.web.ResourcesApp
+    addServlet(new ResourcesApp, "/api-docs/*")
+
+    get("/api-docs/swagger.json") {
+      status should equal(200)
+      println(body)
+    }
+  }
+
   test("get user info") {
     get(s"", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
       status should equal(200)
