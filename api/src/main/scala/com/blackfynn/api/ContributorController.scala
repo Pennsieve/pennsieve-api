@@ -169,9 +169,10 @@ class ContributorsController(
       apiOperation[ContributorDTO]("updateContributor")
         summary "updates a contributor that belongs to the current organization"
         parameters (
+          pathParam[Int]("id").description("contributor id"),
           bodyParam[UpdateContributorRequest]("body")
             .description("contributor's properties to be updated")
-          )
+      )
     )
   ) {
     new AsyncResult {

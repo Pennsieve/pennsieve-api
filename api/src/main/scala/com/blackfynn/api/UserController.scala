@@ -154,7 +154,7 @@ class UserController(
   }
 
   val getUserOperation =
-    apiOperation[Option[UserDTO]]("getUser") summary "gets the current user"
+    apiOperation[Option[UserDTO]]("getCurrentUser") summary "Returns the current user"
 
   get("/", operation(getUserOperation)) {
     new AsyncResult {

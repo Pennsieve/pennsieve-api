@@ -1,4 +1,4 @@
-CREATE EXTENSION btree_gist
+CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 CREATE TABLE ranges (
     id SERIAL NOT NULL,
@@ -9,6 +9,6 @@ CREATE TABLE ranges (
     follows_gap BOOLEAN NOT NULL,
     PRIMARY KEY (id),
     EXCLUDE USING gist (channel WITH =, range WITH &&)
-)
+);
 
-CREATE INDEX channel_range_index ON ranges USING gist (channel, range)
+CREATE INDEX channel_range_index ON ranges USING gist (channel, range);
