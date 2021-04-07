@@ -151,7 +151,7 @@ class Cognito(
     val updateUserAttributesRequest = AdminUpdateUserAttributesRequest
       .builder()
       .username(token)
-      .userPoolId(cognitoConfig.userPool.id)
+      .userPoolId(cognitoConfig.tokenPool.id)
       .userAttributes(
         List(
           AttributeType
