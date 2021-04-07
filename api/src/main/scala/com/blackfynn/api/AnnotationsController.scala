@@ -338,7 +338,9 @@ class AnnotationsController(
 
   val updateLayerOperation = (apiOperation[AnnotationLayer]("updateLayer")
     summary "update an annotation layer"
-    parameter bodyParam[UpdateLayerRequest]("updateLayerRequest"))
+    parameter bodyParam[UpdateLayerRequest]("updateLayerRequest")
+    parameter pathParam[String]("id")
+      .description("the ID of the Annotation Layer"))
 
   put("/layer/:id", operation(updateLayerOperation)) {
     new AsyncResult {

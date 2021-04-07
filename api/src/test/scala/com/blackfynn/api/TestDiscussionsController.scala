@@ -60,6 +60,16 @@ class TestDiscussionsController extends BaseApiTest {
       .value
   }
 
+  test("swagger") {
+    import com.pennsieve.web.ResourcesApp
+    addServlet(new ResourcesApp, "/api-docs/*")
+
+    get("/api-docs/swagger.json") {
+      status should equal(200)
+      println(body)
+    }
+  }
+
   test("create a discussion about a thing") {
     val createReq = write(
       CreateCommentRequest(
