@@ -17,7 +17,7 @@
 package com.pennsieve.aws.cognito
 
 import com.pennsieve.aws.email.Email
-import com.pennsieve.models.CognitoId
+import com.pennsieve.models.{ CognitoId, Organization }
 import com.pennsieve.domain.{ NotFound, PredicateError }
 import com.pennsieve.dtos.Secret
 import cats.data._
@@ -33,6 +33,8 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDeleteUserRequest,
   AdminDeleteUserResponse,
   AdminSetUserPasswordRequest,
+  AdminUpdateUserAttributesRequest,
+  AdminUpdateUserAttributesResponse,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
@@ -61,7 +63,8 @@ trait CognitoClient {
 
   def createClientToken(
     token: String,
-    secret: Secret
+    secret: Secret,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId]
@@ -125,7 +128,8 @@ class Cognito(
     */
   def createClientToken(
     token: String,
-    secret: Secret
+    secret: Secret,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId] = {
@@ -144,11 +148,35 @@ class Cognito(
       .username(token)
       .build()
 
+    val updateUserAttributesRequest = AdminUpdateUserAttributesRequest
+      .builder()
+      .username(token)
+      .userPoolId(cognitoConfig.tokenPool.id)
+      .userAttributes(
+        List(
+          AttributeType
+            .builder()
+            .name("custom:organization_node_id")
+            .value(organization.nodeId)
+            .build(),
+          AttributeType
+            .builder()
+            .name("custom:organization_id")
+            .value(organization.id.toString)
+            .build()
+        ).asJava
+      )
+      .build()
+
     for {
       cognitoId <- adminCreateUser(createUserRequest)
 
       _ <- client
         .adminSetUserPassword(setPasswordRequest)
+        .toScala
+
+      _ <- client
+        .adminUpdateUserAttributes(updateUserAttributesRequest)
         .toScala
 
     } yield CognitoId.TokenPoolId(cognitoId)

@@ -18,7 +18,7 @@ package com.pennsieve.aws.cognito
 
 import com.pennsieve.aws.email.Email
 import com.pennsieve.dtos.Secret
-import com.pennsieve.models.CognitoId
+import com.pennsieve.models.{ CognitoId, Organization }
 import java.util.UUID
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
@@ -35,6 +35,9 @@ class MockCognito() extends CognitoClient {
     mutable.ArrayBuffer.empty
 
   val reSentInvites: mutable.Map[Email, CognitoId.UserPoolId] =
+    mutable.Map.empty
+
+  val sentOrganizationUpdates: mutable.Map[String, String] =
     mutable.Map.empty
 
   def inviteUser(
@@ -58,7 +61,8 @@ class MockCognito() extends CognitoClient {
 
   def createClientToken(
     token: String,
-    secret: Secret
+    secret: Secret,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId] = {
@@ -80,5 +84,6 @@ class MockCognito() extends CognitoClient {
     sentInvites.clear()
     sentTokenInvites.clear()
     reSentInvites.clear()
+    sentOrganizationUpdates.clear()
   }
 }
