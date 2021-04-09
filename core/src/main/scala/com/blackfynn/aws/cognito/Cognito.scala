@@ -33,8 +33,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDeleteUserRequest,
   AdminDeleteUserResponse,
   AdminSetUserPasswordRequest,
-  AdminUpdateUserAttributesRequest,
-  AdminUpdateUserAttributesResponse,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
@@ -138,20 +136,6 @@ class Cognito(
       .builder()
       .userPoolId(cognitoConfig.tokenPool.id)
       .username(token)
-      .build()
-
-    val setPasswordRequest = AdminSetUserPasswordRequest
-      .builder()
-      .password(secret.plaintext)
-      .permanent(true)
-      .userPoolId(cognitoConfig.tokenPool.id)
-      .username(token)
-      .build()
-
-    val updateUserAttributesRequest = AdminUpdateUserAttributesRequest
-      .builder()
-      .username(token)
-      .userPoolId(cognitoConfig.tokenPool.id)
       .userAttributes(
         List(
           AttributeType
@@ -168,15 +152,19 @@ class Cognito(
       )
       .build()
 
+    val setPasswordRequest = AdminSetUserPasswordRequest
+      .builder()
+      .password(secret.plaintext)
+      .permanent(true)
+      .userPoolId(cognitoConfig.tokenPool.id)
+      .username(token)
+      .build()
+
     for {
       cognitoId <- adminCreateUser(createUserRequest)
 
       _ <- client
         .adminSetUserPassword(setPasswordRequest)
-        .toScala
-
-      _ <- client
-        .adminUpdateUserAttributes(updateUserAttributesRequest)
         .toScala
 
     } yield CognitoId.TokenPoolId(cognitoId)
