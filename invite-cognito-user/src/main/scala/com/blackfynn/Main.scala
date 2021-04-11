@@ -29,11 +29,14 @@ import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import net.ceedubs.ficus.Ficus._
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementAsyncClientBuilder
 import com.amazonaws.regions.Regions
+import software.amazon.awssdk.services.cognitoidentityprovider.model._
 import sys.process._
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future }
+import scala.compat.java8.FutureConverters._
 import scala.util.Try
 
 case class Awaitable[A](f: Future[A]) {
@@ -142,17 +145,34 @@ object Main extends App {
       println(s"Inviting new Cognito user...")
 
       val cognitoId = cognito
-        .inviteUser(Email(email))
+        .inviteUser(Email(email), suppressEmail = true)
         .awaitFinite()
+
+      // TODO: remove this, use CSV import?
+      cognito
+        .asInstanceOf[Cognito]
+        .client
+        .adminSetUserPassword(
+          AdminSetUserPasswordRequest
+            .builder()
+            .userPoolId(cognito.asInstanceOf[Cognito].cognitoConfig.userPool.id)
+            .username(email)
+            .password(s"${UUID.randomUUID()}aA1@")
+            .permanent(true)
+            .build
+        )
+        .toScala
 
       val cognitoUser = container.db
         .run(CognitoUserMapper.create(cognitoId, user))
         .awaitFinite()
 
       println(s"Created new Cognito user ${cognitoUser.cognitoId}")
+
+    // TODO: send welcome email
   }
 
-  println("Done.")
+  println("Done. User must reset password with 'Forgot Password' flow.")
 
   sys.exit(0)
 }

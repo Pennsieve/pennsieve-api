@@ -47,7 +47,8 @@ import com.typesafe.config.Config
 
 trait CognitoClient {
   def inviteUser(
-    email: Email
+    email: Email,
+    suppressEmail: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId]
@@ -99,13 +100,17 @@ class Cognito(
     * Verify user email addresses on Cognito account creation. Users only need
     * to use the verification flow if they sign themselves up, which we don't
     * support yet.
+    *
+    * If suppressEmail=false, Cognito will not send an invite email (for initial
+    * account import).
     */
   def inviteUser(
-    email: Email
+    email: Email,
+    suppressEmail: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
-    val request = AdminCreateUserRequest
+    val builder = AdminCreateUserRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
@@ -116,7 +121,12 @@ class Cognito(
         ).asJava
       )
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
-      .build()
+
+    val request =
+      if (suppressEmail)
+        builder.messageAction(MessageActionType.SUPPRESS).build()
+      else builder.build()
+
     adminCreateUser(request).map(CognitoId.UserPoolId(_))
   }
 

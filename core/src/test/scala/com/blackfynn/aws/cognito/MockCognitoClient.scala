@@ -41,7 +41,8 @@ class MockCognito() extends CognitoClient {
     mutable.Map.empty
 
   def inviteUser(
-    email: Email
+    email: Email,
+    suppressEmail: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
