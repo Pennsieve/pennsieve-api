@@ -95,7 +95,8 @@ object Main extends App {
         .awaitFinite()
     )
 
-  val email: String = config.as[String]("email").trim.toLowerCase
+  val emails =  config.as[String]("emails").split(",").map(_.trim.toLowerCase)
+
   val jumpbox: String = config.as[String]("jumpbox")
 
   val pennPort = 1113
@@ -126,53 +127,62 @@ object Main extends App {
       .withValue("postgres.port", ConfigValueFactory.fromAnyRef(pennPort))
   )
 
-  println(s"Email is ${email}")
+  for (email <- emails) {
+    println(s"Inviting user ${email}")
 
-  val user =
-    container.userManager.getByEmail(email).awaitFinite().fold(throw _, u => u)
-
-  val maybeCognitoUser = container.db
-    .run(CognitoUserMapper.filter(_.userId === user.id).result)
-    .awaitFinite()
-    .headOption
-
-  maybeCognitoUser match {
-    case Some(cognitoUser) =>
-      println(s"Cognito user ${cognitoUser.cognitoId} already exists")
-      cognitoUser
-
-    case None =>
-      println(s"Inviting new Cognito user...")
-
-      val cognitoId = cognito
-        .inviteUser(Email(email), suppressEmail = true)
+    val user =
+      container.userManager
+        .getByEmail(email)
         .awaitFinite()
+        .fold(throw _, u => u)
 
-      // TODO: remove this, use CSV import?
-      cognito
-        .asInstanceOf[Cognito]
-        .client
-        .adminSetUserPassword(
-          AdminSetUserPasswordRequest
-            .builder()
-            .userPoolId(cognito.asInstanceOf[Cognito].cognitoConfig.userPool.id)
-            .username(email)
-            .password(s"${UUID.randomUUID()}aA1@")
-            .permanent(true)
-            .build
+    val maybeCognitoUser = container.db
+      .run(CognitoUserMapper.filter(_.userId === user.id).result)
+      .awaitFinite()
+      .headOption
+
+    maybeCognitoUser match {
+      case Some(cognitoUser) =>
+        println(
+          s"Cognito user ${cognitoUser.cognitoId} already exists for $email"
         )
-        .toScala
+        cognitoUser
 
-      val cognitoUser = container.db
-        .run(CognitoUserMapper.create(cognitoId, user))
-        .awaitFinite()
+      case None =>
+        println(s"Inviting new Cognito user for $email...")
 
-      println(s"Created new Cognito user ${cognitoUser.cognitoId}")
+        val cognitoId = cognito
+          .inviteUser(Email(email), suppressEmail = true)
+          .awaitFinite()
 
-    // TODO: send welcome email
+        // TODO: remove this, use CSV import?
+        cognito
+          .asInstanceOf[Cognito]
+          .client
+          .adminSetUserPassword(
+            AdminSetUserPasswordRequest
+              .builder()
+              .userPoolId(
+                cognito.asInstanceOf[Cognito].cognitoConfig.userPool.id
+              )
+              .username(email)
+              .password(s"${UUID.randomUUID()}aA1@")
+              .permanent(true)
+              .build
+          )
+          .toScala
+
+        val cognitoUser = container.db
+          .run(CognitoUserMapper.create(cognitoId, user))
+          .awaitFinite()
+
+        println(s"Created new Cognito user ${cognitoUser.cognitoId} for $email")
+
+      // TODO: send welcome email
+    }
+
+    println("Done. Users must reset password with 'Forgot Password' flow.")
   }
-
-  println("Done. User must reset password with 'Forgot Password' flow.")
 
   sys.exit(0)
 }
