@@ -51,6 +51,7 @@ import com.pennsieve.models.{ Organization, User }
 import com.pennsieve.traits.PostgresProfile.api._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import shapeless.syntax.inject._
+import java.time.Instant
 
 import net.ceedubs.ficus.Ficus._
 
@@ -93,7 +94,12 @@ class AuthorizationRoutes(
       } yield {
         val roles =
           List(organizationRole.some, datasetRole).flatten
-        val userClaim = getUserClaim(user, roles, cognitoId)
+        val userClaim = getUserClaim(
+          user,
+          roles,
+          cognitoId,
+          Instant.now().plusSeconds(container.duration.toSeconds)
+        )
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
@@ -164,11 +170,12 @@ class AuthorizationRoutes(
   private def getUserClaim(
     user: User,
     roles: List[Jwt.Role],
-    cognitoId: Option[CognitoId]
+    cognitoId: Option[CognitoId],
+    exp: Instant
   ): UserClaim = {
     val cognitoSession = cognitoId.map {
-      case id: CognitoId.TokenPoolId => CognitoSession.API(id)
-      case id: CognitoId.UserPoolId => CognitoSession.Browser(id)
+      case id: CognitoId.TokenPoolId => CognitoSession.API(id, exp)
+      case id: CognitoId.UserPoolId => CognitoSession.Browser(id, exp)
     }
 
     UserClaim(

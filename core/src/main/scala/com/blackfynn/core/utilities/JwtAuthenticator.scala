@@ -43,6 +43,8 @@ import com.pennsieve.domain.{
 }
 import com.pennsieve.models.{ CognitoId, Dataset, Organization, Role, User }
 import com.pennsieve.utilities.Container
+import java.time.Instant
+
 import shapeless.syntax.inject._
 
 import scala.concurrent.duration.FiniteDuration
@@ -52,7 +54,8 @@ import scala.concurrent.{ ExecutionContext, Future }
 case class UserAuthContext(
   user: User,
   organization: Organization,
-  cognitoId: Option[CognitoId]
+  cognitoId: Option[CognitoId],
+  expiration: Instant
 )
 
 object JwtAuthenticator {
@@ -183,6 +186,7 @@ object JwtAuthenticator {
         .leftMap(_ => InvalidJWT(token.value): CoreError)
         .toEitherT[Future]
       context <- userContext(container, claim)
+
     } yield context
   }
 
@@ -219,7 +223,8 @@ object JwtAuthenticator {
           UserAuthContext(
             user = user,
             organization = organization,
-            cognitoId = cognito.map(_.id)
+            cognitoId = cognito.map(_.id),
+            expiration = cognito.map(_.exp).getOrElse(Instant.ofEpochSecond(0))
           )
       case ServiceClaim(_) =>
         EitherT.leftT[Future, UserAuthContext](
