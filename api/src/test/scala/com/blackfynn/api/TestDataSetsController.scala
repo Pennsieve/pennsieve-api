@@ -4318,7 +4318,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
 
       (parsedBody \ "packages" \ "content" \ "id")
-        .extract[List[Int]] should equal(List(pkg1.id, pkg2.id))
+        .extract[Set[Int]] should equal(Set(pkg1.id, pkg2.id))
       (parsedBody \ "failures" \ "id").extract[List[Int]] shouldBe empty
     }
   }
