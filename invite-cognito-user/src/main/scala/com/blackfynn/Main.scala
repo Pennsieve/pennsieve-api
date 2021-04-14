@@ -95,7 +95,7 @@ object Main extends App {
         .awaitFinite()
     )
 
-  val emails =  config.as[String]("emails").split(",").map(_.trim.toLowerCase)
+  val emails = config.as[String]("emails").split(",").map(_.trim.toLowerCase)
 
   val jumpbox: String = config.as[String]("jumpbox")
 
