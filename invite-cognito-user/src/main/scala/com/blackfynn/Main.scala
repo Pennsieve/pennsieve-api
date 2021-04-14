@@ -171,6 +171,7 @@ object Main extends App {
               .build
           )
           .toScala
+          .awaitFinite()
 
         val cognitoUser = container.db
           .run(CognitoUserMapper.create(cognitoId, user))
