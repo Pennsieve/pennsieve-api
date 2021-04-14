@@ -76,6 +76,9 @@ class TestOnboardingController extends BaseApiTest {
     createdRelationshipType.asJson.noSpaces should ===(
       "\"CreatedRelationshipType\""
     )
+
+    val AddedOrcid: OnboardingEventType = OnboardingEventType.AddedOrcid
+    AddedOrcid.asJson.noSpaces should ===("\"AddedOrcid\"")
   }
 
   test("deserialization for event types work properly") {
@@ -102,6 +105,9 @@ class TestOnboardingController extends BaseApiTest {
     )
     decode[OnboardingEventType]("\"CreatedRelationshipType\"") should ===(
       Right(OnboardingEventType.CreatedRelationshipType)
+    )
+    decode[OnboardingEventType]("\"AddedOrcid\"") should ===(
+      Right(OnboardingEventType.AddedOrcid)
     )
   }
 
