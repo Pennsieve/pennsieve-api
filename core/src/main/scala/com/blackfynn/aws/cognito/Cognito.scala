@@ -47,7 +47,6 @@ import scala.collection.mutable
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
 
-import scala.util.Random
 
 trait CognitoClient {
   def inviteUser(
@@ -118,7 +117,7 @@ class Cognito(
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
-      .temporaryPassword(Random.alphanumeric.take(6).mkString(""))
+      .temporaryPassword(UUID.randomUUID().toString())
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
