@@ -66,7 +66,8 @@ class Router(
           new AuthorizationRoutes(
             user = userContext.user,
             organization = userContext.organization,
-            cognitoId = userContext.cognitoId
+            cognitoId = userContext.cognitoId,
+            expiration = userContext.expiration
           )(container, executionContext, system).routes
         )
 

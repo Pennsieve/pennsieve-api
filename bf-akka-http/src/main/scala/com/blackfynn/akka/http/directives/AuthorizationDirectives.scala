@@ -97,6 +97,12 @@ object AuthorizationDirectives {
         .leftMap(ThrowableError(_))
         .toEitherT[Future]
 
+      expiresAt <- CognitoJWTAuthenticator
+        .validateJwt(token)
+        .map(_.expiresAt)
+        .leftMap(ThrowableError(_))
+        .toEitherT[Future]
+
       authContext <- cognitoId match {
         case id: CognitoId.UserPoolId =>
           for {
@@ -115,12 +121,7 @@ object AuthorizationDirectives {
               preferredOrganizationId
             )
           } yield
-            UserAuthContext(
-              user._1,
-              organization,
-              Some(cognitoId),
-              Instant.ofEpochSecond(0)
-            )
+            UserAuthContext(user._1, organization, Some(cognitoId), expiresAt)
 
         case id: CognitoId.TokenPoolId =>
           for {
@@ -131,12 +132,7 @@ object AuthorizationDirectives {
               token.organizationId
             )
           } yield
-            UserAuthContext(
-              user,
-              organization,
-              Some(cognitoId),
-              Instant.ofEpochSecond(0)
-            )
+            UserAuthContext(user, organization, Some(cognitoId), expiresAt)
 
       }
     } yield authContext

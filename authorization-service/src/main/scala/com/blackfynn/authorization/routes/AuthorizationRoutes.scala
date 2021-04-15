@@ -62,7 +62,8 @@ import scala.util.{ Failure, Success, Try }
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
-  cognitoId: Option[CognitoId]
+  cognitoId: Option[CognitoId],
+  expiration: Instant
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
@@ -94,12 +95,7 @@ class AuthorizationRoutes(
       } yield {
         val roles =
           List(organizationRole.some, datasetRole).flatten
-        val userClaim = getUserClaim(
-          user,
-          roles,
-          cognitoId,
-          Instant.now().plusSeconds(container.duration.toSeconds)
-        )
+        val userClaim = getUserClaim(user, roles, cognitoId, expiration)
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
