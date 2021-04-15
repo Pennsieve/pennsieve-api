@@ -113,7 +113,7 @@ class Cognito(
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
     val randomUppercaseChar =
-      ("A".toInt + Math.random() * ("Z".toInt - "A".toInt + 1)).toChar
+      scala.util.Random.shuffle(('A' to 'Z').toList).head
     val builder = AdminCreateUserRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
