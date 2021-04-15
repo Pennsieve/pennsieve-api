@@ -45,6 +45,7 @@ import com.pennsieve.auth.middleware.{
 }
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.utilities.exceptions._
+import com.pennsieve.aws.cognito.CognitoPayload
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.db.{ DatasetsMapper, OrganizationUserMapper, UserMapper }
 import com.pennsieve.models.{ Organization, User }
@@ -62,8 +63,7 @@ import scala.util.{ Failure, Success, Try }
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
-  cognitoId: Option[CognitoId],
-  expiration: Instant
+  cognitoPayload: CognitoPayload
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
@@ -95,7 +95,13 @@ class AuthorizationRoutes(
       } yield {
         val roles =
           List(organizationRole.some, datasetRole).flatten
-        val userClaim = getUserClaim(user, roles, cognitoId, expiration)
+        val userClaim =
+          getUserClaim(
+            user,
+            roles,
+            Some(cognitoPayload.id),
+            cognitoPayload.expiresAt
+          )
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
@@ -130,8 +136,8 @@ class AuthorizationRoutes(
         val result: Future[UserDTO] = for {
 
           // Only users logged in from the browser / user pool can switch organizations
-          _ <- cognitoId.map(_.asUserPoolId) match {
-            case Some(Right(_)) => Future.successful(())
+          _ <- cognitoPayload.id.asUserPoolId match {
+            case Right(_) => Future.successful(())
             case _ => Future.failed(NonBrowserSession)
           }
           organizationToSwitchTo <- getOrganization(user, organizationId)
