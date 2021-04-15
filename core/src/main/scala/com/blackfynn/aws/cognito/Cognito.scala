@@ -47,7 +47,6 @@ import scala.collection.mutable
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
 
-
 trait CognitoClient {
   def inviteUser(
     email: Email,
@@ -113,11 +112,13 @@ class Cognito(
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
+    val randomUppercaseChar =
+      ("A".toInt + Math.random() * ("Z".toInt - "A".toInt + 1)).toChar
     val builder = AdminCreateUserRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
-      .temporaryPassword(UUID.randomUUID().toString())
+      .temporaryPassword(UUID.randomUUID().toString() + randomUppercaseChar)
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
