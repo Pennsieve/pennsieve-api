@@ -56,7 +56,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 case class UserAuthContext(
   user: User,
   organization: Organization,
-  cognitoPayload: CognitoPayload
+  cognitoPayload: Option[CognitoPayload]
 )
 
 object JwtAuthenticator {
@@ -225,7 +225,23 @@ object JwtAuthenticator {
             user = user,
             organization = organization,
             cognitoPayload =
-              CognitoPayload(cognito.id, claim.issuedAt, claim.expiration)
+              Some(CognitoPayload(cognito.id, claim.issuedAt, claim.expiration))
+          )
+      case UserClaim(UserId(userId), _, None, _) =>
+        for {
+          user <- container.userManager.get(userId)
+          organizationId <- Extractor
+            .getHeadOrganizationIdFromClaim(claim)
+            .toRight(MissingOrganization: CoreError)
+            .toEitherT[Future]
+          organization <- container.organizationManager.get(
+            organizationId.value
+          )
+        } yield
+          UserAuthContext(
+            user = user,
+            organization = organization,
+            cognitoPayload = None
           )
       case ServiceClaim(_) =>
         EitherT.leftT[Future, UserAuthContext](

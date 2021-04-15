@@ -63,7 +63,7 @@ import scala.util.{ Failure, Success, Try }
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
-  cognitoPayload: CognitoPayload
+  cognitoPayload: Option[CognitoPayload]
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
@@ -96,12 +96,7 @@ class AuthorizationRoutes(
         val roles =
           List(organizationRole.some, datasetRole).flatten
         val userClaim =
-          getUserClaim(
-            user,
-            roles,
-            Some(cognitoPayload.id),
-            cognitoPayload.expiresAt
-          )
+          getUserClaim(user, roles, cognitoPayload)
         val claim =
           Jwt.generateClaim(userClaim, container.duration)
 
@@ -136,8 +131,13 @@ class AuthorizationRoutes(
         val result: Future[UserDTO] = for {
 
           // Only users logged in from the browser / user pool can switch organizations
-          _ <- cognitoPayload.id.asUserPoolId match {
-            case Right(_) => Future.successful(())
+          _ <- cognitoPayload.map(_.id) match {
+            case Some(cognitoId) => {
+              cognitoId.asUserPoolId match {
+                case Right(_) => Future.successful(())
+                case _ => Future.failed(NonBrowserSession)
+              }
+            }
             case _ => Future.failed(NonBrowserSession)
           }
           organizationToSwitchTo <- getOrganization(user, organizationId)
@@ -172,12 +172,18 @@ class AuthorizationRoutes(
   private def getUserClaim(
     user: User,
     roles: List[Jwt.Role],
-    cognitoId: Option[CognitoId],
-    exp: Instant
+    cognitoPayload: Option[CognitoPayload]
   ): UserClaim = {
-    val cognitoSession = cognitoId.map {
-      case id: CognitoId.TokenPoolId => CognitoSession.API(id, exp)
-      case id: CognitoId.UserPoolId => CognitoSession.Browser(id, exp)
+
+    val cognitoSession = cognitoPayload match {
+      case Some(payload) =>
+        payload.id match {
+          case (id: CognitoId.TokenPoolId) =>
+            Some(CognitoSession.API(id, payload.expiresAt))
+          case (id: CognitoId.UserPoolId) =>
+            Some(CognitoSession.Browser(id, payload.expiresAt))
+        }
+      case None => None
     }
 
     UserClaim(
