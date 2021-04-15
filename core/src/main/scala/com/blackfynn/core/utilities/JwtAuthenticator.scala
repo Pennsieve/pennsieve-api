@@ -210,7 +210,8 @@ object JwtAuthenticator {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, UserAuthContext] =
     claim.content match {
-      case UserClaim(UserId(userId), _, Some(cognito), _) =>
+
+      case UserClaim(UserId(userId), _, cognito, _) =>
         for {
           user <- container.userManager.get(userId)
           organizationId <- Extractor
@@ -224,24 +225,9 @@ object JwtAuthenticator {
           UserAuthContext(
             user = user,
             organization = organization,
-            cognitoPayload =
-              Some(CognitoPayload(cognito.id, claim.issuedAt, cognito.exp))
-          )
-      case UserClaim(UserId(userId), _, None, _) =>
-        for {
-          user <- container.userManager.get(userId)
-          organizationId <- Extractor
-            .getHeadOrganizationIdFromClaim(claim)
-            .toRight(MissingOrganization: CoreError)
-            .toEitherT[Future]
-          organization <- container.organizationManager.get(
-            organizationId.value
-          )
-        } yield
-          UserAuthContext(
-            user = user,
-            organization = organization,
-            cognitoPayload = None
+            cognitoPayload = cognito.map(
+              session => CognitoPayload(session.id, claim.issuedAt, session.exp)
+            )
           )
       case ServiceClaim(_) =>
         EitherT.leftT[Future, UserAuthContext](
