@@ -225,7 +225,7 @@ object JwtAuthenticator {
             user = user,
             organization = organization,
             cognitoPayload =
-              Some(CognitoPayload(cognito.id, claim.issuedAt, claim.expiration))
+              Some(CognitoPayload(cognito.id, claim.issuedAt, cognito.exp))
           )
       case UserClaim(UserId(userId), _, None, _) =>
         for {

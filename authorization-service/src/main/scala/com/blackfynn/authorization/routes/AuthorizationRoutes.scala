@@ -131,13 +131,8 @@ class AuthorizationRoutes(
         val result: Future[UserDTO] = for {
 
           // Only users logged in from the browser / user pool can switch organizations
-          _ <- cognitoPayload.map(_.id) match {
-            case Some(cognitoId) => {
-              cognitoId.asUserPoolId match {
-                case Right(_) => Future.successful(())
-                case _ => Future.failed(NonBrowserSession)
-              }
-            }
+          _ <- cognitoPayload.map(_.id.asUserPoolId) match {
+            case Some(Right(_)) => Future.successful(())
             case _ => Future.failed(NonBrowserSession)
           }
           organizationToSwitchTo <- getOrganization(user, organizationId)
