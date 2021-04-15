@@ -22,3 +22,4 @@ auth_cognito_compile:
 
 	sed -i '' -e 's/<p[^>]*>This email was sent to $${emailAddress}.<\/p>//g' ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/password-reset.template.html
 
+	mv ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/new-account-creation.template.html ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/../lambda
