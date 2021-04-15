@@ -22,6 +22,7 @@ import com.pennsieve.domain.{ NotFound, PredicateError }
 import com.pennsieve.dtos.Secret
 import cats.data._
 import cats.implicits._
+
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.Future
 import software.amazon.awssdk.regions.Region
@@ -38,12 +39,14 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   MessageActionType,
   UserType
 }
+
 import scala.concurrent.ExecutionContext
 import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
+
 
 trait CognitoClient {
   def inviteUser(
@@ -114,6 +117,7 @@ class Cognito(
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
+      .temporaryPassword(UUID.randomUUID().toString())
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
