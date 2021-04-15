@@ -86,6 +86,8 @@ class OrcidClientImpl(
       entity = createBody(authorizationCode, orcidClientConfig).toEntity,
       headers = List(Accept(MediaTypes.`application/json`))
     )
+    println(s"orcidClientConfig : $orcidClientConfig")
+    println(s"authorizationCode : $authorizationCode")
     httpClient
       .singleRequest(tokenRequest)
       .flatMap {
