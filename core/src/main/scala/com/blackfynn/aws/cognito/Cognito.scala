@@ -22,6 +22,7 @@ import com.pennsieve.domain.{ NotFound, PredicateError }
 import com.pennsieve.dtos.Secret
 import cats.data._
 import cats.implicits._
+
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.Future
 import software.amazon.awssdk.regions.Region
@@ -38,6 +39,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   MessageActionType,
   UserType
 }
+
 import scala.concurrent.ExecutionContext
 import java.util.UUID
 import scala.collection.JavaConverters._
@@ -110,10 +112,13 @@ class Cognito(
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
+    val randomUppercaseChar =
+      scala.util.Random.shuffle(('A' to 'Z').toList).head
     val builder = AdminCreateUserRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
+      .temporaryPassword(UUID.randomUUID().toString() + randomUppercaseChar)
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
