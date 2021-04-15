@@ -41,6 +41,8 @@ import com.pennsieve.domain.{
   MissingOrganization,
   UnsupportedJWTClaimType
 }
+import com.pennsieve.aws.cognito.CognitoPayload
+
 import com.pennsieve.models.{ CognitoId, Dataset, Organization, Role, User }
 import com.pennsieve.utilities.Container
 import java.time.Instant
@@ -54,8 +56,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 case class UserAuthContext(
   user: User,
   organization: Organization,
-  cognitoId: Option[CognitoId],
-  expiration: Instant
+  cognitoPayload: CognitoPayload
 )
 
 object JwtAuthenticator {
@@ -209,7 +210,7 @@ object JwtAuthenticator {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, UserAuthContext] =
     claim.content match {
-      case UserClaim(UserId(userId), _, cognito, _) =>
+      case UserClaim(UserId(userId), _, Some(cognito), _) =>
         for {
           user <- container.userManager.get(userId)
           organizationId <- Extractor
@@ -223,8 +224,8 @@ object JwtAuthenticator {
           UserAuthContext(
             user = user,
             organization = organization,
-            cognitoId = cognito.map(_.id),
-            expiration = cognito.map(_.exp).getOrElse(Instant.ofEpochSecond(0))
+            cognitoPayload =
+              CognitoPayload(cognito.id, claim.issuedAt, claim.expiration)
           )
       case ServiceClaim(_) =>
         EitherT.leftT[Future, UserAuthContext](

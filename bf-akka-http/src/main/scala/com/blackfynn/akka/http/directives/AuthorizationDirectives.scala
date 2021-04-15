@@ -91,18 +91,12 @@ object AuthorizationDirectives {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, UserAuthContext] = {
     for {
-      cognitoId <- CognitoJWTAuthenticator
+      cognitoPayload <- CognitoJWTAuthenticator
         .validateJwt(token)
-        .map(_.id)
         .leftMap(ThrowableError(_))
         .toEitherT[Future]
 
-      expiresAt <- CognitoJWTAuthenticator
-        .validateJwt(token)
-        .map(_.expiresAt)
-        .leftMap(ThrowableError(_))
-        .toEitherT[Future]
-
+      cognitoId = cognitoPayload.id
       authContext <- cognitoId match {
         case id: CognitoId.UserPoolId =>
           for {
@@ -120,8 +114,7 @@ object AuthorizationDirectives {
             organization <- container.organizationManager.get(
               preferredOrganizationId
             )
-          } yield
-            UserAuthContext(user._1, organization, Some(cognitoId), expiresAt)
+          } yield UserAuthContext(user._1, organization, cognitoPayload)
 
         case id: CognitoId.TokenPoolId =>
           for {
@@ -131,8 +124,7 @@ object AuthorizationDirectives {
             organization <- container.organizationManager.get(
               token.organizationId
             )
-          } yield
-            UserAuthContext(user, organization, Some(cognitoId), expiresAt)
+          } yield UserAuthContext(user, organization, cognitoPayload)
 
       }
     } yield authContext
