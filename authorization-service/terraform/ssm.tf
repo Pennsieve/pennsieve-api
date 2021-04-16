@@ -70,7 +70,7 @@ resource "aws_ssm_parameter" "jwt_secret_key" {
 }
 
 resource "aws_ssm_parameter" "readme_jwt_key" {
-  name      = "/dev/account/readme-jwt-key"
+  name      = "/${var.environment_name}/${var.service_name}/readme-jwt-key"
   overwrite = true
   type      = "SecureString"
   value     = "dummy"
