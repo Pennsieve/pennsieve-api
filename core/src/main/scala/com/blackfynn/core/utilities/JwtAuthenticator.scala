@@ -225,9 +225,8 @@ object JwtAuthenticator {
           UserAuthContext(
             user = user,
             organization = organization,
-            cognitoPayload = cognito.map(
-              session => CognitoPayload(session.id, claim.issuedAt, session.exp)
-            )
+            cognitoPayload =
+              cognito.map(session => CognitoPayload(session.id, session.exp))
           )
       case ServiceClaim(_) =>
         EitherT.leftT[Future, UserAuthContext](
