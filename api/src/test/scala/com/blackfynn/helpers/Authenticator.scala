@@ -50,6 +50,7 @@ import com.pennsieve.models.{
 import com.pennsieve.test.helpers.AwaitableImplicits._
 import com.pennsieve.traits.PostgresProfile.api._
 import java.util.UUID
+import java.time.Instant
 
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 
@@ -66,7 +67,8 @@ object Authenticator {
     organization: Organization,
     datasetId: Option[Int] = None,
     cognito: CognitoSession =
-      CognitoSession.Browser(CognitoId.UserPoolId.randomId),
+      CognitoSession.Browser(CognitoId.UserPoolId.randomId,
+        Instant.now().plusSeconds(60)),
     duration: FiniteDuration = 60.seconds
   )(implicit
     config: Jwt.Config,
