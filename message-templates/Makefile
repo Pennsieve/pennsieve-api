@@ -1,6 +1,6 @@
 MJML_SRCS = $(wildcard mjml/*.mjml)
 HTML_TARGETS = $(patsubst mjml/%.mjml, html/%.html, $(MJML_SRCS))
-PENNSIEVE_AUTHENTICATION_REPO_DIR ?= ../../authentication-service/terraform/emails
+PENNSIEVE_AUTHENTICATION_REPO_DIR ?= ../../authentication-service/terraform/lambda
 
 all: $(HTML_TARGETS)
 
@@ -22,4 +22,3 @@ auth_cognito_compile:
 
 	sed -i '' -e 's/<p[^>]*>This email was sent to $${emailAddress}.<\/p>//g' ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/password-reset.template.html
 
-	mv ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/new-account-creation.template.html ${PENNSIEVE_AUTHENTICATION_REPO_DIR}/../lambda
