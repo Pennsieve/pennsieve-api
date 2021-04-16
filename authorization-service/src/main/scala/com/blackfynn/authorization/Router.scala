@@ -27,6 +27,7 @@ import com.pennsieve.akka.http.directives.AuthorizationDirectives.{
 }
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.routes.{
+  AuthenticationRoutes,
   AuthorizationRoutes,
   DiscoverAuthorizationRoutes
 }
@@ -66,10 +67,9 @@ class Router(
           new AuthorizationRoutes(
             user = userContext.user,
             organization = userContext.organization,
-            cognitoId = userContext.cognitoId
+            cognitoPayload = userContext.cognitoPayload
           )(container, executionContext, system, readmeKey).routes
         )
-
     } ~ user(container, realm = "authentication")(
       container,
       cognitoConfig,
@@ -83,6 +83,8 @@ class Router(
             system
           )
         )
+    } ~ {
+      logByEnvironment(new AuthenticationRoutes(cognitoConfig).routes)
     }
 
   def logByEnvironment[A](routes: Route): Route =

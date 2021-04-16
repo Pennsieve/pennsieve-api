@@ -68,7 +68,7 @@ import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import enumeratum._
 import io.circe.syntax._
 import java.net.URI
-import java.time.{ Duration, ZonedDateTime }
+import java.time.{ Duration, Instant, ZonedDateTime }
 import java.util.UUID
 
 import com.pennsieve.audit.middleware.AuditLogger
@@ -415,7 +415,8 @@ trait ApiSuite
     apiJwt = Authenticator.createUserToken(
       loggedInUser,
       loggedInOrganization,
-      cognito = CognitoSession.API(CognitoId.TokenPoolId.randomId)
+      cognito = CognitoSession
+        .API(CognitoId.TokenPoolId.randomId, Instant.now().plusSeconds(10))
     )(jwtConfig, insecureContainer.db, ec)
 
     secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value

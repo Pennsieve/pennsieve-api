@@ -291,8 +291,8 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
       // Check that the corresponding source files were created as well:
       val srcFiles = fileManager.getSources(pkg1).await.right.value
       assert(
-        srcFiles.map(f => (f.name, f.uploadedState, f.checksum)).toList ==
-          List(
+        srcFiles.map(f => (f.name, f.uploadedState, f.checksum)).toSet ==
+          Set(
             (
               "testIMG.img",
               Some(FileState.SCANNING),
@@ -351,7 +351,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
 
       // Check that the corresponding source files were created as well:
       val srcFiles = fileManager.getSources(pkg1).await.right.value
-      assert(srcFiles.map(_.name).toList == List("testIMG.img", "testIMG.hdr"))
+      assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
     }
   }
 
@@ -467,7 +467,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
       assert(greatGrandparent1.parentId.isEmpty)
 
       val srcFiles = fileManager.getSources(pkg1).await.right.value
-      assert(srcFiles.head.name == "testIMG.img")
+      assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
 
       // upload a package from the same upload session (matching collection ids)
       postJson(
@@ -529,7 +529,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
         assert(greatGrandparent3.parentId.isEmpty)
 
         val srcFiles = fileManager.getSources(pkg3).await.right.value
-        assert(srcFiles.head.name == "testIMG.img")
+        assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
       }
     }
   }
@@ -639,7 +639,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
       assert(grandparent1.parentId.isEmpty)
 
       val srcFiles = fileManager.getSources(pkg1).await.right.value
-      assert(srcFiles.head.name == "testIMG.img")
+      assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
 
       // upload a package from the same upload session (matching collection ids)
       postJson(
@@ -691,7 +691,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
         assert(grandparent3.parentId.isEmpty)
 
         val srcFiles = fileManager.getSources(pkg3).await.right.value
-        assert(srcFiles.head.name == "testIMG.img")
+        assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
       }
     }
   }
@@ -748,7 +748,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
       assert(grandparent1.parentId.isEmpty)
 
       val srcFiles = fileManager.getSources(pkg1).await.right.value
-      assert(srcFiles.head.name == "testIMG.img")
+      assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
     }
   }
 
@@ -796,7 +796,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
       assert(parent1.parentId.isEmpty)
 
       val srcFiles = fileManager.getSources(pkg1).await.right.value
-      assert(srcFiles.head.name == "testIMG.img")
+      assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
     }
   }
 
@@ -903,7 +903,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
           val pkg = packageManager.get(job.packageId).await.right.value
           val srcFiles = fileManager.getSources(pkg).await.right.value
           assert(
-            srcFiles.map(_.name).toList == List("testIMG.img", "testIMG.hdr")
+            srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr")
           )
         }
       })

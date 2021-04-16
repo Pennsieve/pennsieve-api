@@ -169,8 +169,8 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
     tokenValidatorResponse.right.get.id.toString should be(
       UUID.fromString(pennsieveUserId).toString
     )
-    tokenValidatorResponse.right.get.issuedAt should be(
-      Instant.ofEpochSecond(issuedAtTime)
+    tokenValidatorResponse.right.get.expiresAt should be(
+      Instant.ofEpochSecond(validTokenTime)
     )
   }
 

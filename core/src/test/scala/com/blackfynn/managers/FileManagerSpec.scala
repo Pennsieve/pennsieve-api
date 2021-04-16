@@ -271,11 +271,11 @@ class FileManagerSpec extends BaseManagerSpec {
     val fm = fileManager(organization = testOrganization, user = user)
     val fetched = fm.getSources(pkg, None, None, excludePending = true).await
 
-    assert(fetched.isRight)
-    assert(fetched.right.value.size === 2)
-    assert(fetched.right.value.head.uploadedState === Some(FileState.UPLOADED))
-    assert(fetched.right.value.drop(1).head.uploadedState === None)
-
+    assert(
+      fetched.right.get
+        .map(f => (f.id, f.uploadedState))
+        .toSet == Set((source.id, Some(FileState.UPLOADED)), (file.id, None))
+    )
   }
 
   "pending source files" should "not be ignored if excludePending is false" in {
@@ -293,9 +293,9 @@ class FileManagerSpec extends BaseManagerSpec {
     val fm = fileManager(organization = testOrganization, user = user)
     val fetched = fm.getSources(pkg, None, None, excludePending = false).await
 
-    assert(fetched.isRight)
-    assert(fetched.right.value.size === 1)
-    assert(fetched.right.value.head.uploadedState === Some(FileState.PENDING))
+    assert(
+      fetched.right.value.map(_.uploadedState) == List(Some(FileState.PENDING))
+    )
   }
 
   "files" should "not be created if it does not follow naming conventions" in {
