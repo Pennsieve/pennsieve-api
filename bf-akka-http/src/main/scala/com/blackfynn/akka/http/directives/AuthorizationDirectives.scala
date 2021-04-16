@@ -16,12 +16,13 @@
 
 package com.pennsieve.akka.http.directives
 
-import java.time.ZonedDateTime
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.Credentials
 import cats.data.EitherT
 import cats.implicits._
+import java.time.{ Instant, ZonedDateTime }
+
 import com.pennsieve.aws.cognito.CognitoJWTAuthenticator
 import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
 import com.pennsieve.aws.cognito.CognitoConfig
@@ -90,12 +91,12 @@ object AuthorizationDirectives {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, UserAuthContext] = {
     for {
-      cognitoId <- CognitoJWTAuthenticator
+      cognitoPayload <- CognitoJWTAuthenticator
         .validateJwt(token)
-        .map(_.id)
         .leftMap(ThrowableError(_))
         .toEitherT[Future]
 
+      cognitoId = cognitoPayload.id
       authContext <- cognitoId match {
         case id: CognitoId.UserPoolId =>
           for {
@@ -113,7 +114,7 @@ object AuthorizationDirectives {
             organization <- container.organizationManager.get(
               preferredOrganizationId
             )
-          } yield UserAuthContext(user._1, organization, Some(cognitoId))
+          } yield UserAuthContext(user._1, organization, Some(cognitoPayload))
 
         case id: CognitoId.TokenPoolId =>
           for {
@@ -123,7 +124,7 @@ object AuthorizationDirectives {
             organization <- container.organizationManager.get(
               token.organizationId
             )
-          } yield UserAuthContext(user, organization, Some(cognitoId))
+          } yield UserAuthContext(user, organization, Some(cognitoPayload))
 
       }
     } yield authContext
