@@ -48,7 +48,8 @@ class Router(
   val container: ResourceContainer
 )(implicit
   system: ActorSystem,
-  cognitoConfig: CognitoConfig
+  cognitoConfig: CognitoConfig,
+  readmeKey: String
 ) extends RouteService {
 
   implicit val executionContext: ExecutionContext = system.dispatcher
@@ -66,7 +67,7 @@ class Router(
             user = userContext.user,
             organization = userContext.organization,
             cognitoId = userContext.cognitoId
-          )(container, executionContext, system).routes
+          )(container, executionContext, system, readmeKey).routes
         )
 
     } ~ user(container, realm = "authentication")(
