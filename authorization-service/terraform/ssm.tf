@@ -69,6 +69,17 @@ resource "aws_ssm_parameter" "jwt_secret_key" {
   }
 }
 
+resource "aws_ssm_parameter" "readme_jwt_key" {
+  name      = "/dev/account/readme-jwt-key"
+  overwrite = true
+  type      = "SecureString"
+  value     = "dummy"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 // NEW RELIC CONFIGURATION
 
 resource "aws_ssm_parameter" "java_opts" {
