@@ -57,6 +57,32 @@ paths:
       security:
       - Bearer: []
 
+  '/session/readme-credentials':
+    get:
+      tags:
+        - Authorization
+      summary: Get credentials for the Pennsieve Documentation Hub
+      description: "The endpoint will return an encrypted JWT that the Documentation Hub will use to authenticate a user"
+      operationId: getReadmeCreds
+      x-scala-package: authorization
+      parameters:
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+      - Bearer: []
+
+
   '/authorization/organizations/{organizationId}/datasets/{datasetId}/discover/preview':
     get:
       tags:

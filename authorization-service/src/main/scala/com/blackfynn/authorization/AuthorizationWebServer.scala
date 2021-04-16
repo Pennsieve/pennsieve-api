@@ -54,6 +54,7 @@ object AuthorizationWebServer extends App with WebServer with LazyLogging {
   )
 
   implicit val cognitoConfig = CognitoConfig(config)
+  implicit val readmeKey = config.as[String]("readme_key")
 
   override val routeService: RouteService = new Router(container)
 

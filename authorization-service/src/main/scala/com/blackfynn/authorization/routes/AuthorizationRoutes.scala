@@ -17,6 +17,8 @@
 package com.pennsieve.authorization.routes
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.server.directives.Credentials
+import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ HttpHeader, HttpResponse }
@@ -57,6 +59,10 @@ import net.ceedubs.ficus.Ficus._
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
+import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim }
+import io.circe._
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.syntax._
 
 class AuthorizationRoutes(
   user: User,
@@ -65,7 +71,8 @@ class AuthorizationRoutes(
 )(implicit
   container: ResourceContainer,
   executionContext: ExecutionContext,
-  system: ActorSystem
+  system: ActorSystem,
+  readmeKey: String
 ) extends RouteService
     with LazyLogging {
 
@@ -73,7 +80,10 @@ class AuthorizationRoutes(
 
   val routes: Route = pathPrefix("authorization") {
     authorization
-  } ~ pathPrefix("session") { switchOrganization }
+  } ~ pathPrefix("session") {
+    switchOrganization ~
+      readmeCredentials
+  }
 
   def authorization: Route =
     (pathEndOrSingleSlash & get & parameters(
@@ -159,6 +169,36 @@ class AuthorizationRoutes(
 
           case Failure(exception) => complete(exception.toResponse)
         }
+    }
+
+  case class ReadmeJwtContent(name: String, email: String, apiKey: String)
+  object ReadmeJwtContent {
+    implicit def encoder: Encoder[ReadmeJwtContent] =
+      deriveEncoder[ReadmeJwtContent]
+    implicit def decoder: Decoder[ReadmeJwtContent] =
+      deriveDecoder[ReadmeJwtContent]
+  }
+
+  def readmeCredentials: Route =
+    (path("readme-credentials") & get) {
+
+      authenticateOAuth2("readme", {
+        case Credentials.Provided(cognitoJWT) => Some(cognitoJWT)
+        case _ => None
+
+      }) {
+        case cognitoJWT =>
+          val readmeUser =
+            ReadmeJwtContent(user.fullName, user.email, cognitoJWT)
+
+          val readmeJWT = JwtCirce.encode(
+            JwtClaim(content = readmeUser.asJson.toString),
+            readmeKey,
+            JwtAlgorithm.HS256
+          )
+
+          complete((OK, readmeJWT))
+      }
     }
 
   private def getUserClaim(
