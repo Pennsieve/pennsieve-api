@@ -66,10 +66,9 @@ class Router(
           new AuthorizationRoutes(
             user = userContext.user,
             organization = userContext.organization,
-            cognitoId = userContext.cognitoId
+            cognitoPayload = userContext.cognitoPayload
           )(container, executionContext, system).routes
         )
-
     } ~ user(container, realm = "authentication")(
       container,
       cognitoConfig,
