@@ -48,6 +48,8 @@ trait AuthorizationServiceSpec
 
   override var routeService: RouteService = _
 
+  implicit val readmeKey = "test-readme-key"
+
   lazy val authorizationConfig: Config = config
     .withValue("jwt.key", ConfigValueFactory.fromAnyRef(s"test-jwt-key"))
     .withValue("jwt.duration", ConfigValueFactory.fromAnyRef(s"1800 seconds"))
