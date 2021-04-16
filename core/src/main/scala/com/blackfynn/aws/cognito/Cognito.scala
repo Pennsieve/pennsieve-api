@@ -17,11 +17,12 @@
 package com.pennsieve.aws.cognito
 
 import com.pennsieve.aws.email.Email
-import com.pennsieve.models.CognitoId
+import com.pennsieve.models.{ CognitoId, Organization }
 import com.pennsieve.domain.{ NotFound, PredicateError }
 import com.pennsieve.dtos.Secret
 import cats.data._
 import cats.implicits._
+
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.Future
 import software.amazon.awssdk.regions.Region
@@ -38,6 +39,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   MessageActionType,
   UserType
 }
+
 import scala.concurrent.ExecutionContext
 import java.util.UUID
 import scala.collection.JavaConverters._
@@ -47,7 +49,8 @@ import com.typesafe.config.Config
 
 trait CognitoClient {
   def inviteUser(
-    email: Email
+    email: Email,
+    suppressEmail: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId]
@@ -61,7 +64,8 @@ trait CognitoClient {
 
   def createClientToken(
     token: String,
-    secret: Secret
+    secret: Secret,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId]
@@ -98,16 +102,23 @@ class Cognito(
     * Verify user email addresses on Cognito account creation. Users only need
     * to use the verification flow if they sign themselves up, which we don't
     * support yet.
+    *
+    * If suppressEmail=false, Cognito will not send an invite email (for initial
+    * account import).
     */
   def inviteUser(
-    email: Email
+    email: Email,
+    suppressEmail: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
-    val request = AdminCreateUserRequest
+    val randomUppercaseChar =
+      scala.util.Random.shuffle(('A' to 'Z').toList).head
+    val builder = AdminCreateUserRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
+      .temporaryPassword(UUID.randomUUID().toString() + randomUppercaseChar)
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
@@ -115,7 +126,12 @@ class Cognito(
         ).asJava
       )
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
-      .build()
+
+    val request =
+      if (suppressEmail)
+        builder.messageAction(MessageActionType.SUPPRESS).build()
+      else builder.build()
+
     adminCreateUser(request).map(CognitoId.UserPoolId(_))
   }
 
@@ -125,7 +141,8 @@ class Cognito(
     */
   def createClientToken(
     token: String,
-    secret: Secret
+    secret: Secret,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId] = {
@@ -134,6 +151,20 @@ class Cognito(
       .builder()
       .userPoolId(cognitoConfig.tokenPool.id)
       .username(token)
+      .userAttributes(
+        List(
+          AttributeType
+            .builder()
+            .name("custom:organization_node_id")
+            .value(organization.nodeId)
+            .build(),
+          AttributeType
+            .builder()
+            .name("custom:organization_id")
+            .value(organization.id.toString)
+            .build()
+        ).asJava
+      )
       .build()
 
     val setPasswordRequest = AdminSetUserPasswordRequest

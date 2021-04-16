@@ -1264,7 +1264,8 @@ class PackagesController(
         .defaultValue(FILES_OFFSET_DEFAULT),
       queryParam[String]("order-by")
         .description(s"which data field to sort results by")
-        .allowableValues(allowableOrderByValues),
+        .allowableValues(allowableOrderByValues)
+        .defaultValue(OrderByColumn.Name.entryName),
       queryParam[String]("order-by-direction")
         .description(s"which data field to order the results by")
         .allowableValues(allowableOrderByDirectionValues)
@@ -1283,15 +1284,23 @@ class PackagesController(
           "order-by-direction",
           default = OrderByDirection.Asc
         )
-        orderBy <- optParamT[OrderByColumn]("order-by")
-          .map(_.map(column => (column, orderByDirection)))
+        orderBy <- paramT[OrderByColumn](
+          "order-by",
+          default = OrderByColumn.Name
+        )
 
         secureContainer <- getSecureContainer
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
           .orNotFound
         (pkg, dataset) = packageAndDataset
-        sources <- getPagedSources(pkg, limit, offset, orderBy, secureContainer)
+        sources <- getPagedSources(
+          pkg,
+          limit,
+          offset,
+          Some((orderBy, orderByDirection)),
+          secureContainer
+        )
 
         organization = secureContainer.organization
 

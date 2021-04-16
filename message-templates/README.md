@@ -12,6 +12,15 @@ Run `make` to generate the `.html` files from the MJML templates. `.html` output
 
 The `CompileMessageTemplates` SBT plugin reads the `.html` files and generates Scala function definitions
 
+### Cognito Templates - Authentication
+
+Since authentication has been moved to Cognito for this project, the emails for "reset password" and "new account creation" are formatted specifically (and perhaps jankily) for a separate repository containing a Terraform project to deploy Pennsieve to AWS. This procedure was developed to be run locally as a manual step and outside of build proccesses, though can be formatted for whatever.
+
+1. within this folder, run `npm install`
+2. ensure the `infrastructure` and/or the sub repo `authentication-service` are locally accessible
+3. run `PENNSIEVE_AUTHENTICATION_REPO_DIR="../../path/to/auth/dir" make auth_cognito_compile` - `PENNSIEVE_AUTHENTICATION_REPO_DIR` can be set as an environment variable, and within the Makefile defaults to `../../authentication-service/terraform/emails`
+4. check your terraform repo dir and ensure git recognizes the changes you made to the template
+ 
 ## Development
 
 ### Online
