@@ -132,6 +132,7 @@ class TimeSeriesManager(db: Database, organization: Organization) {
     db.run(
         table
           .filter(_.packageId === `package`.id)
+          .sortBy(_.id)
           .result
       )
       .map(_.toList)
@@ -149,6 +150,7 @@ class TimeSeriesManager(db: Database, organization: Organization) {
           table
             .filter(_.packageId === `package`.id)
             .filter(_.nodeId.inSet(channelIds))
+            .sortBy(_.id)
             .result
         )
         .map(_.toList)

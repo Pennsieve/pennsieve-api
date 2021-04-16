@@ -34,7 +34,7 @@ import com.pennsieve.models.CognitoId
 import java.time.Instant
 import java.util.UUID
 
-final case class CognitoPayload(id: CognitoId, issuedAt: Instant)
+final case class CognitoPayload(id: CognitoId, expiresAt: Instant)
 
 object CognitoJWTAuthenticator {
 
@@ -153,15 +153,15 @@ object CognitoJWTAuthenticator {
         }
         .leftMap(ThrowableError(_))
 
-      issuedAt <- Either.fromOption(
-        claim.issuedAt,
-        InvalidJWT(claim.content, Some("JWT claim missing 'iat' field"))
+      expiresAt <- Either.fromOption(
+        claim.expiration,
+        InvalidJWT(claim.content, Some("JWT claim missing 'exp' field"))
       )
-      issuedAtInstant <- Either
-        .catchNonFatal(Instant.ofEpochSecond(issuedAt))
+      expiresAtInstant <- Either
+        .catchNonFatal(Instant.ofEpochSecond(expiresAt))
         .leftMap(ThrowableError(_))
 
-    } yield CognitoPayload(cognitoId, issuedAtInstant)
+    } yield CognitoPayload(cognitoId, expiresAtInstant)
 
   /**
     * Assert that the app client ID is either in the JWT audiences or the special Cognito `client_id` field

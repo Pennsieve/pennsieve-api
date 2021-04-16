@@ -57,7 +57,7 @@ lazy val akkaHttpVersion = "10.1.11"
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
 lazy val auditMiddlewareVersion = "1.0.1"
-lazy val authMiddlewareVersion = "5.0.2"
+lazy val authMiddlewareVersion = "5.0.3"
 
 lazy val awsVersion = "1.11.931"
 lazy val awsV2Version = "2.15.58"
@@ -476,6 +476,26 @@ lazy val unusedOrganizationMigrationSettings = Seq(
   assemblyMergeStrategy in assembly := defaultMergeStrategy.value
 )
 
+lazy val inviteCognitoUserSettings = Seq(
+  name := "invite-cognito-user",
+  libraryDependencies ++= Seq(),
+  excludeDependencies ++= unwantedDependencies,
+      fork in run := true,
+  dockerfile in docker := {
+    val artifact: File = assembly.value
+    val artifactTargetPath = s"/app/${artifact.name}"
+    new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
+      copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
+      cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
+    }
+  },
+  imageNames in docker := Seq(
+    ImageName("pennsieve/invite-cognito-user:latest")
+  ),
+  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+)
+
+
 lazy val etlDataCLISettings = Seq(
   name := "etl-data-cli",
   libraryDependencies ++= Seq(
@@ -760,6 +780,13 @@ lazy val `message-templates` = project
   .enablePlugins(CompileMessageTemplates)
   .enablePlugins(AutomateHeaderPlugin)
 
+lazy val `invite-cognito-user` = project
+  .enablePlugins(sbtdocker.DockerPlugin)
+  .enablePlugins(AutomateHeaderPlugin)
+  .settings(commonSettings: _*)
+  .settings(inviteCognitoUserSettings: _*)
+  .dependsOn(core % "test->test;compile->compile")
+
 lazy val root = (project in file("."))
   .aggregate(
     admin,
@@ -776,6 +803,7 @@ lazy val root = (project in file("."))
     `bf-aws`,
     `discover-publish`,
     `unused-organization-migration`,
-    `message-templates`
+    `message-templates`,
+    `invite-cognito-user`
   )
   .settings(commonSettings: _*)

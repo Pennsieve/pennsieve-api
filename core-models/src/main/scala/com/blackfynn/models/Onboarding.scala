@@ -46,6 +46,7 @@ object OnboardingEventType
   case object AddedFile extends OnboardingEventType
   case object CreatedRecord extends OnboardingEventType
   case object CreatedRelationshipType extends OnboardingEventType
+  case object AddedOrcid extends OnboardingEventType
 }
 
 final case class OnboardingEvent(
