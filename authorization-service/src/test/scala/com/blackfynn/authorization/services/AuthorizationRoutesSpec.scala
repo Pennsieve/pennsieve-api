@@ -847,15 +847,6 @@ class AuthorizationRoutesSpec
 
   "GET /session/readme-credentials route" should {
 
-    // Confirm Readme-JWT for user is properly defined
-    case class ReadmeJwtContent(name: String, email: String, apiKey: String)
-    object ReadmeJwtContent {
-      implicit def encoder: Encoder[ReadmeJwtContent] =
-        deriveEncoder[ReadmeJwtContent]
-      implicit def decoder: Decoder[ReadmeJwtContent] =
-        deriveDecoder[ReadmeJwtContent]
-    }
-
     "return a Readme JWT" in {
 
       testRequest(
@@ -866,21 +857,17 @@ class AuthorizationRoutesSpec
         routes ~> check {
         status shouldEqual OK
 
-        println(
-          s"\n Response: + https://docs.pennsieve.io/?auth_token=${responseAs[String]}\n"
-        )
-
         val claim = JwtCirce
-          .decodeJson(responseAs[String], readmeKey, Seq(JwtAlgorithm.HS256)) match {
-          case Success(s) =>
-            decode[ReadmeJwtContent](s.toString) match {
-              case Right(readmeObject) =>
-                println(readmeObject.toString)
+          .decodeJson(responseAs[String], readmeKey, Seq(JwtAlgorithm.HS256))
+          .get
 
-                readmeObject.name should startWith("Regular User")
-              case Left(ex) => println(s"Ooops something error ${ex}")
-            }
-          case Failure(f) => println(s"Ooops something error ${f}")
+        decode[ReadmeJwtContent](claim.toString) match {
+          case Right(readmeObject) =>
+            println(readmeObject.toString)
+            readmeObject.name should startWith("Regular User")
+          case Left(ex) =>
+            println(s"Ooops something error ${ex}")
+            fail()
         }
 
       }
