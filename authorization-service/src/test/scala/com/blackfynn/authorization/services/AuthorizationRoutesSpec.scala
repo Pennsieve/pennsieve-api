@@ -86,6 +86,11 @@ import shapeless._
 import scala.collection.immutable.{ Seq => ImmutableSeq }
 import scala.concurrent.duration._
 import scala.concurrent._
+import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim }
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.{ Decoder, Encoder }
+import io.circe._, io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
+import scala.util.{ Failure, Success }
 
 class AuthorizationRoutesSpec
     extends AuthorizationServiceSpec
@@ -810,7 +815,6 @@ class AuthorizationRoutesSpec
         status shouldEqual Unauthorized
 
         // Verify the session does not belong to Organization Two
-
         preferredOrganization(owner) should not be organizationTwo
       }
     }
@@ -839,6 +843,49 @@ class AuthorizationRoutesSpec
         status shouldEqual Forbidden
       }
     }
+  }
+
+  "GET /session/readme-credentials route" should {
+
+    // Confirm Readme-JWT for user is properly defined
+    case class ReadmeJwtContent(name: String, email: String, apiKey: String)
+    object ReadmeJwtContent {
+      implicit def encoder: Encoder[ReadmeJwtContent] =
+        deriveEncoder[ReadmeJwtContent]
+      implicit def decoder: Decoder[ReadmeJwtContent] =
+        deriveDecoder[ReadmeJwtContent]
+    }
+
+    "return a Readme JWT" in {
+
+      testRequest(
+        GET,
+        "/session/readme-credentials",
+        session = nonAdminCognitoJwt
+      ) ~>
+        routes ~> check {
+        status shouldEqual OK
+
+        println(
+          s"\n Response: + https://docs.pennsieve.io/?auth_token=${responseAs[String]}\n"
+        )
+
+        val claim = JwtCirce
+          .decodeJson(responseAs[String], readmeKey, Seq(JwtAlgorithm.HS256)) match {
+          case Success(s) =>
+            decode[ReadmeJwtContent](s.toString) match {
+              case Right(readmeObject) =>
+                println(readmeObject.toString)
+
+                readmeObject.name should startWith("Regular User")
+              case Left(ex) => println(s"Ooops something error ${ex}")
+            }
+          case Failure(f) => println(s"Ooops something error ${f}")
+        }
+
+      }
+    }
+
   }
 
   private def getClaim(): Jwt.Claim = {
