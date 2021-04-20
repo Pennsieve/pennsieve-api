@@ -73,6 +73,8 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         new AccountController(
           bootstrapHelper.insecureContainer,
           bootstrapHelper.cognitoConfig,
+          bootstrapHelper.cognitoClient,
+          bootstrapHelper.recaptchaClient,
           ec
         )
       context mount (accountController, "/account/*", "account")

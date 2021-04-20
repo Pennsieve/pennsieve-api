@@ -232,6 +232,58 @@ class UserManager(db: Database) {
       _ <- invites.traverse(invite => userInviteManager.delete(invite))
     } yield user
 
+  /**
+    * Creates a User after user has signed up for the platform via the challenge-response self-service endpoint.
+    *
+    * @param inviteToken
+    * @param firstName
+    * @param lastName
+    * @param title
+    * @param organizationManager
+    * @return
+    */
+  def createFromSelfServiceSignUp(
+    cognitoId: CognitoId.UserPoolId,
+    email: String,
+    firstName: String,
+    middleInitial: Option[String],
+    lastName: String,
+    degree: Option[Degree],
+    title: String
+  )(implicit
+    organizationManager: OrganizationManager,
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    for {
+      middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
+
+      sandboxOrganization <- organizationManager.get(1) // TODO: replace this with the ID of the sandbox organization
+
+      user <- create(
+        User(
+          NodeCodes.generateId(NodeCodes.userCode),
+          email.trim.toLowerCase,
+          firstName,
+          middleInit,
+          lastName,
+          degree,
+          credential = title,
+          preferredOrganizationId = Some(sandboxOrganization.id)
+        )
+      )
+
+      _cognitoUser <- db
+        .run(CognitoUserMapper.create(cognitoId, user))
+        .toEitherT
+
+      _ <- organizationManager.addUser(
+        sandboxOrganization,
+        user,
+        DBPermission.Write
+      )
+
+    } yield user
+
   def create(
     user: User
   )(implicit

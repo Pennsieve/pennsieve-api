@@ -22,6 +22,7 @@ import com.pennsieve.domain.{
   CoreError,
   DatasetRolePermissionError,
   InvalidAction,
+  InvalidChallengeResponseError,
   InvalidId,
   InvalidJWT,
   LockedDatasetError,
@@ -243,6 +244,9 @@ object EitherTErrorHandler {
               .toActionResult()
           case error: InvalidAction =>
             ErrorResponse(ErrorResponseType.Forbidden, error, false)
+              .toActionResult()
+          case error: InvalidChallengeResponseError.type =>
+            ErrorResponse(ErrorResponseType.BadRequest, error, false)
               .toActionResult()
           case error: PredicateError =>
             ErrorResponse(
