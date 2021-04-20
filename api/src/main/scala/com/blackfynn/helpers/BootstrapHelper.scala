@@ -61,12 +61,13 @@ import com.pennsieve.service.utilities.{
   QueueHttpResponder,
   SingleHttpResponder
 }
+
 import java.util.concurrent.TimeUnit
-
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
-
+import com.blackfynn.clients.{ AntiSpamChallengeClient, RecaptchaClient }
 import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
 import org.apache.http.ssl.SSLContexts
+
 import java.util.Date
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -178,6 +179,12 @@ trait BaseBootstrapHelper {
 
   lazy val urlShortenerClient: UrlShortenerClient =
     new BitlyUrlShortenerClient(Http(), config.as[String]("bitly.access_token"))
+
+  lazy val recaptchaClient: AntiSpamChallengeClient = new RecaptchaClient(
+    Http(),
+    verifyUrl = config.as[String]("recaptcha.site_verify_url"),
+    secretKey = config.as[String]("recaptcha.secret_key")
+  )
 }
 
 class LocalBootstrapHelper(

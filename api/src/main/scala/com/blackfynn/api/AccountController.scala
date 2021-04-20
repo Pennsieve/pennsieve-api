@@ -18,29 +18,32 @@ package com.pennsieve.api
 
 import cats.data._
 import cats.implicits._
-import com.pennsieve.aws.email.Email
+import com.blackfynn.clients.AntiSpamChallengeClient
 import com.pennsieve.aws.cognito.{
   CognitoClient,
   CognitoConfig,
   CognitoJWTAuthenticator
 }
+import com.pennsieve.aws.email.Email
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.domain.{
+  CoreError,
+  InvalidChallengeResponseError,
+  ThrowableError
+}
 import com.pennsieve.dtos.{ Builders, UserDTO }
-import com.pennsieve.domain.{ CoreError, ThrowableError }
 import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
 import com.pennsieve.helpers.ResultHandlers.OkResult
 import com.pennsieve.helpers._
-import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.models.{ CognitoId, DBPermission, Degree }
-import com.pennsieve.web.Settings
-import javax.servlet.http.HttpServletRequest
+import com.pennsieve.models.Degree
 import org.json4s._
 import org.scalatra._
 import org.scalatra.json.JacksonJsonSupport
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder
 import org.scalatra.swagger._
 
-import java.util.UUID
+import javax.servlet.http.HttpServletRequest
 import scala.concurrent.{ ExecutionContext, Future }
 
 case class CreateUserRequest(
@@ -50,11 +53,24 @@ case class CreateUserRequest(
   degree: Option[Degree],
   title: String
 )
+
+case class CreateUserWithRecaptchaRequest(
+  firstName: String,
+  middleInitial: Option[String],
+  lastName: String,
+  email: String,
+  degree: Option[Degree],
+  title: String,
+  recaptchaToken: String
+)
+
 case class CreateUserResponse(orgIds: Set[String], profile: UserDTO)
 
 class AccountController(
   val insecureContainer: InsecureAPIContainer,
   cognitoConfig: CognitoConfig,
+  cognitoClient: CognitoClient,
+  antiSpamChallengeClient: AntiSpamChallengeClient,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -118,12 +134,14 @@ class AccountController(
     } yield request
   }
 
-  val createAccountOperation
-    : OperationBuilder = (apiOperation[CreateUserResponse]("createUser")
+  val createAccountFromInviteOperation
+    : OperationBuilder = (apiOperation[CreateUserResponse](
+    "createUserFromInvite"
+  )
     summary "create a new user from a user invite"
     parameter bodyParam[CreateUserRequest]("body"))
 
-  post("/", operation(createAccountOperation)) {
+  post("/", operation(createAccountFromInviteOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, CreateUserResponse] = for {
         createRequest <- parseRequestBody[CreateUserRequest].toEitherT[Future]
@@ -171,6 +189,76 @@ class AccountController(
           customTermsOfService = Seq.empty,
           role = None
         )
+      } yield
+        CreateUserResponse(
+          orgIds = organizations.map(_.nodeId).toSet,
+          profile = dto
+        )
+
+      val is = result.value.map(OkResult)
+    }
+  }
+
+  val selfServiceUserSignUp
+    : OperationBuilder = (apiOperation[CreateUserResponse]("signUpUser")
+    summary "Self-service sign up a new user account"
+    parameter bodyParam[CreateUserWithRecaptchaRequest]("body"))
+
+  post("/sign-up", operation(selfServiceUserSignUp)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, CreateUserResponse] = for {
+
+        createRequest <- parseRequestBody[CreateUserWithRecaptchaRequest]
+          .toEitherT[Future]
+
+        isVerified <- antiSpamChallengeClient
+          .verifyToken(createRequest.recaptchaToken)
+          .toEitherT
+          .coreErrorToActionResult
+
+        _ <- (if (isVerified) {
+                EitherT.rightT[Future, CoreError](())
+              } else {
+                EitherT.leftT[Future, Unit](
+                  InvalidChallengeResponseError: CoreError
+                )
+              }).coreErrorToActionResult
+
+        cognitoId <- cognitoClient
+          .inviteUser(Email(createRequest.email), suppressEmail = false)
+          .toEitherT
+          .coreErrorToActionResult
+
+        user <- insecureContainer.userManager
+          .createFromSelfServiceSignUp(
+            cognitoId = cognitoId,
+            email = createRequest.email,
+            firstName = createRequest.firstName,
+            middleInitial = createRequest.middleInitial,
+            lastName = createRequest.lastName,
+            degree = createRequest.degree,
+            title = createRequest.title
+          )(insecureContainer.organizationManager, asyncExecutor)
+          .coreErrorToActionResult
+
+        organizations <- insecureContainer.userManager
+          .getOrganizations(user)
+          .orError
+
+        preferredOrganization = user.preferredOrganizationId.flatMap(
+          id => organizations.find(_.id == id)
+        )
+
+        dto = Builders.userDTO(
+          user = user,
+          organizationNodeId = preferredOrganization.map(_.nodeId),
+          permission = None,
+          storage = None,
+          pennsieveTermsOfService = None,
+          customTermsOfService = Seq.empty,
+          role = None
+        )
+
       } yield
         CreateUserResponse(
           orgIds = organizations.map(_.nodeId).toSet,

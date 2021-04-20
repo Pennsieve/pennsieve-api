@@ -47,7 +47,10 @@ import scala.collection.mutable
 import net.ceedubs.ficus.Ficus._
 import com.typesafe.config.Config
 
+import java.util
+
 trait CognitoClient {
+
   def inviteUser(
     email: Email,
     suppressEmail: Boolean = false
