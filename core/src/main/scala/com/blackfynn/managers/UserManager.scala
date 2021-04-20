@@ -257,7 +257,7 @@ class UserManager(db: Database) {
     for {
       middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
 
-      sandboxOrganization <- organizationManager.get(1) // TODO: replace this with the ID of the sandbox organization
+      sandboxOrganization <- organizationManager.getBySlug("sandbox")
 
       user <- create(
         User(

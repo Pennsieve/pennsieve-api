@@ -124,7 +124,43 @@ class TestAccountController extends BaseApiTest {
     postJson("/", write(badRequest)) {
       status should be(400)
     }
-
   }
 
+  // TODO update this
+  test("create new account without an organization") {
+    val mockCognito = new MockCognito()
+    // val invite = userInviteManager
+    //   .createOrRefreshUserInvite(
+    //     organization = loggedInOrganization,
+    //     email = "testPassword@test.com",
+    //     firstName = "Fynn",
+    //     lastName = "Blackwell",
+    //     permission = DBPermission.Delete,
+    //     Duration.ofSeconds(1000)
+    //   )(userManager, mockCognito, ec)
+    //   .await
+    //   .right
+    //   .value
+
+    val newUserRequest = CreateUserWithRecaptchaRequest(
+      firstName = "test",
+      middleInitial = None,
+      lastName = "tester",
+      degree = None,
+      title = "",
+      email = "test@gmail.com",
+      recaptchaToken = "foooo"
+    )
+
+    postJson("/sign-up", write(newUserRequest)) {
+      println("HELLO????/------------------------------")
+      println(body)
+      println("HELLO????/------------------------------")
+      println(response)
+      println("HELLO????/------------------------------")
+      status should be(200)
+      // userInviteManager.get(invite.id).await should be('Left)
+      // organizationManager.getBySlug("__SANDBOX__") should be
+    }
+  }
 }
