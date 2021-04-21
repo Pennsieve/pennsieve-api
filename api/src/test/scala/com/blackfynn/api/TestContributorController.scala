@@ -16,6 +16,7 @@
 
 package com.pennsieve.api
 
+import akka.util.Helpers.Requiring
 import com.pennsieve.models.{ Degree, Organization, PackageType }
 import com.pennsieve.domain.PredicateError
 import com.pennsieve.dtos.ContributorDTO
@@ -24,7 +25,6 @@ import io.circe.{ Decoder, Encoder }
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import cats.implicits._
-
 import org.json4s.jackson.Serialization.write
 import com.pennsieve.models.{
   DBPermission,
@@ -64,7 +64,7 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       Future.successful(orcidAuthorization)
   }
 
-  var organization: Organization = _
+  var demoOrganization: Organization = _
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -72,9 +72,9 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       .getBySlug("__sandbox__")
       .value
       .await match {
-      case Right(org) => organization = org
+      case Right(org) => demoOrganization = org
       case _ => {
-        organization = createOrganization("__sandbox__", "__sandbox__")
+        demoOrganization = createOrganization("__sandbox__", "__sandbox__")
       }
     }
   }
@@ -201,6 +201,48 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       contributors(0).lastName should equal("last")
       contributors(0).email should equal("test@test.com")
       contributors(0).id should equal(1)
+    }
+  }
+
+  test("can't get any contributors if the current org is the demo org") {
+    val newTestUser = User(
+      NodeCodes.generateId(NodeCodes.userCode),
+      "demotest@test.com",
+      "first",
+      Some("M"),
+      "last",
+      Some(Degree.MS),
+      "cred",
+      "",
+      "http://test.com",
+      demoOrganization.id,
+      false,
+      None
+    )
+
+    insecureContainer.userManager.create(newTestUser).await.value match {
+      case Right(user) => {
+        organizationManager.addUser(demoOrganization, user, DBPermission.Write).value.await
+
+        loggedInJwt = Authenticator.createUserToken(user, demoOrganization)(
+          jwtConfig,
+          insecureContainer.db,
+          ec
+        )
+
+        get(s"/", headers = authorizationHeader(loggedInJwt)) {
+          status should equal(200)
+          val contributors = parsedBody.extract[List[ContributorDTO]]
+
+          contributors.length should equal(0)
+        }
+
+        user
+      }
+      case Left(err) => {
+        "test" should equal("fail")
+        err
+      }
     }
   }
 
