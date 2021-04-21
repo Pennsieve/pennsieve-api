@@ -83,6 +83,7 @@ import org.scalatra.test.HttpComponentsClientResponse
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{ FiniteDuration, _ }
 import scala.util.Random
+import scala.util.Either
 import shapeless.syntax.inject._
 
 trait ApiSuite
@@ -241,6 +242,7 @@ trait ApiSuite
   var loggedInOrganization: Organization = _
   var loggedInOrganizationNoFeatures: Organization = _
   var externalOrganization: Organization = _
+  var sandboxOrganization: Organization = _
 
   var loggedInJwt: String = _
 
@@ -348,6 +350,19 @@ trait ApiSuite
     loggedInOrganizationNoFeatures = createOrganization("Test Organization")
     externalOrganization = createOrganization("External Organization")
     pennsieve = createOrganization("Pennsieve", "pennsieve")
+
+    // for {
+    //   sandboxOrganization <- organizationManager.getBySlug("__sandbox__")
+    // } yield sandboxOrganization
+
+    organizationManager
+      .getBySlug("__sandbox__")
+      .toEitherT
+    // .onComplete((either: Either[Error, _]) => {
+    //   if (!either.isRight) {
+    //     sandboxOrganization = createOrganization("__sandbox__", "__sandbox__")
+    //   }
+    // })
 
     loggedInUser = userManager.create(me).await.value
     colleagueUser = userManager.create(colleague).await.value

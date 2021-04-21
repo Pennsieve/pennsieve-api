@@ -257,7 +257,7 @@ class UserManager(db: Database) {
     for {
       middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
 
-      sandboxOrganization <- organizationManager.getBySlug("sandbox")
+      sandboxOrganization <- organizationManager.getBySlug("__sandbox__")
 
       user <- create(
         User(
