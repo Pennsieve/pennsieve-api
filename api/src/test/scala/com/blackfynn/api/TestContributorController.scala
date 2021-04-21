@@ -16,7 +16,7 @@
 
 package com.pennsieve.api
 
-import com.pennsieve.models.{ Degree, PackageType }
+import com.pennsieve.models.{ Degree, Organization, PackageType }
 import com.pennsieve.domain.PredicateError
 import com.pennsieve.dtos.ContributorDTO
 import com.pennsieve.helpers._
@@ -62,6 +62,21 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       authorizationCode: String
     ): Future[OrcidAuthorization] =
       Future.successful(orcidAuthorization)
+  }
+
+  var organization: Organization = _
+
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    organizationManager
+      .getBySlug("__sandbox__")
+      .value
+      .await match {
+      case Right(org) => organization = org
+      case _ => {
+        organization = createOrganization("__sandbox__", "__sandbox__")
+      }
+    }
   }
 
   override def afterStart(): Unit = {
@@ -188,6 +203,20 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       contributors(0).id should equal(1)
     }
   }
+
+  // test("contributor result is empty for users in the sandbox organization") {
+  //   get(s"/", headers = authorizationHeader(loggedInJwt)) {
+  //     status should equal(200)
+  //     val contributors = parsedBody.extract[List[ContributorDTO]]
+
+  //     //we get 1 contributor since baseApiTest also creates a dataset before the beginning of this test
+  //     contributors.length should equal(1)
+  //     contributors(0).firstName should equal("first")
+  //     contributors(0).lastName should equal("last")
+  //     contributors(0).email should equal("test@test.com")
+  //     contributors(0).id should equal(1)
+  //   }
+  // }
 
   test("can't create a contributor with incorrect ORCID") {
 

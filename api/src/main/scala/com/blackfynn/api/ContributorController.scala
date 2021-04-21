@@ -80,14 +80,23 @@ class ContributorsController(
     )
   ) {
     new AsyncResult {
-      val result: EitherT[Future, ActionResult, Seq[ContributorDTO]] = for {
+      var result: EitherT[Future, ActionResult, Seq[ContributorDTO]] = for {
         secureContainer <- getSecureContainer
         user = secureContainer.user
 
-        contributorsAndUsers <- secureContainer.contributorsManager
-          .getContributors()
+        organizationId = secureContainer.organization.id
+
+        demoOrganization <- secureContainer.organizationManager
+          .isDemo(organizationId)
           .coreErrorToActionResult
 
+        contributorsAndUsers <- if (demoOrganization) {
+          EitherT.rightT[Future, ActionResult](Seq.empty)
+        } else {
+          secureContainer.contributorsManager
+            .getContributors()
+            .coreErrorToActionResult
+        }
       } yield contributorsAndUsers.map(ContributorDTO(_))
 
       override val is = result.value.map(OkResult(_))
