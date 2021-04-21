@@ -64,21 +64,6 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       Future.successful(orcidAuthorization)
   }
 
-  var demoOrganization: Organization = _
-
-  override def beforeEach(): Unit = {
-    super.beforeEach()
-    organizationManager
-      .getBySlug("__sandbox__")
-      .value
-      .await match {
-      case Right(org) => demoOrganization = org
-      case _ => {
-        demoOrganization = createOrganization("__sandbox__", "__sandbox__")
-      }
-    }
-  }
-
   override def afterStart(): Unit = {
     super.afterStart()
 
@@ -205,60 +190,18 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't get any contributors if the current org is the demo org") {
-    val newTestUser = User(
-      NodeCodes.generateId(NodeCodes.userCode),
-      "demotest@test.com",
-      "first",
-      Some("M"),
-      "last",
-      Some(Degree.MS),
-      "cred",
-      "",
-      "http://test.com",
-      demoOrganization.id,
-      false,
-      None
-    )
+    loggedInJwt = Authenticator.createUserToken(
+      sandboxUser,
+      sandboxOrganization
+    )(jwtConfig, insecureContainer.db, ec)
 
-    insecureContainer.userManager.create(newTestUser).await.value match {
-      case Right(user) => {
-        organizationManager.addUser(demoOrganization, user, DBPermission.Write).value.await
+    get(s"/", headers = authorizationHeader(loggedInJwt)) {
+      status should equal(200)
+      val contributors = parsedBody.extract[List[ContributorDTO]]
 
-        loggedInJwt = Authenticator.createUserToken(user, demoOrganization)(
-          jwtConfig,
-          insecureContainer.db,
-          ec
-        )
-
-        get(s"/", headers = authorizationHeader(loggedInJwt)) {
-          status should equal(200)
-          val contributors = parsedBody.extract[List[ContributorDTO]]
-
-          contributors.length should equal(0)
-        }
-
-        user
-      }
-      case Left(err) => {
-        "test" should equal("fail")
-        err
-      }
+      contributors.length should equal(0)
     }
   }
-
-  // test("contributor result is empty for users in the sandbox organization") {
-  //   get(s"/", headers = authorizationHeader(loggedInJwt)) {
-  //     status should equal(200)
-  //     val contributors = parsedBody.extract[List[ContributorDTO]]
-
-  //     //we get 1 contributor since baseApiTest also creates a dataset before the beginning of this test
-  //     contributors.length should equal(1)
-  //     contributors(0).firstName should equal("first")
-  //     contributors(0).lastName should equal("last")
-  //     contributors(0).email should equal("test@test.com")
-  //     contributors(0).id should equal(1)
-  //   }
-  // }
 
   test("can't create a contributor with incorrect ORCID") {
 

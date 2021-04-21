@@ -42,21 +42,6 @@ class TestAccountController extends BaseApiTest {
   val recaptchaClient: AntiSpamChallengeClient =
     new MockRecaptchaClient()
 
-  var organization: Organization = _
-
-  override def beforeEach(): Unit = {
-    super.beforeEach()
-    organizationManager
-      .getBySlug("__sandbox__")
-      .value
-      .await match {
-      case Right(org) => organization = org
-      case _ => {
-        organization = createOrganization("__sandbox__", "__sandbox__")
-      }
-    }
-  }
-
   override def afterStart(): Unit = {
     super.afterStart()
 
@@ -157,7 +142,7 @@ class TestAccountController extends BaseApiTest {
 
     postJson("/sign-up", write(newUserRequest)) {
       status should be(200)
-      assert(body.contains(organization.nodeId))
+      assert(body.contains(sandboxOrganization.nodeId))
     }
   }
 }

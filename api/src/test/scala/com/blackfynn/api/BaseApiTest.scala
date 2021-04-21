@@ -27,6 +27,7 @@ import com.pennsieve.aws.queue.LocalSQSContainer
 import com.pennsieve.aws.s3.LocalS3Container
 import com.pennsieve.models.{
   CognitoId,
+  DBPermission,
   Dataset,
   DatasetStatus,
   Degree,
@@ -67,10 +68,10 @@ import com.pennsieve.traits.TimeSeriesDBContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import enumeratum._
 import io.circe.syntax._
+
 import java.net.URI
 import java.time.{ Duration, Instant, ZonedDateTime }
 import java.util.UUID
-
 import com.pennsieve.audit.middleware.AuditLogger
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import org.json4s.{ DefaultFormats, Formats, JValue }
@@ -237,6 +238,7 @@ trait ApiSuite
   var colleagueUser: User = _
   var externalUser: User = _
   var superAdmin: User = _
+  var sandboxUser: User = _
 
   var pennsieve: Organization = _
   var loggedInOrganization: Organization = _
@@ -456,6 +458,38 @@ trait ApiSuite
       .await
       .right
       .value
+
+    organizationManager
+      .getBySlug("__sandbox__")
+      .value
+      .await match {
+      case Right(org) => sandboxOrganization = org
+      case _ => {
+        sandboxOrganization = createOrganization("__sandbox__", "__sandbox__")
+      }
+    }
+
+    val sandboxUserDefinition = User(
+      NodeCodes.generateId(NodeCodes.userCode),
+      "sandboxtest@test.com",
+      "first",
+      Some("M"),
+      "last",
+      Some(Degree.MS),
+      "cred",
+      "",
+      "http://test.com",
+      sandboxOrganization.id,
+      false,
+      None
+    )
+
+    sandboxUser = userManager.create(sandboxUserDefinition).await.value
+
+    organizationManager
+      .addUser(sandboxOrganization, sandboxUser, DBPermission.Write)
+      .value
+      .await
   }
 
   def createOrganization(
