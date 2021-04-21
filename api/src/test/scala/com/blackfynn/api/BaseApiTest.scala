@@ -351,18 +351,15 @@ trait ApiSuite
     externalOrganization = createOrganization("External Organization")
     pennsieve = createOrganization("Pennsieve", "pennsieve")
 
-    // for {
-    //   sandboxOrganization <- organizationManager.getBySlug("__sandbox__")
-    // } yield sandboxOrganization
-
     organizationManager
       .getBySlug("__sandbox__")
-      .toEitherT
-    // .onComplete((either: Either[Error, _]) => {
-    //   if (!either.isRight) {
-    //     sandboxOrganization = createOrganization("__sandbox__", "__sandbox__")
-    //   }
-    // })
+      .value
+      .await match {
+      case Right(org) => ()
+      case _ => {
+        sandboxOrganization = createOrganization("__sandbox__", "__sandbox__")
+      }
+    }
 
     loggedInUser = userManager.create(me).await.value
     colleagueUser = userManager.create(colleague).await.value
