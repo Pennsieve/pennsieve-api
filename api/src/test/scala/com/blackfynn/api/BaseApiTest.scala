@@ -351,16 +351,6 @@ trait ApiSuite
     externalOrganization = createOrganization("External Organization")
     pennsieve = createOrganization("Pennsieve", "pennsieve")
 
-    organizationManager
-      .getBySlug("__sandbox__")
-      .value
-      .await match {
-      case Right(org) => ()
-      case _ => {
-        sandboxOrganization = createOrganization("__sandbox__", "__sandbox__")
-      }
-    }
-
     loggedInUser = userManager.create(me).await.value
     colleagueUser = userManager.create(colleague).await.value
     externalUser = userManager.create(other).await.value

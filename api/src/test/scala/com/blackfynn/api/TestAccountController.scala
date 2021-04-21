@@ -18,7 +18,7 @@ package com.pennsieve.api
 
 import com.blackfynn.clients.{ AntiSpamChallengeClient }
 import com.pennsieve.aws.cognito.{ MockCognito, _ }
-import com.pennsieve.models.DBPermission
+import com.pennsieve.models.{ DBPermission, Organization }
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 import software.amazon.awssdk.regions.Region
@@ -41,6 +41,21 @@ class TestAccountController extends BaseApiTest {
 
   val recaptchaClient: AntiSpamChallengeClient =
     new MockRecaptchaClient()
+
+  var organization: Organization = _
+
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    organizationManager
+      .getBySlug("__sandbox__")
+      .value
+      .await match {
+      case Right(org) => organization = org
+      case _ => {
+        organization = createOrganization("__sandbox__", "__sandbox__")
+      }
+    }
+  }
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -141,10 +156,8 @@ class TestAccountController extends BaseApiTest {
     )
 
     postJson("/sign-up", write(newUserRequest)) {
-      println(body)
       status should be(200)
-      // userInviteManager.get(invite.id).await should be('Left)
-      // organizationManager.getBySlug("__SANDBOX__") should be
+      assert(body.contains(organization.nodeId))
     }
   }
 }
