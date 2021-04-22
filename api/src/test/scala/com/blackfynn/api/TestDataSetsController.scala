@@ -250,8 +250,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   test("demo user can get their own dataset") {
     val demoContainer = secureContainerBuilder(sandboxUser, sandboxOrganization)
-    val dataset = createDataSet("test-dataset", container = demoContainer)
-    addBannerAndReadme(dataset)
+    val sandboxDatasetStatus = demoContainer.db
+      .run(demoContainer.datasetStatusManager.getDefaultStatus)
+      .await
+
+    val dataset = createDataSet(
+      "test-dataset",
+      description = Some("demo user dataset"),
+      container = demoContainer
+    )
+    addBannerAndReadme(dataset, container = demoContainer)
 
     get(
       s"/${dataset.nodeId}",
@@ -262,38 +270,32 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
       val dto = parsedBody.extract[DataSetDTO]
       dto.content should equal(
-        WrappedDataset(dataset, defaultDatasetStatus)
+        WrappedDataset(dataset, sandboxDatasetStatus)
           .copy(updatedAt = dto.content.updatedAt)
       )
       dto.bannerPresignedUrl.isDefined shouldBe (true)
       dto.status should equal(
-        DatasetStatusDTO(defaultDatasetStatus, DatasetStatusInUse(true))
+        DatasetStatusDTO(sandboxDatasetStatus, DatasetStatusInUse(true))
       )
     }
   }
 
   test("demo user cannot get someone else's demo dataset") {
-    val demoContainer = secureContainerBuilder(loggedInUser, sandboxOrganization)
-    val dataset = createDataSet("test-private-dataset", container = demoContainer)
-    addBannerAndReadme(dataset)
+    val demoContainer =
+      secureContainerBuilder(loggedInUser, sandboxOrganization)
+    val dataset =
+      createDataSet(
+        "test-private-dataset",
+        description = Some("Demo user dataset"),
+        container = demoContainer
+      )
+    addBannerAndReadme(dataset, container = demoContainer)
 
     get(
       s"/${dataset.nodeId}",
       headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
     ) {
-      // TODO: Below should 500 or 404 or something, not 200
-      status should equal(200)
-      response.getHeader(HttpHeaders.ETAG) shouldBe dataset.etag.asHeader
-
-      val dto = parsedBody.extract[DataSetDTO]
-      dto.content should equal(
-        WrappedDataset(dataset, defaultDatasetStatus)
-          .copy(updatedAt = dto.content.updatedAt)
-      )
-      dto.bannerPresignedUrl.isDefined shouldBe (true)
-      dto.status should equal(
-        DatasetStatusDTO(defaultDatasetStatus, DatasetStatusInUse(true))
-      )
+      status should equal(403)
     }
   }
 

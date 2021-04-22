@@ -148,24 +148,27 @@ trait DataSetTestMixin { self: ApiSuite =>
   def createAsset(
     dataset: Dataset,
     name: String = "my-pic.jpg",
-    bucket: String = "test-dataset-asset-bucket"
+    bucket: String = "test-dataset-asset-bucket",
+    container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext
   ): DatasetAsset =
-    secureContainer.db
+    container.db
       .run(
-        secureContainer.datasetAssetsManager
+        container.datasetAssetsManager
           .createQuery(name, dataset, bucket)
       )
       .await
 
   def addBannerAndReadme(
-    dataset: Dataset
+    dataset: Dataset,
+    container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext,
     datasetAssetClient: DatasetAssetClient
   ) = {
-    val banner = createAsset(dataset, name = "banner.jpg")
+    val banner =
+      createAsset(dataset, name = "banner.jpg", container = container)
     val bannerData = "binary content"
     datasetAssetClient
       .uploadAsset(
@@ -177,7 +180,7 @@ trait DataSetTestMixin { self: ApiSuite =>
       .right
       .get
 
-    val readme = createAsset(dataset, name = "readme.md")
+    val readme = createAsset(dataset, name = "readme.md", container = container)
     val readmeData = "readme description"
     datasetAssetClient
       .uploadAsset(
@@ -189,7 +192,7 @@ trait DataSetTestMixin { self: ApiSuite =>
       .right
       .get
 
-    secureContainer.datasetManager
+    container.datasetManager
       .update(
         dataset.copy(bannerId = Some(banner.id), readmeId = Some(readme.id))
       )

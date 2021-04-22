@@ -411,11 +411,6 @@ trait ApiSuite
       ec
     )
 
-    sandboxUserJwt = Authenticator.createUserToken(
-      sandboxUser,
-      sandboxOrganization
-    )(jwtConfig, insecureContainer.db, ec)
-
     val (_apiToken, _secret) = tokenManager
       .create("test api token", loggedInUser, loggedInOrganization, mockCognito)
       .await
@@ -502,6 +497,11 @@ trait ApiSuite
       .addUser(sandboxOrganization, loggedInUser, DBPermission.Write)
       .value
       .await
+
+    sandboxUserJwt = Authenticator.createUserToken(
+      sandboxUser,
+      sandboxOrganization
+    )(jwtConfig, insecureContainer.db, ec)
   }
 
   def createOrganization(
