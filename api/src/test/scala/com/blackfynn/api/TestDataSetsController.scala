@@ -255,8 +255,33 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     get(
       s"/${dataset.nodeId}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
     ) {
+      status should equal(200)
+      response.getHeader(HttpHeaders.ETAG) shouldBe dataset.etag.asHeader
+
+      val dto = parsedBody.extract[DataSetDTO]
+      dto.content should equal(
+        WrappedDataset(dataset, defaultDatasetStatus)
+          .copy(updatedAt = dto.content.updatedAt)
+      )
+      dto.bannerPresignedUrl.isDefined shouldBe (true)
+      dto.status should equal(
+        DatasetStatusDTO(defaultDatasetStatus, DatasetStatusInUse(true))
+      )
+    }
+  }
+
+  test("demo user cannot get someone else's demo dataset") {
+    val demoContainer = secureContainerBuilder(loggedInUser, sandboxOrganization)
+    val dataset = createDataSet("test-private-dataset", container = demoContainer)
+    addBannerAndReadme(dataset)
+
+    get(
+      s"/${dataset.nodeId}",
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      // TODO: Below should 500 or 404 or something, not 200
       status should equal(200)
       response.getHeader(HttpHeaders.ETAG) shouldBe dataset.etag.asHeader
 

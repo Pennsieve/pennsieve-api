@@ -16,25 +16,33 @@
 
 package com.pennsieve.helpers
 
-import java.time.ZonedDateTime
-import cats.data.EitherT
 import com.pennsieve.api.ApiSuite
-import com.pennsieve.api.Router.SecureResourceContainer
-import com.pennsieve.models.{Collection, Contributor, DataUseAgreement, Dataset, DatasetAsset, DatasetState, DefaultDatasetStatus, Degree, License, NodeCodes, OrcidAuthorization, Organization, OrganizationUser, Package, PackageState, PackageType, Team, User}
+import com.pennsieve.models.{
+  Collection,
+  DataUseAgreement,
+  Dataset,
+  DatasetAsset,
+  DatasetState,
+  Degree,
+  License,
+  NodeCodes,
+  OrcidAuthorization,
+  Organization,
+  OrganizationUser,
+  Package,
+  PackageState,
+  PackageType,
+  Team,
+  User
+}
 import com.pennsieve.clients.DatasetAssetClient
 import org.scalatest.EitherValues._
-import io.circe.syntax._
-import com.pennsieve.test.helpers.TestDatabase
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext }
 import com.pennsieve.test.helpers.EitherValue._
-import cats.implicits._
-import com.pennsieve.models.PublishStatus.PublishSucceeded
 
 import java.io.ByteArrayInputStream
-import java.util.UUID
 import com.pennsieve.dtos._
-import com.pennsieve.domain.CoreError
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
 import com.pennsieve.models.DBPermission.Delete
 

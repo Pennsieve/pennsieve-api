@@ -256,6 +256,8 @@ trait ApiSuite
 
   var adminJwt: String = _
 
+  var sandboxUserJwt: String = _
+
   var apiToken: Token = _
   var secret: Secret = _
   var apiJwt: String = _
@@ -409,6 +411,11 @@ trait ApiSuite
       ec
     )
 
+    sandboxUserJwt = Authenticator.createUserToken(
+      sandboxUser,
+      sandboxOrganization
+    )(jwtConfig, insecureContainer.db, ec)
+
     val (_apiToken, _secret) = tokenManager
       .create("test api token", loggedInUser, loggedInOrganization, mockCognito)
       .await
@@ -488,6 +495,11 @@ trait ApiSuite
 
     organizationManager
       .addUser(sandboxOrganization, sandboxUser, DBPermission.Write)
+      .value
+      .await
+
+    organizationManager
+      .addUser(sandboxOrganization, loggedInUser, DBPermission.Write)
       .value
       .await
   }
