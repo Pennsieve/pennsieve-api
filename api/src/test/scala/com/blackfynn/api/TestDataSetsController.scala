@@ -248,6 +248,30 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user can get their own dataset") {
+    val demoContainer = secureContainerBuilder(sandboxUser, sandboxOrganization)
+    val dataset = createDataSet("test-dataset", container = demoContainer)
+    addBannerAndReadme(dataset)
+
+    get(
+      s"/${dataset.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      response.getHeader(HttpHeaders.ETAG) shouldBe dataset.etag.asHeader
+
+      val dto = parsedBody.extract[DataSetDTO]
+      dto.content should equal(
+        WrappedDataset(dataset, defaultDatasetStatus)
+          .copy(updatedAt = dto.content.updatedAt)
+      )
+      dto.bannerPresignedUrl.isDefined shouldBe (true)
+      dto.status should equal(
+        DatasetStatusDTO(defaultDatasetStatus, DatasetStatusInUse(true))
+      )
+    }
+  }
+
   test("get a data set with publication info") {
     val ds1 = createDataSet("test-ds1")
 

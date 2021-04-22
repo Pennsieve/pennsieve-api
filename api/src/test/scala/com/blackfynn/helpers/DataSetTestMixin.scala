@@ -20,6 +20,7 @@ import java.time.ZonedDateTime
 
 import cats.data.EitherT
 import com.pennsieve.api.ApiSuite
+import com.pennsieve.api.Router.SecureResourceContainer
 import com.pennsieve.models.{
   Collection,
   Contributor,
@@ -66,11 +67,12 @@ trait DataSetTestMixin { self: ApiSuite =>
     automaticallyProcessPackages: Boolean = false,
     license: Option[License] = Some(License.`Apache 2.0`),
     tags: List[String] = List("tag"),
-    dataUseAgreement: Option[DataUseAgreement] = None
+    dataUseAgreement: Option[DataUseAgreement] = None,
+    container: SecureResourceContainer = secureContainer
   )(implicit
     ec: ExecutionContext
   ): Dataset =
-    secureContainer.datasetManager
+    container.datasetManager
       .create(
         name,
         description,
