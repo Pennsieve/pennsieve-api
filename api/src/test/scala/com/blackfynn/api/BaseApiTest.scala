@@ -269,8 +269,13 @@ trait ApiSuite
 
   var secureContainer: SecureAPIContainer = _
   var secureDataSetManager: DatasetManager = _
+  var sandboxUserContainer: SecureAPIContainer = _
+  var loggedInUserSandboxContainer: SecureAPIContainer = _
 
   var defaultDatasetStatus: DatasetStatus = _
+
+  var sandboxUserDatasetStatus: DatasetStatus = _
+  var loggedInUserSandboxDatasetStatus: DatasetStatus = _
 
   val me = User(
     NodeCodes.generateId(NodeCodes.userCode),
@@ -337,6 +342,9 @@ trait ApiSuite
     insecureContainer.db.run(clearOrganizationSchema(1)).await
     insecureContainer.db.run(clearOrganizationSchema(2)).await
     insecureContainer.db.run(clearOrganizationSchema(3)).await
+    insecureContainer.db
+      .run(clearOrganizationSchema(sandboxOrganization.id))
+      .await
   }
 
   override def beforeEach(): Unit = {
@@ -481,9 +489,9 @@ trait ApiSuite
       "cred",
       "",
       "http://test.com",
-      sandboxOrganization.id,
+      0,
       false,
-      None
+      Some(sandboxOrganization.id)
     )
 
     sandboxUser = userManager.create(sandboxUserDefinition).await.value
@@ -502,6 +510,20 @@ trait ApiSuite
       sandboxUser,
       sandboxOrganization
     )(jwtConfig, insecureContainer.db, ec)
+
+    sandboxUserContainer =
+      secureContainerBuilder(sandboxUser, sandboxOrganization)
+
+    sandboxUserDatasetStatus = sandboxUserContainer.db
+      .run(sandboxUserContainer.datasetStatusManager.getDefaultStatus)
+      .await
+
+    loggedInUserSandboxContainer =
+      secureContainerBuilder(loggedInUser, sandboxOrganization)
+
+    loggedInUserSandboxDatasetStatus = loggedInUserSandboxContainer.db
+      .run(loggedInUserSandboxContainer.datasetStatusManager.getDefaultStatus)
+      .await
   }
 
   def createOrganization(

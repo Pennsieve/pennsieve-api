@@ -248,18 +248,14 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("demo user can get their own dataset") {
-    val demoContainer = secureContainerBuilder(sandboxUser, sandboxOrganization)
-    val sandboxDatasetStatus = demoContainer.db
-      .run(demoContainer.datasetStatusManager.getDefaultStatus)
-      .await
-
+  test("demo user - get data - can get their own dataset") {
     val dataset = createDataSet(
       "test-dataset",
       description = Some("demo user dataset"),
-      container = demoContainer
+      container = sandboxUserContainer,
+      status = Some(sandboxUserDatasetStatus.id)
     )
-    addBannerAndReadme(dataset, container = demoContainer)
+    addBannerAndReadme(dataset, container = sandboxUserContainer)
 
     get(
       s"/${dataset.nodeId}",
@@ -270,26 +266,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
       val dto = parsedBody.extract[DataSetDTO]
       dto.content should equal(
-        WrappedDataset(dataset, sandboxDatasetStatus)
+        WrappedDataset(dataset, sandboxUserDatasetStatus)
           .copy(updatedAt = dto.content.updatedAt)
       )
       dto.bannerPresignedUrl.isDefined shouldBe (true)
       dto.status should equal(
-        DatasetStatusDTO(sandboxDatasetStatus, DatasetStatusInUse(true))
+        DatasetStatusDTO(sandboxUserDatasetStatus, DatasetStatusInUse(true))
       )
     }
   }
 
-  test("demo user cannot get someone else's demo dataset") {
-    val demoContainer =
-      secureContainerBuilder(loggedInUser, sandboxOrganization)
+  test("demo user - get data - cannot get someone else's demo dataset") {
     val dataset =
       createDataSet(
         "test-private-dataset",
         description = Some("Demo user dataset"),
-        container = demoContainer
+        container = loggedInUserSandboxContainer,
+        status = Some(loggedInUserSandboxDatasetStatus.id)
       )
-    addBannerAndReadme(dataset, container = demoContainer)
+    addBannerAndReadme(dataset, container = loggedInUserSandboxContainer)
 
     get(
       s"/${dataset.nodeId}",
@@ -1638,7 +1633,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     putJson(
       s"/${ds.nodeId}",
       updateReq,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
 
@@ -1657,14 +1652,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     putJson(
       s"/${ds.nodeId}",
       updateReq,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
-
-      val result: WrappedDataset = parsedBody
-        .extract[DataSetDTO]
-        .content
-      result.tags shouldEqual List("tag1", "tag2")
+      status should equal(403)
     }
   }
 
