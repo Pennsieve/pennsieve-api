@@ -263,23 +263,19 @@ trait SecureCoreContainer
   )(
     datasetId: Int
   ): EitherT[Future, CoreError, Unit] =
-    if (user.isSuperAdmin) {
+    if (user.isSuperAdmin)
       EitherT.rightT[Future, CoreError](())
-    }
-
-    // If you're in the demo organization, you only have the ability to see
-    // and edit your own datasets. We do not want demo users to be able to
-    // see the datasets of other users in the demo organization.
-    else if (organizationManager.isDemo(organization.id).value.await) {
-      var ownedDatasetsLen = datasetUserMapper
-        .getBy(user.id, datasetId)
-        .filter(_.userId == user.id)
-        .length
-
-      if (ownedDatasetsLen > 0) {
-        EitherT.rightT(())
-      } else {
+    else if (organizationManager.isDemo(organization.id).value.equals(true)) {
+      // If you're in the demo organization, you only have the ability to see
+      // and edit your own datasets. We do not want demo users to be able to
+      // see the datasets of other users in the demo organization.
+      if (datasetUserMapper
+          .getBy(user.id, datasetId)
+          .length
+          .equals(0)) {
         EitherT.leftT(NotFound(s"Dataset (${datasetId}})"))
+      } else {
+        EitherT.rightT[Future, CoreError](())
       }
     } else {
       EitherT(
