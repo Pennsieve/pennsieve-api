@@ -1621,6 +1621,53 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user can update their own dataset") {
+    val demoContainer = secureContainerBuilder(sandboxUser, sandboxOrganization)
+    val sandboxDatasetStatus = demoContainer.db
+      .run(demoContainer.datasetStatusManager.getDefaultStatus)
+      .await
+
+    val ds = createDataSet(
+      "Foo",
+      tags = List("tag1", "tag2"),
+      container = demoContainer
+    )
+    val updateReq =
+      write(UpdateDataSetRequest(Some(ds.name), ds.description))
+
+    putJson(
+      s"/${ds.nodeId}",
+      updateReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val result: WrappedDataset = parsedBody
+        .extract[DataSetDTO]
+        .content
+      result.tags shouldEqual List("tag1", "tag2")
+    }
+  }
+
+  test("demo user cannot update dataset of other demo organization users") {
+    val ds = createDataSet("Foo", tags = List("tag1", "tag2"))
+    val updateReq =
+      write(UpdateDataSetRequest(Some(ds.name), ds.description))
+
+    putJson(
+      s"/${ds.nodeId}",
+      updateReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val result: WrappedDataset = parsedBody
+        .extract[DataSetDTO]
+        .content
+      result.tags shouldEqual List("tag1", "tag2")
+    }
+  }
+
   test("update a data set using an If-Match header") {
     val ds = createDataSet("Foo")
     val updateReq = write(
