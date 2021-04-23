@@ -35,7 +35,7 @@ object RelationshipType
   case object Describes extends RelationshipType("Describes")
   case object Documents extends RelationshipType("Documents")
   //case object HasMetadata extends RelationshipType("HasMetadata")
-  //case object IsCitedBy extends RelationshipType("IsCitedBy")
+  case object IsCitedBy extends RelationshipType("IsCitedBy")
   // case object IsCompiledBy extends RelationshipType("IsCompiledBy")
   //case object IsContinuedBy extends RelationshipType("IsContinuedBy")
   case object IsDerivedFrom extends RelationshipType("IsDerivedFrom")
