@@ -518,6 +518,8 @@ trait ApiSuite
     sandboxUserContainer =
       secureContainerBuilder(sandboxUser, sandboxOrganization)
 
+    sandboxUserContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value
+
     sandboxUserDatasetStatus = sandboxUserContainer.db
       .run(sandboxUserContainer.datasetStatusManager.getDefaultStatus)
       .await
