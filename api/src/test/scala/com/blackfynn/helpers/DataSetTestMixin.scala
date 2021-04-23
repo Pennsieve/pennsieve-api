@@ -72,9 +72,10 @@ trait DataSetTestMixin { self: ApiSuite =>
         tags = tags,
         dataUseAgreement = dataUseAgreement
       )
-      .await
-      .right
-      .value
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
 
   def createDataUseAgreement(
     name: String,

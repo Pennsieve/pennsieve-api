@@ -281,14 +281,14 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       createDataSet(
         "test-private-dataset",
         description = Some("Demo user dataset"),
-        container = loggedInUserSandboxContainer,
-        status = Some(loggedInUserSandboxDatasetStatus.id)
+        container = sandboxUserContainer,
+        status = Some(sandboxUserDatasetStatus.id)
       )
-    addBannerAndReadme(dataset, container = loggedInUserSandboxContainer)
+    addBannerAndReadme(dataset, container = sandboxUserContainer)
 
     get(
       s"/${dataset.nodeId}",
-      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+      headers = authorizationHeader(loggedInSandboxUserJwt) ++ traceIdHeader()
     ) {
       status should equal(403)
     }
@@ -1616,7 +1616,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("demo user can update their own dataset") {
+  test("demo user - update data - can update their own dataset") {
     val demoContainer = secureContainerBuilder(sandboxUser, sandboxOrganization)
     val sandboxDatasetStatus = demoContainer.db
       .run(demoContainer.datasetStatusManager.getDefaultStatus)
@@ -1644,7 +1644,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("demo user cannot update dataset of other demo organization users") {
+  test(
+    "demo user - update data - cannot update dataset of other demo organization users"
+  ) {
     val ds = createDataSet("Foo", tags = List("tag1", "tag2"))
     val updateReq =
       write(UpdateDataSetRequest(Some(ds.name), ds.description))

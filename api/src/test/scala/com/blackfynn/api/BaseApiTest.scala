@@ -209,7 +209,7 @@ trait ApiSuite
     tokenManager = insecureContainer.tokenManager
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
-    1 to 3 foreach { orgId =>
+    1 to 5 foreach { orgId =>
       insecureContainer.db.run(createSchema(orgId.toString)).await
       migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
     }
@@ -258,6 +258,8 @@ trait ApiSuite
 
   var sandboxUserJwt: String = _
 
+  var loggedInSandboxUserJwt: String = _
+
   var apiToken: Token = _
   var secret: Secret = _
   var apiJwt: String = _
@@ -270,12 +272,10 @@ trait ApiSuite
   var secureContainer: SecureAPIContainer = _
   var secureDataSetManager: DatasetManager = _
   var sandboxUserContainer: SecureAPIContainer = _
-  var loggedInUserSandboxContainer: SecureAPIContainer = _
 
   var defaultDatasetStatus: DatasetStatus = _
 
   var sandboxUserDatasetStatus: DatasetStatus = _
-  var loggedInUserSandboxDatasetStatus: DatasetStatus = _
 
   val me = User(
     NodeCodes.generateId(NodeCodes.userCode),
@@ -498,13 +498,13 @@ trait ApiSuite
 
     organizationManager
       .addUser(sandboxOrganization, sandboxUser, DBPermission.Write)
-      .value
       .await
+      .value
 
     organizationManager
       .addUser(sandboxOrganization, loggedInUser, DBPermission.Write)
-      .value
       .await
+      .value
 
     sandboxUserJwt = Authenticator.createUserToken(
       sandboxUser,
@@ -518,12 +518,10 @@ trait ApiSuite
       .run(sandboxUserContainer.datasetStatusManager.getDefaultStatus)
       .await
 
-    loggedInUserSandboxContainer =
-      secureContainerBuilder(loggedInUser, sandboxOrganization)
-
-    loggedInUserSandboxDatasetStatus = loggedInUserSandboxContainer.db
-      .run(loggedInUserSandboxContainer.datasetStatusManager.getDefaultStatus)
-      .await
+    loggedInSandboxUserJwt = Authenticator.createUserToken(
+      loggedInUser,
+      sandboxOrganization
+    )(jwtConfig, insecureContainer.db, ec)
   }
 
   def createOrganization(
