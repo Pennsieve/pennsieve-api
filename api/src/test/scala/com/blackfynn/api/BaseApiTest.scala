@@ -475,7 +475,11 @@ trait ApiSuite
       .await match {
       case Right(org) => sandboxOrganization = org
       case _ => {
-        sandboxOrganization = createOrganization("__sandbox__", "__sandbox__")
+        sandboxOrganization = createOrganization(
+          "__sandbox__",
+          "__sandbox__",
+          features = Set(Feature.SandboxOrgFeature)
+        )
       }
     }
 

@@ -941,7 +941,7 @@ class SecureOrganizationManager(val db: Database, val actor: User)
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Boolean] = {
     for {
-      sandboxOrganization <- getBySlug("__sandbox__")
-    } yield sandboxOrganization.id == id
+      truth <- hasFeatureFlagEnabled(id, Feature.SandboxOrgFeature)
+    } yield truth
   }
 }
