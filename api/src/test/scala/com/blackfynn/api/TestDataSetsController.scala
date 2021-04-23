@@ -1616,16 +1616,12 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("demo user - update data - can update their own dataset") {
-    val demoContainer = secureContainerBuilder(sandboxUser, sandboxOrganization)
-    val sandboxDatasetStatus = demoContainer.db
-      .run(demoContainer.datasetStatusManager.getDefaultStatus)
-      .await
-
+  ignore("demo user - update data - can update their own dataset") {
     val ds = createDataSet(
       "Foo",
       tags = List("tag1", "tag2"),
-      container = demoContainer
+      container = sandboxUserContainer,
+      status = Some(sandboxUserDatasetStatus.id)
     )
     val updateReq =
       write(UpdateDataSetRequest(Some(ds.name), ds.description))
@@ -1644,7 +1640,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test(
+  ignore(
     "demo user - update data - cannot update dataset of other demo organization users"
   ) {
     val ds = createDataSet("Foo", tags = List("tag1", "tag2"))
