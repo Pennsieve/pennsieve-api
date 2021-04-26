@@ -190,12 +190,15 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't get any contributors if the current org is the demo org") {
-    loggedInJwt = Authenticator.createUserToken(
-      sandboxUser,
-      sandboxOrganization
-    )(jwtConfig, insecureContainer.db, ec)
+    // need to create a dataset to have users attached
+    createDataSet(
+      "test-dataset",
+      description = Some("demo user dataset"),
+      container = sandboxUserContainer,
+      status = Some(sandboxUserDatasetStatus.id)
+    )
 
-    get(s"/", headers = authorizationHeader(loggedInJwt)) {
+    get(s"/", headers = authorizationHeader(sandboxUserJwt)) {
       status should equal(200)
       val contributors = parsedBody.extract[List[ContributorDTO]]
 
