@@ -1616,7 +1616,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  ignore("demo user - update data - can update their own dataset") {
+  test("demo user - update data - can update their own dataset") {
     val ds = createDataSet(
       "Foo",
       tags = List("tag1", "tag2"),
@@ -1640,17 +1640,22 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  ignore(
+  test(
     "demo user - update data - cannot update dataset of other demo organization users"
   ) {
-    val ds = createDataSet("Foo", tags = List("tag1", "tag2"))
+    val ds = createDataSet(
+      "Foo",
+      tags = List("tag1", "tag2"),
+      container = sandboxUserContainer,
+      status = Some(sandboxUserDatasetStatus.id)
+    )
     val updateReq =
       write(UpdateDataSetRequest(Some(ds.name), ds.description))
 
     putJson(
       s"/${ds.nodeId}",
       updateReq,
-      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+      headers = authorizationHeader(loggedInSandboxUserJwt) ++ traceIdHeader()
     ) {
       status should equal(403)
     }
