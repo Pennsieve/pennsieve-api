@@ -68,30 +68,6 @@ resource "aws_ssm_parameter" "notifications_sqs_queue" {
   value = data.terraform_remote_state.platform_infrastructure.outputs.notifications_queue_id
 }
 
-resource "aws_ssm_parameter" "redis_host" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-host"
-  type  = "String"
-  value = data.terraform_remote_state.pennsieve_redis.outputs.primary_endpoint_address
-}
-
-resource "aws_ssm_parameter" "redis_auth_token" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-auth-token"
-  type  = "String"
-  value = data.aws_ssm_parameter.redis_auth_token.value
-}
-
-resource "aws_ssm_parameter" "redis_use_ssl" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-use-ssl"
-  type  = "String"
-  value = "true"
-}
-
-resource "aws_ssm_parameter" "redis_max_connections" {
-  name  = "/${var.environment_name}/${var.service_name}/redis-max-connections"
-  type  = "String"
-  value = "128"
-}
-
 resource "aws_ssm_parameter" "sns_alert_topic" {
   name  = "/${var.environment_name}/${var.service_name}/alert-topic"
   type  = "String"

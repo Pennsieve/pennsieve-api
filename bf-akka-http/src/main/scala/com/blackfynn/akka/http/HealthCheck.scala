@@ -26,7 +26,6 @@ import com.pennsieve.akka.http.HealthCheck._
 import com.pennsieve.aws.s3.S3Trait
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
-import com.redis.RedisClientPool
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
@@ -49,32 +48,6 @@ object Health {
 object HealthCheck {
 
   type HealthChecker = () => Future[Boolean]
-
-  def redisHealthCheck(
-    pool: RedisClientPool
-  )(implicit
-    executionContext: ExecutionContext
-  ): HealthChecker = () => {
-    val checkUUID = randomUUID().toString
-
-    Future({
-      pool.withClient { client =>
-        {
-          client.select(0)
-          client.set(checkUUID, checkUUID)
-          client.expire(checkUUID, 10)
-        }
-      }
-      pool
-        .withClient { client =>
-          {
-            client.select(0)
-            client.get(checkUUID)
-          }
-        }
-        .exists(_ == checkUUID)
-    })
-  }
 
   def postgresHealthCheck(
     db: Database

@@ -276,7 +276,6 @@ lazy val coreSettings = Seq(
     "io.circe" %% "circe-parser" % circeVersion,
     "io.circe" %% "circe-shapes" % circeVersion,
     "io.circe" %% "circe-derivation" % circeDerivationVersion,
-    "net.debasishg" %% "redisclient" % "3.30",
     "io.swagger" %% "swagger-scala-module" % "1.0.6",
     "com.amazonaws" % "aws-java-sdk-core" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-ecs" % awsVersion,

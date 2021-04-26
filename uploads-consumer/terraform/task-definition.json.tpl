@@ -32,9 +32,6 @@
       { "name": "UPLOAD_SERVICE_HOST", "valueFrom": "${upload_service_host_arn}" },
       { "name": "JWT_SECRET_KEY", "valueFrom": "${jwt_secret_key_arn}" },
       { "name": "NOTIFICATIONS_SQS_QUEUE", "valueFrom": "${notifications_sqs_queue_arn}" },
-      { "name": "REDIS_HOST", "valueFrom": "${redis_host_arn}" },
-      { "name": "REDIS_AUTH_TOKEN", "valueFrom": "${redis_auth_token_arn}" },
-      { "name": "REDIS_USE_SSL", "valueFrom": "${redis_use_ssl_arn}" },
       { "name": "SQS_QUEUE", "valueFrom": "${sqs_queue_arn}" },
       { "name": "STORAGE_BUCKET", "valueFrom": "${storage_bucket_arn}" },
       { "name": "UPLOADS_BUCKET", "valueFrom": "${uploads_bucket_arn}" }

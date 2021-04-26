@@ -592,8 +592,9 @@ class PackageManager(datasetManager: DatasetManager) {
     * @param storageManager An StorageManager instance used to immediately
     *   decrement storage counts for the package.  This is passed directly
     *   (instead of living on the class) so that the the PackageManager can, in
-    *   general, be used without a dependency on the Redis storage instance (eg
-    *   for discover-publish).
+    *   general, be used without a dependency on the storage manager (eg for
+    *   discover-publish). TODO: this separation may no longer be required now
+    *   that storage lives in Postgres, not Redis
     */
   def delete(
     traceId: TraceId,

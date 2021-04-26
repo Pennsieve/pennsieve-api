@@ -22,7 +22,6 @@ import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
 
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import com.pennsieve.aws.LocalAWSCredentialsProviderV2
-import com.pennsieve.core.utilities.RedisContainer
 import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
 
@@ -59,12 +58,4 @@ trait LocalSQSContainer extends SQSContainer { self: Container =>
       .httpClientBuilder(NettyNioAsyncHttpClient.builder())
       .build()
   )
-}
-
-trait SQSDeduplicationContainer extends RedisContainer { self: Container =>
-  val ttl: Int = config.as[Int]("sqs.deduplication.ttl")
-  val dbIndex: Int = config.as[Int]("sqs.deduplication.redisDBIndex")
-
-  val deduplicate: SQSMessage => Boolean =
-    SQSDeduplicator(redisClientPool, dbIndex, ttl)
 }
