@@ -939,9 +939,6 @@ class SecureOrganizationManager(val db: Database, val actor: User)
     id: Int
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Boolean] = {
-    for {
-      truth <- hasFeatureFlagEnabled(id, Feature.SandboxOrgFeature)
-    } yield truth
-  }
+  ): EitherT[Future, CoreError, Boolean] =
+    hasFeatureFlagEnabled(id, Feature.SandboxOrgFeature)
 }
