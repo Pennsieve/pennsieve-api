@@ -248,52 +248,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("demo user - get data - can get their own dataset") {
-    val dataset = createDataSet(
-      "test-dataset",
-      description = Some("demo user dataset"),
-      container = sandboxUserContainer,
-      status = Some(sandboxUserDatasetStatus.id)
-    )
-    addBannerAndReadme(dataset, container = sandboxUserContainer)
-
-    get(
-      s"/${dataset.nodeId}",
-      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      response.getHeader(HttpHeaders.ETAG) shouldBe dataset.etag.asHeader
-
-      val dto = parsedBody.extract[DataSetDTO]
-      dto.content should equal(
-        WrappedDataset(dataset, sandboxUserDatasetStatus)
-          .copy(updatedAt = dto.content.updatedAt)
-      )
-      dto.bannerPresignedUrl.isDefined shouldBe (true)
-      dto.status should equal(
-        DatasetStatusDTO(sandboxUserDatasetStatus, DatasetStatusInUse(true))
-      )
-    }
-  }
-
-  test("demo user - get data - cannot get someone else's demo dataset") {
-    val dataset =
-      createDataSet(
-        "test-private-dataset",
-        description = Some("Demo user dataset"),
-        container = sandboxUserContainer,
-        status = Some(sandboxUserDatasetStatus.id)
-      )
-    addBannerAndReadme(dataset, container = sandboxUserContainer)
-
-    get(
-      s"/${dataset.nodeId}",
-      headers = authorizationHeader(loggedInSandboxUserJwt) ++ traceIdHeader()
-    ) {
-      status should equal(403)
-    }
-  }
-
   test("get a data set with publication info") {
     val ds1 = createDataSet("test-ds1")
 
@@ -1613,51 +1567,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         .extract[DataSetDTO]
         .content
       result.tags shouldEqual List("tag1", "tag2")
-    }
-  }
-
-  test("demo user - update data - can update their own dataset") {
-    val ds = createDataSet(
-      "Foo",
-      tags = List("tag1", "tag2"),
-      container = sandboxUserContainer,
-      status = Some(sandboxUserDatasetStatus.id)
-    )
-    val updateReq =
-      write(UpdateDataSetRequest(Some(ds.name), ds.description))
-
-    putJson(
-      s"/${ds.nodeId}",
-      updateReq,
-      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val result: WrappedDataset = parsedBody
-        .extract[DataSetDTO]
-        .content
-      result.tags shouldEqual List("tag1", "tag2")
-    }
-  }
-
-  test(
-    "demo user - update data - cannot update dataset of other demo organization users"
-  ) {
-    val ds = createDataSet(
-      "Foo",
-      tags = List("tag1", "tag2"),
-      container = sandboxUserContainer,
-      status = Some(sandboxUserDatasetStatus.id)
-    )
-    val updateReq =
-      write(UpdateDataSetRequest(Some(ds.name), ds.description))
-
-    putJson(
-      s"/${ds.nodeId}",
-      updateReq,
-      headers = authorizationHeader(loggedInSandboxUserJwt) ++ traceIdHeader()
-    ) {
-      status should equal(403)
     }
   }
 

@@ -43,7 +43,6 @@ import com.pennsieve.models.{ Dataset, Organization, Package, Role, User }
 import com.pennsieve.service.utilities.ContextLogger
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
-import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.redis.RedisClientPool
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
@@ -265,19 +264,7 @@ trait SecureCoreContainer
   ): EitherT[Future, CoreError, Unit] =
     if (user.isSuperAdmin)
       EitherT.rightT[Future, CoreError](())
-    else if (organizationManager.isDemo(organization.id).value.equals(true)) {
-      // If you're in the demo organization, you only have the ability to see
-      // and edit your own datasets. We do not want demo users to be able to
-      // see the datasets of other users in the demo organization.
-      if (datasetUserMapper
-          .getBy(user.id, datasetId)
-          .length
-          .equals(0)) {
-        EitherT.leftT(NotFound(s"Dataset (${datasetId}})"))
-      } else {
-        EitherT.rightT[Future, CoreError](())
-      }
-    } else {
+    else
       EitherT(
         userRoles.map(
           roleMap =>
@@ -292,7 +279,6 @@ trait SecureCoreContainer
             }
         )
       )
-    }
 
   def authorizePackage(
     permissions: Set[Permission]
