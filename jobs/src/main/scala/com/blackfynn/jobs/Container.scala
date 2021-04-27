@@ -16,8 +16,7 @@
 
 package com.pennsieve.jobs
 
-import com.pennsieve.aws.queue.{ SQSContainer, SQSDeduplicationContainer }
-import com.pennsieve.core.utilities.RedisContainer
+import com.pennsieve.aws.queue.SQSContainer
 import com.pennsieve.utilities.{ Container => ConfigContainer }
 import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.messages._
@@ -44,10 +43,7 @@ package object container {
       s"jdbc:postgresql://${postgresHost}:${postgresPort}/${postgresDb}?ssl=true&sslmode=verify-ca"
   }
 
-  type Container = JobContainer
-    with RedisContainer
-    with SQSContainer
-    with SQSDeduplicationContainer
+  type Container = JobContainer with SQSContainer
 
   type MessageExceptionPair = (SQSMessage, JobException)
   type MessageJobPair = (SQSMessage, BackgroundJob)

@@ -26,7 +26,7 @@ import com.amazonaws.services.s3.model.{
   ObjectMetadata,
   PutObjectResult
 }
-import com.pennsieve.aws.queue.{ LocalSQSContainer, SQSDeduplicationContainer }
+import com.pennsieve.aws.queue.LocalSQSContainer
 import com.pennsieve.aws.s3.{ LocalS3Container, _ }
 import com.pennsieve.aws.sns.LocalSNSContainer
 import com.pennsieve.clients.{
@@ -38,8 +38,7 @@ import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.{
   getFileType,
   splitFileName,
-  DatabaseContainer,
-  RedisContainer
+  DatabaseContainer
 }
 import com.pennsieve.db.OrganizationsMapper
 import com.pennsieve.managers.FileManager.UploadSourceFile
@@ -558,10 +557,10 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
         }
       }
 
-      new ConsumerContainer(config) with DatabaseContainer with RedisContainer
-      with LocalSQSContainer with LocalS3Container
-      with SQSDeduplicationContainer with ClamAVContainer with LocalSNSContainer
-      with MockUploadServiceContainer with MockJobSchedulingServiceContainer {
+      new ConsumerContainer(config) with DatabaseContainer
+      with LocalSQSContainer with LocalS3Container with ClamAVContainer
+      with LocalSNSContainer with MockUploadServiceContainer
+      with MockJobSchedulingServiceContainer {
         override lazy val jobSchedulingServiceConfigPath: String =
           "job_scheduling_service"
         override lazy val jobSchedulingServiceHost: String =

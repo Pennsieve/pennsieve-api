@@ -33,11 +33,7 @@ import com.pennsieve.akka.http.{
   RouteService,
   WebServer
 }
-import com.pennsieve.aws.queue.{
-  AWSSQSContainer,
-  LocalSQSContainer,
-  SQSDeduplicationContainer
-}
+import com.pennsieve.aws.queue.{ AWSSQSContainer, LocalSQSContainer }
 import com.pennsieve.aws.s3.{ AWSS3Container, LocalS3Container }
 import com.pennsieve.aws.sns.{ AWSSNSContainer, LocalSNSContainer }
 import com.pennsieve.clients.{
@@ -46,11 +42,10 @@ import com.pennsieve.clients.{
   LocalUploadServiceContainer,
   UploadServiceContainerImpl
 }
-import com.pennsieve.core.utilities.{ DatabaseContainer, RedisContainer }
+import com.pennsieve.core.utilities.DatabaseContainer
 import com.pennsieve.service.utilities.ContextLogger
 import com.pennsieve.traits.PostgresProfile.api.Database
 import com.pennsieve.uploads.consumer.antivirus.ClamAVContainer
-import com.redis.RedisClientPool
 import net.ceedubs.ficus.Ficus._
 import scala.concurrent.duration._
 
@@ -67,14 +62,13 @@ object Main extends App with WebServer {
 
   implicit val container: Container =
     if (isLocal) {
-      new ConsumerContainer(config) with DatabaseContainer with RedisContainer
-      with LocalSQSContainer with LocalS3Container
-      with SQSDeduplicationContainer with ClamAVContainer with LocalSNSContainer
-      with LocalJobSchedulingServiceContainer with LocalUploadServiceContainer
+      new ConsumerContainer(config) with DatabaseContainer
+      with LocalSQSContainer with LocalS3Container with ClamAVContainer
+      with LocalSNSContainer with LocalJobSchedulingServiceContainer
+      with LocalUploadServiceContainer
     } else {
-      new ConsumerContainer(config) with DatabaseContainer with RedisContainer
-      with AWSSQSContainer with AWSS3Container with SQSDeduplicationContainer
-      with ClamAVContainer with AWSSNSContainer
+      new ConsumerContainer(config) with DatabaseContainer with AWSSQSContainer
+      with AWSS3Container with ClamAVContainer with AWSSNSContainer
       with JobSchedulingServiceContainerImpl with UploadServiceContainerImpl
     }
 
@@ -121,8 +115,7 @@ object Main extends App with WebServer {
           container.storageBucket,
           container.uploadsBucket
         )
-      ),
-      "redis" -> HealthCheck.redisHealthCheck(container.redisClientPool)
+      )
     )
   )
   startServer()

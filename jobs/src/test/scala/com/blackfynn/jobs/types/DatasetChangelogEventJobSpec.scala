@@ -57,7 +57,6 @@ class DatasetChangelogEventJobSpec
     val config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
-      .withFallback(redisContainer.config)
 
     insecureContainer = new InsecureContainer(config) with DatabaseContainer {
       override val postgresUseSSL = false
