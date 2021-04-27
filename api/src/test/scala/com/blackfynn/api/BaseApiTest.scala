@@ -469,13 +469,15 @@ trait ApiSuite
       .right
       .value
 
-    organizationManager
+    // This will check to see if an organization of sandbox already exists, and if so, uses that
+    // otherwise generates an org w/ the feature flag
+    sandboxOrganization = organizationManager
       .getBySlug("__sandbox__")
       .value
       .await match {
-      case Right(org) => sandboxOrganization = org
+      case Right(org) => org
       case _ => {
-        sandboxOrganization = createOrganization(
+        createOrganization(
           "__sandbox__",
           "__sandbox__",
           features = Set(Feature.SandboxOrgFeature)
