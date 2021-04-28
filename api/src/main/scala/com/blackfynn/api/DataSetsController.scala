@@ -1998,6 +1998,15 @@ class DataSetsController(
         datasetId <- paramT[String]("id")
         teamDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
         secureContainer <- getSecureContainer
+
+        demoOrganization <- secureContainer.organizationManager
+          .isDemo(secureContainer.organization.id)
+          .coreErrorToActionResult
+
+        temp <- checkOrErrorT(!demoOrganization)(
+          InvalidAction("Demo user cannot share datasets."): CoreError
+        ).coreErrorToActionResult
+
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
           .orNotFound

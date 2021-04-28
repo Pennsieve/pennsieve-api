@@ -502,12 +502,12 @@ trait ApiSuite
     sandboxUser = userManager.create(sandboxUserDefinition).await.value
 
     organizationManager
-      .addUser(sandboxOrganization, sandboxUser, DBPermission.Write)
+      .addUser(sandboxOrganization, sandboxUser, Administer)
       .await
       .value
 
     organizationManager
-      .addUser(sandboxOrganization, loggedInUser, DBPermission.Write)
+      .addUser(sandboxOrganization, loggedInUser, Administer)
       .await
       .value
 

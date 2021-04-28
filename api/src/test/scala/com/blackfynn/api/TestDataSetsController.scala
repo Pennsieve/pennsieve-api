@@ -3531,6 +3531,26 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo organization user cannot share dataset with teams") {
+    val myDS = createDataSet("My DataSet", container = sandboxUserContainer)
+    val myTeam = createTeam(
+      "My Team",
+      sandboxUser,
+      sandboxOrganization,
+      sandboxUserContainer
+    )
+
+    val ids = write(CollaboratorRoleDTO(myTeam.nodeId, Role.Editor))
+
+    putJson(
+      s"/${myDS.nodeId}/collaborators/teams",
+      ids,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   // 6. user creates data set that belongs to org then attempts to share it with a system team
   // system teams cannot be added by users
   test("""system team user creates data set that belongs to org

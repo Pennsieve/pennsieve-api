@@ -139,11 +139,15 @@ trait DataSetTestMixin { self: ApiSuite =>
   def createTeam(
     name: String,
     loggedInUser: User = loggedInUser,
-    loggedInOrg: Organization = loggedInOrganization
+    loggedInOrg: Organization = loggedInOrganization,
+    container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext
   ): Team = {
-    secureContainer.teamManager.create(name, loggedInOrg).await.right.value
+    container.teamManager.create(name, loggedInOrg).await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
   }
 
   def createAsset(
