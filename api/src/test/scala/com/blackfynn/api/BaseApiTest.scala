@@ -209,6 +209,10 @@ trait ApiSuite
     tokenManager = insecureContainer.tokenManager
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
+
+    // Interestingly this must be "5" as the sandbox organization in some
+    // pass throughs gets created twice; once on the migration and once again
+    // within the beforeEach of this loop. TODO on figuring out a better approach.
     1 to 5 foreach { orgId =>
       insecureContainer.db.run(createSchema(orgId.toString)).await
       migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
