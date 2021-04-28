@@ -1420,6 +1420,14 @@ class DataSetsController(
           )(dataset)
           .coreErrorToActionResult
 
+        demoOrganization <- secureContainer.organizationManager
+          .isDemo(secureContainer.organization.id)
+          .coreErrorToActionResult
+
+        _ <- checkOrErrorT(!demoOrganization)(
+          InvalidAction("Demo user cannot share datasets."): CoreError
+        ).coreErrorToActionResult
+
         results <- secureContainer.datasetManager
           .addCollaborators(dataset, reqIds)
           .coreErrorToActionResult

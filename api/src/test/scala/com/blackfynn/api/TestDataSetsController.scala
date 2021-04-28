@@ -2123,6 +2123,19 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo organization user cannot invite collaborators") {
+    val ds = createDataSet("Foo", container = sandboxUserContainer)
+
+    val ids = write(List(colleagueUser.nodeId))
+    putJson(
+      s"/${ds.nodeId}/collaborators",
+      ids,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("create and retrieve a DOI for a dataset") {
 
     val ds = createDataSet(name = "Foo")
