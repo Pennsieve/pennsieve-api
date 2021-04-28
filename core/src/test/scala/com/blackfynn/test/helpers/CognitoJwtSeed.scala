@@ -26,6 +26,7 @@ import com.pennsieve.core.utilities._
 import com.pennsieve.db._
 import com.pennsieve.managers._
 import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile.api._
 import software.amazon.awssdk.regions.Region
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -69,8 +70,13 @@ trait CognitoJwtSeed[
     val cognitoId = CognitoId.UserPoolId.randomId()
 
     container.db
-      .run(CognitoUserMapper.create(cognitoId, user))
-      .awaitFinite()
+      .run(
+        UserMapper
+          .filter(_.id === user.id)
+          .map(_.cognitoId)
+          .update(Some(cognitoId))
+      )
+      .await
 
     cognitoId
   }

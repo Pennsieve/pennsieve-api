@@ -136,17 +136,9 @@ object Main extends App {
         .awaitFinite()
         .fold(throw _, u => u)
 
-    val maybeCognitoUser = container.db
-      .run(CognitoUserMapper.filter(_.userId === user.id).result)
-      .awaitFinite()
-      .headOption
-
-    maybeCognitoUser match {
-      case Some(cognitoUser) =>
-        println(
-          s"Cognito user ${cognitoUser.cognitoId} already exists for $email"
-        )
-        cognitoUser
+    user.cognitoId match {
+      case Some(cognitoId) =>
+        println(s"Cognito user ${cognitoId} already exists for $email")
 
       case None =>
         println(s"Inviting new Cognito user for $email...")
@@ -174,12 +166,15 @@ object Main extends App {
           .awaitFinite()
 
         val cognitoUser = container.db
-          .run(CognitoUserMapper.create(cognitoId, user))
+          .run(
+            UserMapper
+              .filter(_.id === user.id)
+              .map(_.cognitoId)
+              .update(Some(cognitoId))
+          )
           .awaitFinite()
 
-        println(s"Created new Cognito user ${cognitoUser.cognitoId} for $email")
-
-      // TODO: send welcome email
+        println(s"Created new Cognito user ${cognitoId} for $email")
     }
 
     println("Done. Users must reset password with 'Forgot Password' flow.")

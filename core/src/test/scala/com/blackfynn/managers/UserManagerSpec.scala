@@ -19,11 +19,12 @@ package com.pennsieve.managers
 import java.time.Duration
 
 import com.pennsieve.aws.cognito.MockCognito
-import com.pennsieve.db.CognitoUserMapper
+import com.pennsieve.db.UserMapper
 import com.pennsieve.domain.PredicateError
 
 import com.pennsieve.models._
 import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.PostgresProfile.api._
 import org.scalatest.EitherValues._
 import org.scalatest.Matchers._
 
@@ -105,9 +106,7 @@ class UserManagerSpec extends BaseManagerSpec {
       userManager.getOrganizations(user).await.value.contains(testOrganization)
     )
 
-    assert(
-      userManager.getByCognitoId(userInvite.cognitoId).await.value._1 == user
-    )
+    assert(userManager.getByCognitoId(userInvite.cognitoId).await.value == user)
   }
 
   "new user invites" should "not be created if the email already belongs to the organization" in {}
@@ -182,11 +181,20 @@ class UserManagerSpec extends BaseManagerSpec {
 
   // TODO: create this as part of createUser?
 
-  def createCognitoUser(user: User): CognitoId.UserPoolId =
+  def createCognitoUser(user: User): CognitoId.UserPoolId = {
+
+    val cognitoId = CognitoId.UserPoolId.randomId()
     database
-      .run(CognitoUserMapper.create(CognitoId.UserPoolId.randomId(), user))
+      .run(
+        UserMapper
+          .filter(_.id === user.id)
+          .map(_.cognitoId)
+          .update(Some(cognitoId))
+      )
       .await
-      .cognitoId
+
+    cognitoId
+  }
 
   "getByCognitoId" should "get the correct user" in {
 
@@ -198,12 +206,23 @@ class UserManagerSpec extends BaseManagerSpec {
     val bobCognitoId = createCognitoUser(bob)
     val charlieCognitoId = createCognitoUser(charlie)
 
-    userManager.getByCognitoId(aliceCognitoId).await.map(_._1) shouldBe Right(
-      alice
+    userManager
+      .getByCognitoId(aliceCognitoId)
+      .await
+      .map(u => (u.nodeId, u.cognitoId)) shouldBe Right(
+      (alice.nodeId, Some(aliceCognitoId))
     )
-    userManager.getByCognitoId(bobCognitoId).await.map(_._1) shouldBe Right(bob)
-    userManager.getByCognitoId(charlieCognitoId).await.map(_._1) shouldBe Right(
-      charlie
+    userManager
+      .getByCognitoId(bobCognitoId)
+      .await
+      .map(u => (u.nodeId, u.cognitoId)) shouldBe Right(
+      (bob.nodeId, Some(bobCognitoId))
+    )
+    userManager
+      .getByCognitoId(charlieCognitoId)
+      .await
+      .map(u => (u.nodeId, u.cognitoId)) shouldBe Right(
+      (charlie.nodeId, Some(charlieCognitoId))
     )
   }
 
