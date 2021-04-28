@@ -3309,6 +3309,22 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test(
+    "demo organization users can not share datasets within the demo organization"
+  ) {
+    val myDS = createDataSet("My DataSet", container = sandboxUserContainer)
+
+    // reject attempt to share with org
+    val request = write(OrganizationRoleDTO(Some(Role.Viewer)))
+    putJson(
+      s"/${myDS.nodeId}/collaborators/organizations",
+      request,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("get role of shared organization") {
     // create
     val myDS = createDataSet("My DataSet")

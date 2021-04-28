@@ -1420,6 +1420,9 @@ class DataSetsController(
           )(dataset)
           .coreErrorToActionResult
 
+        // Demo / sandbox users are a special case. They should not
+        // be able to share datasets under any circumstances.
+
         demoOrganization <- secureContainer.organizationManager
           .isDemo(secureContainer.organization.id)
           .coreErrorToActionResult
@@ -1999,6 +2002,9 @@ class DataSetsController(
         teamDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
         secureContainer <- getSecureContainer
 
+        // Demo / sandbox users are a special case. They should not
+        // be able to share datasets under any circumstances.
+
         demoOrganization <- secureContainer.organizationManager
           .isDemo(secureContainer.organization.id)
           .coreErrorToActionResult
@@ -2166,6 +2172,18 @@ class DataSetsController(
           parsedBody
         )
         secureContainer <- getSecureContainer
+
+        // Demo / sandbox users are a special case. They should not
+        // be able to share datasets under any circumstances.
+
+        demoOrganization <- secureContainer.organizationManager
+          .isDemo(secureContainer.organization.id)
+          .coreErrorToActionResult
+
+        _ <- checkOrErrorT(!demoOrganization)(
+          InvalidAction("Demo user cannot share datasets."): CoreError
+        ).coreErrorToActionResult
+
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
           .orNotFound
