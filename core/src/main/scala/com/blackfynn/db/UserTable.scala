@@ -53,6 +53,7 @@ final class UserTable(tag: Tag)
   def orcidAuthorization =
     column[Option[OrcidAuthorization]]("orcid_authorization")
   def nodeId = column[String]("node_id")
+  def cognitoId = column[Option[CognitoId.UserPoolId]]("cognito_id")
 
   def * =
     (
@@ -70,6 +71,7 @@ final class UserTable(tag: Tag)
       preferredOrganizationId,
       status,
       orcidAuthorization,
+      cognitoId,
       updatedAt,
       createdAt,
       id
@@ -87,13 +89,9 @@ object UserMapper extends TableQuery(new UserTable(_)) {
   def getByEmail(email: String) =
     this.filter(_.email.toLowerCase === email.toLowerCase).result.headOption
 
-  def getByCognitoId(
-    cognitoId: CognitoId.UserPoolId
-  ): DBIO[Option[(User, CognitoUser)]] =
+  def getByCognitoId(cognitoId: CognitoId.UserPoolId): DBIO[Option[User]] =
     this
-      .join(CognitoUserMapper)
-      .on(_.id === _.userId)
-      .filter(_._2.cognitoId === cognitoId)
+      .filter(_.cognitoId === cognitoId)
       .result
       .headOption
 

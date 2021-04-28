@@ -103,7 +103,7 @@ object AuthorizationDirectives {
             // TODO: single query for all this
             user <- container.userManager.getByCognitoId(id)
             // TODO: Better tracking of organizations w/ sessions etc
-            preferredOrganizationId <- user._1.preferredOrganizationId match {
+            preferredOrganizationId <- user.preferredOrganizationId match {
               case Some(id) => EitherT.rightT[Future, CoreError](id)
               case None =>
                 EitherT.leftT[Future, Int](
@@ -114,7 +114,7 @@ object AuthorizationDirectives {
             organization <- container.organizationManager.get(
               preferredOrganizationId
             )
-          } yield UserAuthContext(user._1, organization, Some(cognitoPayload))
+          } yield UserAuthContext(user, organization, Some(cognitoPayload))
 
         case id: CognitoId.TokenPoolId =>
           for {

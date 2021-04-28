@@ -17,6 +17,7 @@
 package com.pennsieve.managers
 
 import com.pennsieve.models.{
+  CognitoId,
   Contributor,
   DBPermission,
   Dataset,
@@ -280,7 +281,8 @@ trait ManagerSpec
       credential = "",
       color = "",
       url = "",
-      isSuperAdmin = isSuperAdmin
+      isSuperAdmin = isSuperAdmin,
+      cognitoId = Some(CognitoId.UserPoolId.randomId())
     )
 
     val user = userManager.create(unsavedUser).await.value
