@@ -190,6 +190,20 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't get any contributors if the current org is the demo org") {
+    var body =
+      write(CreateContributorRequest("test", "testerson", "test@gmail.com"))
+
+    postJson(s"/", body = body, headers = authorizationHeader(sandboxUserJwt)) {
+      status should equal(201)
+    }
+
+    body =
+      write(CreateContributorRequest("test", "testerson", "test2@gmail.com"))
+
+    postJson(s"/", body = body, headers = authorizationHeader(sandboxUserJwt)) {
+      status should equal(201)
+    }
+
     get(s"/", headers = authorizationHeader(sandboxUserJwt)) {
       status should equal(200)
       val contributors = parsedBody.extract[List[ContributorDTO]]
