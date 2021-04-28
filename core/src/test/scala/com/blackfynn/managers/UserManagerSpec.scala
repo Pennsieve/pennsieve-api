@@ -179,51 +179,21 @@ class UserManagerSpec extends BaseManagerSpec {
     allOrgIds should contain theSameElementsAs createdOrgIds
   }
 
-  // TODO: create this as part of createUser?
-
-  def createCognitoUser(user: User): CognitoId.UserPoolId = {
-
-    val cognitoId = CognitoId.UserPoolId.randomId()
-    database
-      .run(
-        UserMapper
-          .filter(_.id === user.id)
-          .map(_.cognitoId)
-          .update(Some(cognitoId))
-      )
-      .await
-
-    cognitoId
-  }
-
   "getByCognitoId" should "get the correct user" in {
 
     val alice = createUser(email = "alice@pennsieve.net")
     val bob = createUser(email = "bob@pennsieve.net")
     val charlie = createUser(email = "charlie@pennsieve.net")
 
-    val aliceCognitoId = createCognitoUser(alice)
-    val bobCognitoId = createCognitoUser(bob)
-    val charlieCognitoId = createCognitoUser(charlie)
-
     userManager
-      .getByCognitoId(aliceCognitoId)
-      .await
-      .map(u => (u.nodeId, u.cognitoId)) shouldBe Right(
-      (alice.nodeId, Some(aliceCognitoId))
-    )
+      .getByCognitoId(alice.cognitoId.get)
+      .await shouldBe Right(alice)
     userManager
-      .getByCognitoId(bobCognitoId)
-      .await
-      .map(u => (u.nodeId, u.cognitoId)) shouldBe Right(
-      (bob.nodeId, Some(bobCognitoId))
-    )
+      .getByCognitoId(bob.cognitoId.get)
+      .await shouldBe Right(bob)
     userManager
-      .getByCognitoId(charlieCognitoId)
-      .await
-      .map(u => (u.nodeId, u.cognitoId)) shouldBe Right(
-      (charlie.nodeId, Some(charlieCognitoId))
-    )
+      .getByCognitoId(charlie.cognitoId.get)
+      .await shouldBe Right(charlie)
   }
 
   "creating a new user" should "select a random avatar color" in {

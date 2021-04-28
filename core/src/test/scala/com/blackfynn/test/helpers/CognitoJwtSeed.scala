@@ -57,28 +57,15 @@ trait CognitoJwtSeed[
     )
   )
 
-  def createCognitoUserAndJwt(container: SeedContainer, user: User): String = {
-    val cognitoId = createCognitoUser(container, user)
-
-    cognitoJwkProvider.generateValidCognitoToken(
-      cognitoId,
-      cognitoConfig.userPool
-    )
-  }
-
-  def createCognitoUser(container: SeedContainer, user: User): CognitoId = {
-    val cognitoId = CognitoId.UserPoolId.randomId()
-
-    container.db
-      .run(
-        UserMapper
-          .filter(_.id === user.id)
-          .map(_.cognitoId)
-          .update(Some(cognitoId))
-      )
-      .await
-
-    cognitoId
+  def createCognitoJwt(container: SeedContainer, user: User): String = {
+    user.cognitoId match {
+      case Some(cognitoId) =>
+        cognitoJwkProvider.generateValidCognitoToken(
+          cognitoId,
+          cognitoConfig.userPool
+        )
+      case None => throw new Exception("user does not have Cognito ID")
+    }
   }
 
   def createCognitoJwtFromToken(token: Token): String = {
@@ -91,8 +78,8 @@ trait CognitoJwtSeed[
   override def seed(container: SeedContainer): Unit = {
     super.seed(container)
 
-    adminCognitoJwt = Some(createCognitoUserAndJwt(container, admin))
-    nonAdminCognitoJwt = Some(createCognitoUserAndJwt(container, nonAdmin))
-    ownerCognitoJwt = Some(createCognitoUserAndJwt(container, owner))
+    adminCognitoJwt = Some(createCognitoJwt(container, admin))
+    nonAdminCognitoJwt = Some(createCognitoJwt(container, nonAdmin))
+    ownerCognitoJwt = Some(createCognitoJwt(container, owner))
   }
 }
