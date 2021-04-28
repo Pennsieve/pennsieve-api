@@ -16,15 +16,13 @@
 
 package com.pennsieve.managers
 
+import cats.data._
+import cats.implicits._
 import com.pennsieve.core.utilities.FutureEitherHelpers.assert
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.core.utilities.{
-  checkAndNormalizeInitial,
-  checkOrErrorT,
-  FutureEitherHelpers
-}
-import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.core.utilities.checkAndNormalizeInitial
 import com.pennsieve.db._
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
 import com.pennsieve.models.{
   CognitoId,
   DBPermission,
@@ -36,11 +34,7 @@ import com.pennsieve.models.{
   User,
   UserInvite
 }
-import cats.data._
-import cats.implicits._
-import com.pennsieve
-import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
-import java.util.UUID
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random

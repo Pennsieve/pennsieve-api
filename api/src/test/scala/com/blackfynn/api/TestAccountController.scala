@@ -135,7 +135,7 @@ class TestAccountController extends BaseApiTest {
       middleInitial = None,
       lastName = "tester",
       degree = None,
-      title = "",
+      title = Some(""),
       email = "test@gmail.com",
       recaptchaToken = "foooo"
     )

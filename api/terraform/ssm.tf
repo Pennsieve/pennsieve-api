@@ -332,3 +332,23 @@ resource "aws_ssm_parameter" "pennsieve_s3_uploader_role" {
   type  = "String"
   value = aws_iam_role.uploader_iam_role.arn
 }
+
+resource "aws_ssm_parameter" "recaptcha_site_key" {
+  overwrite = false
+  type      = "SecureString"
+  value     = "dummy"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "recaptcha_secret_key" {
+  overwrite = false
+  type      = "SecureString"
+  value     = "dummy"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}

@@ -80,7 +80,7 @@ class ContributorsController(
     )
   ) {
     new AsyncResult {
-      var result: EitherT[Future, ActionResult, Seq[ContributorDTO]] = for {
+      val result: EitherT[Future, ActionResult, Seq[ContributorDTO]] = for {
         secureContainer <- getSecureContainer
         user = secureContainer.user
 

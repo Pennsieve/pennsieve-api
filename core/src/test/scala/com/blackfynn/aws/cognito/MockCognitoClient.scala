@@ -19,7 +19,7 @@ package com.pennsieve.aws.cognito
 import com.pennsieve.aws.email.Email
 import com.pennsieve.dtos.Secret
 import com.pennsieve.models.{ CognitoId, Organization }
-import java.util.UUID
+
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -42,7 +42,8 @@ class MockCognito() extends CognitoClient {
 
   def inviteUser(
     email: Email,
-    suppressEmail: Boolean = false
+    suppressEmail: Boolean = false,
+    verifyEmail: Boolean = true
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {

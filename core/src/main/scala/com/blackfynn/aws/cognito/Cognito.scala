@@ -16,23 +16,17 @@
 
 package com.pennsieve.aws.cognito
 
+import cats.implicits._
 import com.pennsieve.aws.email.Email
-import com.pennsieve.models.{ CognitoId, Organization }
 import com.pennsieve.domain.{ NotFound, PredicateError }
 import com.pennsieve.dtos.Secret
-import cats.data._
-import cats.implicits._
-
-import scala.compat.java8.FutureConverters._
-import scala.concurrent.Future
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderAsyncClient
+import com.pennsieve.models.{ CognitoId, Organization }
+import com.typesafe.config.Config
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderAsyncClient
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserRequest,
-  AdminCreateUserResponse,
   AdminDeleteUserRequest,
-  AdminDeleteUserResponse,
   AdminSetUserPasswordRequest,
   AttributeType,
   DeliveryMediumType,
@@ -40,20 +34,17 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   UserType
 }
 
-import scala.concurrent.ExecutionContext
 import java.util.UUID
 import scala.collection.JavaConverters._
-import scala.collection.mutable
-import net.ceedubs.ficus.Ficus._
-import com.typesafe.config.Config
-
-import java.util
+import scala.compat.java8.FutureConverters._
+import scala.concurrent.{ ExecutionContext, Future }
 
 trait CognitoClient {
 
   def inviteUser(
     email: Email,
-    suppressEmail: Boolean = false
+    suppressEmail: Boolean = false,
+    verifyEmail: Boolean = true
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId]
@@ -111,7 +102,8 @@ class Cognito(
     */
   def inviteUser(
     email: Email,
-    suppressEmail: Boolean = false
+    suppressEmail: Boolean = false,
+    verifyEmail: Boolean = true
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
@@ -125,7 +117,11 @@ class Cognito(
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
-          AttributeType.builder().name("email_verified").value("true").build()
+          AttributeType
+            .builder()
+            .name("email_verified")
+            .value(verifyEmail.toString())
+            .build()
         ).asJava
       )
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)

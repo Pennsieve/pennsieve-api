@@ -60,7 +60,7 @@ case class CreateUserWithRecaptchaRequest(
   lastName: String,
   email: String,
   degree: Option[Degree],
-  title: String,
+  title: Option[String],
   recaptchaToken: String
 )
 
@@ -225,7 +225,11 @@ class AccountController(
               }).coreErrorToActionResult
 
         cognitoId <- cognitoClient
-          .inviteUser(Email(createRequest.email), suppressEmail = false)
+          .inviteUser(
+            email = Email(createRequest.email),
+            suppressEmail = false,
+            verifyEmail = false
+          )
           .toEitherT
           .coreErrorToActionResult
 
@@ -237,7 +241,7 @@ class AccountController(
             middleInitial = createRequest.middleInitial,
             lastName = createRequest.lastName,
             degree = createRequest.degree,
-            title = createRequest.title
+            title = createRequest.title.getOrElse("") // ugly, but needed for a simpler signup flow
           )(insecureContainer.organizationManager, asyncExecutor)
           .coreErrorToActionResult
 
