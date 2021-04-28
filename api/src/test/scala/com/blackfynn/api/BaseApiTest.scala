@@ -209,7 +209,7 @@ trait ApiSuite
     tokenManager = insecureContainer.tokenManager
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
-    1 to 3 foreach { orgId =>
+    1 to 5 foreach { orgId =>
       insecureContainer.db.run(createSchema(orgId.toString)).await
       migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
     }
