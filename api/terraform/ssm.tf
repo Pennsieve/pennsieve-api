@@ -334,6 +334,7 @@ resource "aws_ssm_parameter" "pennsieve_s3_uploader_role" {
 }
 
 resource "aws_ssm_parameter" "recaptcha_site_key" {
+  name  = "/${var.environment_name}/${var.service_name}/recaptcha-site-key"
   overwrite = false
   type      = "SecureString"
   value     = "dummy"
@@ -344,6 +345,7 @@ resource "aws_ssm_parameter" "recaptcha_site_key" {
 }
 
 resource "aws_ssm_parameter" "recaptcha_secret_key" {
+  name  = "/${var.environment_name}/${var.service_name}/recaptcha-secret-key"
   overwrite = false
   type      = "SecureString"
   value     = "dummy"
