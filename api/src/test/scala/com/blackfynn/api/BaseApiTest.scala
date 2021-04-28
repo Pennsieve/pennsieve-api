@@ -209,7 +209,7 @@ trait ApiSuite
     tokenManager = insecureContainer.tokenManager
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
-    1 to 5 foreach { orgId =>
+    1 to 3 foreach { orgId =>
       insecureContainer.db.run(createSchema(orgId.toString)).await
       migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
     }
@@ -274,8 +274,6 @@ trait ApiSuite
   var sandboxUserContainer: SecureAPIContainer = _
 
   var defaultDatasetStatus: DatasetStatus = _
-
-  var sandboxUserDatasetStatus: DatasetStatus = _
 
   val me = User(
     NodeCodes.generateId(NodeCodes.userCode),
@@ -342,9 +340,6 @@ trait ApiSuite
     insecureContainer.db.run(clearOrganizationSchema(1)).await
     insecureContainer.db.run(clearOrganizationSchema(2)).await
     insecureContainer.db.run(clearOrganizationSchema(3)).await
-    insecureContainer.db
-      .run(clearOrganizationSchema(sandboxOrganization.id))
-      .await
   }
 
   override def beforeEach(): Unit = {
@@ -519,12 +514,6 @@ trait ApiSuite
 
     sandboxUserContainer =
       secureContainerBuilder(sandboxUser, sandboxOrganization)
-
-    sandboxUserContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value
-
-    sandboxUserDatasetStatus = sandboxUserContainer.db
-      .run(sandboxUserContainer.datasetStatusManager.getDefaultStatus)
-      .await
 
     loggedInSandboxUserJwt = Authenticator.createUserToken(
       loggedInUser,
