@@ -1402,6 +1402,8 @@ class OrganizationsController(
       val result: EitherT[Future, ActionResult, DatasetStatusDTO] = for {
         secureContainer <- getSecureContainer
 
+        _ <- assertNotDemoOrganization(secureContainer)
+
         organizationId <- paramT[String]("organizationId")
         body <- extractOrErrorT[DatasetStatusRequest](parsedBody)
 

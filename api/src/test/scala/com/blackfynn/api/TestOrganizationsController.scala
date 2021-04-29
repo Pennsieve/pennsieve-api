@@ -920,6 +920,21 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     )
   }
 
+  test(
+    "demo users should not be able to create dataset options for the demo organization"
+  ) {
+    val createRequest =
+      write(DatasetStatusRequest("Ready for Publication", "#71747C"))
+
+    postJson(
+      s"/${sandboxOrganization.nodeId}/dataset-status",
+      createRequest,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("validate dataset status options color") {
 
     val request =
