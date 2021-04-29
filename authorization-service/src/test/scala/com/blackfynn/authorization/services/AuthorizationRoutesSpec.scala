@@ -655,11 +655,8 @@ class AuthorizationRoutesSpec
     }
 
     "return a 401 Unauthorized response when an expired JWT is provided" in {
-
-      val cognitoId = createCognitoUser(testDIContainer, nonAdmin)
-
       val expiredJwt = cognitoJwkProvider.generateCognitoToken(
-        cognitoId,
+        nonAdmin.cognitoId.get,
         cognitoConfig.userPool,
         issuedAt = Instant.now.minusSeconds(60 * 70),
         validUntil = Instant.now.minusSeconds(60 * 10)

@@ -154,7 +154,7 @@ object Processor {
               }
 
           // @formatter:off
-          messages.filter(container.deduplicate) ~> parser.in
+          messages ~> parser.in
 
                  failedToParseJob ~> logError ~> merge
           parsedJob ~> runJob ~> handleResult ~> merge ~> kill ~> ack

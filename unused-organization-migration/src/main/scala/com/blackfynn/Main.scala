@@ -99,9 +99,14 @@ class UnusedOrganizationMigrationContainer(
       OrganizationsMapper.filter(_.id === organization.id).delete
 
     // Remove the org for any users that have `organization` as the preferred org:
-    val updateUserPreferredOrg = (for {
-      u <- UserMapper if u.preferredOrganizationId === organization.id
-    } yield u.preferredOrganizationId).update(None)
+    val updateUserPreferredOrg = sqlu"""
+       UPDATE pennsieve.users
+       SET preferred_org_id = (
+         SELECT organization_id
+         FROM pennsieve.organization_user
+         WHERE user_id = pennsieve.users.id
+         LIMIT 1
+       ) WHERE preferred_org_id = ${organization.id}"""
 
     val getTableNames: Future[Seq[String]] =
       db.run(

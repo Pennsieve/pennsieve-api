@@ -22,7 +22,6 @@ import com.pennsieve.traits.PostgresProfile.api._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.model.StatusCodes.{ InternalServerError, OK }
 import com.pennsieve.akka.http._
-import com.redis.RedisClientPool
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import io.circe.java8.time._
 import io.circe.syntax._
@@ -36,29 +35,20 @@ class HealthServiceSpec
     with BeforeAndAfterAll
     with ScalatestRouteTest
     with PersistantTestContainers
-    with RedisDockerContainer
     with PostgresDockerContainer
     with S3DockerContainer {
 
   var db: Database = _
-  var redisPool: RedisClientPool = _
   var s3: S3 = _
 
   override def afterStart(): Unit = {
     db = postgresContainer.database.forURL
-
-    redisPool = new RedisClientPool(
-      redisContainer.containerIpAddress,
-      redisContainer.mappedPort
-    )
-
     s3 = new S3(s3Container.s3Client)
     s3.createBucket("my-bucket").right.get
   }
 
   override def afterAll(): Unit = {
     db.close()
-    redisPool.close
     super.afterAll()
   }
 
@@ -68,8 +58,7 @@ class HealthServiceSpec
         val health = new HealthCheckService(
           Map(
             "postgres" -> HealthCheck.postgresHealthCheck(db),
-            "s3" -> HealthCheck.s3HealthCheck(s3, List("my-bucket")),
-            "redis" -> HealthCheck.redisHealthCheck(redisPool)
+            "s3" -> HealthCheck.s3HealthCheck(s3, List("my-bucket"))
           )
         )
         Get("/health") ~> health.routes ~> check {
@@ -78,7 +67,6 @@ class HealthServiceSpec
           health.healthy shouldBe true
           health.serviceHealthy("postgres") shouldBe true
           health.serviceHealthy("s3") shouldBe true
-          health.serviceHealthy("redis") shouldBe true
         }
       }
 

@@ -121,7 +121,6 @@ class DeleteJobSpec
     ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
-      .withFallback(redisContainer.config)
       .withFallback(s3Container.config)
   }
 

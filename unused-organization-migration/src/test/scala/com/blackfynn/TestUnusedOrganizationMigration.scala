@@ -46,8 +46,6 @@ class TestUnusedOrganizationMigration
   ): UnusedOrganizationMigrationContainer =
     new UnusedOrganizationMigrationContainer(config, dryRun = false)
 
-  var otherUser: User = _
-
   def setPreferredOrg(db: Database, user: User, organization: Organization) {
     val updateUserPreferredOrg = (for {
       u <- UserMapper if u.id === user.id
@@ -57,12 +55,24 @@ class TestUnusedOrganizationMigration
 
   "migration" should "delete organizations and associated data" in {
     val migration = createMigrationContainer(config)
-    otherUser = createUser()
+
+    // User is in organization 1 & 2
+    val otherUser = createUser()
     setPreferredOrg(
       migration.db,
       user = otherUser,
       organization = testOrganization2
     )
+
+    // Only in organization 2
+    val thirdUser =
+      createUser(organization = Some(testOrganization2), datasets = List())
+    setPreferredOrg(
+      migration.db,
+      user = thirdUser,
+      organization = testOrganization2
+    )
+
     // Preferred org should be set:
     userManager
       .get(otherUser.id)
@@ -73,24 +83,26 @@ class TestUnusedOrganizationMigration
 
     migration.scanAndDeleteAll()
 
-    // Preferred org should be gone:
+    // Preferred org should fall back to testOrganization
     userManager
       .get(otherUser.id)
       .await
       .right
       .get
+      .preferredOrganizationId shouldBe (Some(testOrganization.id))
+
+    // If not part of other org, set to NULL
+    userManager
+      .get(thirdUser.id)
+      .await
+      .right
+      .get
       .preferredOrganizationId shouldBe (None)
 
+    // Organization should be gone
     organizationManager().get(testOrganization2.id).await.isLeft shouldBe true
 
-    // But testOrganization1 should still exist:
-    userManager
-      .get(otherUser.id)
-      .await
-      .right
-      .get
-      .preferredOrganizationId shouldBe (None)
-
+    // Other organization should be untouched
     organizationManager().get(testOrganization.id).await.isRight shouldBe true
 
     // The dataset associated with testOrganization1 should still exist:

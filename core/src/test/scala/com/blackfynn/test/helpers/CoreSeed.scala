@@ -86,7 +86,8 @@ trait CoreSeed[
           credential = "fake-credentials",
           color = "",
           url = "",
-          isSuperAdmin = true
+          isSuperAdmin = true,
+          cognitoId = Some(CognitoId.UserPoolId.randomId())
         )
       )
       .await
@@ -119,7 +120,8 @@ trait CoreSeed[
           color = "",
           url = "",
           isSuperAdmin = false,
-          preferredOrganizationId = Some(organizationTwo.id)
+          preferredOrganizationId = Some(organizationTwo.id),
+          cognitoId = Some(CognitoId.UserPoolId.randomId())
         )
       )
       .await
@@ -141,7 +143,8 @@ trait CoreSeed[
           credential = "fake-credentials",
           color = "",
           url = "",
-          isSuperAdmin = true
+          isSuperAdmin = true,
+          cognitoId = Some(CognitoId.UserPoolId.randomId())
         )
       )
       .await
