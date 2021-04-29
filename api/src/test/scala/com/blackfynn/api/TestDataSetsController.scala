@@ -20,17 +20,19 @@ import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
-
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import cats.implicits._
 import com.pennsieve.auth.middleware.{ Jwt, OrganizationId, UserClaim, UserId }
 import com.pennsieve.aws.email.LoggingEmailer
 import com.pennsieve.clients.{ MockDatasetAssetClient, MockModelServiceClient }
+import com.pennsieve.db.TeamsMapper
+import com.pennsieve.db.OrganizationTeamMapper
 import com.pennsieve.discover.client.definitions.DatasetPublishStatus
 import com.pennsieve.doi.client.definitions._
 import com.pennsieve.doi.models.{ DoiDTO, DoiState }
 import com.pennsieve.dtos.SimpleFileDTO.TypeToSimpleFile
 import com.pennsieve.dtos._
+import com.pennsieve.helpers.APIContainers.SecureAPIContainer
 import com.pennsieve.helpers._
 import com.pennsieve.managers.{ CollaboratorChanges, TeamManager }
 import com.pennsieve.models.FileObjectType.Source
@@ -57,8 +59,8 @@ import org.scalatest.EitherValues._
 import org.scalatest.OptionValues._
 import org.scalatra.test.{ BytesPart, FilePart }
 import shapeless.syntax.inject._
-import java.time.ZonedDateTime
 
+import java.time.ZonedDateTime
 import scala.concurrent.Future
 import scala.concurrent.duration.{ DurationDouble, FiniteDuration }
 
@@ -4478,10 +4480,12 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   def initializePublicationTest(
-    assignPublisherUserDirectlyToDataset: Boolean = true
+    assignPublisherUserDirectlyToDataset: Boolean = true,
+    container: SecureAPIContainer = secureContainer,
+    user: User = loggedInUser
   ): Dataset = {
-    val dataset = createDataSet("My Dataset")
-    addBannerAndReadme(dataset)
+    val dataset = createDataSet("My Dataset", container = container)
+    addBannerAndReadme(dataset, container = container)
 
     val pkg =
       createPackage(dataset, "some-package", `type` = CSV)
@@ -4498,22 +4502,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       refreshToken = "64918a80-dd0c-dd0c-dd0c-dd0c64918a80"
     )
 
-    val updatedUser = loggedInUser.copy(orcidAuthorization = Some(orcidAuth))
-    secureContainer.userManager.update(updatedUser).await
+    val updatedUser = user.copy(orcidAuthorization = Some(orcidAuth))
+    container.userManager.update(updatedUser).await
 
-    val publisherTeam = secureContainer.organizationManager
-      .getPublisherTeam(secureContainer.organization)
-      .await
-      .right
-      .value
-    secureContainer.teamManager
+    var publisherTeam = container.organizationManager
+      .getPublisherTeam(container.organization)
+      .await match {
+      case Right(value) => value
+      case Left(err) => throw err
+    }
+
+    container.teamManager
       .addUser(publisherTeam._1, colleagueUser, DBPermission.Administer)
-      .await
-      .right
-      .value
+      .await match {
+      case Right(value) => value
+      case Left(err) => throw err
+    }
 
     if (assignPublisherUserDirectlyToDataset) {
-      secureContainer.datasetManager.addUserCollaborator(
+      container.datasetManager.addUserCollaborator(
         dataset,
         colleagueUser,
         Role.Manager
@@ -4825,6 +4832,41 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 423
     }
 
+  }
+
+  test(
+    "demo org - 2 step publishing - publication - request is rejected for demo org"
+  ) {
+    val teamNodeId = NodeCodes.generateId(NodeCodes.teamCode)
+    val team = Team(teamNodeId, SystemTeamType.Publishers.entryName.capitalize)
+
+    val createTransaction: DBIO[Organization] = (
+      for {
+        teamId <- TeamsMapper returning TeamsMapper.map(_.id) += team
+        _ <- OrganizationTeamMapper += OrganizationTeam(
+          sandboxOrganization.id,
+          teamId,
+          DBPermission.Administer,
+          Some(SystemTeamType.Publishers)
+        )
+      } yield sandboxOrganization.copy()
+    ).transactionally
+
+    implicit val dataset: Dataset = {
+      initializePublicationTest(
+        assignPublisherUserDirectlyToDataset = false,
+        container = sandboxUserContainer,
+        user = sandboxUser
+      )
+    }
+
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=publication&comments=hello%20world",
+      "",
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 403
+    }
   }
 
   test(
