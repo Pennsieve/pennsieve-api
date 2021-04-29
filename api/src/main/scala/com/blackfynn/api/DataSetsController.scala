@@ -51,6 +51,7 @@ import com.pennsieve.dtos.Builders._
 import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
+  SecureAPIContainer,
   SecureContainerBuilderType
 }
 import com.pennsieve.helpers.Param
@@ -1420,16 +1421,7 @@ class DataSetsController(
           )(dataset)
           .coreErrorToActionResult
 
-        // Demo / sandbox users are a special case. They should not
-        // be able to share datasets under any circumstances.
-
-        demoOrganization <- secureContainer.organizationManager
-          .isDemo(secureContainer.organization.id)
-          .coreErrorToActionResult
-
-        _ <- checkOrErrorT(!demoOrganization)(
-          InvalidAction("Demo user cannot share datasets."): CoreError
-        ).coreErrorToActionResult
+        _ <- assertNotDemoOrganization(secureContainer)
 
         results <- secureContainer.datasetManager
           .addCollaborators(dataset, reqIds)
@@ -1828,6 +1820,9 @@ class DataSetsController(
         for {
           secureContainer <- getSecureContainer
           datasetId <- paramT[String]("id")
+
+          _ <- assertNotDemoOrganization(secureContainer)
+
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
             .orNotFound
@@ -2002,16 +1997,7 @@ class DataSetsController(
         teamDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
         secureContainer <- getSecureContainer
 
-        // Demo / sandbox users are a special case. They should not
-        // be able to share datasets under any circumstances.
-
-        demoOrganization <- secureContainer.organizationManager
-          .isDemo(secureContainer.organization.id)
-          .coreErrorToActionResult
-
-        temp <- checkOrErrorT(!demoOrganization)(
-          InvalidAction("Demo user cannot share datasets."): CoreError
-        ).coreErrorToActionResult
+        _ <- assertNotDemoOrganization(secureContainer)
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
@@ -2173,16 +2159,7 @@ class DataSetsController(
         )
         secureContainer <- getSecureContainer
 
-        // Demo / sandbox users are a special case. They should not
-        // be able to share datasets under any circumstances.
-
-        demoOrganization <- secureContainer.organizationManager
-          .isDemo(secureContainer.organization.id)
-          .coreErrorToActionResult
-
-        _ <- checkOrErrorT(!demoOrganization)(
-          InvalidAction("Demo user cannot share datasets."): CoreError
-        ).coreErrorToActionResult
+        _ <- assertNotDemoOrganization(secureContainer)
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
@@ -4479,4 +4456,20 @@ class DataSetsController(
     }
   }
 
+  /**
+    * Demo / sandbox users are a special case. They should not be able to share
+    * datasets under any circumstances.
+    */
+  private def assertNotDemoOrganization(
+    secureContainer: SecureAPIContainer
+  ): EitherT[Future, ActionResult, Unit] =
+    for {
+      demoOrganization <- secureContainer.organizationManager
+        .isDemo(secureContainer.organization.id)
+        .coreErrorToActionResult
+
+      _ <- checkOrErrorT(!demoOrganization)(
+        InvalidAction("Demo user cannot share datasets."): CoreError
+      ).coreErrorToActionResult
+    } yield ()
 }
