@@ -1227,6 +1227,23 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user cannot create data use agreements for organization") {
+
+    postJson(
+      s"/${sandboxOrganization.nodeId}/data-use-agreements",
+      write(
+        CreateDataUseAgreementRequest(
+          name = "New data use agreement",
+          body = "Lots of legal text",
+          description = Some("Description")
+        )
+      ),
+      headers = authorizationHeader(sandboxUserJwt)
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("get data use agreements") {
 
     val agreement1 = secureContainer.dataUseAgreementManager
