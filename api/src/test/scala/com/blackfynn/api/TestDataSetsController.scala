@@ -962,6 +962,22 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user should not be able add a collaborator") {
+    val ds1 = createDataSet("test-ds1", container = sandboxUserContainer)
+    addBannerAndReadme(ds1, container = sandboxUserContainer)
+
+    val shareDatasetRequest =
+      write(CollaboratorRoleDTO(sandboxUser.nodeId, Role.Owner))
+
+    putJson(
+      s"/${ds1.nodeId}/collaborators/users",
+      shareDatasetRequest,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test(
     "get all data sets for the logged in user for a text search - paginated endpoint"
   ) {
@@ -2120,6 +2136,19 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(externalJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
+    }
+  }
+
+  test("demo organization user cannot invite collaborators") {
+    val ds = createDataSet("Foo", container = sandboxUserContainer)
+
+    val ids = write(List(colleagueUser.nodeId))
+    putJson(
+      s"/${ds.nodeId}/collaborators",
+      ids,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
     }
   }
 
@@ -3296,6 +3325,22 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test(
+    "demo organization users can not share datasets within the demo organization"
+  ) {
+    val myDS = createDataSet("My DataSet", container = sandboxUserContainer)
+
+    // reject attempt to share with org
+    val request = write(OrganizationRoleDTO(Some(Role.Viewer)))
+    putJson(
+      s"/${myDS.nodeId}/collaborators/organizations",
+      request,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("get role of shared organization") {
     // create
     val myDS = createDataSet("My DataSet")
@@ -3515,6 +3560,26 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(externalJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
+    }
+  }
+
+  test("demo organization user cannot share dataset with teams") {
+    val myDS = createDataSet("My DataSet", container = sandboxUserContainer)
+    val myTeam = createTeam(
+      "My Team",
+      sandboxUser,
+      sandboxOrganization,
+      sandboxUserContainer
+    )
+
+    val ids = write(CollaboratorRoleDTO(myTeam.nodeId, Role.Editor))
+
+    putJson(
+      s"/${myDS.nodeId}/collaborators/teams",
+      ids,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
     }
   }
 
