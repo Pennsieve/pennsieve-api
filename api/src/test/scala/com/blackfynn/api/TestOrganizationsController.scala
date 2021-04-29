@@ -166,6 +166,19 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user should not be able to update the demo organization") {
+    val createReq =
+      write(UpdateOrganization(name = Some("Boom"), subscription = None))
+
+    putJson(
+      s"/${sandboxOrganization.nodeId}",
+      createReq,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("update an organizations subscription requires Owner permission") {
     val updateReq = write(
       UpdateOrganization(
