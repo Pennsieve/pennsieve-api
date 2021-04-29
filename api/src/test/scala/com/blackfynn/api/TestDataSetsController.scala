@@ -962,6 +962,22 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user should not be able add a collaborator") {
+    val ds1 = createDataSet("test-ds1", container = sandboxUserContainer)
+    addBannerAndReadme(ds1, container = sandboxUserContainer)
+
+    val shareDatasetRequest =
+      write(CollaboratorRoleDTO(sandboxUser.nodeId, Role.Owner))
+
+    putJson(
+      s"/${ds1.nodeId}/collaborators/users",
+      shareDatasetRequest,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test(
     "get all data sets for the logged in user for a text search - paginated endpoint"
   ) {

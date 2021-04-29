@@ -1863,6 +1863,9 @@ class DataSetsController(
         userDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
 
         secureContainer <- getSecureContainer
+
+        _ <- assertNotDemoOrganization(secureContainer)
+
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
           .orNotFound
