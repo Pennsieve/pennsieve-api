@@ -16,15 +16,13 @@
 
 package com.pennsieve.managers
 
+import cats.data._
+import cats.implicits._
 import com.pennsieve.core.utilities.FutureEitherHelpers.assert
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.core.utilities.{
-  checkAndNormalizeInitial,
-  checkOrErrorT,
-  FutureEitherHelpers
-}
-import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.core.utilities.checkAndNormalizeInitial
 import com.pennsieve.db._
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
 import com.pennsieve.models.{
   CognitoId,
   DBPermission,
@@ -36,11 +34,7 @@ import com.pennsieve.models.{
   User,
   UserInvite
 }
-import cats.data._
-import cats.implicits._
-import com.pennsieve
-import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
-import java.util.UUID
+import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random
@@ -227,6 +221,55 @@ class UserManager(db: Database) {
         .sequence
 
       _ <- invites.traverse(invite => userInviteManager.delete(invite))
+    } yield user
+
+  /**
+    * Creates a User after user has signed up for the platform via the challenge-response self-service endpoint.
+    *
+    * @param inviteToken
+    * @param firstName
+    * @param lastName
+    * @param title
+    * @param organizationManager
+    * @return
+    */
+  def createFromSelfServiceSignUp(
+    cognitoId: CognitoId.UserPoolId,
+    email: String,
+    firstName: String,
+    middleInitial: Option[String],
+    lastName: String,
+    degree: Option[Degree],
+    title: String
+  )(implicit
+    organizationManager: OrganizationManager,
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    for {
+      middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
+
+      sandboxOrganization <- organizationManager.getBySlug("__sandbox__")
+
+      user <- create(
+        User(
+          NodeCodes.generateId(NodeCodes.userCode),
+          email.trim.toLowerCase,
+          firstName,
+          middleInit,
+          lastName,
+          degree,
+          credential = title,
+          cognitoId = Some(cognitoId),
+          preferredOrganizationId = Some(sandboxOrganization.id)
+        )
+      )
+
+      _ <- organizationManager.addUser(
+        sandboxOrganization,
+        user,
+        DBPermission.Write
+      )
+
     } yield user
 
   def create(

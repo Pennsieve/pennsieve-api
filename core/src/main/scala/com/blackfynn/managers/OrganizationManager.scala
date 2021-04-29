@@ -931,4 +931,14 @@ class SecureOrganizationManager(val db: Database, val actor: User)
 
     emailer.sendEmail(email).leftMap(ThrowableError(_)).map(_ => ())
   }
+
+  /**
+    * Checks if the given organization ID is the special demo organization.
+    */
+  def isDemo(
+    id: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] =
+    hasFeatureFlagEnabled(id, Feature.SandboxOrgFeature)
 }

@@ -16,7 +16,8 @@
 
 package com.pennsieve.api
 
-import com.pennsieve.models.{ Degree, PackageType }
+import akka.util.Helpers.Requiring
+import com.pennsieve.models.{ Degree, Organization, PackageType }
 import com.pennsieve.domain.PredicateError
 import com.pennsieve.dtos.ContributorDTO
 import com.pennsieve.helpers._
@@ -24,7 +25,6 @@ import io.circe.{ Decoder, Encoder }
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import cats.implicits._
-
 import org.json4s.jackson.Serialization.write
 import com.pennsieve.models.{
   DBPermission,
@@ -186,6 +186,29 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       contributors(0).lastName should equal("last")
       contributors(0).email should equal("test@test.com")
       contributors(0).id should equal(1)
+    }
+  }
+
+  test("can't get any contributors if the current org is the demo org") {
+
+    val b1 =
+      write(CreateContributorRequest("test", "testerson", "test@gmail.com"))
+
+    postJson(s"/", body = b1, headers = authorizationHeader(sandboxUserJwt)) {
+      status should equal(201)
+    }
+
+    val b2 =
+      write(CreateContributorRequest("test2", "testerson2", "test2@gmail.com"))
+
+    postJson(s"/", body = b2, headers = authorizationHeader(sandboxUserJwt)) {
+      status should equal(201)
+    }
+
+    get(s"/", headers = authorizationHeader(sandboxUserJwt)) {
+      status should equal(200)
+      val contributors = parsedBody.extract[List[ContributorDTO]]
+      contributors.length should equal(0)
     }
   }
 

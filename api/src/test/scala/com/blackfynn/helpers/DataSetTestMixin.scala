@@ -16,18 +16,13 @@
 
 package com.pennsieve.helpers
 
-import java.time.ZonedDateTime
-
-import cats.data.EitherT
 import com.pennsieve.api.ApiSuite
 import com.pennsieve.models.{
   Collection,
-  Contributor,
   DataUseAgreement,
   Dataset,
   DatasetAsset,
   DatasetState,
-  DefaultDatasetStatus,
   Degree,
   License,
   NodeCodes,
@@ -42,18 +37,13 @@ import com.pennsieve.models.{
 }
 import com.pennsieve.clients.DatasetAssetClient
 import org.scalatest.EitherValues._
-import io.circe.syntax._
-import com.pennsieve.test.helpers.TestDatabase
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ ExecutionContext }
 import com.pennsieve.test.helpers.EitherValue._
-import cats.implicits._
-import com.pennsieve.models.PublishStatus.PublishSucceeded
-import java.io.ByteArrayInputStream
-import java.util.UUID
 
+import java.io.ByteArrayInputStream
 import com.pennsieve.dtos._
-import com.pennsieve.domain.CoreError
+import com.pennsieve.helpers.APIContainers.SecureAPIContainer
 import com.pennsieve.models.DBPermission.Delete
 
 trait DataSetTestMixin { self: ApiSuite =>
@@ -66,11 +56,12 @@ trait DataSetTestMixin { self: ApiSuite =>
     automaticallyProcessPackages: Boolean = false,
     license: Option[License] = Some(License.`Apache 2.0`),
     tags: List[String] = List("tag"),
-    dataUseAgreement: Option[DataUseAgreement] = None
+    dataUseAgreement: Option[DataUseAgreement] = None,
+    container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext
   ): Dataset =
-    secureContainer.datasetManager
+    container.datasetManager
       .create(
         name,
         description,
@@ -81,9 +72,10 @@ trait DataSetTestMixin { self: ApiSuite =>
         tags = tags,
         dataUseAgreement = dataUseAgreement
       )
-      .await
-      .right
-      .value
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
 
   def createDataUseAgreement(
     name: String,
@@ -157,24 +149,27 @@ trait DataSetTestMixin { self: ApiSuite =>
   def createAsset(
     dataset: Dataset,
     name: String = "my-pic.jpg",
-    bucket: String = "test-dataset-asset-bucket"
+    bucket: String = "test-dataset-asset-bucket",
+    container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext
   ): DatasetAsset =
-    secureContainer.db
+    container.db
       .run(
-        secureContainer.datasetAssetsManager
+        container.datasetAssetsManager
           .createQuery(name, dataset, bucket)
       )
       .await
 
   def addBannerAndReadme(
-    dataset: Dataset
+    dataset: Dataset,
+    container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext,
     datasetAssetClient: DatasetAssetClient
   ) = {
-    val banner = createAsset(dataset, name = "banner.jpg")
+    val banner =
+      createAsset(dataset, name = "banner.jpg", container = container)
     val bannerData = "binary content"
     datasetAssetClient
       .uploadAsset(
@@ -186,7 +181,7 @@ trait DataSetTestMixin { self: ApiSuite =>
       .right
       .get
 
-    val readme = createAsset(dataset, name = "readme.md")
+    val readme = createAsset(dataset, name = "readme.md", container = container)
     val readmeData = "readme description"
     datasetAssetClient
       .uploadAsset(
@@ -198,7 +193,7 @@ trait DataSetTestMixin { self: ApiSuite =>
       .right
       .get
 
-    secureContainer.datasetManager
+    container.datasetManager
       .update(
         dataset.copy(bannerId = Some(banner.id), readmeId = Some(readme.id))
       )

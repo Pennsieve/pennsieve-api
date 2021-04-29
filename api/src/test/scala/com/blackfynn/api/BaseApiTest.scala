@@ -27,6 +27,7 @@ import com.pennsieve.aws.queue.LocalSQSContainer
 import com.pennsieve.aws.s3.LocalS3Container
 import com.pennsieve.models.{
   CognitoId,
+  DBPermission,
   Dataset,
   DatasetStatus,
   Degree,
@@ -67,10 +68,10 @@ import com.pennsieve.traits.TimeSeriesDBContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import enumeratum._
 import io.circe.syntax._
+
 import java.net.URI
 import java.time.{ Duration, Instant, ZonedDateTime }
 import java.util.UUID
-
 import com.pennsieve.audit.middleware.AuditLogger
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import org.json4s.{ DefaultFormats, Formats, JValue }
@@ -83,6 +84,7 @@ import org.scalatra.test.HttpComponentsClientResponse
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.{ FiniteDuration, _ }
 import scala.util.Random
+import scala.util.Either
 import shapeless.syntax.inject._
 
 trait ApiSuite
@@ -207,7 +209,11 @@ trait ApiSuite
     tokenManager = insecureContainer.tokenManager
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
-    1 to 3 foreach { orgId =>
+
+    // Interestingly this must be "5" as the sandbox organization in some
+    // pass throughs gets created twice; once on the migration and once again
+    // within the beforeEach of this loop. TODO on figuring out a better approach.
+    1 to 5 foreach { orgId =>
       insecureContainer.db.run(createSchema(orgId.toString)).await
       migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
     }
@@ -236,11 +242,13 @@ trait ApiSuite
   var colleagueUser: User = _
   var externalUser: User = _
   var superAdmin: User = _
+  var sandboxUser: User = _
 
   var pennsieve: Organization = _
   var loggedInOrganization: Organization = _
   var loggedInOrganizationNoFeatures: Organization = _
   var externalOrganization: Organization = _
+  var sandboxOrganization: Organization = _
 
   var loggedInJwt: String = _
 
@@ -251,6 +259,10 @@ trait ApiSuite
   var externalJwt: String = _
 
   var adminJwt: String = _
+
+  var sandboxUserJwt: String = _
+
+  var loggedInSandboxUserJwt: String = _
 
   var apiToken: Token = _
   var secret: Secret = _
@@ -263,6 +275,7 @@ trait ApiSuite
 
   var secureContainer: SecureAPIContainer = _
   var secureDataSetManager: DatasetManager = _
+  var sandboxUserContainer: SecureAPIContainer = _
 
   var defaultDatasetStatus: DatasetStatus = _
 
@@ -454,6 +467,62 @@ trait ApiSuite
       .await
       .right
       .value
+
+    // This will check to see if an organization of sandbox already exists, and if so, uses that
+    // otherwise generates an org w/ the feature flag
+    sandboxOrganization = organizationManager
+      .getBySlug("__sandbox__")
+      .value
+      .await match {
+      case Right(org) => org
+      case _ => {
+        createOrganization(
+          "__sandbox__",
+          "__sandbox__",
+          features = Set(Feature.SandboxOrgFeature)
+        )
+      }
+    }
+
+    val sandboxUserDefinition = User(
+      NodeCodes.generateId(NodeCodes.userCode),
+      "sandboxtest@test.com",
+      "first",
+      Some("M"),
+      "last",
+      Some(Degree.MS),
+      "cred",
+      "",
+      "http://test.com",
+      0,
+      false,
+      Some(sandboxOrganization.id)
+    )
+
+    sandboxUser = userManager.create(sandboxUserDefinition).await.value
+
+    organizationManager
+      .addUser(sandboxOrganization, sandboxUser, DBPermission.Write)
+      .await
+      .value
+
+    organizationManager
+      .addUser(sandboxOrganization, loggedInUser, DBPermission.Write)
+      .await
+      .value
+
+    sandboxUserJwt = Authenticator.createUserToken(
+      sandboxUser,
+      sandboxOrganization
+    )(jwtConfig, insecureContainer.db, ec)
+
+    sandboxUserContainer =
+      secureContainerBuilder(sandboxUser, sandboxOrganization)
+
+    loggedInSandboxUserJwt = Authenticator.createUserToken(
+      loggedInUser,
+      sandboxOrganization
+    )(jwtConfig, insecureContainer.db, ec)
   }
 
   def createOrganization(

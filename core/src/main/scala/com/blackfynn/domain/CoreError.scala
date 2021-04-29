@@ -101,6 +101,10 @@ case object MissingTraceId extends CoreError {
   final override def getMessage: String = s"Missing request trace ID"
 }
 
+case object InvalidChallengeResponseError extends CoreError {
+  final override def getMessage: String = s"Invalid challenge response"
+}
+
 case class PredicateError(message: String) extends CoreError {
   final override def getMessage: String = message
 }

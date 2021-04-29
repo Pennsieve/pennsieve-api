@@ -16,19 +16,20 @@
 
 package com.pennsieve.api
 
-import com.pennsieve.aws.cognito._
-import com.pennsieve.aws.email.LoggingEmailer
-import com.pennsieve.models.DBPermission
-import com.pennsieve.web.Settings
-import com.pennsieve.aws.cognito.MockCognito
+import com.blackfynn.clients.{ AntiSpamChallengeClient }
+import com.pennsieve.aws.cognito.{ MockCognito, _ }
+import com.pennsieve.models.{ DBPermission, Organization }
+import org.json4s.jackson.Serialization.write
+import org.scalatest.EitherValues._
 import software.amazon.awssdk.regions.Region
 
 import java.time.Duration
+import scala.concurrent.Future
 
-import org.json4s.jackson.JsonMethods._
-import org.json4s.jackson.Serialization.write
-import org.scalatest.EitherValues._
-import org.scalatest._
+class MockRecaptchaClient extends AntiSpamChallengeClient {
+  override def verifyToken(responseToken: String): Future[Boolean] =
+    Future.successful(true)
+}
 
 class TestAccountController extends BaseApiTest {
 
@@ -38,6 +39,9 @@ class TestAccountController extends BaseApiTest {
     CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
   )
 
+  val recaptchaClient: AntiSpamChallengeClient =
+    new MockRecaptchaClient()
+
   override def afterStart(): Unit = {
     super.afterStart()
 
@@ -45,6 +49,8 @@ class TestAccountController extends BaseApiTest {
       new AccountController(
         insecureContainer,
         cognitoConfig,
+        new MockCognito(),
+        recaptchaClient,
         system.dispatcher
       ),
       "/*"
@@ -118,7 +124,25 @@ class TestAccountController extends BaseApiTest {
     postJson("/", write(badRequest)) {
       status should be(400)
     }
-
   }
 
+  // TODO update this
+  test("create new account without an organization") {
+    val mockCognito = new MockCognito()
+
+    val newUserRequest = CreateUserWithRecaptchaRequest(
+      firstName = "test",
+      middleInitial = None,
+      lastName = "tester",
+      degree = None,
+      title = Some(""),
+      email = "test@gmail.com",
+      recaptchaToken = "foooo"
+    )
+
+    postJson("/sign-up", write(newUserRequest)) {
+      status should be(200)
+      assert(body.contains(sandboxOrganization.nodeId))
+    }
+  }
 }
