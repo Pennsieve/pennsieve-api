@@ -23,8 +23,6 @@ package com.pennsieve.test
   * across multiple test suites by the PersistantDockerContainers trait.
   */
 object DockerContainers {
-  val redisContainer: RedisDockerContainerImpl = new RedisDockerContainerImpl
-
   val postgresContainer: PostgresContainerImpl =
     new PostgresDockerContainerImpl
 

@@ -74,7 +74,8 @@ timestamps {
 
                 def containers = services + [
                     'migrations',
-                    'organization-storage-migration'
+                    'organization-storage-migration',
+                    'unused-organization-migration'
                 ]
 
                 stage('Publish Containers') {

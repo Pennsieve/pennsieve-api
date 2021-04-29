@@ -168,6 +168,6 @@ class ModelServiceClient(client: HttpClient, host: String, port: Int)
   ): Either[CoreError, DatasetDeletionSummary] =
     delete[B, DatasetDeletionSummary](
       token,
-      s"$host:$port/internal/organizations/$organizationId/datasets/$datasetId?batchSize=1000&duration=2000"
+      s"$host:$port/internal/organizations/$organizationId/datasets/$datasetId?batchSize=1000&duration=5000"
     )
 }

@@ -36,6 +36,7 @@ final case class User(
   preferredOrganizationId: Option[Int] = None,
   status: Boolean = true,
   orcidAuthorization: Option[OrcidAuthorization] = None,
+  cognitoId: Option[CognitoId.UserPoolId] = None,
   updatedAt: ZonedDateTime = ZonedDateTime.now(),
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0

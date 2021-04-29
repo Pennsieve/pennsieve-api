@@ -130,9 +130,9 @@ class StorageManager(val db: Database, val organization: Organization)
   /**
     * Get the current storage size for multiple entities of the same type.
     *
-    * TODO: this is a backwards-compatible method to match Redis storage. Remove
-    * it and get storage directly from the database rows once Redis storage is
-    * removed.
+    * TODO: this is a backwards-compatible method to match the old Redis
+    * storage. This can now be refactored to get storage directly by joining the
+    * storage tables on the primary organization / dataset / package tables.
     */
   override def getStorage(
     storageType: StorageAggregation,

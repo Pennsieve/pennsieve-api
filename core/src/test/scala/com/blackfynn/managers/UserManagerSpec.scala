@@ -19,11 +19,12 @@ package com.pennsieve.managers
 import java.time.Duration
 
 import com.pennsieve.aws.cognito.MockCognito
-import com.pennsieve.db.CognitoUserMapper
+import com.pennsieve.db.UserMapper
 import com.pennsieve.domain.PredicateError
 
 import com.pennsieve.models._
 import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.traits.PostgresProfile.api._
 import org.scalatest.EitherValues._
 import org.scalatest.Matchers._
 
@@ -105,9 +106,7 @@ class UserManagerSpec extends BaseManagerSpec {
       userManager.getOrganizations(user).await.value.contains(testOrganization)
     )
 
-    assert(
-      userManager.getByCognitoId(userInvite.cognitoId).await.value._1 == user
-    )
+    assert(userManager.getByCognitoId(userInvite.cognitoId).await.value == user)
   }
 
   "new user invites" should "not be created if the email already belongs to the organization" in {}
@@ -180,31 +179,21 @@ class UserManagerSpec extends BaseManagerSpec {
     allOrgIds should contain theSameElementsAs createdOrgIds
   }
 
-  // TODO: create this as part of createUser?
-
-  def createCognitoUser(user: User): CognitoId.UserPoolId =
-    database
-      .run(CognitoUserMapper.create(CognitoId.UserPoolId.randomId(), user))
-      .await
-      .cognitoId
-
   "getByCognitoId" should "get the correct user" in {
 
     val alice = createUser(email = "alice@pennsieve.net")
     val bob = createUser(email = "bob@pennsieve.net")
     val charlie = createUser(email = "charlie@pennsieve.net")
 
-    val aliceCognitoId = createCognitoUser(alice)
-    val bobCognitoId = createCognitoUser(bob)
-    val charlieCognitoId = createCognitoUser(charlie)
-
-    userManager.getByCognitoId(aliceCognitoId).await.map(_._1) shouldBe Right(
-      alice
-    )
-    userManager.getByCognitoId(bobCognitoId).await.map(_._1) shouldBe Right(bob)
-    userManager.getByCognitoId(charlieCognitoId).await.map(_._1) shouldBe Right(
-      charlie
-    )
+    userManager
+      .getByCognitoId(alice.cognitoId.get)
+      .await shouldBe Right(alice)
+    userManager
+      .getByCognitoId(bob.cognitoId.get)
+      .await shouldBe Right(bob)
+    userManager
+      .getByCognitoId(charlie.cognitoId.get)
+      .await shouldBe Right(charlie)
   }
 
   "creating a new user" should "select a random avatar color" in {

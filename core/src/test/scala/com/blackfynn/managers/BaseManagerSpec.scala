@@ -17,6 +17,7 @@
 package com.pennsieve.managers
 
 import com.pennsieve.models.{
+  CognitoId,
   Contributor,
   DBPermission,
   Dataset,
@@ -43,7 +44,6 @@ import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest._
-import com.redis.RedisClientPool
 import java.util.UUID
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -54,14 +54,11 @@ trait ManagerSpec
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with RedisDockerContainer
     with PostgresDockerContainer { self: TestSuite =>
 
-  var redisManager: RedisManager = _
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
   var tokenManager: TokenManager = _
-  var redisPool: RedisClientPool = _
 
   // We implicitly assume that once the organization is created for a
   // test, that's its id is 1, since we create the organization per-test (after
@@ -119,20 +116,13 @@ trait ManagerSpec
     migrateOrganizationSchema(testOrganizationId, postgresDB)
     migrateOrganizationSchema(testOrganizationId2, postgresDB)
 
-    redisPool = new RedisClientPool(
-      redisContainer.containerIpAddress,
-      redisContainer.mappedPort
-    )
-
     userManager = new UserManager(database)
     userInviteManager = new UserInviteManager(database)
-    redisManager = new RedisManager(redisPool, 0)
     tokenManager = new TokenManager(database)
   }
 
   override def afterAll(): Unit = {
     database.close()
-    redisPool.close
     super.afterAll()
   }
 
@@ -291,7 +281,8 @@ trait ManagerSpec
       credential = "",
       color = "",
       url = "",
-      isSuperAdmin = isSuperAdmin
+      isSuperAdmin = isSuperAdmin,
+      cognitoId = Some(CognitoId.UserPoolId.randomId())
     )
 
     val user = userManager.create(unsavedUser).await.value

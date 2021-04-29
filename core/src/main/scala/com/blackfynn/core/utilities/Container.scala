@@ -43,7 +43,6 @@ import com.pennsieve.models.{ Dataset, Organization, Package, Role, User }
 import com.pennsieve.service.utilities.ContextLogger
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
-import com.redis.RedisClientPool
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import org.apache.http.ssl.SSLContexts
@@ -136,42 +135,6 @@ class SecureContainer(
     with DatabaseContainer {
 
   override lazy val db: Database = _db
-}
-
-object RedisContainer {
-
-  /**
-    * Create a new Redis client pool from configuration values
-    * @param config
-    * @return
-    */
-  def poolFromConfig(config: Config): RedisClientPool = {
-    val redisHost: String = config.as[String]("redis.host")
-    val redisPort: Int = config.getOrElse[Int]("redis.port", 6379)
-    val redisUseSSL: Boolean = config.getOrElse[Boolean]("redis.use_ssl", false)
-    val redisMaxConnections: Int =
-      config.getOrElse[Int]("redis.max_connections", 128)
-
-    // An empty string implies that there is no auth token. This is due
-    // to a lack of support in terraform 0.11.11 for null values.
-    val redisAuthToken: Option[String] =
-      config.as[Option[String]]("redis.auth_token").filter(_.nonEmpty)
-
-    val sslContext = if (redisUseSSL) SSLContexts.createDefault().some else None
-
-    new RedisClientPool(
-      redisHost,
-      redisPort,
-      secret = redisAuthToken,
-      sslContext = sslContext,
-      maxConnections = redisMaxConnections
-    )
-  }
-}
-
-trait RedisContainer { self: Container =>
-  lazy val redisClientPool: RedisClientPool =
-    RedisContainer.poolFromConfig(config)
 }
 
 trait CoreContainer extends UserManagerContainer { self: Container =>
@@ -415,13 +378,6 @@ trait TermsOfServiceManagerContainer { self: DatabaseContainer =>
 
 trait UserManagerContainer extends DatabaseContainer { self: Container =>
   lazy val userManager = new UserManager(db)
-}
-
-trait RedisManagerContainer extends RedisContainer { self: Container =>
-  lazy val redisManager: RedisManager = {
-    val redisDatabase: Int = config.getOrElse[Int]("redis.database", 0)
-    new RedisManager(redisClientPool, redisDatabase)
-  }
 }
 
 trait TimeSeriesManagerContainer

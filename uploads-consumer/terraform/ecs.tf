@@ -22,9 +22,6 @@ data "template_file" "task_definition" {
     upload_service_host_arn         = aws_ssm_parameter.upload_service_host.arn
     jwt_secret_key_arn              = aws_ssm_parameter.jwt_secret_key.arn
     notifications_sqs_queue_arn     = aws_ssm_parameter.notifications_sqs_queue.arn
-    redis_host_arn                  = aws_ssm_parameter.redis_host.arn
-    redis_auth_token_arn            = aws_ssm_parameter.redis_auth_token.arn
-    redis_use_ssl_arn               = aws_ssm_parameter.redis_use_ssl.arn
     sns_alert_topic_arn             = aws_ssm_parameter.sns_alert_topic.arn
     sqs_deadletter_queue_arn        = aws_ssm_parameter.sqs_deadletter_queue.arn
     sqs_queue_arn                   = aws_ssm_parameter.sqs_queue.arn

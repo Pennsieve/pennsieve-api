@@ -80,7 +80,6 @@ trait TestDatabase extends AwaitableImplicits {
   // Used to clear the tables in the test postgres database
   def clearDB: DBIO[Unit] = DBIO.seq(
     // clears organizations, subscriptions, and feature flags due to their foreign key relationships
-    sqlu"""TRUNCATE TABLE "pennsieve"."cognito_users" RESTART IDENTITY CASCADE""",
     sqlu"""TRUNCATE TABLE "pennsieve"."users" RESTART IDENTITY CASCADE""",
     sqlu"""TRUNCATE TABLE "pennsieve"."organizations" RESTART IDENTITY CASCADE""",
     sqlu"""TRUNCATE TABLE "pennsieve"."teams" RESTART IDENTITY CASCADE""",
