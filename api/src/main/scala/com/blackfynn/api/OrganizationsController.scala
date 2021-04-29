@@ -1596,6 +1596,8 @@ class OrganizationsController(
             .getByNodeId(organizationId, DBPermission.Administer)
             .coreErrorToActionResult
 
+          _ <- assertNotDemoOrganization(secureContainer)
+
           _ <- secureContainer.dataUseAgreementManager
             .update(
               agreementId,

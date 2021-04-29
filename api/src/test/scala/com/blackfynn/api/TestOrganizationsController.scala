@@ -1328,6 +1328,28 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user cannot update data use agreement") {
+
+    val agreement = sandboxUserContainer.dataUseAgreementManager
+      .create("New data use agreement", "Lots of legal text")
+      .await
+      .right
+      .value
+
+    putJson(
+      s"/${sandboxOrganization.nodeId}/data-use-agreements/${agreement.id}",
+      write(
+        UpdateDataUseAgreementRequest(
+          name = Some("New name"),
+          description = Some("Description")
+        )
+      ),
+      headers = authorizationHeader(sandboxUserJwt)
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("fail to update non-existent data use agreement") {
 
     putJson(
