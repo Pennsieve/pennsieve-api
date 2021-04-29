@@ -22,7 +22,6 @@ import com.pennsieve.core.utilities.FutureEitherHelpers.assert
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.core.utilities.checkAndNormalizeInitial
 import com.pennsieve.db._
-import com.pennsieve.db.CognitoUserMapper
 import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
 import com.pennsieve.models.{
   CognitoId,
@@ -260,13 +259,10 @@ class UserManager(db: Database) {
           lastName,
           degree,
           credential = title,
+          cognitoId = Some(cognitoId),
           preferredOrganizationId = Some(sandboxOrganization.id)
         )
       )
-
-      _cognitoUser <- db
-        .run(CognitoUserMapper.create(cognitoId, user))
-        .toEitherT
 
       _ <- organizationManager.addUser(
         sandboxOrganization,
