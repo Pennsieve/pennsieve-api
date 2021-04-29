@@ -18,14 +18,17 @@ package com.blackfynn.clients
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.HttpExt
+
 import akka.http.scaladsl.model.{
   ContentType,
+  FormData,
   HttpEntity,
   HttpMethods,
   HttpRequest,
   HttpResponse,
   MediaTypes,
-  StatusCodes
+  StatusCodes,
+  Uri
 }
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.ByteString
@@ -33,17 +36,14 @@ import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.parser._
 import io.circe.syntax._
 import io.circe.{ Decoder, Encoder }
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-case class RecaptchaVerifyRequest(secret: String, response: String)
-
-object RecaptchaVerifyRequest {
-  implicit val encoder: Encoder[RecaptchaVerifyRequest] =
-    deriveEncoder[RecaptchaVerifyRequest]
-}
-
-case class RecaptchaResponse(success: Boolean)
+case class RecaptchaResponse(
+  success: Boolean,
+  `error-codes`: Option[List[String]]
+)
 
 object RecaptchaResponse {
   implicit val decoder: Decoder[RecaptchaResponse] =
@@ -61,23 +61,15 @@ class RecaptchaClient(
 )(implicit
   executionContext: ExecutionContext,
   system: ActorSystem
-) extends AntiSpamChallengeClient {
+) extends AntiSpamChallengeClient
+    with LazyLogging {
   override def verifyToken(responseToken: String): Future[Boolean] = {
-    val request = HttpRequest(
-      method = HttpMethods.POST,
-      uri = verifyUrl,
-      entity =
-        HttpEntity
-          .Strict(
-            ContentType(MediaTypes.`application/json`),
-            ByteString(
-              RecaptchaVerifyRequest(
-                secret = secretKey,
-                response = responseToken
-              ).asJson.noSpaces
-            )
-          )
-    )
+
+    val request = HttpRequest(method = HttpMethods.POST, uri = verifyUrl)
+      .withEntity(
+        FormData(Map("secret" -> secretKey, "response" -> responseToken)).toEntity
+      )
+
     for {
       response <- httpClient.singleRequest(request)
       shortUrl <- response match {
@@ -86,7 +78,14 @@ class RecaptchaClient(
             .to[String]
             .map(decode[RecaptchaResponse](_))
             .flatMap(_.fold(Future.failed, Future.successful))
-            .map(_.success)
+            .map(response => {
+              response.`error-codes` match {
+                case Some(error) =>
+                  logger.error(s"Recaptcha verification failed with $error")
+                case None => logger.info(s"Recaptcha verified")
+              }
+              response.success
+            })
         case error =>
           Unmarshal(error.entity)
             .to[String]
