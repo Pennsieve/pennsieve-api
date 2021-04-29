@@ -2746,6 +2746,8 @@ class DataSetsController(
               case _ => None
             }
 
+          _ <- assertNotDemoOrganization(secureContainer)
+
           validated <- DataSetPublishingHelper
             .validatePublicationStatusRequest(
               secureContainer,
