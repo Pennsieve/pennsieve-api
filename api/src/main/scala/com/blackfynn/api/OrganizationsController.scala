@@ -45,6 +45,7 @@ import com.pennsieve.models._
 import com.pennsieve.models.DateVersion._
 import com.pennsieve.models.DBPermission.{ Administer, Delete }
 import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.domain.InvalidAction
 import com.pennsieve.domain.StorageAggregation.{ sorganizations, susers }
 import com.pennsieve.web.Settings
 import cats.data._
@@ -449,6 +450,8 @@ class OrganizationsController(
 
         organizationToSave <- extractOrErrorT[UpdateOrganization](parsedBody)
         organizationId <- paramT[String]("id")
+
+        _ <- assertNotDemoOrganization(secureContainer)
 
         updatedOrganization <- secureContainer.organizationManager
           .update(organizationId, organizationToSave)
@@ -1399,6 +1402,8 @@ class OrganizationsController(
       val result: EitherT[Future, ActionResult, DatasetStatusDTO] = for {
         secureContainer <- getSecureContainer
 
+        _ <- assertNotDemoOrganization(secureContainer)
+
         organizationId <- paramT[String]("organizationId")
         body <- extractOrErrorT[DatasetStatusRequest](parsedBody)
 
@@ -1546,6 +1551,8 @@ class OrganizationsController(
             .getByNodeId(organizationId, DBPermission.Administer)
             .coreErrorToActionResult
 
+          _ <- assertNotDemoOrganization(secureContainer)
+
           agreement <- secureContainer.dataUseAgreementManager
             .create(
               name = body.name,
@@ -1588,6 +1595,8 @@ class OrganizationsController(
           organization <- secureContainer.organizationManager
             .getByNodeId(organizationId, DBPermission.Administer)
             .coreErrorToActionResult
+
+          _ <- assertNotDemoOrganization(secureContainer)
 
           _ <- secureContainer.dataUseAgreementManager
             .update(
@@ -1639,4 +1648,23 @@ class OrganizationsController(
       val is = result.value.map(NoContentResult(_))
     }
   }
+
+  /**
+    * Demo / sandbox users are a special case. They should not be able to share
+    * datasets under any circumstances.
+    *
+    * This is identical to the helper in the test datasets controller.
+    */
+  private def assertNotDemoOrganization(
+    secureContainer: SecureAPIContainer
+  ): EitherT[Future, ActionResult, Unit] =
+    for {
+      demoOrganization <- secureContainer.organizationManager
+        .isDemo(secureContainer.organization.id)
+        .coreErrorToActionResult
+
+      _ <- checkOrErrorT(!demoOrganization)(
+        InvalidAction("Demo user cannot share datasets."): CoreError
+      ).coreErrorToActionResult
+    } yield ()
 }

@@ -166,6 +166,19 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user should not be able to update the demo organization") {
+    val createReq =
+      write(UpdateOrganization(name = Some("Boom"), subscription = None))
+
+    putJson(
+      s"/${sandboxOrganization.nodeId}",
+      createReq,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("update an organizations subscription requires Owner permission") {
     val updateReq = write(
       UpdateOrganization(
@@ -907,6 +920,21 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     )
   }
 
+  test(
+    "demo users should not be able to create dataset options for the demo organization"
+  ) {
+    val createRequest =
+      write(DatasetStatusRequest("Ready for Publication", "#71747C"))
+
+    postJson(
+      s"/${sandboxOrganization.nodeId}/dataset-status",
+      createRequest,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("validate dataset status options color") {
 
     val request =
@@ -1199,6 +1227,23 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo user cannot create data use agreements for organization") {
+
+    postJson(
+      s"/${sandboxOrganization.nodeId}/data-use-agreements",
+      write(
+        CreateDataUseAgreementRequest(
+          name = "New data use agreement",
+          body = "Lots of legal text",
+          description = Some("Description")
+        )
+      ),
+      headers = authorizationHeader(sandboxUserJwt)
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("get data use agreements") {
 
     val agreement1 = secureContainer.dataUseAgreementManager
@@ -1280,6 +1325,28 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         .map(a => (a.name, a.description)) shouldBe List(
         ("New name", "Description")
       )
+    }
+  }
+
+  test("demo user cannot update data use agreement") {
+
+    val agreement = sandboxUserContainer.dataUseAgreementManager
+      .create("New data use agreement", "Lots of legal text")
+      .await
+      .right
+      .value
+
+    putJson(
+      s"/${sandboxOrganization.nodeId}/data-use-agreements/${agreement.id}",
+      write(
+        UpdateDataUseAgreementRequest(
+          name = Some("New name"),
+          description = Some("Description")
+        )
+      ),
+      headers = authorizationHeader(sandboxUserJwt)
+    ) {
+      status should equal(403)
     }
   }
 
