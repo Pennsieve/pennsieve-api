@@ -581,7 +581,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
     }
 
     "process a clean file with special characters in the filename and pass the correct filename to the upload service" in {
-      val fileName = "hello!! weird=filename?.txt"
+      val fileName = "hello!! weird=filename.txt"
       val jobId = createJobId
       val `package`: Package = createPackage(dataset, `type` = PackageType.Text)
 
@@ -598,7 +598,6 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
               .getPath
               .replace("%20", " ")
               .replace("%3d", "=")
-              .replace("%3f", "?")
           )
         )
       )
@@ -613,7 +612,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       runHandler(jobId, payload).value should equal(Clean)
 
       getFiles(`package`).map(_.name) should equal(
-        Vector("hello!! weird%3Dfilename%3F")
+        Vector("hello!! weird%3Dfilename")
       )
     }
 
