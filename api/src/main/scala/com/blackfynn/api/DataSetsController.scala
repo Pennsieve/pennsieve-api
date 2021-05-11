@@ -1552,6 +1552,9 @@ class DataSetsController(
         contributorId <- extractOrErrorT[AddContributorRequest](parsedBody)
 
         secureContainer <- getSecureContainer
+
+        _ <- assertNotDemoOrganization(secureContainer)
+
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
           .orNotFound
@@ -1875,6 +1878,8 @@ class DataSetsController(
             Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
           )(dataset)
           .coreErrorToActionResult
+
+        _ <- assertNotDemoOrganization(secureContainer)
 
         user <- secureContainer.userManager
           .getByNodeId(userDto.id)
@@ -2297,6 +2302,8 @@ class DataSetsController(
         body <- extractOrErrorT[SwitchOwnerRequest](parsedBody)
 
         secureContainer <- getSecureContainer
+
+        _ <- assertNotDemoOrganization(secureContainer)
 
         newOwner <- secureContainer.userManager
           .getByNodeId(body.id)
