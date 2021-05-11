@@ -2157,7 +2157,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   test("demo organization user cannot add a user as a collaborator") {
     val ds = createDataSet("Foo", container = sandboxUserContainer)
 
-    val request = write(List(loggedInUser.nodeId, Role.Editor))
+    val request = write(CollaboratorRoleDTO(loggedInUser.nodeId, Role.Editor))
     putJson(
       s"/${ds.nodeId}/collaborators/users",
       request,
