@@ -2154,6 +2154,26 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo organization user cannot add a user as a collaborator") {
+    val ds = createDataSet("Foo", container = sandboxUserContainer)
+
+    val ids = write(List(loggedInUser.nodeId))
+    putJson(
+      s"/${ds.nodeId}/collaborators/users",
+      ids,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+    
+    get(
+      s"/${ds.nodeId}/collaborators",
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      parsedBody.extract[List[UserDTO]].length should equal(0)
+    }
+  }
+
   test("create and retrieve a DOI for a dataset") {
 
     val ds = createDataSet(name = "Foo")
@@ -2699,6 +2719,39 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo organization user cannot add a contributor to a dataset") {
+    val ds = createDataSet("ContributorTest", container = sandboxUserContainer)
+
+    val ct =
+      createContributor(
+        "Tester",
+        "Contributor",
+        "tester-contributor@test.com",
+        None,
+        None
+      )
+
+    val request = write(AddContributorRequest(ct.id))
+
+    putJson(
+      s"/${ds.nodeId}/contributors",
+      request,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+
+    get(
+      s"/${ds.nodeId}/contributors",
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      val contributors = parsedBody.extract[List[ContributorDTO]]
+
+      contributors.length should equal(1)
+      contributors.map(_.id) shouldBe List(sandboxUser.id)
+    }
+  }
+
   // collaborators
   test("get a data set with its collaborators") {
     val ds = createDataSet("Foo")
@@ -2962,6 +3015,31 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
 
   }
+
+  test(
+    "demo organization user cannot switch owner of a dataset"
+  ) {
+    val myDS = createDataSet("My DataSet", container = sandboxUserContainer)
+
+    val request = write(SwitchOwnerRequest(loggedInUser.nodeId))
+
+    putJson(
+      s"/${myDS.nodeId}/collaborators/owner",
+      request,
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+
+    get(
+      s"/${myDS.nodeId}",
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      parsedBody.extract[DataSetDTO].owner shouldBe sandboxUser.nodeId
+    }
+    
+  }
+
 
   // UNSHARE
 
