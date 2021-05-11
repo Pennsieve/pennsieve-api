@@ -2170,7 +2170,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       s"/${ds.nodeId}/collaborators",
       headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
     ) {
-      parsedBody.extract[List[UserDTO]].length should equal(0)
+      parsedBody.extract[CollaboratorsDTO].users.length should equal(0)
     }
   }
 
