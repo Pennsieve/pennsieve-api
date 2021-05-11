@@ -2157,10 +2157,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   test("demo organization user cannot add a user as a collaborator") {
     val ds = createDataSet("Foo", container = sandboxUserContainer)
 
-    val ids = write(List(loggedInUser.nodeId))
+    val request = write(List(loggedInUser.nodeId, Role.Editor))
     putJson(
       s"/${ds.nodeId}/collaborators/users",
-      ids,
+      request,
       headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
     ) {
       status should equal(403)
@@ -2748,7 +2748,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       val contributors = parsedBody.extract[List[ContributorDTO]]
 
       contributors.length should equal(1)
-      contributors.map(_.id) shouldBe List(sandboxUser.id)
+      contributors.map(_.id) shouldBe List(1)
     }
   }
 
