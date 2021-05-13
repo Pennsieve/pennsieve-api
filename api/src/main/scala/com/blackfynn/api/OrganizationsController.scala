@@ -820,6 +820,9 @@ class OrganizationsController(
         secureContainer <- getSecureContainer
         traceId <- getTraceId(request)
         organizationId <- paramT[String]("id")
+
+        _ <- assertNotDemoOrganization(secureContainer)
+
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
           .coreErrorToActionResult
@@ -1142,6 +1145,8 @@ class OrganizationsController(
         traceId <- getTraceId(request)
         organizationId <- paramT[String]("organizationId")
         teamId <- paramT[String]("id")
+
+        _ <- assertNotDemoOrganization(secureContainer)
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
