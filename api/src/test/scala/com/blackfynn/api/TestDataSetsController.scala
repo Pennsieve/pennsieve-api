@@ -2165,7 +2165,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status should equal(403)
     }
-    
+
     get(
       s"/${ds.nodeId}/collaborators",
       headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
@@ -3016,9 +3016,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   }
 
-  test(
-    "demo organization user cannot switch owner of a dataset"
-  ) {
+  test("demo organization user cannot switch owner of a dataset") {
     val myDS = createDataSet("My DataSet", container = sandboxUserContainer)
 
     val request = write(SwitchOwnerRequest(loggedInUser.nodeId))
@@ -3037,9 +3035,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       parsedBody.extract[DataSetDTO].owner shouldBe sandboxUser.nodeId
     }
-    
-  }
 
+  }
 
   // UNSHARE
 

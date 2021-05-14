@@ -418,6 +418,15 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("demo organization user cannot get organization members") {
+    get(
+      s"/${sandboxOrganization.nodeId}/members",
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
   test("add an organization member") {
     // not existing user
     val email = "another@test.com"
@@ -576,6 +585,17 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status should equal(200)
       assert(teamManager.getUsers(team).await.right.value.size == 0)
+    }
+  }
+
+  test("demo organization user cannot get users from a team") {
+    val team = teamManager.create("Foo", sandboxOrganization).await.right.value
+
+    get(
+      s"/${sandboxOrganization.nodeId}/teams/${team.nodeId}/members",
+      headers = authorizationHeader(sandboxUserJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
     }
   }
 
