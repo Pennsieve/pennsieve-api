@@ -107,10 +107,7 @@ class UserInviteManager(db: Database) {
                 case Some(id) => EitherT.rightT[Future, CoreError](id)
                 case None =>
                   cognitoClient
-                    .inviteUser(
-                      Email(email.trim.toLowerCase),
-                      selfService = false
-                    )
+                    .inviteUser(Email(email.trim.toLowerCase))
                     .toEitherT
               }
 
