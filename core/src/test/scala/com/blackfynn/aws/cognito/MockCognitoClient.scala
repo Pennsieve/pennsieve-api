@@ -43,7 +43,8 @@ class MockCognito() extends CognitoClient {
   def inviteUser(
     email: Email,
     suppressEmail: Boolean = false,
-    verifyEmail: Boolean = true
+    verifyEmail: Boolean = true,
+    selfService: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {

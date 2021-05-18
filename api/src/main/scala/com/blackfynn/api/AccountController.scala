@@ -228,7 +228,8 @@ class AccountController(
           .inviteUser(
             email = Email(createRequest.email),
             suppressEmail = false,
-            verifyEmail = false
+            verifyEmail = true,
+            selfService = true
           )
           .toEitherT
           .coreErrorToActionResult
