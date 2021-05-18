@@ -45,7 +45,7 @@ trait CognitoClient {
     email: Email,
     suppressEmail: Boolean = false,
     verifyEmail: Boolean = true,
-    selfService: Boolean = true
+    invitePath: String = "invite"
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId]
@@ -105,7 +105,7 @@ class Cognito(
     email: Email,
     suppressEmail: Boolean = false,
     verifyEmail: Boolean = true,
-    selfService: Boolean = false
+    invitePath: String = "invite"
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
@@ -121,8 +121,8 @@ class Cognito(
           AttributeType.builder().name("email").value(email.address).build(),
           AttributeType
             .builder()
-            .name("self_service")
-            .value(selfService.toString())
+            .name("custom:invite_path")
+            .value(invitePath)
             .build(),
           AttributeType
             .builder()

@@ -229,7 +229,7 @@ class AccountController(
             email = Email(createRequest.email),
             suppressEmail = false,
             verifyEmail = true,
-            selfService = true
+            invitePath = "self-service"
           )
           .toEitherT
           .coreErrorToActionResult
