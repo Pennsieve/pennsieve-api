@@ -10,15 +10,15 @@ CREATE TABLE webhooks(
   is_default BOOLEAN NOT NULL,
   is_disabled BOOLEAN NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE
+  created_by INTEGER REFERENCES pennsieve.users(id) ON DELETE SET NULL,
+  organization_id INTEGER NOT NULL REFERENCES pennsieve.organizations(id) ON DELETE CASCADE
 );
 
 CREATE TABLE dataset_integrations(
   id SERIAL PRIMARY KEY,
   webhook_id INTEGER NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
   dataset_id INTEGER NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
-  enabled_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  enabled_by INTEGER NOT NULL REFERENCES pennsieve.users(id) ON DELETE CASCADE,
   enabled_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
