@@ -10,20 +10,20 @@ CREATE TABLE webhooks(
   is_default BOOLEAN NOT NULL,
   is_disabled BOOLEAN NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by INTEGER NOT NULL REFERENCES users(id),
-  organization_id INTEGER NOT NULL REFERENCES organizations(id)
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 CREATE TABLE dataset_integrations(
   id SERIAL PRIMARY KEY,
-  webhook_id INTEGER NOT NULL REFERENCES webhooks(id),
-  dataset_id INTEGER NOT NULL REFERENCES datasets(id),
-  enabled_by INTEGER NOT NULL REFERENCES users(id),
+  webhook_id INTEGER NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+  dataset_id INTEGER NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+  enabled_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   enabled_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE webhook_statistics(
-  webhook_id INTEGER PRIMARY KEY NOT NULL REFERENCES webhooks(id),
+  webhook_id INTEGER PRIMARY KEY NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
   successes INTEGER NOT NULL DEFAULT 0,
   failures INTEGER NOT NULL DEFAULT 0,
   date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -36,6 +36,6 @@ CREATE TABLE webhook_event_types(
 
 CREATE TABLE webhook_event_subscriptions(
   id SERIAL PRIMARY KEY,
-  webhook_id INTEGER NOT NULL REFERENCES webhooks(id),
-  webhook_event_type_id INTEGER NOT NULL REFERENCES webhook_event_types(id)
+  webhook_id INTEGER NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+  webhook_event_type_id INTEGER NOT NULL REFERENCES webhook_event_types(id) ON DELETE CASCADE
 );
