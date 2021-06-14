@@ -12,7 +12,7 @@ CREATE TABLE webhooks(
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by INTEGER NOT NULL REFERENCES users(id),
   organization_id INTEGER NOT NULL REFERENCES organizations(id),
-)
+);
 
 CREATE TABLE dataset_integrations(
   id SERIAL PRIMARY KEY,
@@ -20,22 +20,22 @@ CREATE TABLE dataset_integrations(
   dataset_id INTEGER NOT NULL REFERENCES datasets(id),
   enabled_by INTEGER NOT NULL REFERENCES users(id),
   enabled_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
+);
 
 CREATE TABLE webhook_statistics(
   webhook_id INTEGER PRIMARY KEY NOT NULL REFERENCES webhooks(id),
   successes INTEGER NOT NULL DEFAULT 0,
   failures INTEGER NOT NULL DEFAULT 0,
   date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
+);
 
 CREATE TABLE webhook_event_types(
   id SERIAL PRIMARY KEY,
   event_name VARCHAR(255) NOT NULL
-)
+);
 
 CREATE TABLE webhook_event_subscriptions(
   id SERIAL PRIMARY KEY,
   webhook_id INTEGER NOT NULL REFERENCES webhooks(id),
   webhook_event_type_id INTEGER NOT NULL REFERENCES webhook_event_types(id)
-)
+);
