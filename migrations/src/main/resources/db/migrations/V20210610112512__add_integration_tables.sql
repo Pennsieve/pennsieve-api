@@ -11,7 +11,7 @@ CREATE TABLE webhooks(
   is_disabled BOOLEAN NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by INTEGER NOT NULL REFERENCES users(id),
-  organization_id INTEGER NOT NULL REFERENCES organizations(id),
+  organization_id INTEGER NOT NULL REFERENCES organizations(id)
 );
 
 CREATE TABLE dataset_integrations(
