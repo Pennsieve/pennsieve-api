@@ -23,23 +23,20 @@ import java.time.ZonedDateTime
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-final class DatasetIntegrationsTable(schema: String, tag: Tag) extends Table[DatasetIntegration](tag, Some(schema), "dataset_integrations") {
+final class DatasetIntegrationsTable(schema: String, tag: Tag)
+    extends Table[DatasetIntegration](tag, Some(schema), "dataset_integrations") {
 
   // set by the database
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def webhookId = column[Int]("webhook_id")
   def datasetId = column[Int]("dataset_id")
   def enabledBy = column[Int]("enabled_by")
-  def enabledOn = column[ZonedDateTime]("enabled_on", O.AutoInc) // set by the database on insert
+  def enabledOn =
+    column[ZonedDateTime]("enabled_on", O.AutoInc) // set by the database on insert
 
   def * =
-    (
-      webhookId,
-      datasetId,
-      enabledBy,
-      enabledOn,
-      id
-    ).mapTo[DatasetIntegration]
+    (webhookId, datasetId, enabledBy, enabledOn, id).mapTo[DatasetIntegration]
 }
 
-class DatasetIntegrationsMapper(val organization: Organization) extends TableQuery(new DatasetIntegrationsTable(organization.schemaId, _))
+class DatasetIntegrationsMapper(val organization: Organization)
+    extends TableQuery(new DatasetIntegrationsTable(organization.schemaId, _))

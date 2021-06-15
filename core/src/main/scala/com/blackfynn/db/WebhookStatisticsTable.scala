@@ -23,22 +23,19 @@ import java.time.ZonedDateTime
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-final class WebhookStatisticsTable(schema: String, tag: Tag) extends Table[WebhookStatistic](tag, Some(schema), "webhook_statistics") {
+final class WebhookStatisticsTable(schema: String, tag: Tag)
+    extends Table[WebhookStatistic](tag, Some(schema), "webhook_statistics") {
 
   // set by the database
   def webhookId = column[Int]("webhook_id", O.PrimaryKey)
-  def successes = column[Int]("successes") = 0
-  def failures = column[Int]("failures") = 0
-  def date = column[ZonedDateTime]("date", O.AutoInc) // set by the database on insert
+  def successes = column[Int]("successes", O.Default(0))
+  def failures = column[Int]("failures", O.Default(0))
+  def date =
+    column[ZonedDateTime]("date", O.AutoInc) // set by the database on insert
 
   def * =
-    (
-      webhookId,
-      successes,
-      failures,
-      date,
-      id
-    ).mapTo[WebhookStatistic]
+    (webhookId, successes, failures, date).mapTo[WebhookStatistic]
 }
 
-class WebhookStatisticsMapper(val organization: Organization) extends TableQuery(new WebhookStatisticsTable(organization.schemaId, _))
+class WebhookStatisticsMapper(val organization: Organization)
+    extends TableQuery(new WebhookStatisticsTable(organization.schemaId, _))

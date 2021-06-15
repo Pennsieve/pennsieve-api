@@ -23,7 +23,8 @@ import java.time.ZonedDateTime
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-final class WebhooksTable(schema: String, tag: Tag) extends Table[Webhook](tag, Some(schema), "webhooks") {
+final class WebhooksTable(schema: String, tag: Tag)
+    extends Table[Webhook](tag, Some(schema), "webhooks") {
 
   // set by the database
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
@@ -37,7 +38,8 @@ final class WebhooksTable(schema: String, tag: Tag) extends Table[Webhook](tag, 
   def isDefault = column[Boolean]("is_default")
   def isDisabled = column[Boolean]("is_disabled")
   def createdBy = column[Option[Int]]("created_by")
-  def createdAt = column[ZonedDateTime]("created_at", O.AutoInc) // set by the database on insert
+  def createdAt =
+    column[ZonedDateTime]("created_at", O.AutoInc) // set by the database on insert
 
   def * =
     (
@@ -56,4 +58,5 @@ final class WebhooksTable(schema: String, tag: Tag) extends Table[Webhook](tag, 
     ).mapTo[Webhook]
 }
 
-class WebhooksMapper(val organization: Organization) extends TableQuery(new WebhooksTable(organization.schemaId, _))
+class WebhooksMapper(val organization: Organization)
+    extends TableQuery(new WebhooksTable(organization.schemaId, _))

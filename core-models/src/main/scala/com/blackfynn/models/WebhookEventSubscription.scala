@@ -26,8 +26,10 @@ final case class WebhookEventSubcription(
 )
 
 object WebhookEventSubcription {
-  implicit val decoder: Decoder[WebhookEventSubcription] = deriveDecoder[WebhookEventSubcription]
-  implicit val encoder: Encoder[WebhookEventSubcription] = deriveEncoder[WebhookEventSubcription]
+  implicit val decoder: Decoder[WebhookEventSubcription] =
+    deriveDecoder[WebhookEventSubcription]
+  implicit val encoder: Encoder[WebhookEventSubcription] =
+    deriveEncoder[WebhookEventSubcription]
 
   /*
    * This is required by slick when using a companion object on a case

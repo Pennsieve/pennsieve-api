@@ -25,13 +25,15 @@ final case class DatasetIntegration(
   webhookId: Int,
   datasetId: Int,
   enabledBy: Int,
-  enabledOn: ZonedDateTime = ZonedDateTime.now()
+  enabledOn: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0
 )
 
 object DatasetIntegration {
-  implicit val decoder: Decoder[DatasetIntegration] = deriveDecoder[DatasetIntegration]
-  implicit val encoder: Encoder[DatasetIntegration] = deriveEncoder[DatasetIntegration]
+  implicit val decoder: Decoder[DatasetIntegration] =
+    deriveDecoder[DatasetIntegration]
+  implicit val encoder: Encoder[DatasetIntegration] =
+    deriveEncoder[DatasetIntegration]
 
   /*
    * This is required by slick when using a companion object on a case

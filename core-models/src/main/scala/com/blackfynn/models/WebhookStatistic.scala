@@ -29,8 +29,10 @@ final case class WebhookStatistic(
 )
 
 object WebhookStatistic {
-  implicit val decoder: Decoder[WebhookStatistic] = deriveDecoder[WebhookStatistic]
-  implicit val encoder: Encoder[WebhookStatistic] = deriveEncoder[WebhookStatistic]
+  implicit val decoder: Decoder[WebhookStatistic] =
+    deriveDecoder[WebhookStatistic]
+  implicit val encoder: Encoder[WebhookStatistic] =
+    deriveEncoder[WebhookStatistic]
 
   /*
    * This is required by slick when using a companion object on a case

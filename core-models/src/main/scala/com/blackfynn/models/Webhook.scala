@@ -32,7 +32,7 @@ final case class Webhook(
   isDefault: Boolean,
   isDisabled: Boolean,
   createdBy: Option[Int],
-  createdAt: ZonedDateTime = ZonedDateTime.now()
+  createdAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0
 )
 

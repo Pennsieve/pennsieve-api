@@ -19,14 +19,13 @@ package com.pennsieve.models
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 
-final case class WebhookEventType(
-  eventName: String,
-  id: Int = 0
-)
+final case class WebhookEventType(eventName: String, id: Int = 0)
 
 object WebhookEventType {
-  implicit val decoder: Decoder[WebhookEventType] = deriveDecoder[WebhookEventType]
-  implicit val encoder: Encoder[WebhookEventType] = deriveEncoder[WebhookEventType]
+  implicit val decoder: Decoder[WebhookEventType] =
+    deriveDecoder[WebhookEventType]
+  implicit val encoder: Encoder[WebhookEventType] =
+    deriveEncoder[WebhookEventType]
 
   /*
    * This is required by slick when using a companion object on a case

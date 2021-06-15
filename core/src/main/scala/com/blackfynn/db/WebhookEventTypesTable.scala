@@ -21,17 +21,16 @@ import com.pennsieve.models._
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-final class WebhookEventTypesTable(schema: String, tag: Tag) extends Table[WebhookEventType](tag, Some(schema), "webhook_event_types") {
+final class WebhookEventTypesTable(schema: String, tag: Tag)
+    extends Table[WebhookEventType](tag, Some(schema), "webhook_event_types") {
 
   // set by the database
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def eventName = column[String]("event_name")
 
   def * =
-    (
-      eventName,
-      id
-    ).mapTo[WebhookEventType]
+    (eventName, id).mapTo[WebhookEventType]
 }
 
-class WebhookEventTypesMapper(val organization: Organization) extends TableQuery(new WebhookEventTypesTable(organization.schemaId, _))
+class WebhookEventTypesMapper(val organization: Organization)
+    extends TableQuery(new WebhookEventTypesTable(organization.schemaId, _))

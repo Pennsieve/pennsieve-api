@@ -21,7 +21,12 @@ import com.pennsieve.models._
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-final class WebhookEventSubcriptionsTable(schema: String, tag: Tag) extends Table[WebhookEventSubcription](tag, Some(schema), "webhook_event_subscriptions") {
+final class WebhookEventSubcriptionsTable(schema: String, tag: Tag)
+    extends Table[WebhookEventSubcription](
+      tag,
+      Some(schema),
+      "webhook_event_subscriptions"
+    ) {
 
   // set by the database
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
@@ -29,11 +34,10 @@ final class WebhookEventSubcriptionsTable(schema: String, tag: Tag) extends Tabl
   def webhookEventTypeId = column[Int]("webhook_event_type_id")
 
   def * =
-    (
-      webhookId,
-      webhookEventTypeId,
-      id
-    ).mapTo[WebhookEventSubcription]
+    (webhookId, webhookEventTypeId, id).mapTo[WebhookEventSubcription]
 }
 
-class WebhookEventSubcriptionsMapper(val organization: Organization) extends TableQuery(new WebhookEventSubcriptionsTable(organization.schemaId, _))
+class WebhookEventSubcriptionsMapper(val organization: Organization)
+    extends TableQuery(
+      new WebhookEventSubcriptionsTable(organization.schemaId, _)
+    )
