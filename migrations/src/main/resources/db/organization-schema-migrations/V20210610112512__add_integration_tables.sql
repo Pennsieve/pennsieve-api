@@ -10,8 +10,7 @@ CREATE TABLE webhooks(
   is_default BOOLEAN NOT NULL,
   is_disabled BOOLEAN NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  created_by INTEGER REFERENCES pennsieve.users(id) ON DELETE SET NULL,
-  organization_id INTEGER NOT NULL REFERENCES pennsieve.organizations(id) ON DELETE CASCADE
+  created_by INTEGER REFERENCES pennsieve.users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE dataset_integrations(
