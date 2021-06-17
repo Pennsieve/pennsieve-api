@@ -66,6 +66,14 @@ import io.circe._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax._
 
+case class ReadmeJwtContent(name: String, email: String, apiKey: String)
+object ReadmeJwtContent {
+  implicit def encoder: Encoder[ReadmeJwtContent] =
+    deriveEncoder[ReadmeJwtContent]
+  implicit def decoder: Decoder[ReadmeJwtContent] =
+    deriveDecoder[ReadmeJwtContent]
+}
+
 class AuthorizationRoutes(
   user: User,
   organization: Organization,
@@ -173,14 +181,6 @@ class AuthorizationRoutes(
           case Failure(exception) => complete(exception.toResponse)
         }
     }
-
-  case class ReadmeJwtContent(name: String, email: String, apiKey: String)
-  object ReadmeJwtContent {
-    implicit def encoder: Encoder[ReadmeJwtContent] =
-      deriveEncoder[ReadmeJwtContent]
-    implicit def decoder: Decoder[ReadmeJwtContent] =
-      deriveDecoder[ReadmeJwtContent]
-  }
 
   def readmeCredentials: Route =
     (path("readme-credentials") & get) {

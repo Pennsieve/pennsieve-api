@@ -86,6 +86,11 @@ import shapeless._
 import scala.collection.immutable.{ Seq => ImmutableSeq }
 import scala.concurrent.duration._
 import scala.concurrent._
+import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim }
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.{ Decoder, Encoder }
+import io.circe._, io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
+import scala.util.{ Failure, Success }
 
 class AuthorizationRoutesSpec
     extends AuthorizationServiceSpec
@@ -807,7 +812,6 @@ class AuthorizationRoutesSpec
         status shouldEqual Unauthorized
 
         // Verify the session does not belong to Organization Two
-
         preferredOrganization(owner) should not be organizationTwo
       }
     }
@@ -836,6 +840,36 @@ class AuthorizationRoutesSpec
         status shouldEqual Forbidden
       }
     }
+  }
+
+  "GET /session/readme-credentials route" should {
+
+    "return a Readme JWT" in {
+
+      testRequest(
+        GET,
+        "/session/readme-credentials",
+        session = nonAdminCognitoJwt
+      ) ~>
+        routes ~> check {
+        status shouldEqual OK
+
+        val claim = JwtCirce
+          .decodeJson(responseAs[String], readmeKey, Seq(JwtAlgorithm.HS256))
+          .get
+
+        decode[ReadmeJwtContent](claim.toString) match {
+          case Right(readmeObject) =>
+            println(readmeObject.toString)
+            readmeObject.name should startWith("Regular User")
+          case Left(ex) =>
+            println(s"Ooops something error ${ex}")
+            fail()
+        }
+
+      }
+    }
+
   }
 
   private def getClaim(): Jwt.Claim = {
