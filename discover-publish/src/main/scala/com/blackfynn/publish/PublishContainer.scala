@@ -67,7 +67,8 @@ case class PublishContainer(
   datasetRole: Option[Role],
   contributors: List[PublishedContributor],
   collections: List[PublishedCollection],
-  externalPublications: List[PublishedExternalPublication]
+  externalPublications: List[PublishedExternalPublication],
+  previousVersionsFilesKey: Option[String]
 ) extends Container
     with OrganizationContainer
     with PackagesMapperContainer
@@ -108,7 +109,8 @@ object PublishContainer {
     organizationName: String,
     contributors: String,
     collections: String,
-    externalPublications: String
+    externalPublications: String,
+    previousVersionsFilesKey: String
   )(implicit
     executionContext: ExecutionContext
   ): Future[PublishContainer] = {
@@ -153,6 +155,11 @@ object PublishContainer {
       ]](externalPublications)
         .fold(Future.failed, Future.successful)
 
+      maybePreviousFilesKey = if (previousVersionsFilesKey.trim.isEmpty) {
+        None
+      } else {
+        Some(previousVersionsFilesKey.trim)
+      }
     } yield
       PublishContainer(
         config = config,
@@ -175,7 +182,8 @@ object PublishContainer {
         datasetRole = Some(Role.Owner),
         contributors = publishedContributors,
         collections = publishedCollections,
-        externalPublications = publishedExternalPublications
+        externalPublications = publishedExternalPublications,
+        previousVersionsFilesKey = maybePreviousFilesKey
       )
   }
 }

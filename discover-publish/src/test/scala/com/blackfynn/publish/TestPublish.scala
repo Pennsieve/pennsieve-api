@@ -22,20 +22,17 @@ import akka.actor.ActorSystem
 import akka.dispatch.MessageDispatcher
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.{ Sink, Source }
-import cats.data.{ EitherT, Kleisli, NonEmptyList }
-
+import cats.data.EitherT
 import java.util.UUID
+
 import cats.implicits._
-import com.amazonaws.services.s3.AmazonS3ClientBuilder
-import com.amazonaws.auth.{ AWSStaticCredentialsProvider, BasicAWSCredentials }
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.model.{ Bucket, S3ObjectSummary }
 import com.pennsieve.aws.s3.S3
 import com.pennsieve.core.utilities._
 import com.pennsieve.domain.{ CoreError, ServiceError }
 import com.pennsieve.managers.DatasetStatusManager
 import com.pennsieve.models._
-import com.pennsieve.publish.models.CopyAction
+import com.pennsieve.publish.models.{CopyAction, NoOpAction}
 import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import com.pennsieve.test.helpers.EitherValue._
@@ -44,9 +41,8 @@ import com.pennsieve.utilities.Container
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import io.circe.Json
 import io.circe.parser.decode
-import io.circe.syntax._
-
 import java.time.LocalDate
+
 import org.scalatest._
 import org.apache.commons.io.IOUtils
 
@@ -55,7 +51,11 @@ import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Random, Try }
 import java.io.InputStream
-import scala.collection.immutable
+
+import io.circe.syntax._
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.{ Decoder, Encoder, Printer }
+import io.circe.parser.decode
 
 case class InsecureDatabaseContainer(config: Config, organization: Organization)
     extends Container
@@ -72,7 +72,7 @@ class TestPublish
     extends WordSpec
     with Matchers
     with PersistantTestContainers
-    with S3DockerContainer
+    with LocalstackDockerContainer
     with PostgresDockerContainer
     with TestDatabase
     with BeforeAndAfterEach
@@ -87,9 +87,11 @@ class TestPublish
   val embargoBucket = "test-embargo-bucket"
   val assetBucket = "test-asset-bucket"
   val assetKeyPrefix = "dataset-assets"
-  val testKey = "100/10/"
+  val testKey = "versioned/100/"
+  val assetKey = "100/10/"
   val copyChunkSize = 5242880
   val copyParallelism = 5
+  val previousFileKey = "versioned/100/version.json"
 
   implicit var s3: S3 = _
   var bucket: Bucket = _
@@ -170,7 +172,7 @@ class TestPublish
     config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
-      .withFallback(s3Container.config)
+      .withFallback(localstackContainer.config)
       .withFallback(ConfigFactory.load())
 
     system = ActorSystem("discover-publish", config)
@@ -187,17 +189,17 @@ class TestPublish
       databaseContainer.postgresDatabase
     )
 
-    s3 = new S3(s3Container.s3Client)
+    s3 = new S3(localstackContainer.s3Client)
   }
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-
     s3.createBucket(publishBucket).isRight shouldBe true
+    s3.enableBucketVersioning(publishBucket).isRight shouldBe true
     s3.createBucket(embargoBucket).isRight shouldBe true
+    s3.enableBucketVersioning(embargoBucket).isRight shouldBe true
     s3.createBucket(assetBucket).isRight shouldBe true
     s3.createBucket(sourceBucket).isRight shouldBe true
-
     testUser = createUser()
     testDataset = addBannerAndReadme(createDataset())
 
@@ -222,7 +224,8 @@ class TestPublish
         datasetRole = Some(Role.Owner),
         contributors = List(contributor),
         collections = List(collection),
-        externalPublications = List(externalPublication)
+        externalPublications = List(externalPublication),
+        previousVersionsFilesKey = Some(previousFileKey)
       )
     }
 
@@ -247,7 +250,8 @@ class TestPublish
         datasetRole = Some(Role.Owner),
         contributors = List(contributor),
         collections = List(collection),
-        externalPublications = List(externalPublication)
+        externalPublications = List(externalPublication),
+        previousVersionsFilesKey = Some(previousFileKey)
       )
     }
 
@@ -257,12 +261,17 @@ class TestPublish
   }
 
   override def afterEach(): Unit = {
-    super.afterEach()
-    deleteBucket(publishBucket)
-    deleteBucket(embargoBucket)
-    deleteBucket(assetBucket)
-    deleteBucket(sourceBucket)
+    if (s3.client.doesBucketExistV2(embargoBucket))
+      deleteBucket(embargoBucket)
+    if (s3.client.doesBucketExistV2(assetBucket))
+      deleteBucket(assetBucket)
+    if (s3.client.doesBucketExistV2(sourceBucket))
+      deleteBucket(sourceBucket)
+    if (s3.client.doesBucketExistV2(publishBucket))
+      deleteBucket(publishBucket)
     publishContainer.db.close()
+    embargoContainer.db.close()
+    super.afterEach()
   }
 
   override def afterAll(): Unit = {
@@ -554,7 +563,6 @@ class TestPublish
     }
 
     "ensure that prefix deletion works as expected" in {
-
       createS3File(embargoBucket, s"2/11/foo")
       createS3File(embargoBucket, s"2/11/bar")
       createS3File(embargoBucket, s"2/11/sub/baz")
@@ -581,10 +589,16 @@ class TestPublish
       assert(s3FilesExistUnderKey(embargoBucket, "2/11"))
       s3.deleteObjectsByPrefix(embargoBucket, "2/11")
       assert(!s3FilesExistUnderKey(embargoBucket, "2/11"))
+
     }
 
     "succeed with an empty dataset" in {
+      assert(!s3FilesExistUnderKey(publishBucket, testKey))
+
+      //Push previousfileskeys
+      createS3File(publishBucket, previousFileKey, "[]")
       Publish.publishAssets(publishContainer).await.isRight shouldBe true
+
       assert(
         Try(
           downloadFile(publishBucket, testKey + Publish.PUBLISH_ASSETS_FILENAME)
@@ -603,19 +617,35 @@ class TestPublish
     }
 
     "create metadata, package objects and public assets in S3 (publish bucket)" in {
+      //Push previousfileskeys
+      createS3File(publishBucket, previousFileKey, "[]")
+      assert(s3FileExists(publishBucket, previousFileKey))
 
-      // everything under `testKey` should be gone:
-      assert(!s3FilesExistUnderKey(publishBucket, testKey))
-      assert(!s3FilesExistUnderKey(embargoBucket, testKey))
+      createS3File(publishBucket, "versioned/100/files/pkg1.txt")
 
       // seed the publish bucket:
       createS3File(
         publishBucket,
         s"${testKey}/delete-prefix-key/delete-file.txt"
       )
+
+      assert(
+        s3FileExists(
+          publishBucket,
+          s"${testKey}/delete-prefix-key/delete-file.txt"
+        )
+      )
+
       createS3File(
         publishBucket,
         s"${testKey}/some-other-prefix/sub-key/another-file.txt"
+      )
+
+      assert(
+        s3FileExists(
+          publishBucket,
+          s"${testKey}/some-other-prefix/sub-key/another-file.txt"
+        )
       )
 
       // Package with a single file
@@ -685,20 +715,20 @@ class TestPublish
         downloadFile(publishBucket, testKey + "metadata/schema.json")
 
       val bannerJpg =
-        downloadFile(publishBucket, testKey + s"/${Publish.BANNER_FILENAME}")
+        downloadFile(publishBucket, testKey + s"${Publish.BANNER_FILENAME}")
       bannerJpg shouldBe "banner-data"
       val readmeMarkdown =
-        downloadFile(publishBucket, testKey + s"/${Publish.README_FILENAME}")
+        downloadFile(publishBucket, testKey + s"${Publish.README_FILENAME}")
       readmeMarkdown shouldBe "readme-data"
 
       // should write assets to public discover bucket
       downloadFile(
         assetBucket,
-        "dataset-assets/" + testKey + Publish.BANNER_FILENAME
+        assetKeyPrefix + "/" + assetKey + Publish.BANNER_FILENAME
       ) shouldBe "banner-data"
       downloadFile(
         assetBucket,
-        "dataset-assets/" + testKey + Publish.README_FILENAME
+        assetKeyPrefix + "/" + assetKey + Publish.README_FILENAME
       ) shouldBe "readme-data"
 
       val metadata =
@@ -735,19 +765,22 @@ class TestPublish
               "files/pkg2/file2.dcm",
               2222,
               FileType.DICOM,
-              Some(pkg2.nodeId)
+              Some(pkg2.nodeId),
+              Some(file2.uuid)
             ),
             FileManifest(
               "files/pkg2/file3.dcm",
               3333,
               FileType.DICOM,
-              Some(pkg2.nodeId)
+              Some(pkg2.nodeId),
+              Some(file3.uuid)
             ),
             FileManifest(
               "files/pkg1.txt",
               1234,
               FileType.Text,
-              Some(pkg1.nodeId)
+              Some(pkg1.nodeId),
+              Some(file1.uuid)
             ),
             FileManifest(
               Publish.README_FILENAME,
@@ -766,9 +799,9 @@ class TestPublish
     }
 
     "create metadata, package objects and public assets in S3 (embargo bucket)" in {
-      // everything under `testKey` should be gone:
-      assert(!s3FilesExistUnderKey(publishBucket, testKey))
-      assert(!s3FilesExistUnderKey(embargoBucket, testKey))
+      //Push previousfileskeys
+      createS3File(embargoBucket, previousFileKey, "[]")
+      assert(s3FileExists(embargoBucket, previousFileKey))
 
       // seed the embargo bucket:
       createS3File(
@@ -844,20 +877,20 @@ class TestPublish
         downloadFile(embargoBucket, testKey + "metadata/schema.json")
 
       val bannerJpg =
-        downloadFile(embargoBucket, testKey + s"/${Publish.BANNER_FILENAME}")
+        downloadFile(embargoBucket, testKey + s"${Publish.BANNER_FILENAME}")
       bannerJpg shouldBe "banner-data"
       val readmeMarkdown =
-        downloadFile(embargoBucket, testKey + s"/${Publish.README_FILENAME}")
+        downloadFile(embargoBucket, testKey + s"${Publish.README_FILENAME}")
       readmeMarkdown shouldBe "readme-data"
 
       // should write assets to public discover bucket
       downloadFile(
         assetBucket,
-        "dataset-assets/" + testKey + Publish.BANNER_FILENAME
+        assetKeyPrefix + "/" + assetKey + Publish.BANNER_FILENAME
       ) shouldBe "banner-data"
       downloadFile(
         assetBucket,
-        "dataset-assets/" + testKey + Publish.README_FILENAME
+        assetKeyPrefix + "/" + assetKey + Publish.README_FILENAME
       ) shouldBe "readme-data"
 
       val metadata =
@@ -894,19 +927,22 @@ class TestPublish
               "files/pkg2/file2.dcm",
               2222,
               FileType.DICOM,
-              Some(pkg2.nodeId)
+              Some(pkg2.nodeId),
+              Some(file2.uuid)
             ),
             FileManifest(
               "files/pkg2/file3.dcm",
               3333,
               FileType.DICOM,
-              Some(pkg2.nodeId)
+              Some(pkg2.nodeId),
+              Some(file3.uuid)
             ),
             FileManifest(
               "files/pkg1.txt",
               1234,
               FileType.Text,
-              Some(pkg1.nodeId)
+              Some(pkg1.nodeId),
+              Some(file1.uuid)
             ),
             FileManifest(
               Publish.README_FILENAME,
@@ -925,6 +961,8 @@ class TestPublish
     }
 
     "create metadata, package objects and public assets in S3 with ignored files (publish bucket)" in {
+      //Push previousfileskeys
+      createS3File(publishBucket, previousFileKey, "[]")
 
       // Package with a single file
       val pkg1 = createPackage(testUser, name = "pkg1")
@@ -1020,6 +1058,162 @@ class TestPublish
       )
     }
 
+    "create metadata, package objects and public assets in S3 with previousFilesList and ignoreList (publish bucket)" in {
+      // Package with a single file
+      val pkg1 = createPackage(testUser, name = "pkg1")
+      val file1 = createFile(
+        pkg1,
+        name = "file",
+        s3Key = "key/file.txt",
+        content = "data data",
+        size = 1234
+      )
+
+      // Package with multiple file sources
+      val pkg2 = createPackage(testUser, name = "pkg2")
+      val file2 = createFile(
+        pkg2,
+        name = "file2",
+        s3Key = "key/file2.dcm",
+        content = "atad atad",
+        size = 2222,
+        fileType = FileType.DICOM
+      )
+
+      val file3 = createFile(
+        pkg2,
+        name = "file3",
+        s3Key = "key/file3.dcm",
+        content = "double data",
+        size = 3333,
+        fileType = FileType.DICOM
+      )
+
+      val pkg3 = createPackage(testUser, name = "textpkg")
+      val file4 = createFile(
+        pkg3,
+        name = "file4",
+        s3Key = "key/file4.txt",
+        content = "double data",
+        size = 3333
+      )
+
+      val ignoreFiles = setDatasetIgnoreFiles(
+        Seq(DatasetIgnoreFile(publishContainer.dataset.id, file3.fileName))
+      )
+
+      //This Json object represents a previous publicartion of this dataset.
+      // File 1 has the same sourceFileId as the one we intend to publish, meaning that it should be a NoOpAction for
+      // this file.
+      // File 2 has a different sourceFileId, we expect it to be overwritten/versioned
+      // File 3 does not exist in the dataset being published and should be deleted by the publicaton process
+      // File 4 has been moved to a new location. We expect the old file to be removed and the new one to exist
+
+      val previousFilesList = List(
+        PublishedFile(
+          s3Key = testKey + "files/pkg1.txt",
+          sourceFileId = Some(file1.uuid)
+        ),
+        PublishedFile(
+          s3Key = testKey + "files/pkg2/file2.dcm",
+          sourceFileId = Some(
+            UUID
+              .randomUUID()
+          )
+        ),
+        PublishedFile(
+          s3Key = testKey + "files/pkg3.txt",
+          sourceFileId = Some(
+            UUID
+              .randomUUID()
+          )
+        ),
+        PublishedFile(
+          s3Key = testKey + "files/foo/textpkg.txt",
+          sourceFileId = Some(file4.uuid)
+        )
+      )
+
+      //Push previousfileskeys
+      createS3File(
+        publishBucket,
+        previousFileKey,
+        previousFilesList.asJson.toString
+      )
+      // upload those already exisintg files
+      createS3File(publishBucket, testKey + "files/pkg1.txt", "data data")
+      createS3File(
+        publishBucket,
+        testKey + "files/pkg2/file2.dcm",
+        "not data data"
+      )
+      createS3File(
+        publishBucket,
+        testKey + "files/pkg3.txt",
+        "this file will be erased"
+      )
+      createS3File(
+        publishBucket,
+        testKey + "files/foo/textpkg.txt",
+        "this file will be erased"
+      )
+
+      val file1VersionIDBefore = s3
+        .getObjectMetadata(publishBucket, testKey + "files/pkg1.txt")
+        .right
+        .get
+        .getVersionId
+
+      val file2VersionIDBefore = s3
+        .getObjectMetadata(publishBucket, testKey + "files/pkg2/file2.dcm")
+        .right
+        .get
+        .getVersionId
+
+      Publish.publishAssets(publishContainer).await.isRight shouldBe true
+      runModelPublish(publishBucket, testKey)
+
+      // Finalizing the jobs should write an `output.json` and delete all other
+      // temporary files
+      Publish.finalizeDataset(publishContainer).await shouldBe Right(())
+
+      assert(s3FileExists(publishBucket, testKey + "files/pkg1.txt"))
+      assert(s3FileExists(publishBucket, testKey + "files/pkg2/file2.dcm"))
+      assert(!s3FileExists(publishBucket, testKey + "files/pkg3.txt"))
+      assert(!s3FileExists(publishBucket, testKey + "files/foo/textpkg.txt"))
+      assert(s3FileExists(publishBucket, testKey + "files/textpkg.txt"))
+
+      val file1VersionIDAfter = s3
+        .getObjectMetadata(publishBucket, testKey + "files/pkg1.txt")
+        .right
+        .get
+        .getVersionId
+
+      val file2VersionIDAfter = s3
+        .getObjectMetadata(publishBucket, testKey + "files/pkg2/file2.dcm")
+        .right
+        .get
+        .getVersionId
+
+      assert(file1VersionIDBefore == file1VersionIDAfter) //same version
+      assert(file2VersionIDBefore != file2VersionIDAfter) //new version
+
+      val metadata =
+        downloadFile(publishBucket, testKey + Publish.METADATA_FILENAME)
+
+      decode[DatasetMetadata](metadata).map(_.files.map(_.path)) shouldBe Right(
+        List(
+          Publish.BANNER_FILENAME,
+          "files/pkg2/file2.dcm",
+          Publish.METADATA_FILENAME,
+          "files/pkg1.txt",
+          Publish.README_FILENAME,
+          "metadata/schema.json",
+          "files/textpkg.txt"
+        )
+      )
+    }
+
     "compute self-aware metadata.json size" in {
       Publish.sizeCountingOwnSize(0) shouldBe 1
       Publish.sizeCountingOwnSize(1) shouldBe 2
@@ -1081,7 +1275,7 @@ class TestPublish
 
       val (_, sink) = Source
         .single((pkg, Seq("p1", "c1")))
-        .via(BuildCopyRequests())
+        .via(BuildS3ActionRequests(List.empty))
         .toMat(TestSink.probe)(Keep.both)
         .run()
 
@@ -1107,6 +1301,47 @@ class TestPublish
       sink.expectComplete()
     }
 
+    "emit noOp requests" in {
+      val pkg = createPackage(testUser, name = "pkg")
+      val file1 = createFile(pkg, name = "file1", s3Key = "key/file1.txt")
+      val file2 = createFile(pkg, name = "file2", s3Key = "key/file2.txt")
+
+      val previousFileList = List(
+        PublishedFile(
+          s3Key = "files/p1/c1/pkg/file1.txt",
+          sourceFileId = Some(file1.uuid)
+        ),
+        PublishedFile(
+          s3Key = "files/p1/c1/pkg/file2.txt",
+          sourceFileId = Some(file2.uuid)
+        )
+      )
+      val (_, sink) = Source
+        .single((pkg, Seq("p1", "c1")))
+        .via(BuildS3ActionRequests(previousFileList))
+        .toMat(TestSink.probe)(Keep.both)
+        .run()
+
+      sink.request(n = 100)
+      sink.expectNextUnordered(
+        NoOpAction(
+          pkg,
+          file1,
+          testKey,
+          s"files/p1/c1/pkg/file1.txt",
+          s"files/p1/c1/pkg"
+        ),
+        NoOpAction(
+          pkg,
+          file2,
+          testKey,
+          s"files/p1/c1/pkg/file2.txt",
+          s"files/p1/c1/pkg"
+        )
+      )
+      sink.expectComplete()
+    }
+
     "ignore non-source files" in {
       val pkg = createPackage(testUser)
       val file1 =
@@ -1124,7 +1359,7 @@ class TestPublish
 
       val (_, sink) = Source
         .single((pkg, Seq("p1", "c1")))
-        .via(BuildCopyRequests())
+        .via(BuildS3ActionRequests(List.empty))
         .toMat(TestSink.probe)(Keep.both)
         .run()
 
@@ -1144,7 +1379,7 @@ class TestPublish
 
       val (_, sink) = Source
         .single((pkg, Seq("p1", "c1")))
-        .via(BuildCopyRequests())
+        .via(BuildS3ActionRequests(List.empty))
         .toMat(TestSink.probe)(Keep.both)
         .run()
 
@@ -1164,7 +1399,7 @@ class TestPublish
 
       val (_, sink) = Source
         .single((pkg, Seq("p1", "c1")))
-        .via(BuildCopyRequests())
+        .via(BuildS3ActionRequests(List.empty))
         .toMat(TestSink.probe)(Keep.both)
         .run()
 
@@ -1190,7 +1425,7 @@ class TestPublish
 
       val (_, sink) = Source
         .single((pkg, Seq("p1", "c1")))
-        .via(BuildCopyRequests())
+        .via(BuildS3ActionRequests(List.empty))
         .toMat(TestSink.probe)(Keep.both)
         .run()
 
@@ -1223,8 +1458,14 @@ class TestPublish
       val file =
         createFile(pkg, name = "notes", s3Key = "key/2524423/notes.txt")
 
-      BuildCopyRequests
-        .buildCopyActions(pkg, Seq("grandparent", "parent"), Seq(file)) shouldBe Seq(
+      BuildS3ActionRequests
+        .buildCopyAndNoOpActions(
+          pkg,
+          Seq("grandparent", "parent"),
+          Seq(file),
+          Seq.empty,
+          List.empty
+        ) shouldBe Seq(
         CopyAction(
           pkg,
           file,
@@ -1241,8 +1482,14 @@ class TestPublish
       val file =
         createFile(pkg, name = "notes", s3Key = "key/2524423/notes.txt")
 
-      BuildCopyRequests
-        .buildCopyActions(pkg, Seq("grandparent", "parent"), Seq(file)) shouldBe Seq(
+      BuildS3ActionRequests
+        .buildCopyAndNoOpActions(
+          pkg,
+          Seq("grandparent", "parent"),
+          Seq(file),
+          Seq.empty,
+          List.empty
+        ) shouldBe Seq(
         CopyAction(
           pkg,
           file,
@@ -1269,8 +1516,14 @@ class TestPublish
         fileType = FileType.DICOM
       )
 
-      BuildCopyRequests
-        .buildCopyActions(pkg, Seq("grandparent", "parent"), Seq(file1, file2)) shouldBe Seq(
+      BuildS3ActionRequests
+        .buildCopyAndNoOpActions(
+          pkg,
+          Seq("grandparent", "parent"),
+          Seq(file1, file2),
+          Seq.empty,
+          List.empty
+        ) shouldBe Seq(
         CopyAction(
           pkg,
           file1,
@@ -1301,7 +1554,7 @@ class TestPublish
       val file21 = createFile(pkg2, name = "Notes.txt")
 
       val (idMap, _) =
-        PackagesExport.exportPackageSources(publishContainer).await
+        PackagesExport.exportPackageSources(publishContainer, List.empty).await
 
       idMap shouldBe Map(
         ExternalId.nodeId(pkg1.nodeId) -> "files/Brain stuff",
@@ -1334,13 +1587,17 @@ class TestPublish
         .await
 
       downloadFile(file.s3Bucket, file.s3Key) shouldBe "some content"
-      downloadFile(publishBucket, s"base/$testKey/test.txt") shouldBe "some content"
+      downloadFile(publishBucket, s"base/${testKey}test.txt") shouldBe "some content"
+
     }
   }
 
   "storage calculator" should {
     "compute total storage under the publish dataset key" in {
-      Publish.computeTotalSize(publishContainer).await.value shouldBe 0
+      Publish
+        .computeTotalSize(publishContainer)
+        .await
+        .value shouldBe 0
 
       createS3File(publishBucket, testKey + "a", "a")
       createS3File(publishBucket, testKey + "b", "bb")
@@ -1355,12 +1612,11 @@ class TestPublish
   }
 
   /**
-    * Delete all objects from bucket, and delete the bucket itself
+    * Delete all objects from bucket
     */
-  def deleteBucket(bucket: String): Assertion = {
+  def deleteBucket(bucket: String): Seq[Assertion] = {
     listBucket(bucket)
       .map(o => s3.deleteObject(bucket, o.getKey()).isRight shouldBe true)
-    s3.deleteBucket(bucket).isRight shouldBe true
   }
 
   def listBucket(bucket: String): mutable.Seq[S3ObjectSummary] =
@@ -1571,6 +1827,11 @@ class TestPublish
       .listObjects(s3Bucket, usePrefix)
       .getObjectSummaries
       .size() > 0
+  }
+
+  def s3FileExists(s3Bucket: String, s3Key: String): Boolean = {
+    s3.client
+      .doesObjectExist(s3Bucket, s3Key)
   }
 
   def generateRandomString(size: Int = 10): String =

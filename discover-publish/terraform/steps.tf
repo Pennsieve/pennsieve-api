@@ -143,7 +143,10 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
             }, {
               "Name": "VERSION",
               "Value.$": "$.version"
-            }]
+            }, {
+              "Name": "S3_VERSIONED_FILES_KEY",
+              "Value.$": "$.s3_versioned_files_key"
+            },]
           }, {
             "Name": "discover-postgres",
             "Environment": [{
@@ -312,7 +315,9 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
             }, {
               "Name": "VERSION",
               "Value.$": "$.version"
-            }]
+            }, {
+              "Name": "S3_VERSIONED_FILES_KEY",
+              "Value.$": "$.s3_versioned_files_key"}]
           }, {
             "Name": "discover-postgres",
             "Environment": [{
@@ -338,7 +343,10 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
       "Resource": "${data.terraform_remote_state.discover_s3clean_lambda.outputs.lambda_function_arn}",
       "Parameters": {
         "s3_bucket.$": "$.s3_bucket",
-        "s3_key_prefix.$": "$.s3_publish_key"
+        "s3_key_prefix.$": "$.s3_publish_key",
+        "s3_versioned_files_key$":"$.s3_versioned_files_key",
+        "version.$":"$.version",
+        "dataset_id.$":"$.dataset_id",
       },
       "Retry": [
         {
