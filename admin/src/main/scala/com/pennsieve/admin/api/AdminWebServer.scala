@@ -21,7 +21,6 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
 import akka.http.scaladsl.server.directives.ExecutionDirectives.handleRejections
 import akka.http.scaladsl.model.headers.{ HttpOrigin, HttpOriginRange }
-
 import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainerImpl,
   InsecureResourceContainer,
@@ -38,6 +37,7 @@ import com.pennsieve.aws.email.{ AWSEmailContainer, LocalEmailContainer }
 import com.pennsieve.aws.queue.{ AWSSQSContainer, LocalSQSContainer }
 import com.pennsieve.aws.s3.{ AWSS3Container, LocalS3Container }
 import com.pennsieve.aws.cognito.{ AWSCognitoContainer, LocalCognitoContainer }
+import com.pennsieve.aws.sns.{ AWSSNSContainer, LocalSNSContainer }
 import com.pennsieve.clients.S3CustomTermsOfServiceClientContainer
 import com.pennsieve.core.utilities._
 import com.pennsieve.discover.client.publish.PublishClient
@@ -62,13 +62,13 @@ object AdminWebServer extends App with WebServer with LazyLogging {
     if (Settings.isLocal) {
       new InsecureContainer(config) with InsecureCoreContainer
       with LocalEmailContainer with MessageTemplatesContainer
-      with LocalSQSContainer with AdminContainer with LocalS3Container
-      with S3CustomTermsOfServiceClientContainer
+      with LocalSQSContainer with LocalSNSContainer with AdminContainer
+      with LocalS3Container with S3CustomTermsOfServiceClientContainer
       with AdminETLServiceContainerImpl with LocalCognitoContainer
     } else {
       new InsecureContainer(config) with InsecureCoreContainer
       with AWSEmailContainer with MessageTemplatesContainer with AWSSQSContainer
-      with AdminContainer with AWSS3Container
+      with AWSSNSContainer with AdminContainer with AWSS3Container
       with S3CustomTermsOfServiceClientContainer
       with AdminETLServiceContainerImpl with AWSCognitoContainer
     }
@@ -83,7 +83,7 @@ object AdminWebServer extends App with WebServer with LazyLogging {
         _db = insecureContainer.db,
         user = user,
         organization = organization
-      ) with SecureCoreContainer with LocalEmailContainer
+      ) with SecureCoreContainer with LocalEmailContainer with LocalSNSContainer
       with MessageTemplatesContainer with Router.AdminETLServiceContainerImpl
     } else {
       new SecureContainer(
@@ -93,7 +93,7 @@ object AdminWebServer extends App with WebServer with LazyLogging {
         organization = organization
       ) with SecureCoreContainer with AWSEmailContainer
       with MessageTemplatesContainer with LocalS3Container
-      with S3CustomTermsOfServiceClientContainer
+      with LocalSNSContainer with S3CustomTermsOfServiceClientContainer
       with Router.AdminETLServiceContainerImpl
     }
   }

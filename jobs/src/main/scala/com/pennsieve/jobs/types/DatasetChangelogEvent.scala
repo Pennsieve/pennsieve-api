@@ -20,7 +20,12 @@ import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
-import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
+import com.pennsieve.aws.sns.{ SNS, SNSContainer }
+import com.pennsieve.core.utilities.{
+  ChangelogEventContainer,
+  DatabaseContainer,
+  InsecureContainer
+}
 import com.pennsieve.db.{ DatasetsMapper, OrganizationsMapper, UserMapper }
 import com.pennsieve.jobs.contexts.ChangelogEventContext
 import com.pennsieve.jobs.{
@@ -47,11 +52,12 @@ import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
 
 class DatasetChangelogEvent(
-  insecureContainer: DatabaseContainer
+  insecureContainer: DatabaseContainer with SNSContainer
 )(implicit
   log: ContextLogger
 ) {
   val db: Database = insecureContainer.db
+  val sns: SNS = insecureContainer.sns
 
   implicit val tier: Tier[DatasetChangelogEvent] =
     Tier[DatasetChangelogEvent]
@@ -71,7 +77,7 @@ class DatasetChangelogEvent(
       traceId = traceId,
       datasetId = dataset.id
     )
-    val changelogManager = new ChangelogManager(db, organization, user)
+    val changelogManager = new ChangelogManager(db, organization, user, sns)
     for ((eventDetail, _) <- eventDetails) {
       log.tierContext.info(s"event = ${eventDetail.eventType.asJson.noSpaces}")
     }
@@ -179,6 +185,8 @@ object DatasetChangelogEvent {
     log: ContextLogger
   ): DatasetChangelogEvent =
     new DatasetChangelogEvent(
-      new InsecureContainer(config) with DatabaseContainer
+      new InsecureContainer(config) with DatabaseContainer with SNSContainer {
+        override val sns: SNS = this.sns
+      }
     )
 }

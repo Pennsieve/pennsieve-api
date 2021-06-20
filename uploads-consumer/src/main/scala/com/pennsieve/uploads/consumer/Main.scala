@@ -81,7 +81,7 @@ object Main extends App with WebServer {
 
   implicit val sqsClient: SqsAsyncClient = container.sqs.client
 
-  implicit val snsClient: SnsAsyncClient = container.snsClient
+  implicit val snsClient: SnsAsyncClient = container.sns.client
 
   val (deadLetterQueueKillSwitch, deadLetterQueueFuture) =
     DeadLetterQueueProcessor

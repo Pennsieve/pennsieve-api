@@ -19,9 +19,9 @@ package com.pennsieve.aws.queue
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
-
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import com.pennsieve.aws.LocalAWSCredentialsProviderV2
+import com.pennsieve.core.utilities.CoreContainer
 import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
 

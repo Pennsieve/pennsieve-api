@@ -28,6 +28,8 @@ import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.aws.email.{ Email, SesMessageResult }
 import com.pennsieve.aws.queue.SQSClient
+import com.pennsieve.aws.sns.SNSClient
+
 import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
@@ -277,6 +279,7 @@ class DataSetsController(
   val system: ActorSystem,
   auditLogger: Auditor,
   sqsClient: SQSClient,
+  snsClient: SNSClient,
   modelServiceClient: ModelServiceClient,
   publishClient: PublishClient,
   searchClient: SearchClient,
@@ -564,8 +567,8 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[DataSetDTO]] =
         for {
-          secureContainer <- getSecureContainer
-          organization = secureContainer.organization
+//          secureContainer <- getSecureContainer
+          secureContainer <- organization = secureContainer.organization
           traceId <- getTraceId(request)
           storageServiceClient = secureContainer.storageManager
 

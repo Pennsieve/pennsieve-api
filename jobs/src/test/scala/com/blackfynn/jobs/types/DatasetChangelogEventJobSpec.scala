@@ -18,7 +18,11 @@ package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKitBase
-import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
+import com.pennsieve.core.utilities.{
+  ChangelogEventContainer,
+  DatabaseContainer,
+  InsecureContainer
+}
 import com.pennsieve.managers.ManagerSpec
 import com.pennsieve.messages.BackgroundJob._
 import com.pennsieve.messages.{
@@ -51,14 +55,15 @@ class DatasetChangelogEventJobSpec
   )
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
-  var insecureContainer: DatabaseContainer = _
+  var insecureContainer: ChangelogEventContainer = _
 
   override def afterStart(): Unit = {
     val config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
 
-    insecureContainer = new InsecureContainer(config) with DatabaseContainer {
+    insecureContainer = new InsecureContainer(config)
+    with ChangelogEventContainer {
       override val postgresUseSSL = false
     }
 
