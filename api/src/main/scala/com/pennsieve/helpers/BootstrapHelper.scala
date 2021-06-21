@@ -102,6 +102,7 @@ object APIContainers {
   type SecureAPIContainer = APIContainer
     with SecureContainer
     with SecureCoreContainer
+    with ChangelogContainer
 
   type SecureContainerBuilderType =
     (User, Organization) => SecureAPIContainer
@@ -247,14 +248,15 @@ class LocalBootstrapHelper(
   override val secureContainerBuilder: (
     User,
     Organization
-  ) => SecureContainer with SecureCoreContainer with LocalEmailContainer = {
+  ) => SecureContainer with ChangelogContainer with SecureCoreContainer with LocalEmailContainer = {
     (user: User, organization: Organization) =>
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
         user = user,
         organization = organization
-      ) with SecureCoreContainer with LocalEmailContainer with LocalSNSContainer
+      ) with SecureCoreContainer with ChangelogContainer
+      with LocalEmailContainer with LocalSNSContainer
   }
 }
 
@@ -298,5 +300,6 @@ class AWSBootstrapHelper(
         _db = insecureContainer.db,
         user = user,
         organization = organization
-      ) with SecureCoreContainer with AWSEmailContainer with AWSSNSContainer
+      ) with SecureCoreContainer with ChangelogContainer with AWSEmailContainer
+      with AWSSNSContainer
 }

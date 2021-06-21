@@ -20,6 +20,7 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.db._
 import com.pennsieve.domain._
 import com.pennsieve.models._
@@ -52,6 +53,7 @@ class ChangelogManager(
   val db: Database,
   val organization: Organization,
   val actor: User,
+  val snsTopic: SnsTopic,
   val snsClient: SnsAsyncClient
 ) {
 

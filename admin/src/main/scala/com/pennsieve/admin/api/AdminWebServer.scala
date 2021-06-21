@@ -37,7 +37,6 @@ import com.pennsieve.aws.email.{ AWSEmailContainer, LocalEmailContainer }
 import com.pennsieve.aws.queue.{ AWSSQSContainer, LocalSQSContainer }
 import com.pennsieve.aws.s3.{ AWSS3Container, LocalS3Container }
 import com.pennsieve.aws.cognito.{ AWSCognitoContainer, LocalCognitoContainer }
-import com.pennsieve.aws.sns.{ AWSSNSContainer, LocalSNSContainer }
 import com.pennsieve.clients.S3CustomTermsOfServiceClientContainer
 import com.pennsieve.core.utilities._
 import com.pennsieve.discover.client.publish.PublishClient
@@ -83,7 +82,7 @@ object AdminWebServer extends App with WebServer with LazyLogging {
         _db = insecureContainer.db,
         user = user,
         organization = organization
-      ) with SecureCoreContainer with LocalEmailContainer with LocalSNSContainer
+      ) with SecureCoreContainer with LocalEmailContainer
       with MessageTemplatesContainer with Router.AdminETLServiceContainerImpl
     } else {
       new SecureContainer(
@@ -91,7 +90,7 @@ object AdminWebServer extends App with WebServer with LazyLogging {
         _db = insecureContainer.db,
         user = user,
         organization = organization
-      ) with SecureCoreContainer with AWSEmailContainer with AWSSNSContainer
+      ) with SecureCoreContainer with AWSEmailContainer
       with MessageTemplatesContainer with LocalS3Container
       with S3CustomTermsOfServiceClientContainer
       with Router.AdminETLServiceContainerImpl
