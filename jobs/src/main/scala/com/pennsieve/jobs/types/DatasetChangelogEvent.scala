@@ -21,6 +21,7 @@ import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
 import com.pennsieve.aws.sns.SNSContainer
+import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
 import com.pennsieve.db.{ DatasetsMapper, OrganizationsMapper, UserMapper }
 import com.pennsieve.jobs.contexts.ChangelogEventContext
@@ -49,7 +50,8 @@ import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
 
 class DatasetChangelogEvent(
-  insecureContainer: DatabaseContainer with SNSContainer
+  insecureContainer: DatabaseContainer with SNSContainer,
+  eventsTopic: SnsTopic
 )(implicit
   log: ContextLogger
 ) {
@@ -74,8 +76,9 @@ class DatasetChangelogEvent(
       traceId = traceId,
       datasetId = dataset.id
     )
+
     val changelogManager =
-      new ChangelogManager(db, organization, user, snsClient)
+      new ChangelogManager(db, organization, user, eventsTopic, snsClient)
     for ((eventDetail, _) <- eventDetails) {
       log.tierContext.info(s"event = ${eventDetail.eventType.asJson.noSpaces}")
     }
@@ -177,7 +180,8 @@ class DatasetChangelogEvent(
 object DatasetChangelogEvent {
   def apply(
     config: Config,
-    snsClient: SnsAsyncClient
+    snsClient: SnsAsyncClient,
+    eventsTopic: SnsTopic
   )(implicit
     ec: ExecutionContext,
     system: ActorSystem,
@@ -185,7 +189,9 @@ object DatasetChangelogEvent {
   ): DatasetChangelogEvent =
     new DatasetChangelogEvent(
       new InsecureContainer(config) with DatabaseContainer with SNSContainer {
-        override val snsClient: SnsAsyncClient = snsClient
-      }
+        override val snsClient: SnsAsyncClient = snsClient,
+
+      },
+      eventsTopic
     )
 }

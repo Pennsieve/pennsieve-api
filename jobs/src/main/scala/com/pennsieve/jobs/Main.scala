@@ -19,6 +19,7 @@ package com.pennsieve.jobs
 import akka.actor.ActorSystem
 import com.pennsieve.aws.queue.{ AWSSQSContainer, LocalSQSContainer }
 import com.pennsieve.aws.sns.{ AWSSNSContainer, LocalSNSContainer }
+import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.jobs.container._
 import com.pennsieve.jobs.types._
 import com.pennsieve.service.utilities.ContextLogger
@@ -46,9 +47,12 @@ object Main extends App {
       new JobContainer(config) with AWSSQSContainer with AWSSNSContainer
     }
 
+  val events_topic: SnsTopic = config.as[String]("changelog.sns_topic")
+
   val deletePackageJob: DeleteJob = DeleteJob()
   val cacheJob = StorageCachePopulationJob(config)
-  val logChangeEventRunner = DatasetChangelogEvent(config, container.snsClient)
+  val logChangeEventRunner =
+    DatasetChangelogEvent(config, container.snsClient, events_topic)
 
   val processor: ProcessJob =
     ProcessJob(
