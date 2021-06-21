@@ -9,6 +9,12 @@ resource "aws_iam_role_policy_attachment" "iam_role_policy_attachment" {
   policy_arn = aws_iam_policy.iam_policy.arn
 }
 
+resource "aws_iam_policy" "sns_iam_policy" {
+  name   = "${var.environment_name}-${var.service_name}-sns-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+  path   = "/service/"
+  policy = data.aws_iam_policy_document.sns_iam_policy_document.json
+}
+
 data "aws_iam_policy_document" "iam_policy_document" {
 
   # Jobs Queue / Key Permissions
@@ -89,5 +95,17 @@ data "aws_iam_policy_document" "iam_policy_document" {
     ]
 
     resources = ["arn:aws:ssm:${data.aws_region.current_region.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.environment_name}/${var.service_name}/*"]
+  }
+}
+
+// Allow JOBS to publish messages to Events SNS Topic
+data "aws_iam_policy_document" "sns_iam_policy_document" {
+  statement {
+    effect  = "Allow"
+    actions = ["sns:*"]
+
+    resources = [
+      data.terraform_remote_state.integration_service.outputs.sns_topic_arn
+    ]
   }
 }

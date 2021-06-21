@@ -18,7 +18,6 @@ package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.db._
@@ -30,6 +29,8 @@ import com.github.tminglei.slickpg.utils.PlainSQLUtils
 import io.circe._
 import io.circe.parser.decode
 import slick.jdbc.{ GetResult, PositionedParameters, SetParameter }
+import software.amazon.awssdk.services.sns.SnsAsyncClient
+
 import scala.concurrent.{ ExecutionContext, Future }
 import java.time.{ LocalDate, ZonedDateTime }
 
@@ -50,7 +51,8 @@ import java.time.{ LocalDate, ZonedDateTime }
 class ChangelogManager(
   val db: Database,
   val organization: Organization,
-  val actor: User
+  val actor: User,
+  val snsClient: SnsAsyncClient
 ) {
 
   lazy val changelogEventMapper = new ChangelogEventMapper(organization)

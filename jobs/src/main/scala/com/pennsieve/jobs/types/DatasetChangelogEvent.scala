@@ -20,6 +20,7 @@ import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
+import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
 import com.pennsieve.db.{ DatasetsMapper, OrganizationsMapper, UserMapper }
 import com.pennsieve.jobs.contexts.ChangelogEventContext
@@ -42,16 +43,18 @@ import com.pennsieve.traits.PostgresProfile.api._
 import com.typesafe.config.Config
 import io.circe._
 import io.circe.syntax._
+import software.amazon.awssdk.services.sns.SnsAsyncClient
 
 import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
 
 class DatasetChangelogEvent(
-  insecureContainer: DatabaseContainer
+  insecureContainer: DatabaseContainer with SNSContainer
 )(implicit
   log: ContextLogger
 ) {
   val db: Database = insecureContainer.db
+  val snsClient: SnsAsyncClient = insecureContainer.snsClient
 
   implicit val tier: Tier[DatasetChangelogEvent] =
     Tier[DatasetChangelogEvent]
@@ -71,7 +74,8 @@ class DatasetChangelogEvent(
       traceId = traceId,
       datasetId = dataset.id
     )
-    val changelogManager = new ChangelogManager(db, organization, user)
+    val changelogManager =
+      new ChangelogManager(db, organization, user, snsClient)
     for ((eventDetail, _) <- eventDetails) {
       log.tierContext.info(s"event = ${eventDetail.eventType.asJson.noSpaces}")
     }
@@ -172,13 +176,16 @@ class DatasetChangelogEvent(
 
 object DatasetChangelogEvent {
   def apply(
-    config: Config
+    config: Config,
+    snsClient: SnsAsyncClient
   )(implicit
     ec: ExecutionContext,
     system: ActorSystem,
     log: ContextLogger
   ): DatasetChangelogEvent =
     new DatasetChangelogEvent(
-      new InsecureContainer(config) with DatabaseContainer
+      new InsecureContainer(config) with DatabaseContainer with SNSContainer {
+        override val snsClient: SnsAsyncClient = snsClient
+      }
     )
 }

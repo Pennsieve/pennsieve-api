@@ -19,10 +19,9 @@ package com.pennsieve.jobs
 import com.pennsieve.aws.queue.SQSContainer
 import com.pennsieve.utilities.{ Container => ConfigContainer }
 import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.messages._
-
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
-
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 
@@ -43,7 +42,7 @@ package object container {
       s"jdbc:postgresql://${postgresHost}:${postgresPort}/${postgresDb}?ssl=true&sslmode=verify-ca"
   }
 
-  type Container = JobContainer with SQSContainer
+  type Container = JobContainer with SQSContainer with SNSContainer
 
   type MessageExceptionPair = (SQSMessage, JobException)
   type MessageJobPair = (SQSMessage, BackgroundJob)

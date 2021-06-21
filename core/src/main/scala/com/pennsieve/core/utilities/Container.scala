@@ -27,6 +27,7 @@ import com.pennsieve.auth.middleware.{
   Permission
 }
 import com.pennsieve.aws.email.Email
+import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.db.{
   CollectionMapper,
   ContributorMapper,
@@ -171,12 +172,14 @@ trait SecureCoreContainer
     with DimensionManagerContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
+    with SNSContainer
     with DatasetAssetsContainer { self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
     new AnnotationManager(self.organization, db)
 
-  lazy val changelogManager = new ChangelogManager(db, organization, user)
+  lazy val changelogManager =
+    new ChangelogManager(db, organization, user, snsClient)
   lazy val discussionManager: DiscussionManager =
     new DiscussionManager(self.organization, db)
   lazy val onboardingManager = new OnboardingManager(db)
@@ -266,6 +269,13 @@ trait StorageContainer {
 
   lazy val storageManager = StorageManager.create(self, organization)
 }
+
+//trait changelogContainer {
+//  self: Container with DatabaseContainer with SNSContainer =>
+//
+//  lazy val changelogManager =
+//    new ChangelogManager(db, organization, user, snsClient)
+//}
 
 trait RequestContextContainer extends OrganizationContainer { self: Container =>
   val user: User
