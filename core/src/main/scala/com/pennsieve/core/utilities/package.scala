@@ -31,6 +31,7 @@ import io.circe.shapes._
 import io.circe.syntax._
 import io.circe.{ Decoder, Encoder }
 import java.util.UUID
+import java.text.Normalizer
 
 import com.google.common.net.UrlEscapers
 import org.apache.commons.io.FilenameUtils
@@ -141,4 +142,18 @@ package object utilities {
     case None | Some("") => Right(None)
     case _ => Left(PredicateError("Middle Initial can only be one character"))
   }
+
+  /**
+    * Convert a display name to an UPPER_SNAKECASE slug
+    *
+    * Adapted from https://gist.github.com/sam/5213151
+    */
+  def slugify(displayName: String): String =
+    Normalizer
+      .normalize(displayName, Normalizer.Form.NFD)
+      .replaceAll("[^\\w\\s-]", "")
+      .replace('-', ' ')
+      .trim
+      .replaceAll("\\s+", "_")
+      .toUpperCase
 }

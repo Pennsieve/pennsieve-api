@@ -43,5 +43,8 @@ TAGS
 .bloop/
 .projectile
 .bsp/
+metals.sbt
 
 node_modules/
+
+.vscode

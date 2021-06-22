@@ -101,9 +101,9 @@ timestamps {
                     parallel deploySteps
                 }
 
-                stage('Python Client Tests') {
-                    build job: 'python-client-ci'
-                }
+                // stage('Python Client Tests') {
+                //     build job: 'python-client-ci'
+                // }
             }
         } catch (e) {
             currentBuild.result = 'FAILED'

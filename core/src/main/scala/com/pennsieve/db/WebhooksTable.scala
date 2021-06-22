@@ -59,4 +59,7 @@ final class WebhooksTable(schema: String, tag: Tag)
 }
 
 class WebhooksMapper(val organization: Organization)
-    extends TableQuery(new WebhooksTable(organization.schemaId, _))
+    extends TableQuery(new WebhooksTable(organization.schemaId, _)) {
+  def get(id: Int): Query[WebhooksTable, Webhook, Seq] =
+    this.filter(_.id === id)
+}
