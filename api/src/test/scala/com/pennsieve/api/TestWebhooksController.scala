@@ -47,33 +47,18 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      (parsedBody \ "id").extract[Int] should equal(webhook.id)
-      (parsedBody \ "apiUrl").extract[String] should equal(webhook.apiUrl)
-      (parsedBody \ "imageUrl").extract[String] should equal(
-        webhook.imageUrl.get
-      )
-      (parsedBody \ "description").extract[String] should equal(
-        webhook.description
-      )
-      (parsedBody \ "name").extract[String] should equal(webhook.name)
-      (parsedBody \ "displayName").extract[String] should equal(
-        webhook.displayName
-      )
-      (parsedBody \ "isPrivate").extract[Boolean] should equal(
-        webhook.isPrivate
-      )
-      (parsedBody \ "isDefault").extract[Boolean] should equal(
-        webhook.isDefault
-      )
-      (parsedBody \ "isDisabled").extract[Boolean] should equal(
-        webhook.isDisabled
-      )
-      (parsedBody \ "createdBy").extract[Int] should equal(
-        webhook.createdBy.get
-      )
-      (parsedBody \ "createdAt").extract[ZonedDateTime] should equal(
-        webhook.createdAt
-      )
+      val resp = parsedBody.extract[WebhookDTO]
+      resp.id should equal(webhook.id)
+      resp.apiUrl should equal(webhook.apiUrl)
+      resp.imageUrl should equal(Some(webhook.imageUrl.get))
+      resp.description should equal(webhook.description)
+      resp.name should equal(webhook.name)
+      resp.displayName should equal(webhook.displayName)
+      resp.isPrivate should equal(webhook.isPrivate)
+      resp.isDefault should equal(webhook.isDefault)
+      resp.isDisabled should equal(false)
+      resp.createdBy should equal(Some(webhook.createdBy.get))
+      resp.createdAt should equal(webhook.createdAt)
     }
   }
 
@@ -107,6 +92,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       webhook.displayName should equal("Test Webhook")
       webhook.isPrivate should equal(false)
       webhook.isDefault should equal(true)
+      webhook.isDisabled should equal(false)
       webhook.createdBy should equal(Some(loggedInUser.id))
     }
   }
