@@ -94,7 +94,7 @@ class WebhooksController(
   }
 
   get(
-    "/",
+    "/:id",
     operation(
       apiOperation[WebhookDTO]("getWebhook")
         summary "get a webhook for an organization"
