@@ -100,7 +100,45 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       webhook.displayName should equal("Test Webhook")
       webhook.isPrivate should equal(false)
       webhook.isDefault should equal(true)
-      webhook.createdBy should equal(loggedInUser.id)
+      webhook.createdBy should equal(Some(loggedInUser.id))
+    }
+  }
+  
+  test("can't create a webhook without api url") {
+    val req = write(
+      CreateWebhookRequest(
+        apiUrl = "",
+        imageUrl = Some("https://www.image.com"),
+        description = "something something",
+        secret = "secretkey",
+        displayName = "Test Webhook",
+        isPrivate = false,
+        isDefault = true
+      )
+    )
+
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(400)
+      body should include("api url must be less than or equal to 255 characters")
+    }
+  }
+  
+  test("can create a webhook without image url") {
+    val req = write(
+      CreateWebhookRequest(
+        apiUrl = "https://www.api.com",
+        imageUrl = None,
+        description = "something something",
+        secret = "secretkey",
+        displayName = "Test Webhook",
+        isPrivate = false,
+        isDefault = true
+      )
+    )
+
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(201)
+      parsedBody.extract[WebhookDTO].imageUrl shouldBe None
     }
   }
 }
