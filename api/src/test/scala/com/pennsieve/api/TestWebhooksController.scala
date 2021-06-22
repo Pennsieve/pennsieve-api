@@ -20,6 +20,8 @@ import com.pennsieve.helpers.DataSetTestMixin
 import com.pennsieve.helpers.MockAuditLogger
 import com.pennsieve.models.Webhook
 import java.time.ZonedDateTime
+import com.pennsieve.dtos.WebhookDTO
+import org.json4s.jackson.Serialization.write
 
 class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
@@ -72,6 +74,33 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       (parsedBody \ "createdAt").extract[ZonedDateTime] should equal(
         webhook.createdAt
       )
+    }
+  }
+
+  test("create a webhook") {
+    val req = write(
+      CreateWebhookRequest(
+        apiUrl = "https://www.api.com",
+        imageUrl = Some("https://www.image.com"),
+        description = "something something",
+        secret = "secretkey",
+        displayName = "Test Webhook",
+        isPrivate = false,
+        isDefault = true
+      )
+    )
+
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(201)
+      val webhook = parsedBody.extract[WebhookDTO]
+      webhook.apiUrl should equal("https://www.api.com")
+      webhook.imageUrl should equal("https://www.image.com")
+      webhook.description should equal("something something")
+      webhook.name should equal("TEST_WEBHOOK")
+      webhook.displayName should equal("Test Webhook")
+      webhook.isPrivate should equal(false)
+      webhook.isDefault should equal(true)
+      webhook.createdBy should equal(loggedInUser.id)
     }
   }
 }
