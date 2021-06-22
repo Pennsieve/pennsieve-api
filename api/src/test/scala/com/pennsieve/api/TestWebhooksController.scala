@@ -77,6 +77,13 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("can't get a webhook that doesn't exist") {
+    get("/1", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (404)
+      body should include("Webhook (1) not found")
+    }
+  }
+
   test("create a webhook") {
     val req = write(
       CreateWebhookRequest(
@@ -96,15 +103,15 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       webhook.apiUrl should equal("https://www.api.com")
       webhook.imageUrl should equal(Some("https://www.image.com"))
       webhook.description should equal("something something")
-      webhook.name should equal("TEST_WEBHOOK")
+      webhook.name should equal("TEST_WEBHOOK") // name = slugified display name
       webhook.displayName should equal("Test Webhook")
       webhook.isPrivate should equal(false)
       webhook.isDefault should equal(true)
       webhook.createdBy should equal(Some(loggedInUser.id))
     }
   }
-  
-  test("can't create a webhook without api url") {
+
+  test("can't create a webhook without an api url") {
     val req = write(
       CreateWebhookRequest(
         apiUrl = "",
@@ -119,11 +126,13 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
-      body should include("api url must be less than or equal to 255 characters")
+      body should include(
+        "api url must be less than or equal to 255 characters"
+      )
     }
   }
-  
-  test("can create a webhook without image url") {
+
+  test("can create a webhook without an image url") {
     val req = write(
       CreateWebhookRequest(
         apiUrl = "https://www.api.com",
@@ -139,6 +148,25 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(201)
       parsedBody.extract[WebhookDTO].imageUrl shouldBe None
+    }
+  }
+
+  test("can't create a webhook without a secret key") {
+    val req = write(
+      CreateWebhookRequest(
+        apiUrl = "https://www.api.com",
+        imageUrl = Some("https://www.image.com"),
+        description = "something something",
+        secret = "",
+        displayName = "Test Webhook",
+        isPrivate = false,
+        isDefault = true
+      )
+    )
+
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(400)
+      body should include("secret must be between 1 and 255 characters")
     }
   }
 }
