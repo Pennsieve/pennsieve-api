@@ -35,7 +35,8 @@ import com.pennsieve.db.{
   DatasetUserMapper,
   DatasetsMapper,
   ExternalFilesMapper,
-  PackagesMapper
+  PackagesMapper,
+  WebhooksMapper
 }
 import com.pennsieve.domain.{ CoreError, DatasetRolePermissionError, NotFound }
 import com.pennsieve.managers._
@@ -171,6 +172,7 @@ trait SecureCoreContainer
     with DimensionManagerContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
+    with WebhookManagerContainer
     with DatasetAssetsContainer { self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
@@ -432,4 +434,18 @@ trait DatasetRoleContainer {
 
 trait ContextLoggingContainer {
   val log: ContextLogger = new ContextLogger()
+}
+
+trait WebhookManagerContainer
+    extends OrganizationContainer
+    with DatabaseContainer
+    with RequestContextContainer { self: Container =>
+
+  lazy val webhooksMapper: WebhooksMapper = new WebhooksMapper(
+    self.organization
+  )
+
+  lazy val webhookManager: WebhookManager =
+    new WebhookManager(db, user, webhooksMapper)
+
 }

@@ -14,35 +14,45 @@
  * limitations under the License.
  */
 
-package com.pennsieve.models
+package com.pennsieve.dtos
 
-import io.circe.{ Decoder, Encoder }
+import com.pennsieve.models.{ Webhook }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.{ Decoder, Encoder }
 import java.time.ZonedDateTime
-import io.circe.java8.time._
 
-final case class Webhook(
+final case class WebhookDTO(
+  id: Int,
   apiUrl: String,
   imageUrl: Option[String],
   description: String,
-  secret: String,
   name: String,
   displayName: String,
   isPrivate: Boolean,
   isDefault: Boolean,
   isDisabled: Boolean,
   createdBy: Option[Int],
-  createdAt: ZonedDateTime = ZonedDateTime.now(),
-  id: Int = 0
+  createdAt: ZonedDateTime
 )
 
-object Webhook {
-  implicit val decoder: Decoder[Webhook] = deriveDecoder[Webhook]
-  implicit val encoder: Encoder[Webhook] = deriveEncoder[Webhook]
+object WebhookDTO {
 
-  /*
-   * This is required by slick when using a companion object on a case
-   * class that defines a database table
-   */
-  val tupled = (this.apply _).tupled
+  implicit val encoder: Encoder[WebhookDTO] = deriveEncoder[WebhookDTO]
+  implicit val decoder: Decoder[WebhookDTO] = deriveDecoder[WebhookDTO]
+
+  def apply(webhook: Webhook): WebhookDTO = {
+    WebhookDTO(
+      id = webhook.id,
+      apiUrl = webhook.apiUrl,
+      imageUrl = webhook.imageUrl,
+      description = webhook.description,
+      name = webhook.name,
+      displayName = webhook.displayName,
+      isPrivate = webhook.isPrivate,
+      isDefault = webhook.isDefault,
+      isDisabled = webhook.isDisabled,
+      createdBy = webhook.createdBy,
+      createdAt = webhook.createdAt
+    )
+  }
 }

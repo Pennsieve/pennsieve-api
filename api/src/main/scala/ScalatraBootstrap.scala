@@ -285,6 +285,17 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       )
       context mount (userController, "/user/*", "user")
 
+      // webhook endpoints
+      ///////////////////////////////
+      val webhooksController = new WebhooksController(
+        bootstrapHelper.insecureContainer,
+        bootstrapHelper.secureContainerBuilder,
+        system,
+        bootstrapHelper.auditLogger,
+        ec
+      )
+      context mount (webhooksController, "/webhooks/*", "webhooks")
+
     } catch {
       case e: Throwable =>
         val sw = new StringWriter

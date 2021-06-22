@@ -33,7 +33,8 @@ import com.pennsieve.models.{
   PackageState,
   PackageType,
   Team,
-  User
+  User,
+  Webhook
 }
 import com.pennsieve.clients.DatasetAssetClient
 import org.scalatest.EitherValues._
@@ -285,6 +286,34 @@ trait DataSetTestMixin { self: ApiSuite =>
     organizationManager
       .addUser(secureContainer.organization, user, Delete)
       .await
+      .value
+  }
+
+  def createWebhook(
+    apiUrl: String = "https://www.api.com",
+    imageUrl: Option[String] = Some("https://www.image.com"),
+    description: String = "test webhook",
+    secret: String = "secretkey123",
+    displayName: String = "Test Webhook",
+    isPrivate: Boolean = false,
+    isDefault: Boolean = true,
+    createdBy: Int = 1
+  )(implicit
+    ec: ExecutionContext
+  ): Webhook = {
+    secureContainer.webhookManager
+      .create(
+        apiUrl = apiUrl,
+        imageUrl = imageUrl,
+        description = description,
+        secret = secret,
+        displayName = displayName,
+        isPrivate = isPrivate,
+        isDefault = isDefault,
+        createdBy
+      )
+      .await
+      .right
       .value
   }
 }
