@@ -49,7 +49,7 @@ class WebhookManager(
   ): EitherT[Future, CoreError, Webhook] = {
     for {
       _ <- checkOrErrorT(apiUrl.trim.length < 256 && apiUrl.trim.length > 0)(
-        PredicateError("api url must be between 1 and 255 characters")
+        PredicateError("api url must be less than or equal to 255 characters")
       )
 
       trimmedImageUrl = imageUrl match {

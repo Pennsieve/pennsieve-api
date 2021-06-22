@@ -94,7 +94,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       status should equal(201)
       val webhook = parsedBody.extract[WebhookDTO]
       webhook.apiUrl should equal("https://www.api.com")
-      webhook.imageUrl should equal("https://www.image.com")
+      webhook.imageUrl should equal(Some("https://www.image.com"))
       webhook.description should equal("something something")
       webhook.name should equal("TEST_WEBHOOK")
       webhook.displayName should equal("Test Webhook")
