@@ -94,6 +94,11 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       webhook.isDefault should equal(true)
       webhook.isDisabled should equal(false)
       webhook.createdBy should equal(Some(loggedInUser.id))
+
+      get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+        status should equal(200)
+        parsedBody.extract[WebhookDTO].id shouldBe (webhook.id)
+      }
     }
   }
 
