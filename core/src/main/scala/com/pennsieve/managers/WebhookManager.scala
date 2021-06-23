@@ -85,7 +85,7 @@ class WebhookManager(
         displayName.trim,
         isPrivate,
         isDefault,
-        true,
+        false,
         Some(createdBy)
       )
 
