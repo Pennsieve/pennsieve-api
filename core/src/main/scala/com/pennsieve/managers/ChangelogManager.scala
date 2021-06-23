@@ -27,10 +27,15 @@ import com.pennsieve.models._
 import com.pennsieve.core.utilities.checkOrErrorT
 import com.pennsieve.traits.PostgresProfile.api._
 import com.github.tminglei.slickpg.utils.PlainSQLUtils
+import com.pennsieve.aws.sns.SNS
 import io.circe._
 import io.circe.parser.decode
 import slick.jdbc.{ GetResult, PositionedParameters, SetParameter }
 import software.amazon.awssdk.services.sns.SnsAsyncClient
+import software.amazon.awssdk.services.sns.model.{
+  PublishRequest,
+  PublishResponse
+}
 
 import scala.concurrent.{ ExecutionContext, Future }
 import java.time.{ LocalDate, ZonedDateTime }
@@ -54,14 +59,14 @@ class ChangelogManager(
   val organization: Organization,
   val actor: User,
   val snsTopic: SnsTopic,
-  val snsClient: SnsAsyncClient
+  val snsClient: SNS
 ) {
 
   lazy val changelogEventMapper = new ChangelogEventMapper(organization)
 
   lazy val changelogEventTypeMapper = new ChangelogEventTypeMapper(organization)
 
-  def logEvent(
+  def logEventDB(
     dataset: Dataset,
     detail: ChangelogEventDetail,
     timestamp: ZonedDateTime = ZonedDateTime.now()
@@ -75,6 +80,33 @@ class ChangelogManager(
       )
       .toEitherT
       .subflatMap(ChangelogEventAndType.from(_).leftMap(ParseError(_)))
+
+  def logEventSNS(
+    dataset: Dataset,
+    detail: ChangelogEventDetail,
+    timestamp: ZonedDateTime = ZonedDateTime.now()
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, PublishResponse] =
+    snsClient.publish(snsTopic, detail.toString)
+
+  def logEvent(
+    dataset: Dataset,
+    detail: ChangelogEventDetail,
+    timestamp: ZonedDateTime = ZonedDateTime.now()
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, ChangelogEventAndType] = {
+
+    for {
+      changelogEventAndType <- logEventDB(
+        dataset: Dataset,
+        detail: ChangelogEventDetail
+      )
+      _ <- logEventSNS(dataset: Dataset, detail: ChangelogEventDetail)
+    } yield changelogEventAndType
+
+  }
 
   def logEvents(
     dataset: Dataset,

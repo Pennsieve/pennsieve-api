@@ -39,6 +39,8 @@ import com.pennsieve.aws.cognito.Cognito
 import com.pennsieve.aws.sns.{
   AWSSNSContainer,
   LocalSNSContainer,
+  SNS,
+  SNSClient,
   SNSContainer
 }
 import com.pennsieve.aws.queue.{
@@ -71,7 +73,6 @@ import java.util.concurrent.TimeUnit
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.blackfynn.clients.{ AntiSpamChallengeClient, RecaptchaClient }
 import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
-import com.pennsieve.aws.sns.{ AWSSNSContainer, LocalSNSContainer }
 import org.apache.http.ssl.SSLContexts
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 
@@ -142,6 +143,7 @@ trait BaseBootstrapHelper {
       .build()
 
   lazy val sqsClient: SQSClient = new SQS(awsSQSClient)
+  lazy val snsClient: SNSClient = new SNS(awsSNSClient)
 
   lazy val cognitoConfig: CognitoConfig = CognitoConfig(config)
   lazy val cognitoClient: CognitoClient = Cognito(cognitoConfig)

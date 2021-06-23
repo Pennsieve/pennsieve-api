@@ -44,8 +44,9 @@ import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest._
-import java.util.UUID
+import software.amazon.awssdk.services.sns.SnsAsyncClient
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
@@ -139,7 +140,17 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): ChangelogManager =
-    new ChangelogManager(database, organization, user)
+    new ChangelogManager(
+      database,
+      organization,
+      user,
+      "Events-topic",
+      new SnsAsyncClient {
+        override def serviceName(): String = _
+
+        override def close(): Unit = _
+      }
+    )
 
   def datasetManager(
     organization: Organization = testOrganization,
