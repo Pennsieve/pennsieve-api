@@ -27,6 +27,7 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.core.utilities.checkOrErrorT
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 
@@ -109,6 +110,21 @@ class WebhooksController(
         webhook <- secureContainer.webhookManager
           .get(webhookId)
           .coreErrorToActionResult
+
+        _ = if (webhook.isPrivate) {
+          webhook.createdBy match {
+            case Some(userId) =>
+              Left(
+                checkOrErrorT(userId != secureContainer.user.id)(
+                  Forbidden(
+                    s"user ${userId} does not have access to webhook ${webhook.id}"
+                  )
+                )
+              ).toEitherT[Future]
+            case None => None
+          }
+        }
+
       } yield WebhookDTO(webhook)
 
       override val is = result.value.map(OkResult(_))
