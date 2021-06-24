@@ -114,7 +114,7 @@ class WebhooksController(
         _ = if (webhook.isPrivate) {
           webhook.createdBy match {
             case Some(userId) =>
-              checkOrErrorT(userId != secureContainer.user.id)(
+              checkOrErrorT(userId == secureContainer.user.id)(
                 Forbidden(
                   s"user ${userId} does not have access to webhook ${webhook.id}"
                 )
