@@ -111,18 +111,6 @@ class WebhooksController(
           .get(webhookId)
           .coreErrorToActionResult
 
-        _ = if (webhook.isPrivate) {
-          webhook.createdBy match {
-            case Some(userId) =>
-              checkOrErrorT(userId === secureContainer.user.id)(
-                Forbidden(
-                  s"user ${userId} does not have access to webhook ${webhook.id}"
-                )
-              )
-            case None => None
-          }
-        }
-
       } yield WebhookDTO(webhook)
 
       override val is = result.value.map(OkResult(_))

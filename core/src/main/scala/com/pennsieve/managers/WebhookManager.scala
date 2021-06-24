@@ -99,7 +99,23 @@ class WebhookManager(
     id: Int
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Webhook] =
-    db.run(webhooksMapper.get(id).result.headOption)
-      .whenNone(NotFound(s"Webhook ($id)"))
+  ): EitherT[Future, CoreError, Webhook] = {
+    for {
+      webhook <- db
+        .run(webhooksMapper.get(id).result.headOption)
+        .whenNone[CoreError](NotFound(s"Webhook ($id)"))
+
+      _ = if (webhook.isPrivate) {
+        webhook.createdBy match {
+          case Some(userId) =>
+            checkOrErrorT(userId === actor.id)(
+              UnauthorizedError(
+                s"user ${userId} does not have access to webhook ${webhook.id}"
+              )
+            )
+          case None => None
+        }
+      }
+    } yield webhook
+  }
 }
