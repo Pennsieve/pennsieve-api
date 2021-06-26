@@ -27,7 +27,7 @@ import com.pennsieve.models._
 import com.pennsieve.core.utilities.checkOrErrorT
 import com.pennsieve.traits.PostgresProfile.api._
 import com.github.tminglei.slickpg.utils.PlainSQLUtils
-import com.pennsieve.aws.sns.SNS
+import com.pennsieve.aws.sns.{ SNS, SNSClient }
 import io.circe._
 import io.circe.parser.decode
 import slick.jdbc.{ GetResult, PositionedParameters, SetParameter }
@@ -59,7 +59,7 @@ class ChangelogManager(
   val organization: Organization,
   val actor: User,
   val snsTopic: SnsTopic,
-  val snsClient: SNS
+  val snsClient: SNSClient
 ) {
 
   lazy val changelogEventMapper = new ChangelogEventMapper(organization)

@@ -32,18 +32,19 @@ import java.net.URI
 
 trait SNSContainer { self: Container =>
 
-  val snsHost: String = config.getAs[String]("sns.host").getOrElse("")
+  val snsHost: String =
+    config.getAs[String]("sns.host").getOrElse("")
   val snsRegion: Region = config.getAs[String]("sns.region") match {
     case Some(region) => Region.of(region)
     case None => Region.US_EAST_1
   }
 
-  val snsClient: SNS
+  val sns: SNS
 }
 
 trait AWSSNSContainer extends SNSContainer { self: Container =>
 
-  override val snsClient: SNS = new SNS(
+  override val sns: SNS = new SNS(
     SnsAsyncClient
       .builder()
       .region(snsRegion)
@@ -54,7 +55,7 @@ trait AWSSNSContainer extends SNSContainer { self: Container =>
 
 trait LocalSNSContainer extends SNSContainer { self: Container =>
 
-  override val snsClient: SNS = new SNS(
+  override val sns: SNS = new SNS(
     SnsAsyncClient
       .builder()
       .region(snsRegion)

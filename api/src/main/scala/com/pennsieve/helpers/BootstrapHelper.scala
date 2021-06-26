@@ -84,7 +84,7 @@ trait ApiSQSContainer { self: Container =>
 }
 
 trait ApiSNSContainer { self: Container =>
-  val sns_topic: String = config.as[String]("sns.topic")
+  val sns_topic: String = config.as[String]("sns.topic").orElse("").toString()
 }
 
 object APIContainers {

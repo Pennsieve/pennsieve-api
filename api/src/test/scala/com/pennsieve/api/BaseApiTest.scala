@@ -74,6 +74,7 @@ import java.time.{ Duration, Instant, ZonedDateTime }
 import java.util.UUID
 import com.pennsieve.audit.middleware.AuditLogger
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
+import com.pennsieve.aws.sns.{ LocalSNSContainer, SNS, SNSContainer }
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, FunSuite }
@@ -86,6 +87,8 @@ import scala.concurrent.duration.{ FiniteDuration, _ }
 import scala.util.Random
 import scala.util.Either
 import shapeless.syntax.inject._
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.services.sns.SnsAsyncClient
 
 trait ApiSuite
     extends ScalatraSuite
@@ -126,6 +129,8 @@ trait ApiSuite
         "sqs.queue",
         ConfigValueFactory.fromAnyRef(s"http://localhost/queue/test")
       )
+      .withValue("sns.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
+      .withValue("sns.topic", ConfigValueFactory.fromAnyRef(s"events.sns"))
       .withValue(
         "sqs.notifications_queue",
         ConfigValueFactory.fromAnyRef(s"http://localhost/queue/notifications")
@@ -181,10 +186,15 @@ trait ApiSuite
         "email.support_email",
         ConfigValueFactory.fromAnyRef("pennsieve.main@gmail.com")
       )
+      .withValue(
+        "changelog.sns_topic",
+        ConfigValueFactory.fromAnyRef("changelog-events")
+      )
 
     insecureContainer = new InsecureContainer(config) with TestCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
-    with TimeSeriesDBContainer with LocalSQSContainer with ApiSQSContainer
+    with TimeSeriesDBContainer with LocalSQSContainer with LocalSNSContainer
+    with ApiSNSContainer with ApiSQSContainer
     with MockJobSchedulingServiceContainer {
       override lazy val jobSchedulingServiceConfigPath: String =
         "pennsieve.job_scheduling_service"
@@ -198,7 +208,8 @@ trait ApiSuite
         _db = insecureContainer.db,
         user = user,
         organization = org
-      ) with SecureCoreContainer with LocalEmailContainer {
+      ) with SecureCoreContainer with LocalEmailContainer with LocalSNSContainer
+      with ChangelogContainer {
         override val postgresUseSSL = false
         override val dataPostgresUseSSL = false
       }

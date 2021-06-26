@@ -21,6 +21,7 @@ import akka.NotUsed
 import akka.stream.scaladsl.{ Flow, Sink, Source }
 import akka.util.Timeout
 import com.pennsieve.aws.queue.LocalSQSContainer
+import com.pennsieve.aws.sns.LocalSNSContainer
 import com.pennsieve.jobs._
 import com.pennsieve.jobs.container.{ Container, JobContainer }
 import com.pennsieve.managers.ManagerSpec
@@ -43,6 +44,7 @@ trait SpecHelper extends BeforeAndAfterEach with ManagerSpec {
     super.afterStart()
     val config = jobConfig("password")
     jobContainer = new JobContainer(config) with LocalSQSContainer
+    with LocalSNSContainer
   }
 
   def jobConfig(password: String): Config = {

@@ -18,6 +18,7 @@ package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKitBase
+import com.pennsieve.aws.sns.LocalSNSContainer
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
 import com.pennsieve.managers.ManagerSpec
 import com.pennsieve.messages.BackgroundJob._
@@ -51,14 +52,15 @@ class DatasetChangelogEventJobSpec
   )
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
-  var insecureContainer: DatabaseContainer = _
+  var insecureContainer: DatabaseContainer with LocalSNSContainer = _
 
   override def afterStart(): Unit = {
     val config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
 
-    insecureContainer = new InsecureContainer(config) with DatabaseContainer {
+    insecureContainer = new InsecureContainer(config) with DatabaseContainer
+    with LocalSNSContainer {
       override val postgresUseSSL = false
     }
 
@@ -140,7 +142,7 @@ class DatasetChangelogEventJobSpec
       m.right.get.asInstanceOf[DatasetChangelogEventJob]
 
     val datasetChangelogEventRunner =
-      new DatasetChangelogEvent(insecureContainer)
+      new DatasetChangelogEvent(insecureContainer, "event-integration")
     datasetChangelogEventRunner.run(dcle).await.isRight shouldBe (true)
 
     // CREATE
@@ -203,7 +205,10 @@ class DatasetChangelogEventJobSpec
     val dcle: DatasetChangelogEventJob =
       m.right.get.asInstanceOf[DatasetChangelogEventJob]
     val datasetChangelogEventRunner =
-      new DatasetChangelogEvent(insecureContainer)
+      new DatasetChangelogEvent(
+        insecureContainer,
+        eventsTopic = "integration-events"
+      )
     val result = datasetChangelogEventRunner.run(dcle).await
     result.isLeft shouldBe (true)
   }

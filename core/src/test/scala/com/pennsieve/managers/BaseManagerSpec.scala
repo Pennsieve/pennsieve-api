@@ -16,6 +16,8 @@
 
 package com.pennsieve.managers
 
+import com.pennsieve.aws.LocalAWSCredentialsProviderV2
+import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNSClient, SNS }
 import com.pennsieve.models.{
   CognitoId,
   Contributor,
@@ -44,8 +46,11 @@ import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest._
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 
+import java.net.URI
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
@@ -144,12 +149,8 @@ trait ManagerSpec
       database,
       organization,
       user,
-      "Events-topic",
-      new SnsAsyncClient {
-        override def serviceName(): String = _
-
-        override def close(): Unit = _
-      }
+      "test-topic",
+      snsClient = new MockSNSClient
     )
 
   def datasetManager(

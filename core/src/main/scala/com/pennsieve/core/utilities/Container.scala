@@ -270,7 +270,7 @@ trait ChangelogContainer {
   val events_topic: SnsTopic = config.as[String]("changelog.sns_topic")
 
   lazy val changelogManager =
-    new ChangelogManager(db, organization, user, events_topic, snsClient)
+    new ChangelogManager(db, organization, user, events_topic, sns)
 
   lazy val datasetPublicationStatusManager: DatasetPublicationStatusManager =
     new DatasetPublicationStatusManager(
