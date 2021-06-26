@@ -180,7 +180,7 @@ trait UploadsConsumerSpecHarness
 
   override def afterAll: Unit = {
     consumerContainer.db.close()
-    consumerContainer.snsClient.close()
+    consumerContainer.sns.client.close()
     consumerContainer.sqs.client.close()
     consumerContainer.s3.asInstanceOf[S3].client.shutdown()
     super.afterAll()

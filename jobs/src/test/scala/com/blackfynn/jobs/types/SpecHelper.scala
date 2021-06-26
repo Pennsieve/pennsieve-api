@@ -63,6 +63,11 @@ trait SpecHelper extends BeforeAndAfterEach with ManagerSpec {
         "s3.storage_bucket",
         ConfigValueFactory.fromAnyRef("local-test-pennsieve")
       )
+      .withValue(
+        "sns.host",
+        ConfigValueFactory.fromAnyRef(s"https://localhost")
+      )
+      .withValue("sns.region", ConfigValueFactory.fromAnyRef("us-east-1"))
   }
 
   def testFlow[T <: JobResult](
