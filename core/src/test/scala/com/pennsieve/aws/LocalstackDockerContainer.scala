@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package com.pennsieve.uploads.consumer
-
-import java.security.cert
-import java.time.Duration
+package com.pennsieve.aws
 
 import com.pennsieve.test._
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
+import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
+
+import java.security.cert
+import java.time.Duration
 import javax.net.ssl._
 import javax.security.cert.X509Certificate
-import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
 
 object TrustAll extends X509TrustManager {
   val getAcceptedIssuers: Null = null

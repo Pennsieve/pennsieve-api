@@ -18,6 +18,7 @@ package com.pennsieve.uploads.consumer
 
 import akka.actor.ActorSystem
 import com.pennsieve.akka.consumer.ConsumerUtilities
+import com.pennsieve.aws.LocalstackDockerContainer
 import com.pennsieve.aws.queue.LocalSQSContainer
 import com.pennsieve.aws.s3.{ LocalS3Container, S3 }
 import com.pennsieve.clients.{

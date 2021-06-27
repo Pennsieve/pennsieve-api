@@ -20,7 +20,7 @@ import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
-import com.pennsieve.aws.sns.{ SNS, SNSContainer }
+import com.pennsieve.aws.sns.{ SNS, SNSClient, SNSContainer }
 import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
 import com.pennsieve.db.{ DatasetsMapper, OrganizationsMapper, UserMapper }
@@ -180,7 +180,7 @@ class DatasetChangelogEvent(
 object DatasetChangelogEvent {
   def apply(
     config: Config,
-    snsClient: SNS,
+    sns: SNS,
     eventsTopic: SnsTopic
   )(implicit
     ec: ExecutionContext,
@@ -189,7 +189,7 @@ object DatasetChangelogEvent {
   ): DatasetChangelogEvent =
     new DatasetChangelogEvent(
       new InsecureContainer(config) with DatabaseContainer with SNSContainer {
-        override val sns: SNS = snsClient
+        override val sns: SNS = sns
       },
       eventsTopic
     )

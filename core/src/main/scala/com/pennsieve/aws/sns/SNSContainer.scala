@@ -24,7 +24,6 @@ import software.amazon.awssdk.auth.credentials.{
 }
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
-
 import com.pennsieve.aws.LocalAWSCredentialsProviderV2
 import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
@@ -33,7 +32,7 @@ import java.net.URI
 trait SNSContainer { self: Container =>
 
   val snsHost: String =
-    config.getAs[String]("sns.host").getOrElse("")
+    config.getAs[String]("sns.host").getOrElse(s"")
   val snsRegion: Region = config.getAs[String]("sns.region") match {
     case Some(region) => Region.of(region)
     case None => Region.US_EAST_1

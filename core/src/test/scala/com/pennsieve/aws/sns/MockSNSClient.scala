@@ -16,22 +16,32 @@
 
 package com.pennsieve.aws.sns
 
-import akka.http.scaladsl.model.HttpResponse
-import cats.Applicative.catsApplicativeForArrow
 import cats.data.EitherT
-import cats.data.EitherT.right
-import cats.implicits.{ catsStdInstancesForFuture, catsSyntaxEitherId }
+import cats.implicits.catsSyntaxEitherId
+import com.pennsieve.aws.LocalAWSCredentialsProviderV2
 import com.pennsieve.domain.CoreError
-import com.pennsieve.jobscheduling.clients.generated.jobs.GetPackageStateResponse
-import com.pennsieve.models.PackageState
+import com.pennsieve.utilities.Container
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.services.sns.model.{
   PublishRequest,
   PublishResponse
 }
 
+import java.net.URI
 import scala.concurrent.{ ExecutionContext, Future }
 
-class MockSNSClient extends SNSClient {
+class MockSNS() extends SNSClient {
+
+  val client: SnsAsyncClient = SnsAsyncClient
+    .builder()
+    .region(Region.US_EAST_1)
+    .credentialsProvider(LocalAWSCredentialsProviderV2.credentialsProvider)
+    .endpointOverride(new URI(s"http://localhost"))
+    .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+    .build()
+
   override def publish(
     topicArn: String,
     message: String

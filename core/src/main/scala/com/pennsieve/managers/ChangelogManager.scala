@@ -59,7 +59,7 @@ class ChangelogManager(
   val organization: Organization,
   val actor: User,
   val snsTopic: SnsTopic,
-  val snsClient: SNSClient
+  val sns: SNS
 ) {
 
   lazy val changelogEventMapper = new ChangelogEventMapper(organization)
@@ -88,7 +88,7 @@ class ChangelogManager(
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, PublishResponse] =
-    snsClient.publish(snsTopic, detail.toString)
+    sns.publish(snsTopic, detail.toString)
 
   def logEvent(
     dataset: Dataset,

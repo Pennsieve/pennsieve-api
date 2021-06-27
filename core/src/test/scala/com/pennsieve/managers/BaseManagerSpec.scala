@@ -16,8 +16,13 @@
 
 package com.pennsieve.managers
 
-import com.pennsieve.aws.LocalAWSCredentialsProviderV2
-import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNSClient, SNS }
+import com.pennsieve.aws.{
+  LocalAWSCredentialsProviderV2,
+  LocalstackDockerContainer
+}
+import com.typesafe.config.Config
+import net.ceedubs.ficus.Ficus._
+import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNS, SNS }
 import com.pennsieve.models.{
   CognitoId,
   Contributor,
@@ -60,7 +65,8 @@ trait ManagerSpec
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with PostgresDockerContainer { self: TestSuite =>
+    with PostgresDockerContainer
+    with LocalstackDockerContainer { self: TestSuite =>
 
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
@@ -144,14 +150,20 @@ trait ManagerSpec
   def changelogManager(
     organization: Organization = testOrganization,
     user: User = superAdmin
-  ): ChangelogManager =
-    new ChangelogManager(
-      database,
-      organization,
-      user,
-      "test-topic",
-      snsClient = new MockSNSClient
+  ): ChangelogManager = {
+    val snsRegion: Region = Region.of(LocalstackDockerContainer.region)
+    val snsHost = s"http://localhost"
+    val sns: SNS = new SNS(
+      SnsAsyncClient
+        .builder()
+        .region(snsRegion)
+        .credentialsProvider(LocalAWSCredentialsProviderV2.credentialsProvider)
+        .endpointOverride(new URI(snsHost))
+        .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+        .build()
     )
+    new ChangelogManager(database, organization, user, "test-topic", sns = sns)
+  }
 
   def datasetManager(
     organization: Organization = testOrganization,
