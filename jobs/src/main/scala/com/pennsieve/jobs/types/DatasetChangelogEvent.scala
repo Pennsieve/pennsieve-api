@@ -180,7 +180,7 @@ class DatasetChangelogEvent(
 object DatasetChangelogEvent {
   def apply(
     config: Config,
-    sns: SNS,
+    sns: SNSClient,
     eventsTopic: SnsTopic
   )(implicit
     ec: ExecutionContext,

@@ -5680,7 +5680,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       ),
       headers = serviceHeader ++ traceIdHeader()
     ) {
-      println(body)
       status shouldBe 200
     }
 

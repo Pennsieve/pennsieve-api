@@ -100,7 +100,6 @@ trait ApiSuite
     with BeforeAndAfterAll
     with PersistantTestContainers
     with PostgresDockerContainer
-    with LocalstackDockerContainer
     with LazyLogging {
 
   // Needed for being able to use localstack with SSL enabled,
@@ -132,13 +131,11 @@ trait ApiSuite
     config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
-      .withFallback(localstackContainer.config)
       .withValue("sqs.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
       .withValue(
         "sqs.queue",
         ConfigValueFactory.fromAnyRef(s"http://localhost/queue/test")
       )
-//      .withValue("sns.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
       .withValue("sns.topic", ConfigValueFactory.fromAnyRef(s"events.sns"))
       .withValue(
         "sqs.notifications_queue",
@@ -184,16 +181,17 @@ trait ApiSuite
         ConfigValueFactory.fromAnyRef("pennsieve.main@gmail.com")
       )
       .withValue(
-        "changelog.sns_topic",
-        ConfigValueFactory.fromAnyRef("changelog-events")
+        "sns.topic",
+        ConfigValueFactory.fromAnyRef("integration-events")
       )
-
-    logger.info("In BaseAPITest")
-    logger.info(config.as[String]("sns.host"))
+      .withValue(
+        "pennsieve.changelog.sns_topic",
+        ConfigValueFactory.fromAnyRef("integration-events")
+      )
 
     insecureContainer = new InsecureContainer(config) with TestCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
-    with TimeSeriesDBContainer with LocalSQSContainer with LocalSNSContainer
+    with TimeSeriesDBContainer with LocalSQSContainer with MockSNSContainer
     with ApiSNSContainer with ApiSQSContainer
     with MockJobSchedulingServiceContainer {
       override lazy val jobSchedulingServiceConfigPath: String =
@@ -208,7 +206,7 @@ trait ApiSuite
         _db = insecureContainer.db,
         user = user,
         organization = org
-      ) with SecureCoreContainer with LocalEmailContainer with LocalSNSContainer
+      ) with SecureCoreContainer with LocalEmailContainer with MockSNSContainer
       with ChangelogContainer {
         override val postgresUseSSL = false
         override val dataPostgresUseSSL = false

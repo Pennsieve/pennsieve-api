@@ -47,7 +47,7 @@ object Main extends App {
       new JobContainer(config) with AWSSQSContainer with AWSSNSContainer
     }
 
-  val events_topic: SnsTopic = config.as[String]("changelog.sns_topic")
+  val events_topic: SnsTopic = config.as[String]("pennsieve.changelog.sns_topic")
 
   val deletePackageJob: DeleteJob = DeleteJob()
   val cacheJob = StorageCachePopulationJob(config)

@@ -38,7 +38,7 @@ trait SNSContainer { self: Container =>
     case None => Region.US_EAST_1
   }
 
-  val sns: SNS
+  val sns: SNSClient
 }
 
 trait AWSSNSContainer extends SNSContainer { self: Container =>

@@ -267,7 +267,8 @@ trait StorageContainer {
 trait ChangelogContainer {
   self: Container with SecureCoreContainer with SNSContainer =>
 
-  val events_topic: SnsTopic = config.as[String]("changelog.sns_topic")
+  val events_topic: SnsTopic =
+    config.as[String]("pennsieve.changelog.sns_topic")
 
   lazy val changelogManager =
     new ChangelogManager(db, organization, user, events_topic, sns)
