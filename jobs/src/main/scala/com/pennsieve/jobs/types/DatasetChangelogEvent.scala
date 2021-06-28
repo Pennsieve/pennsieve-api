@@ -56,7 +56,7 @@ class DatasetChangelogEvent(
   log: ContextLogger
 ) {
   val db: Database = insecureContainer.db
-  val sns: SNS = insecureContainer.sns
+  val sns: SNSClient = insecureContainer.sns
 
   implicit val tier: Tier[DatasetChangelogEvent] =
     Tier[DatasetChangelogEvent]
@@ -189,7 +189,7 @@ object DatasetChangelogEvent {
   ): DatasetChangelogEvent =
     new DatasetChangelogEvent(
       new InsecureContainer(config) with DatabaseContainer with SNSContainer {
-        override val sns: SNS = sns
+        override val sns: SNSClient = sns
       },
       eventsTopic
     )
