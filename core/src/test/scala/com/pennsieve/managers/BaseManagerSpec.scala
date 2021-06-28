@@ -147,8 +147,6 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): ChangelogManager = {
-    val snsRegion: Region = Region.of("us-east-1")
-    val snsHost = "https://localhost"
     val sns: SNSClient = new MockSNS
     new ChangelogManager(database, organization, user, "test-topic", sns = sns)
   }

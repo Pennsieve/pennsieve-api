@@ -70,7 +70,7 @@ class ChangelogManager(
   def logEventDB(
     dataset: Dataset,
     detail: ChangelogEventDetail,
-    timestamp: ZonedDateTime = ZonedDateTime.now()
+    timestamp: ZonedDateTime
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, ChangelogEventAndType] =
@@ -85,7 +85,7 @@ class ChangelogManager(
   def logEventSNS(
     dataset: Dataset,
     detail: ChangelogEventDetail,
-    timestamp: ZonedDateTime = ZonedDateTime.now()
+    timestamp: ZonedDateTime
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, PublishResponse] = {
@@ -103,9 +103,14 @@ class ChangelogManager(
     for {
       changelogEventAndType <- logEventDB(
         dataset: Dataset,
-        detail: ChangelogEventDetail
+        detail: ChangelogEventDetail,
+        timestamp: ZonedDateTime
       )
-      _ <- logEventSNS(dataset: Dataset, detail: ChangelogEventDetail)
+      _ <- logEventSNS(
+        dataset: Dataset,
+        detail: ChangelogEventDetail,
+        timestamp: ZonedDateTime
+      )
     } yield changelogEventAndType
 
   }
