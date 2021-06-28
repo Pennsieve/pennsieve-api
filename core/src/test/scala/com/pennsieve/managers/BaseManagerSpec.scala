@@ -19,7 +19,7 @@ package com.pennsieve.managers
 import com.pennsieve.aws.LocalAWSCredentialsProviderV2
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
-import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNS, SNS }
+import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNS, SNS, SNSClient }
 import com.pennsieve.models.{
   CognitoId,
   Contributor,
@@ -62,8 +62,7 @@ trait ManagerSpec
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with PostgresDockerContainer
-    with LocalstackDockerContainer { self: TestSuite =>
+    with PostgresDockerContainer { self: TestSuite =>
 
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
@@ -148,17 +147,9 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): ChangelogManager = {
-    val snsRegion: Region = Region.of(localstackContainer.region)
-    val snsHost = localstackContainer.config.as[String]("sns.host")
-    val sns: SNS = new SNS(
-      SnsAsyncClient
-        .builder()
-        .region(snsRegion)
-        .credentialsProvider(LocalAWSCredentialsProviderV2.credentialsProvider)
-        .endpointOverride(new URI(snsHost))
-        .httpClientBuilder(NettyNioAsyncHttpClient.builder())
-        .build()
-    )
+    val snsRegion: Region = Region.of("us-east-1")
+    val snsHost = "https://localhost"
+    val sns: SNSClient = new MockSNS
     new ChangelogManager(database, organization, user, "test-topic", sns = sns)
   }
 

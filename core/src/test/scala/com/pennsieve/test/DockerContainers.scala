@@ -34,7 +34,4 @@ object DockerContainers {
   val s3Container: S3DockerContainerImpl = new S3DockerContainerImpl
 
   val clamdContainer = new ClamdDockerContainerImpl
-
-  val localstackContainer: LocalstackDockerContainerImpl =
-    new LocalstackDockerContainerImpl
 }

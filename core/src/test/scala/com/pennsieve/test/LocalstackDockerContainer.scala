@@ -144,7 +144,7 @@ final class LocalstackDockerContainerImpl
 }
 
 trait LocalstackDockerContainer extends StackedDockerContainer {
-  val localstackContainer = DockerContainers.localstackContainer
+  val localstackContainer = new LocalstackDockerContainerImpl
 
   override def stackedContainers =
     localstackContainer :: super.stackedContainers

@@ -102,10 +102,6 @@ trait ApiSuite
     with PostgresDockerContainer
     with LazyLogging {
 
-  // Needed for being able to use localstack with SSL enabled,
-  // which is required for testing KMS encryption with S3
-  System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
-
   implicit lazy val system: ActorSystem = ActorSystem("ApiSuite")
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
