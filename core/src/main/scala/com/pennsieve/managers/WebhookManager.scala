@@ -116,7 +116,7 @@ class WebhookManager(
       _ <- checkOrErrorT[CoreError](
         !(webhook.createdBy.getOrElse(userId) != userId && webhook.isPrivate)
       )(
-        UnauthorizedError(
+        InvalidAction(
           s"user ${userId} does not have access to webhook ${webhook.id}"
         )
       )
