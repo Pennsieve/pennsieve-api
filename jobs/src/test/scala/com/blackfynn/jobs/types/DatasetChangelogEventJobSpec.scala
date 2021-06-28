@@ -32,7 +32,7 @@ import com.pennsieve.models.{
   ChangelogEventDetail,
   ChangelogEventName
 }
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ ConfigFactory, ConfigValueFactory }
 import io.circe.parser._
 import org.scalatest.{ BeforeAndAfterAll, FlatSpec, Matchers }
 
@@ -58,6 +58,7 @@ class DatasetChangelogEventJobSpec
     val config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
+      .withValue("sns.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
 
     insecureContainer = new InsecureContainer(config) with DatabaseContainer
     with LocalSNSContainer {
