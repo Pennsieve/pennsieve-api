@@ -18,7 +18,6 @@ package com.pennsieve.uploads.consumer
 
 import akka.actor.ActorSystem
 import com.pennsieve.akka.consumer.ConsumerUtilities
-import com.pennsieve.aws.LocalstackDockerContainer
 import com.pennsieve.aws.queue.LocalSQSContainer
 import com.pennsieve.aws.s3.{ LocalS3Container, S3 }
 import com.pennsieve.clients.{
@@ -30,7 +29,7 @@ import com.pennsieve.test.helpers.{ AwaitableImplicits, TestDatabase }
 import com.pennsieve.aws.sns.LocalSNSContainer
 import com.pennsieve.core.utilities.DatabaseContainer
 import com.pennsieve.db.{ OrganizationsMapper, UserMapper }
-import com.pennsieve.test._
+import com.pennsieve.test.{ LocalstackDockerContainer, _ }
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.uploads.consumer.antivirus.ClamAVContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }

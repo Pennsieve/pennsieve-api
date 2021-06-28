@@ -28,6 +28,7 @@ import com.pennsieve.core.utilities.checkOrErrorT
 import com.pennsieve.traits.PostgresProfile.api._
 import com.github.tminglei.slickpg.utils.PlainSQLUtils
 import com.pennsieve.aws.sns.{ SNS, SNSClient }
+import com.typesafe.scalalogging.LazyLogging
 import io.circe._
 import io.circe.parser.decode
 import slick.jdbc.{ GetResult, PositionedParameters, SetParameter }
@@ -60,7 +61,7 @@ class ChangelogManager(
   val actor: User,
   val snsTopic: SnsTopic,
   val sns: SNS
-) {
+) extends LazyLogging {
 
   lazy val changelogEventMapper = new ChangelogEventMapper(organization)
 
@@ -87,8 +88,10 @@ class ChangelogManager(
     timestamp: ZonedDateTime = ZonedDateTime.now()
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, PublishResponse] =
+  ): EitherT[Future, CoreError, PublishResponse] = {
+    logger.info(detail.toString)
     sns.publish(snsTopic, detail.toString)
+  }
 
   def logEvent(
     dataset: Dataset,

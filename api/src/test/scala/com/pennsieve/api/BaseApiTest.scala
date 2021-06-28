@@ -61,7 +61,7 @@ import com.pennsieve.dtos.Secret
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
 import com.pennsieve.models.PublishStatus.{ PublishFailed, PublishSucceeded }
-import com.pennsieve.test._
+import com.pennsieve.test.{ LocalstackDockerContainer, _ }
 import com.pennsieve.test.helpers._
 import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.traits.TimeSeriesDBContainer
@@ -75,6 +75,8 @@ import java.util.UUID
 import com.pennsieve.audit.middleware.AuditLogger
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import com.pennsieve.aws.sns.{ LocalSNSContainer, SNS, SNSContainer }
+import com.typesafe.scalalogging.LazyLogging
+import net.ceedubs.ficus.Ficus.{ stringValueReader, toFicusConfig }
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, FunSuite }
@@ -97,7 +99,13 @@ trait ApiSuite
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with PostgresDockerContainer {
+    with PostgresDockerContainer
+    with LocalstackDockerContainer
+    with LazyLogging {
+
+  // Needed for being able to use localstack with SSL enabled,
+  // which is required for testing KMS encryption with S3
+  System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
 
   implicit lazy val system: ActorSystem = ActorSystem("ApiSuite")
   implicit lazy val ec: ExecutionContext = system.dispatcher
@@ -124,12 +132,13 @@ trait ApiSuite
     config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
+      .withFallback(localstackContainer.config)
       .withValue("sqs.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
       .withValue(
         "sqs.queue",
         ConfigValueFactory.fromAnyRef(s"http://localhost/queue/test")
       )
-      .withValue("sns.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
+//      .withValue("sns.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
       .withValue("sns.topic", ConfigValueFactory.fromAnyRef(s"events.sns"))
       .withValue(
         "sqs.notifications_queue",
@@ -154,14 +163,6 @@ trait ApiSuite
         ConfigValueFactory.fromAnyRef(10)
       )
       .withValue(
-        "pennsieve.analytics_service.queue_size",
-        ConfigValueFactory.fromAnyRef(100)
-      )
-      .withValue(
-        "pennsieve.analytics_service.rate_limit",
-        ConfigValueFactory.fromAnyRef(10)
-      )
-      .withValue(
         "pennsieve.packages_pagination.default_page_size",
         ConfigValueFactory.fromAnyRef(1)
       )
@@ -179,10 +180,6 @@ trait ApiSuite
       )
       .withValue("email.host", ConfigValueFactory.fromAnyRef("test"))
       .withValue(
-        "email.trials_host",
-        ConfigValueFactory.fromAnyRef("trials_test")
-      )
-      .withValue(
         "email.support_email",
         ConfigValueFactory.fromAnyRef("pennsieve.main@gmail.com")
       )
@@ -190,6 +187,9 @@ trait ApiSuite
         "changelog.sns_topic",
         ConfigValueFactory.fromAnyRef("changelog-events")
       )
+
+    logger.info("In BaseAPITest")
+    logger.info(config.as[String]("sns.host"))
 
     insecureContainer = new InsecureContainer(config) with TestCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer

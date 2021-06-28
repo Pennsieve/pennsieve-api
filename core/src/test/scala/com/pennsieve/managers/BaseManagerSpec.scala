@@ -16,10 +16,7 @@
 
 package com.pennsieve.managers
 
-import com.pennsieve.aws.{
-  LocalAWSCredentialsProviderV2,
-  LocalstackDockerContainer
-}
+import com.pennsieve.aws.LocalAWSCredentialsProviderV2
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNS, SNS }
@@ -151,8 +148,8 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): ChangelogManager = {
-    val snsRegion: Region = Region.of(LocalstackDockerContainer.region)
-    val snsHost = s"http://localhost"
+    val snsRegion: Region = Region.of(localstackContainer.region)
+    val snsHost = localstackContainer.config.as[String]("sns.host")
     val sns: SNS = new SNS(
       SnsAsyncClient
         .builder()
