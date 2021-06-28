@@ -111,19 +111,15 @@ class WebhooksController(
           .get(webhookId)
           .coreErrorToActionResult
 
-        // _ <- checkOrErrorT(webhook.createdBy.get === secureContainer.user.id)(
-        //   Forbidden(
-        //     s"user ${secureContainer.user.id} does not have access to webhook ${webhook.id}"
-        //   )
-        // )
+        userId = secureContainer.user.id
 
-        _ = if (webhook.isPrivate) {
-          checkOrErrorT(webhook.createdBy.get === secureContainer.user.id)(
-            Forbidden(
-              s"user ${secureContainer.user.id} does not have access to webhook ${webhook.id}"
-            )
+        _ <- checkOrErrorT(
+          !(webhook.createdBy.getOrElse(userId) != userId && webhook.isPrivate)
+        )(
+          Forbidden(
+            s"user ${userId} does not have access to webhook ${webhook.id}"
           )
-        }
+        )
 
       } yield WebhookDTO(webhook)
 
