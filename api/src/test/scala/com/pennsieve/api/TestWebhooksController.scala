@@ -85,6 +85,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       status should equal(201)
       val webhook = parsedBody.extract[WebhookDTO]
       webhook.isPrivate should equal(true)
+      webhook.createdBy should equal(Some(loggedInUser.id))
 
       get(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
         status shouldBe (403)
