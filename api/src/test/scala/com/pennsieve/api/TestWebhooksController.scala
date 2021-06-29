@@ -69,6 +69,31 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("can't get a private webhook created by a different user") {
+    val req = write(
+      CreateWebhookRequest(
+        apiUrl = "https://www.api.com",
+        imageUrl = Some("https://www.image.com"),
+        description = "something something",
+        secret = "secretkey",
+        displayName = "Test Webhook",
+        isPrivate = true,
+        isDefault = true
+      )
+    )
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(201)
+      val webhook = parsedBody.extract[WebhookDTO]
+
+      get(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
+        status shouldBe (403)
+        body should include(
+          s"user ${colleagueUser.id} does not have access to webhook ${webhook.id}"
+        )
+      }
+    }
+  }
+
   test("create a webhook") {
     val req = write(
       CreateWebhookRequest(

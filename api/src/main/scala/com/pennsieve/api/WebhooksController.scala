@@ -27,6 +27,7 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.core.utilities.checkOrErrorT
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 
@@ -107,8 +108,9 @@ class WebhooksController(
         webhookId <- paramT[Int]("id")
 
         webhook <- secureContainer.webhookManager
-          .get(webhookId)
+          .authenticateAndGetWebhook(webhookId)
           .coreErrorToActionResult
+
       } yield WebhookDTO(webhook)
 
       override val is = result.value.map(OkResult(_))

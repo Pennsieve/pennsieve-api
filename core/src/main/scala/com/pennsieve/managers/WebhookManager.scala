@@ -101,5 +101,25 @@ class WebhookManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Webhook] =
     db.run(webhooksMapper.get(id).result.headOption)
-      .whenNone(NotFound(s"Webhook ($id)"))
+      .whenNone[CoreError](NotFound(s"Webhook ($id)"))
+
+  def authenticateAndGetWebhook(
+    id: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Webhook] = {
+    for {
+      webhook <- get(id)
+
+      userId = actor.id
+
+      _ <- checkOrErrorT[CoreError](
+        !(webhook.createdBy.getOrElse(userId) != userId && webhook.isPrivate)
+      )(
+        InvalidAction(
+          s"user ${userId} does not have access to webhook ${webhook.id}"
+        )
+      )
+    } yield webhook
+  }
 }
