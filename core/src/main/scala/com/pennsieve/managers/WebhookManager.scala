@@ -86,7 +86,7 @@ class WebhookManager(
         isPrivate,
         isDefault,
         false,
-        Some(createdBy)
+        createdBy
       )
 
       createdWebhook = (webhooksMapper returning webhooksMapper) += row
@@ -114,7 +114,7 @@ class WebhookManager(
       userId = actor.id
 
       _ <- checkOrErrorT[CoreError](
-        !(webhook.createdBy.getOrElse(userId) != userId && webhook.isPrivate)
+        !(webhook.createdBy != userId && webhook.isPrivate)
       )(
         InvalidAction(
           s"user ${userId} does not have access to webhook ${webhook.id}"

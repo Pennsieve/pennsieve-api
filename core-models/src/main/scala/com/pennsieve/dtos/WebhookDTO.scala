@@ -31,7 +31,7 @@ final case class WebhookDTO(
   isPrivate: Boolean,
   isDefault: Boolean,
   isDisabled: Boolean,
-  createdBy: Option[Int],
+  createdBy: Int,
   createdAt: ZonedDateTime
 )
 
