@@ -359,5 +359,5 @@ resource "aws_ssm_parameter" "recaptcha_secret_key" {
 resource "aws_ssm_parameter" "integration_sns_topic" {
   name  = "/${var.environment_name}/${var.service_name}/integration-events-sns-topic"
   type  = "String"
-  value = data.terraform_remote_state.integration_service.outputs.integration_events_sns_topic_name
+  value = data.terraform_remote_state.integration_service.outputs.sns_topic_name
 }
