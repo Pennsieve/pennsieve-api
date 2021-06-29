@@ -61,7 +61,7 @@ import com.pennsieve.dtos.Secret
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
 import com.pennsieve.models.PublishStatus.{ PublishFailed, PublishSucceeded }
-import com.pennsieve.test._
+import com.pennsieve.test.{ LocalstackDockerContainer, _ }
 import com.pennsieve.test.helpers._
 import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.traits.TimeSeriesDBContainer
@@ -74,6 +74,9 @@ import java.time.{ Duration, Instant, ZonedDateTime }
 import java.util.UUID
 import com.pennsieve.audit.middleware.AuditLogger
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
+import com.pennsieve.aws.sns.{ LocalSNSContainer, SNS, SNSContainer }
+import com.typesafe.scalalogging.LazyLogging
+import net.ceedubs.ficus.Ficus.{ stringValueReader, toFicusConfig }
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, FunSuite }
@@ -86,6 +89,8 @@ import scala.concurrent.duration.{ FiniteDuration, _ }
 import scala.util.Random
 import scala.util.Either
 import shapeless.syntax.inject._
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.services.sns.SnsAsyncClient
 
 trait ApiSuite
     extends ScalatraSuite
@@ -94,7 +99,8 @@ trait ApiSuite
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with PostgresDockerContainer {
+    with PostgresDockerContainer
+    with LazyLogging {
 
   implicit lazy val system: ActorSystem = ActorSystem("ApiSuite")
   implicit lazy val ec: ExecutionContext = system.dispatcher
@@ -126,6 +132,7 @@ trait ApiSuite
         "sqs.queue",
         ConfigValueFactory.fromAnyRef(s"http://localhost/queue/test")
       )
+      .withValue("sns.topic", ConfigValueFactory.fromAnyRef(s"events.sns"))
       .withValue(
         "sqs.notifications_queue",
         ConfigValueFactory.fromAnyRef(s"http://localhost/queue/notifications")
@@ -149,14 +156,6 @@ trait ApiSuite
         ConfigValueFactory.fromAnyRef(10)
       )
       .withValue(
-        "pennsieve.analytics_service.queue_size",
-        ConfigValueFactory.fromAnyRef(100)
-      )
-      .withValue(
-        "pennsieve.analytics_service.rate_limit",
-        ConfigValueFactory.fromAnyRef(10)
-      )
-      .withValue(
         "pennsieve.packages_pagination.default_page_size",
         ConfigValueFactory.fromAnyRef(1)
       )
@@ -174,17 +173,22 @@ trait ApiSuite
       )
       .withValue("email.host", ConfigValueFactory.fromAnyRef("test"))
       .withValue(
-        "email.trials_host",
-        ConfigValueFactory.fromAnyRef("trials_test")
-      )
-      .withValue(
         "email.support_email",
         ConfigValueFactory.fromAnyRef("pennsieve.main@gmail.com")
+      )
+      .withValue(
+        "sns.topic",
+        ConfigValueFactory.fromAnyRef("integration-events")
+      )
+      .withValue(
+        "pennsieve.changelog.sns_topic",
+        ConfigValueFactory.fromAnyRef("integration-events")
       )
 
     insecureContainer = new InsecureContainer(config) with TestCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
-    with TimeSeriesDBContainer with LocalSQSContainer with ApiSQSContainer
+    with TimeSeriesDBContainer with LocalSQSContainer with MockSNSContainer
+    with ApiSNSContainer with ApiSQSContainer
     with MockJobSchedulingServiceContainer {
       override lazy val jobSchedulingServiceConfigPath: String =
         "pennsieve.job_scheduling_service"
@@ -198,7 +202,8 @@ trait ApiSuite
         _db = insecureContainer.db,
         user = user,
         organization = org
-      ) with SecureCoreContainer with LocalEmailContainer {
+      ) with SecureCoreContainer with LocalEmailContainer with MockSNSContainer
+      with ChangelogContainer with DatasetPublicationStatusContainer {
         override val postgresUseSSL = false
         override val dataPostgresUseSSL = false
       }

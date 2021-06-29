@@ -36,6 +36,13 @@ import com.pennsieve.aws.email.{
 }
 import com.pennsieve.clients._
 import com.pennsieve.aws.cognito.Cognito
+import com.pennsieve.aws.sns.{
+  AWSSNSContainer,
+  LocalSNSContainer,
+  SNS,
+  SNSClient,
+  SNSContainer
+}
 import com.pennsieve.aws.queue.{
   AWSSQSContainer,
   LocalSQSContainer,
@@ -67,12 +74,17 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.blackfynn.clients.{ AntiSpamChallengeClient, RecaptchaClient }
 import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
 import org.apache.http.ssl.SSLContexts
+import software.amazon.awssdk.services.sns.SnsAsyncClient
 
 import java.util.Date
 import scala.concurrent.{ ExecutionContext, Future }
 
 trait ApiSQSContainer { self: Container =>
   val sqs_queue: String = config.as[String]("sqs.queue")
+}
+
+trait ApiSNSContainer { self: Container =>
+  val sns_topic: String = config.as[String]("sns.topic").orElse("").toString()
 }
 
 object APIContainers {
@@ -84,11 +96,15 @@ object APIContainers {
     with DataDBContainer
     with TimeSeriesDBContainer
     with SQSContainer
+    with SNSContainer
     with ApiSQSContainer
+    with ApiSNSContainer
     with JobSchedulingServiceContainer
   type SecureAPIContainer = APIContainer
     with SecureContainer
     with SecureCoreContainer
+    with ChangelogContainer
+    with DatasetPublicationStatusContainer
 
   type SecureContainerBuilderType =
     (User, Organization) => SecureAPIContainer
@@ -120,7 +136,15 @@ trait BaseBootstrapHelper {
       .httpClientBuilder(NettyNioAsyncHttpClient.builder())
       .build()
 
+  lazy val awsSNSClient: SnsAsyncClient =
+    SnsAsyncClient
+      .builder()
+      .region(Settings.regionV2)
+      .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+      .build()
+
   lazy val sqsClient: SQSClient = new SQS(awsSQSClient)
+  lazy val snsClient: SNSClient = new SNS(awsSNSClient)
 
   lazy val cognitoConfig: CognitoConfig = CognitoConfig(config)
   lazy val cognitoClient: CognitoClient = Cognito(cognitoConfig)
@@ -199,7 +223,8 @@ class LocalBootstrapHelper(
     new InsecureContainer(config) with InsecureCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with LocalSQSContainer with LocalS3Container
-    with ApiSQSContainer with JobSchedulingServiceContainerImpl {
+    with ApiSQSContainer with LocalSNSContainer with ApiSNSContainer
+    with JobSchedulingServiceContainerImpl {
       override val jobSchedulingServiceHost: String =
         config.as[String]("pennsieve.job_scheduling_service.host")
       override val jobSchedulingServiceQueueSize: Int =
@@ -226,14 +251,16 @@ class LocalBootstrapHelper(
   override val secureContainerBuilder: (
     User,
     Organization
-  ) => SecureContainer with SecureCoreContainer with LocalEmailContainer = {
+  ) => SecureContainer with ChangelogContainer with DatasetPublicationStatusContainer with SecureCoreContainer with LocalEmailContainer = {
     (user: User, organization: Organization) =>
       new SecureContainer(
         config = insecureContainer.config,
         _db = insecureContainer.db,
         user = user,
         organization = organization
-      ) with SecureCoreContainer with LocalEmailContainer
+      ) with SecureCoreContainer with ChangelogContainer
+      with DatasetPublicationStatusContainer with LocalEmailContainer
+      with LocalSNSContainer
   }
 }
 
@@ -248,8 +275,9 @@ class AWSBootstrapHelper(
   override val insecureContainer =
     new InsecureContainer(config) with InsecureCoreContainer
     with AWSEmailContainer with MessageTemplatesContainer with DataDBContainer
-    with TimeSeriesDBContainer with AWSSQSContainer with AWSS3Container
-    with ApiSQSContainer with JobSchedulingServiceContainerImpl {
+    with TimeSeriesDBContainer with AWSSQSContainer with AWSSNSContainer
+    with AWSS3Container with ApiSQSContainer with ApiSNSContainer
+    with JobSchedulingServiceContainerImpl {
       override val jobSchedulingServiceHost: String =
         config.as[String]("pennsieve.job_scheduling_service.host")
       override val jobSchedulingServiceQueueSize: Int =
@@ -276,5 +304,7 @@ class AWSBootstrapHelper(
         _db = insecureContainer.db,
         user = user,
         organization = organization
-      ) with SecureCoreContainer with AWSEmailContainer
+      ) with SecureCoreContainer with ChangelogContainer
+      with DatasetPublicationStatusContainer with AWSEmailContainer
+      with AWSSNSContainer
 }

@@ -36,6 +36,12 @@ resource "aws_iam_policy" "sqs_iam_policy" {
   policy = data.aws_iam_policy_document.sqs_iam_policy_document.json
 }
 
+resource "aws_iam_policy" "sns_iam_policy" {
+  name   = "${var.environment_name}-${var.service_name}-sns-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+  path   = "/service/"
+  policy = data.aws_iam_policy_document.sns_iam_policy_document.json
+}
+
 resource "aws_iam_policy" "ssm_iam_policy" {
   name   = "${var.environment_name}-${var.service_name}-ssm-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
   path   = "/service/"
@@ -219,6 +225,18 @@ data "aws_iam_policy_document" "sqs_iam_policy_document" {
       data.terraform_remote_state.platform_infrastructure.outputs.jobs_queue_arn,
       data.terraform_remote_state.platform_infrastructure.outputs.notifications_queue_arn,
       data.terraform_remote_state.etl_infrastructure.outputs.uploads_queue_arn,
+    ]
+  }
+}
+
+// Allow API to publish messages to Events SNS Topic
+data "aws_iam_policy_document" "sns_iam_policy_document" {
+  statement {
+    effect  = "Allow"
+    actions = ["sns:*"]
+
+    resources = [
+      data.terraform_remote_state.integration_service.outputs.sns_topic_arn
     ]
   }
 }

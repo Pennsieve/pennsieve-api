@@ -18,18 +18,26 @@ package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.db._
 import com.pennsieve.domain._
 import com.pennsieve.models._
 import com.pennsieve.core.utilities.checkOrErrorT
 import com.pennsieve.traits.PostgresProfile.api._
 import com.github.tminglei.slickpg.utils.PlainSQLUtils
+import com.pennsieve.aws.sns.{ SNS, SNSClient }
+import com.typesafe.scalalogging.LazyLogging
 import io.circe._
 import io.circe.parser.decode
 import slick.jdbc.{ GetResult, PositionedParameters, SetParameter }
+import software.amazon.awssdk.services.sns.SnsAsyncClient
+import software.amazon.awssdk.services.sns.model.{
+  PublishRequest,
+  PublishResponse
+}
+
 import scala.concurrent.{ ExecutionContext, Future }
 import java.time.{ LocalDate, ZonedDateTime }
 
@@ -50,17 +58,19 @@ import java.time.{ LocalDate, ZonedDateTime }
 class ChangelogManager(
   val db: Database,
   val organization: Organization,
-  val actor: User
-) {
+  val actor: User,
+  val snsTopic: SnsTopic,
+  val sns: SNSClient
+) extends LazyLogging {
 
   lazy val changelogEventMapper = new ChangelogEventMapper(organization)
 
   lazy val changelogEventTypeMapper = new ChangelogEventTypeMapper(organization)
 
-  def logEvent(
+  def logEventDB(
     dataset: Dataset,
     detail: ChangelogEventDetail,
-    timestamp: ZonedDateTime = ZonedDateTime.now()
+    timestamp: ZonedDateTime
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, ChangelogEventAndType] =
@@ -71,6 +81,39 @@ class ChangelogManager(
       )
       .toEitherT
       .subflatMap(ChangelogEventAndType.from(_).leftMap(ParseError(_)))
+
+  def logEventSNS(
+    dataset: Dataset,
+    detail: ChangelogEventDetail,
+    timestamp: ZonedDateTime
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, PublishResponse] = {
+    sns.publish(snsTopic, detail.toString)
+  }
+
+  def logEvent(
+    dataset: Dataset,
+    detail: ChangelogEventDetail,
+    timestamp: ZonedDateTime = ZonedDateTime.now()
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, ChangelogEventAndType] = {
+
+    for {
+      changelogEventAndType <- logEventDB(
+        dataset: Dataset,
+        detail: ChangelogEventDetail,
+        timestamp: ZonedDateTime
+      )
+      _ <- logEventSNS(
+        dataset: Dataset,
+        detail: ChangelogEventDetail,
+        timestamp: ZonedDateTime
+      )
+    } yield changelogEventAndType
+
+  }
 
   def logEvents(
     dataset: Dataset,

@@ -16,6 +16,10 @@
 
 package com.pennsieve.managers
 
+import com.pennsieve.aws.LocalAWSCredentialsProviderV2
+import com.typesafe.config.Config
+import net.ceedubs.ficus.Ficus._
+import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNS, SNS, SNSClient }
 import com.pennsieve.models.{
   CognitoId,
   Contributor,
@@ -44,8 +48,12 @@ import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest._
-import java.util.UUID
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.sns.SnsAsyncClient
 
+import java.net.URI
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
@@ -138,8 +146,10 @@ trait ManagerSpec
   def changelogManager(
     organization: Organization = testOrganization,
     user: User = superAdmin
-  ): ChangelogManager =
-    new ChangelogManager(database, organization, user)
+  ): ChangelogManager = {
+    val sns: SNSClient = new MockSNS
+    new ChangelogManager(database, organization, user, "test-topic", sns = sns)
+  }
 
   def datasetManager(
     organization: Organization = testOrganization,

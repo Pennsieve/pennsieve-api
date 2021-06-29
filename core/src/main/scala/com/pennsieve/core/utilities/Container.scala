@@ -26,7 +26,9 @@ import com.pennsieve.auth.middleware.{
   OrganizationId,
   Permission
 }
+import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.aws.email.Email
+import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.db.{
   CollectionMapper,
   ContributorMapper,
@@ -178,7 +180,6 @@ trait SecureCoreContainer
   lazy val annotationManager: AnnotationManager =
     new AnnotationManager(self.organization, db)
 
-  lazy val changelogManager = new ChangelogManager(db, organization, user)
   lazy val discussionManager: DiscussionManager =
     new DiscussionManager(self.organization, db)
   lazy val onboardingManager = new OnboardingManager(db)
@@ -196,14 +197,6 @@ trait SecureCoreContainer
 
   lazy val datasetPublicationStatusMapper: DatasetPublicationStatusMapper =
     new DatasetPublicationStatusMapper(self.organization)
-
-  lazy val datasetPublicationStatusManager: DatasetPublicationStatusManager =
-    new DatasetPublicationStatusManager(
-      db,
-      user,
-      datasetPublicationStatusMapper,
-      changelogManager.changelogEventMapper
-    )
 
   implicit val ec: ExecutionContext
 
@@ -263,10 +256,37 @@ trait SecureCoreContainer
     } yield ()
 }
 
+object ContainerTypes {
+  type SnsTopic = String
+}
+
 trait StorageContainer {
   self: Container with DatabaseContainer with OrganizationContainer =>
 
   lazy val storageManager = StorageManager.create(self, organization)
+}
+
+trait DatasetPublicationStatusContainer {
+  self: Container with SecureCoreContainer with ChangelogContainer =>
+
+  lazy val datasetPublicationStatusManager: DatasetPublicationStatusManager =
+    new DatasetPublicationStatusManager(
+      db,
+      user,
+      datasetPublicationStatusMapper,
+      changelogManager.changelogEventMapper
+    )
+}
+
+trait ChangelogContainer {
+  self: Container with SecureCoreContainer with SNSContainer =>
+
+  val events_topic: SnsTopic =
+    config.as[String]("pennsieve.changelog.sns_topic")
+
+  lazy val changelogManager =
+    new ChangelogManager(db, organization, user, events_topic, sns)
+
 }
 
 trait RequestContextContainer extends OrganizationContainer { self: Container =>

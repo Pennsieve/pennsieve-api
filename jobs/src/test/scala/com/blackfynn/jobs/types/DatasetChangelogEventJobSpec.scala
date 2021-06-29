@@ -18,6 +18,7 @@ package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKitBase
+import com.pennsieve.aws.sns.LocalSNSContainer
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
 import com.pennsieve.managers.ManagerSpec
 import com.pennsieve.messages.BackgroundJob._
@@ -31,7 +32,7 @@ import com.pennsieve.models.{
   ChangelogEventDetail,
   ChangelogEventName
 }
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ ConfigFactory, ConfigValueFactory }
 import io.circe.parser._
 import org.scalatest.{ BeforeAndAfterAll, FlatSpec, Matchers }
 
@@ -51,14 +52,16 @@ class DatasetChangelogEventJobSpec
   )
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
-  var insecureContainer: DatabaseContainer = _
+  var insecureContainer: DatabaseContainer with LocalSNSContainer = _
 
   override def afterStart(): Unit = {
     val config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
+      .withValue("sns.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
 
-    insecureContainer = new InsecureContainer(config) with DatabaseContainer {
+    insecureContainer = new InsecureContainer(config) with DatabaseContainer
+    with LocalSNSContainer {
       override val postgresUseSSL = false
     }
 
@@ -140,7 +143,7 @@ class DatasetChangelogEventJobSpec
       m.right.get.asInstanceOf[DatasetChangelogEventJob]
 
     val datasetChangelogEventRunner =
-      new DatasetChangelogEvent(insecureContainer)
+      new DatasetChangelogEvent(insecureContainer, "event-integration")
     datasetChangelogEventRunner.run(dcle).await.isRight shouldBe (true)
 
     // CREATE
@@ -203,7 +206,10 @@ class DatasetChangelogEventJobSpec
     val dcle: DatasetChangelogEventJob =
       m.right.get.asInstanceOf[DatasetChangelogEventJob]
     val datasetChangelogEventRunner =
-      new DatasetChangelogEvent(insecureContainer)
+      new DatasetChangelogEvent(
+        insecureContainer,
+        eventsTopic = "integration-events"
+      )
     val result = datasetChangelogEventRunner.run(dcle).await
     result.isLeft shouldBe (true)
   }

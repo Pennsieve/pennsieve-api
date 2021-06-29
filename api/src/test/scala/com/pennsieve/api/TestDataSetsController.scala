@@ -574,7 +574,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         .map(_.locked) shouldBe List(false, true)
     }
   }
-
   test(
     "get all data sets for a given status for the logged in user - paginated endpoint"
   ) {
@@ -5681,7 +5680,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       ),
       headers = serviceHeader ++ traceIdHeader()
     ) {
-      println(body)
       status shouldBe 200
     }
 

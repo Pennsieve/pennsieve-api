@@ -26,10 +26,10 @@ import com.pennsieve.clients.{
 }
 import com.pennsieve.models.{ NodeCodes, Organization, User }
 import com.pennsieve.test.helpers.{ AwaitableImplicits, TestDatabase }
-import com.pennsieve.aws.sns.LocalSNSContainer
+import com.pennsieve.aws.sns.{ LocalSNSContainer, SNS }
 import com.pennsieve.core.utilities.DatabaseContainer
 import com.pennsieve.db.{ OrganizationsMapper, UserMapper }
-import com.pennsieve.test._
+import com.pennsieve.test.{ LocalstackDockerContainer, _ }
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.uploads.consumer.antivirus.ClamAVContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
@@ -180,7 +180,7 @@ trait UploadsConsumerSpecHarness
 
   override def afterAll: Unit = {
     consumerContainer.db.close()
-    consumerContainer.snsClient.close()
+    consumerContainer.sns.asInstanceOf[SNS].client.close()
     consumerContainer.sqs.client.close()
     consumerContainer.s3.asInstanceOf[S3].client.shutdown()
     super.afterAll()

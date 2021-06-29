@@ -35,7 +35,12 @@ import com.pennsieve.akka.http.{
 }
 import com.pennsieve.aws.queue.{ AWSSQSContainer, LocalSQSContainer }
 import com.pennsieve.aws.s3.{ AWSS3Container, LocalS3Container }
-import com.pennsieve.aws.sns.{ AWSSNSContainer, LocalSNSContainer }
+import com.pennsieve.aws.sns.{
+  AWSSNSContainer,
+  LocalSNSContainer,
+  SNS,
+  SNSClient
+}
 import com.pennsieve.clients.{
   JobSchedulingServiceContainerImpl,
   LocalJobSchedulingServiceContainer,
@@ -47,6 +52,7 @@ import com.pennsieve.service.utilities.ContextLogger
 import com.pennsieve.traits.PostgresProfile.api.Database
 import com.pennsieve.uploads.consumer.antivirus.ClamAVContainer
 import net.ceedubs.ficus.Ficus._
+
 import scala.concurrent.duration._
 
 object Main extends App with WebServer {
@@ -81,7 +87,8 @@ object Main extends App with WebServer {
 
   implicit val sqsClient: SqsAsyncClient = container.sqs.client
 
-  implicit val snsClient: SnsAsyncClient = container.snsClient
+  implicit val snsClient: SnsAsyncClient =
+    container.sns.asInstanceOf[SNS].client
 
   val (deadLetterQueueKillSwitch, deadLetterQueueFuture) =
     DeadLetterQueueProcessor

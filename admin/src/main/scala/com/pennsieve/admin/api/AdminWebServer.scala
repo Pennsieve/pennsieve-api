@@ -21,7 +21,6 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
 import akka.http.scaladsl.server.directives.ExecutionDirectives.handleRejections
 import akka.http.scaladsl.model.headers.{ HttpOrigin, HttpOriginRange }
-
 import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainerImpl,
   InsecureResourceContainer,

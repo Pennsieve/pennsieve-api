@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package com.pennsieve.uploads.consumer
+package com.pennsieve.test
+
+import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
+import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
 
 import java.security.cert
 import java.time.Duration
-
-import com.pennsieve.test._
-import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import javax.net.ssl._
 import javax.security.cert.X509Certificate
-import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
 
 object TrustAll extends X509TrustManager {
   val getAcceptedIssuers: Null = null
@@ -74,7 +73,8 @@ final class LocalstackDockerContainerImpl
         "AWS_SECRET_ACCESS_KEY" -> "test",
         "SERVICES" -> "s3,sqs,sns",
         "DEFAULT_REGION" -> LocalstackDockerContainer.region,
-        "USE_SSL" -> "true"
+        "USE_SSL" -> "true",
+        "DEBUG" -> "1"
       ),
       waitStrategy = Some(
         new HttpWaitStrategy()
@@ -117,6 +117,10 @@ final class LocalstackDockerContainerImpl
         ConfigValueFactory.fromAnyRef(LocalstackDockerContainer.region)
       )
       .withValue(
+        "sns.region",
+        ConfigValueFactory.fromAnyRef(LocalstackDockerContainer.region)
+      )
+      .withValue(
         "s3.host",
         ConfigValueFactory.fromAnyRef(s"$localstackHost:$s3Port")
       )
@@ -126,7 +130,7 @@ final class LocalstackDockerContainerImpl
       )
       .withValue(
         "sns.host",
-        ConfigValueFactory.fromAnyRef(s"http://$localstackHost:$snsPort")
+        ConfigValueFactory.fromAnyRef(s"$localstackHost:$snsPort")
       )
       .withValue(
         "alert.sqsQueue",
