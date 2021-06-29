@@ -57,7 +57,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       resp.isPrivate should equal(webhook.isPrivate)
       resp.isDefault should equal(webhook.isDefault)
       resp.isDisabled should equal(false)
-      resp.createdBy should equal(Some(webhook.createdBy.get))
+      resp.createdBy should equal(webhook.createdBy)
       resp.createdAt should equal(webhook.createdAt)
     }
   }
@@ -118,7 +118,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       webhook.isPrivate should equal(false)
       webhook.isDefault should equal(true)
       webhook.isDisabled should equal(false)
-      webhook.createdBy should equal(Some(loggedInUser.id))
+      webhook.createdBy should equal(loggedInUser.id)
 
       get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
         status should equal(200)

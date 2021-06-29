@@ -37,7 +37,7 @@ final class WebhooksTable(schema: String, tag: Tag)
   def isPrivate = column[Boolean]("is_private")
   def isDefault = column[Boolean]("is_default")
   def isDisabled = column[Boolean]("is_disabled")
-  def createdBy = column[Option[Int]]("created_by")
+  def createdBy = column[Int]("created_by")
   def createdAt =
     column[ZonedDateTime]("created_at", O.AutoInc) // set by the database on insert
 
