@@ -127,3 +127,10 @@ resource "aws_ssm_parameter" "time_series_bucket" {
   type  = "String"
   value = data.terraform_remote_state.platform_infrastructure.outputs.timeseries_bucket_id
 }
+
+// Get SNS topic for integration events for changelog
+resource "aws_ssm_parameter" "integration_sns_topic" {
+  name  = "/${var.environment_name}/${var.service_name}/integration-events-sns-topic"
+  type  = "String"
+  value = data.terraform_remote_state.integration_service.outputs.integration_events_sns_topic_name
+}
