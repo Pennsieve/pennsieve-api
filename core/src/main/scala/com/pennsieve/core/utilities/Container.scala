@@ -264,6 +264,18 @@ trait StorageContainer {
   lazy val storageManager = StorageManager.create(self, organization)
 }
 
+trait DatasetPublicationStatusContainer {
+  self: Container with SecureCoreContainer with ChangelogContainer =>
+
+  lazy val datasetPublicationStatusManager: DatasetPublicationStatusManager =
+    new DatasetPublicationStatusManager(
+      db,
+      user,
+      datasetPublicationStatusMapper,
+      changelogManager.changelogEventMapper
+    )
+}
+
 trait ChangelogContainer {
   self: Container with SecureCoreContainer with SNSContainer =>
 
@@ -273,13 +285,6 @@ trait ChangelogContainer {
   lazy val changelogManager =
     new ChangelogManager(db, organization, user, events_topic, sns)
 
-  lazy val datasetPublicationStatusManager: DatasetPublicationStatusManager =
-    new DatasetPublicationStatusManager(
-      db,
-      user,
-      datasetPublicationStatusMapper,
-      changelogManager.changelogEventMapper
-    )
 }
 
 trait RequestContextContainer extends OrganizationContainer { self: Container =>
