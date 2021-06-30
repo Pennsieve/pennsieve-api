@@ -96,6 +96,11 @@ resource "aws_iam_role_policy_attachment" "sts_iam_role_policy_attachment" {
   policy_arn = aws_iam_policy.sts_iam_policy.arn
 }
 
+resource "aws_iam_role_policy_attachment" "sns_iam_role_policy_attachment" {
+  role       = var.ecs_task_iam_role_id
+  policy_arn = aws_iam_policy.sns_iam_policy.arn
+}
+
 # Policy Documents
 
 data "aws_iam_policy_document" "batch_iam_policy_document" {
