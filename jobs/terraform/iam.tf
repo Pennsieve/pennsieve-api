@@ -1,12 +1,10 @@
+//
+// IAM Policy
+//
 resource "aws_iam_policy" "iam_policy" {
   name   = "${var.environment_name}-${var.service_name}-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
   path   = "/service/"
   policy = data.aws_iam_policy_document.iam_policy_document.json
-}
-
-resource "aws_iam_role_policy_attachment" "iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.iam_policy.arn
 }
 
 resource "aws_iam_policy" "sns_iam_policy" {
@@ -15,6 +13,22 @@ resource "aws_iam_policy" "sns_iam_policy" {
   policy = data.aws_iam_policy_document.sns_iam_policy_document.json
 }
 
+//
+// Policy Attachments
+//
+resource "aws_iam_role_policy_attachment" "iam_role_policy_attachment" {
+  role       = var.ecs_task_iam_role_id
+  policy_arn = aws_iam_policy.iam_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "sns_iam_role_policy_attachment" {
+  role       = var.ecs_task_iam_role_id
+  policy_arn = aws_iam_policy.sns_iam_policy.arn
+}
+
+//
+// Policy Documents
+//
 data "aws_iam_policy_document" "iam_policy_document" {
 
   # Jobs Queue / Key Permissions
