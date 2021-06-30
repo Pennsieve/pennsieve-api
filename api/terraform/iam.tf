@@ -171,6 +171,7 @@ data "aws_iam_policy_document" "kms_iam_policy_document" {
       data.terraform_remote_state.platform_infrastructure.outputs.jobs_kms_key_arn,
       data.terraform_remote_state.platform_infrastructure.outputs.notifications_kms_key_arn,
       data.terraform_remote_state.etl_infrastructure.outputs.sqs_kms_key_arn,
+      data.terraform_remote_state.integration_service.outputs.integration_events_kms_key_arn
     ]
   }
 }
