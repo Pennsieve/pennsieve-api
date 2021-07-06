@@ -115,7 +115,7 @@ class ChangelogManager(
 
   }
 
-  def logEvents(
+  def logEventsDB(
     dataset: Dataset,
     events: List[(ChangelogEventDetail, Option[ZonedDateTime])]
   )(implicit
@@ -139,6 +139,36 @@ class ChangelogManager(
       .subflatMap(
         _.traverse(ChangelogEventAndType.from(_).leftMap(ParseError(_)))
       )
+
+  def logEventsSNS(
+    dataset: Dataset,
+    events: List[(ChangelogEventDetail, Option[ZonedDateTime])]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[PublishResponse]] =
+    events.traverse(eventDetail => {
+      sns.publish(snsTopic, eventDetail._1.toString())
+    })
+
+  def logEvents(
+    dataset: Dataset,
+    events: List[(ChangelogEventDetail, Option[ZonedDateTime])]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[ChangelogEventAndType]] = {
+
+    for {
+      changelogEventAndType <- logEventsDB(
+        dataset: Dataset,
+        events: List[(ChangelogEventDetail, Option[ZonedDateTime])]
+      )
+      _ <- logEventsSNS(
+        dataset: Dataset,
+        events: List[(ChangelogEventDetail, Option[ZonedDateTime])]
+      )
+    } yield changelogEventAndType
+
+  }
 
   def getEvents(
     dataset: Dataset,
@@ -339,7 +369,8 @@ class ChangelogManager(
             SELECT id FROM "#${organization.schemaId}".changelog_event_types
             WHERE name = any($e)
           )
-          """) ++ sql"""
+          """) ++
+        sql"""
 
           GROUP BY dataset_id, time_period, time_bucket, event_type_id
 
@@ -394,7 +425,8 @@ class ChangelogManager(
           (time_bucket = ${c.timeBucket} AND last.created_at = ${c.endTime} AND event_types.name >= ${c.eventType}) OR
           (time_bucket = ${c.timeBucket} AND last.created_at < ${c.endTime}) OR
           (time_bucket < ${c.timeBucket})
-        """) ++ sql"""
+        """) ++
+        sql"""
         ORDER BY time_bucket DESC, last.created_at DESC, event_types.name ASC
         LIMIT ${limit + 1}
         """)
