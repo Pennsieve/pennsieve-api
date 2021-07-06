@@ -21,7 +21,7 @@ import cats.implicits.catsSyntaxEitherId
 import com.pennsieve.aws.sns.{ SNSClient, SNSContainer }
 import com.pennsieve.domain.CoreError
 import com.pennsieve.utilities.Container
-import software.amazon.awssdk.services.sns.model.{ PublishResponse }
+import software.amazon.awssdk.services.sns.model.PublishResponse
 
 import scala.concurrent.{ ExecutionContext, Future }
 
