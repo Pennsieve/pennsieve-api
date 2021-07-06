@@ -18,8 +18,8 @@ package com.pennsieve.jobs.types
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKitBase
-import com.pennsieve.aws.sns.LocalSNSContainer
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
+import com.pennsieve.helpers.MockSNSContainer
 import com.pennsieve.managers.ManagerSpec
 import com.pennsieve.messages.BackgroundJob._
 import com.pennsieve.messages.{
@@ -52,7 +52,7 @@ class DatasetChangelogEventJobSpec
   )
   implicit lazy val ec: ExecutionContext = system.dispatcher
 
-  var insecureContainer: DatabaseContainer with LocalSNSContainer = _
+  var insecureContainer: DatabaseContainer with MockSNSContainer = _
 
   override def afterStart(): Unit = {
     val config = ConfigFactory
@@ -61,7 +61,7 @@ class DatasetChangelogEventJobSpec
       .withValue("sns.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
 
     insecureContainer = new InsecureContainer(config) with DatabaseContainer
-    with LocalSNSContainer {
+    with MockSNSContainer {
       override val postgresUseSSL = false
     }
 
