@@ -147,7 +147,10 @@ class ChangelogManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, List[PublishResponse]] =
     events.traverse(eventDetail => {
-      sns.publish(snsTopic, eventDetail._1.toString())
+      println(sns)
+      println(eventDetail.toString)
+      println(snsTopic)
+      sns.publish(snsTopic, eventDetail._1.toString)
     })
 
   def logEvents(
