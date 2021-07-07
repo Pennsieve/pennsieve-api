@@ -32,7 +32,7 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.pennsieve.models.Webhook
+import com.pennsieve.models.{ Role, User, Webhook }
 
 case class CreateWebhookRequest(
   apiUrl: String,
@@ -91,6 +91,32 @@ class WebhooksController(
       } yield WebhookDTO(newWebhook)
 
       override val is = result.value.map(CreatedResult)
+    }
+  }
+
+  get(
+    "/",
+    operation(
+      apiOperation[List[WebhookDTO]]("getIntegrations")
+        summary "gets all integrations that a user has permission to and that belong to the given organization"
+        parameters ()
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Seq[WebhookDTO]] =
+        for {
+          secureContainer <- getSecureContainer
+          organization = secureContainer.organization
+
+          integrations <- {
+            secureContainer.webhookManager
+              .get()
+              .coreErrorToActionResult()
+          }
+
+        } yield integrations.map(WebhookDTO(_))
+
+      override val is = result.value.map(OkResult(_))
     }
   }
 

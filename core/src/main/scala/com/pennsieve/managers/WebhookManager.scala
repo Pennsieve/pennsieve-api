@@ -96,6 +96,12 @@ class WebhookManager(
   }
 
   def get(
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[Webhook]] =
+    db.run(webhooksMapper.find(actor).result).toEitherT
+
+  def get(
     id: Int
   )(implicit
     ec: ExecutionContext
