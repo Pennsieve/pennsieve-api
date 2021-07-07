@@ -62,4 +62,7 @@ class WebhooksMapper(val organization: Organization)
     extends TableQuery(new WebhooksTable(organization.schemaId, _)) {
   def get(id: Int): Query[WebhooksTable, Webhook, Seq] =
     this.filter(_.id === id)
+
+  def find(user: User): Query[WebhooksTable, Webhook, Seq] =
+    this.filter(x => (x.isPrivate === false || x.createdBy === user.id))
 }

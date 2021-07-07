@@ -62,6 +62,36 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("get a list of webhooks") {
+    val publicWebhook1 = createWebhook(
+      displayName = "Public webhook 1",
+      createdBy = loggedInUser.id
+    )
+    val publicWebhook2 = createWebhook(
+      displayName = "Public webhook 2",
+      createdBy = loggedInUser.id
+    )
+    val privateWebhook1 =
+      createWebhook(
+        displayName = "Private webhook 1 ",
+        isPrivate = true,
+        createdBy = loggedInUser.id
+      )
+
+    get("", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (200)
+      val resp = parsedBody.extract[List[WebhookDTO]]
+      resp.length should equal(3)
+    }
+
+    get("", headers = authorizationHeader(colleagueJwt)) {
+      status shouldBe (200)
+      val resp = parsedBody.extract[List[WebhookDTO]]
+      resp.length should equal(2)
+      resp.map(_.isPrivate).forall(_ == false) should equal(true)
+    }
+  }
+
   test("can't get a webhook that doesn't exist") {
     get("/1", headers = authorizationHeader(loggedInJwt)) {
       status shouldBe (404)
