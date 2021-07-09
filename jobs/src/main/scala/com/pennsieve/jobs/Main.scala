@@ -53,7 +53,7 @@ object Main extends App {
   val deletePackageJob: DeleteJob = DeleteJob()
   val cacheJob = StorageCachePopulationJob(config)
   val logChangeEventRunner =
-    DatasetChangelogEvent(config, container.sns, events_topic)
+    DatasetChangelogEvent(config, events_topic)
 
   val processor: ProcessJob =
     ProcessJob(
