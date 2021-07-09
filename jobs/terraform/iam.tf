@@ -41,7 +41,10 @@ data "aws_iam_policy_document" "iam_policy_document" {
       "kms:GenerateDataKey",
     ]
 
-    resources = [data.terraform_remote_state.platform_infrastructure.outputs.jobs_kms_key_arn]
+    resources = [
+      data.terraform_remote_state.platform_infrastructure.outputs.jobs_kms_key_arn,
+      data.terraform_remote_state.integration_service.outputs.integration_events_kms_key_arn
+    ]
   }
 
   statement {
