@@ -24,6 +24,7 @@ import com.pennsieve.aws.sns.{ SNS, SNSClient, SNSContainer }
 import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.core.utilities.{ DatabaseContainer, InsecureContainer }
 import com.pennsieve.db.{ DatasetsMapper, OrganizationsMapper, UserMapper }
+import com.pennsieve.jobs.container.Container
 import com.pennsieve.jobs.contexts.ChangelogEventContext
 import com.pennsieve.jobs.{
   ExceptionError,
@@ -180,17 +181,21 @@ class DatasetChangelogEvent(
 object DatasetChangelogEvent {
   def apply(
     config: Config,
-    sns: SNSClient,
     eventsTopic: SnsTopic
   )(implicit
     ec: ExecutionContext,
     system: ActorSystem,
-    log: ContextLogger
-  ): DatasetChangelogEvent =
+    log: ContextLogger,
+    container: Container
+  ): DatasetChangelogEvent = {
+    println("DatasetChangelogEvent:Apply   " + container.sns)
     new DatasetChangelogEvent(
-      new InsecureContainer(config) with DatabaseContainer with SNSContainer {
-        override val sns: SNSClient = sns
+      insecureContainer = new InsecureContainer(config) with DatabaseContainer
+      with SNSContainer {
+        override val sns: SNSClient = container.sns
       },
-      eventsTopic
+      eventsTopic = eventsTopic
     )
+  }
+
 }
