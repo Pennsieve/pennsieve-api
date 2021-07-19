@@ -38,6 +38,8 @@ import com.pennsieve.db.{
   DatasetsMapper,
   ExternalFilesMapper,
   PackagesMapper,
+  WebhookEventSubcriptionsMapper,
+  WebhookEventTypesMapper,
   WebhooksMapper
 }
 import com.pennsieve.domain.{ CoreError, DatasetRolePermissionError, NotFound }
@@ -465,7 +467,19 @@ trait WebhookManagerContainer
     self.organization
   )
 
+  lazy val webhookEventSubcriptionsMapper: WebhookEventSubcriptionsMapper =
+    new WebhookEventSubcriptionsMapper(self.organization)
+
+  lazy val webhookEventTypesMapper: WebhookEventTypesMapper =
+    new WebhookEventTypesMapper(self.organization)
+
   lazy val webhookManager: WebhookManager =
-    new WebhookManager(db, user, webhooksMapper)
+    new WebhookManager(
+      db,
+      user,
+      webhooksMapper,
+      webhookEventSubcriptionsMapper,
+      webhookEventTypesMapper
+    )
 
 }

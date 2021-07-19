@@ -32,7 +32,7 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.pennsieve.models.{ Role, User, Webhook }
+import com.pennsieve.models.{ Role, User, Webhook, WebhookEventSubcription }
 
 case class CreateWebhookRequest(
   apiUrl: String,
@@ -40,6 +40,7 @@ case class CreateWebhookRequest(
   description: String,
   secret: String,
   displayName: String,
+  targetEvents: Option[List[Int]],
   isPrivate: Boolean,
   isDefault: Boolean
 )
@@ -75,7 +76,7 @@ class WebhooksController(
 
         body <- extractOrErrorT[CreateWebhookRequest](parsedBody)
 
-        newWebhook <- secureContainer.webhookManager
+        newWebhookAndSubscriptions <- secureContainer.webhookManager
           .create(
             apiUrl = body.apiUrl,
             imageUrl = body.imageUrl,
@@ -84,11 +85,13 @@ class WebhooksController(
             displayName = body.displayName,
             isPrivate = body.isPrivate,
             isDefault = body.isDefault,
+            targetEvents = body.targetEvents,
             createdBy = secureContainer.user.id
           )
           .coreErrorToActionResult
 
-      } yield WebhookDTO(newWebhook)
+      } yield
+        WebhookDTO(newWebhookAndSubscriptions._1, newWebhookAndSubscriptions._2)
 
       override val is = result.value.map(CreatedResult)
     }

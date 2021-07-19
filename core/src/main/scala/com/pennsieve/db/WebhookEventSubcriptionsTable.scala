@@ -40,4 +40,9 @@ final class WebhookEventSubcriptionsTable(schema: String, tag: Tag)
 class WebhookEventSubcriptionsMapper(val organization: Organization)
     extends TableQuery(
       new WebhookEventSubcriptionsTable(organization.schemaId, _)
-    )
+    ) {
+
+  def getById(id: Int): DBIO[Seq[WebhookEventSubcription]] =
+    this.filter(_.webhookId === id).result
+
+}

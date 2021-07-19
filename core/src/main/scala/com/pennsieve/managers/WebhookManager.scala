@@ -20,7 +20,7 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, slugify }
-import com.pennsieve.db._
+import com.pennsieve.db.{ WebhooksMapper, _ }
 import com.pennsieve.domain._
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
@@ -30,7 +30,9 @@ import scala.concurrent.{ ExecutionContext, Future }
 class WebhookManager(
   val db: Database,
   val actor: User,
-  val webhooksMapper: WebhooksMapper
+  val webhooksMapper: WebhooksMapper,
+  val webhookEventSubcriptionsMapper: WebhookEventSubcriptionsMapper,
+  val webhookEventTypesMapper: WebhookEventTypesMapper
 ) {
 
   val organization: Organization = webhooksMapper.organization
@@ -43,10 +45,11 @@ class WebhookManager(
     displayName: String,
     isPrivate: Boolean,
     isDefault: Boolean,
+    targetEvents: Option[List[Int]],
     createdBy: Int
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Webhook] = {
+  ): EitherT[Future, CoreError, (Webhook, Seq[WebhookEventSubcription])] = {
     for {
       _ <- checkOrErrorT(apiUrl.trim.length < 256 && apiUrl.trim.length > 0)(
         PredicateError("api url must be less than or equal to 255 characters")
@@ -89,11 +92,41 @@ class WebhookManager(
         createdBy
       )
 
-      createdWebhook = (webhooksMapper returning webhooksMapper) += row
+      /* Creating a SQL Action Sequence that inserts row for webhook and
+      a row for each event that it is subscribed to.
+       */
+      insertQuery: DBIO[(Webhook, Seq[WebhookEventSubcription])] = for {
 
-      webhook <- db.run(createdWebhook.transactionally).toEitherT
+        // insert the row in the webhook table
+        webhookId: Int <- insertWebhook(row)
+
+        // insert one row per subscription in the event subscription table
+        _ <- insertSubscriptions(for {
+          target <- targetEvents.getOrElse(List.empty)
+
+        } yield WebhookEventSubcription(webhookId, target))
+
+        // return created webhook with populated Id
+        createdWebhook: Webhook <- webhooksMapper
+          .filter(_.id === webhookId)
+          .result
+          .head
+
+        // Return created subscriptions.
+        createdTargets <- webhookEventSubcriptionsMapper.getById(webhookId)
+      } yield (createdWebhook, createdTargets)
+
+      // Run the SQL action sequence and return the webhook
+      webhook <- db.run(insertQuery.transactionally).toEitherT
     } yield webhook
   }
+
+  def insertWebhook(row: Webhook): DBIO[Int] =
+    webhooksMapper returning webhooksMapper.map(_.id) += row
+
+  def insertSubscriptions(
+    rows: Seq[WebhookEventSubcription]
+  ): DBIO[Option[Int]] = webhookEventSubcriptionsMapper ++= rows
 
   def get(
   )(implicit
@@ -128,4 +161,5 @@ class WebhookManager(
       )
     } yield webhook
   }
+
 }
