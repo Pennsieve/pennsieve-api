@@ -24,8 +24,11 @@ import com.pennsieve.db.{ WebhooksMapper, _ }
 import com.pennsieve.domain._
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
+import slick.dbio.{ DBIOAction, NoStream }
+import slick.lifted.Rep
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.concurrent.duration._
 
 class WebhookManager(
   val db: Database,
@@ -45,7 +48,7 @@ class WebhookManager(
     displayName: String,
     isPrivate: Boolean,
     isDefault: Boolean,
-    targetEvents: Option[List[Int]],
+    targetEvents: Option[List[String]],
     createdBy: Int
   )(implicit
     ec: ExecutionContext
@@ -95,16 +98,26 @@ class WebhookManager(
       /* Creating a SQL Action Sequence that inserts row for webhook and
       a row for each event that it is subscribed to.
        */
+
+      // TODO: Replace this with forceInsertQuery method to prevent multiple db calls
+      allTypes = Await.result(db.run(webhookEventTypesMapper.result), 2.seconds)
+
       insertQuery: DBIO[(Webhook, Seq[WebhookEventSubcription])] = for {
 
         // insert the row in the webhook table
         webhookId: Int <- insertWebhook(row)
 
         // insert one row per subscription in the event subscription table
-        _ <- insertSubscriptions(for {
-          target <- targetEvents.getOrElse(List.empty)
+        _ <- insertSubscriptions(
+          for {
+            target <- targetEvents.getOrElse(List.empty)
 
-        } yield WebhookEventSubcription(webhookId, target))
+          } yield
+            WebhookEventSubcription(
+              webhookId,
+              allTypes.filter(_.eventName == target).head.id
+            )
+        )
 
         // return created webhook with populated Id
         createdWebhook: Webhook <- webhooksMapper
@@ -134,13 +147,36 @@ class WebhookManager(
   ): EitherT[Future, CoreError, Seq[Webhook]] =
     db.run(webhooksMapper.find(actor).result).toEitherT
 
-  def get(
+  private def get(
     id: Int
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Webhook] =
     db.run(webhooksMapper.get(id).result.headOption)
       .whenNone[CoreError](NotFound(s"Webhook ($id)"))
+
+  def getWithSubscriptions(
+    id: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Map[Webhook, Seq[String]]] = {
+
+    val query = for {
+      w <- webhooksMapper
+      s <- webhookEventSubcriptionsMapper if w.id === s.webhookId
+      t <- webhookEventTypesMapper if t.id === s.webhookEventTypeId
+    } yield (w, t.eventName)
+
+    db.run(query.result)
+      .toEitherT
+      .map { results =>
+        results
+          .filter(_._1.id === id)
+          .groupBy(_._1)
+          .mapValues(values => values.map(_._2))
+      }
+
+  }
 
   def authenticateAndGetWebhook(
     id: Int

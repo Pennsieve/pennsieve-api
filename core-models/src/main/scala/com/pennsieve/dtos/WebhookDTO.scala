@@ -32,7 +32,7 @@ final case class WebhookDTO(
   isPrivate: Boolean,
   isDefault: Boolean,
   isDisabled: Boolean,
-  eventTargets: Option[Seq[Int]],
+  eventTargets: Option[Seq[String]],
   createdBy: Int,
   createdAt: ZonedDateTime
 )
@@ -60,11 +60,8 @@ object WebhookDTO {
     )
   }
 
-  def apply(
-    webhook: Webhook,
-    target: Seq[WebhookEventSubcription]
-  ): WebhookDTO = {
-    val targetsStr: Option[Seq[Int]] = Some(target.map(x => x.id))
+  def apply(webhook: Webhook, target: Seq[String]): WebhookDTO = {
+//    val targetsStr: Option[Seq[Int]] = Some(target.map(x => x.id))
 
     return WebhookDTO(
       id = webhook.id,
@@ -76,7 +73,7 @@ object WebhookDTO {
       isPrivate = webhook.isPrivate,
       isDefault = webhook.isDefault,
       isDisabled = webhook.isDisabled,
-      eventTargets = targetsStr,
+      eventTargets = Some(target),
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )

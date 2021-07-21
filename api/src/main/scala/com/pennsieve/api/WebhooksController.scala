@@ -40,7 +40,7 @@ case class CreateWebhookRequest(
   description: String,
   secret: String,
   displayName: String,
-  targetEvents: Option[List[Int]],
+  targetEvents: Option[List[String]],
   isPrivate: Boolean,
   isDefault: Boolean
 )
@@ -136,11 +136,11 @@ class WebhooksController(
         secureContainer <- getSecureContainer
         webhookId <- paramT[Int]("id")
 
-        webhook <- secureContainer.webhookManager
-          .authenticateAndGetWebhook(webhookId)
+        webhookMap <- secureContainer.webhookManager
+          .getWithSubscriptions(webhookId)
           .coreErrorToActionResult
 
-      } yield WebhookDTO(webhook)
+      } yield WebhookDTO(webhookMap.head._1, webhookMap.head._2)
 
       override val is = result.value.map(OkResult(_))
     }

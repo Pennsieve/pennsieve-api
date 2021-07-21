@@ -112,7 +112,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "secretkey",
         displayName = "Test Webhook",
-        targetEvents = Some(List(1, 2)),
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = true,
         isDefault = true
       )
@@ -138,7 +138,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "secretkey",
         displayName = "Test Webhook",
-        targetEvents = Some(List(1, 2)),
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
         isDefault = true
       )
@@ -172,7 +172,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "secretkey",
         displayName = "Test Webhook",
-        targetEvents = Some(List(1, 2)),
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
         isDefault = true
       )
@@ -194,7 +194,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "secretkey",
         displayName = "Test Webhook",
-        targetEvents = Some(List(1, 2)),
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
         isDefault = true
       )
@@ -214,7 +214,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "",
         displayName = "Test Webhook",
-        targetEvents = Some(List(1, 2)),
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
         isDefault = true
       )
