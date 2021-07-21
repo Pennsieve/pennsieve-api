@@ -2332,7 +2332,7 @@ class DataSetsController(
         user = secureContainer.user
         organization = secureContainer.organization
 
-        _ <- checkOrErrorT(currentOwner.id == user.id)(
+        _ <- checkOrErrorT(currentOwner.id == user.id || user.isSuperAdmin == true)(
           Forbidden("Must be owner to change ownership")
         )
 
