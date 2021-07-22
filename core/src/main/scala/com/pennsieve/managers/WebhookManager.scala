@@ -99,10 +99,9 @@ class WebhookManager(
       a row for each event that it is subscribed to.
        */
 
-      // TODO: Replace this with forceInsertQuery method to prevent multiple db calls
-      allTypes = Await.result(db.run(webhookEventTypesMapper.result), 2.seconds)
-
       insertQuery: DBIO[(Webhook, Seq[WebhookEventSubcription])] = for {
+
+        allTypes <- webhookEventTypesMapper.result
 
         // insert the row in the webhook table
         webhookId: Int <- insertWebhook(row)
