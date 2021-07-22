@@ -2931,6 +2931,47 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("""user1 creates data set that belongs to org
+    | and superAdmin switches ownership to user2, belonging to the same org
+    | user1 should be made manager and user2 be made owner""".stripMargin) {
+
+    val myDS = createDataSet("My DataSet")
+
+    // SuperAdmin updates ownership
+    val request = write(SwitchOwnerRequest(colleagueUser.nodeId))
+    putJson(
+      s"/${myDS.nodeId}/collaborators/owner",
+      request,
+      headers = authorizationHeader(adminJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    val owner =
+      secureContainer.datasetManager
+        .getOwner(myDS)
+        .await
+        .right
+        .get
+    val colleagueUserRole =
+      secureContainer.datasetManager
+        .maxRole(myDS, colleagueUser)
+        .await
+        .right
+        .get
+    val loggedInUserRole =
+      secureContainer.datasetManager
+        .maxRole(myDS, loggedInUser)
+        .await
+        .right
+        .get
+
+    owner.nodeId should equal(colleagueUser.nodeId)
+    loggedInUserRole should equal(Role.Manager)
+    colleagueUserRole should equal(Role.Owner)
+
+  }
+
+  test("""user1 creates data set that belongs to org
       |and switches ownership to user2, belonging to the same org
       |user1 should be made manager and user2 be made owner""".stripMargin) {
     // create
@@ -2968,6 +3009,23 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     owner.nodeId should equal(colleagueUser.nodeId)
     colleagueUserRole should equal(Role.Owner)
     loggedInUserRole should equal(Role.Manager)
+  }
+
+  test("""user1 creates data set that belongs to org
+         |and user2 switches ownership to user2, belonging to the same org
+         | should not work""".stripMargin) {
+    // create
+    val myDS = createDataSet("My DataSet")
+
+    val request = write(SwitchOwnerRequest(colleagueUser.nodeId))
+
+    putJson(
+      s"/${myDS.nodeId}/collaborators/owner",
+      request,
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
   }
 
   test("""user1 creates data set that belongs to org
