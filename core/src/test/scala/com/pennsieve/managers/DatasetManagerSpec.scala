@@ -554,13 +554,6 @@ class DatasetManagerSpec extends BaseManagerSpec {
     )
   }
 
-  "a dataset owner" should "only be able to be changed by owner or superAdmin" in {
-    val dm = datasetManager(testOrganization, superAdmin)
-    val dataset = createDataset()
-
-    dm.switchOwner()
-  }
-
   def isLocked(dataset: Dataset, user: User): Boolean =
     datasetManager(testOrganization, user).isLocked(dataset).await.right.get
 
