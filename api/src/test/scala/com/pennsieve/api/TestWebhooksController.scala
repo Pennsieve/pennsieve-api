@@ -164,6 +164,25 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("Can't create a webhook for non-existing targetEvents") {
+    val req = write(
+      CreateWebhookRequest(
+        apiUrl = "https://www.api.com",
+        imageUrl = Some("https://www.image.com"),
+        description = "something something",
+        secret = "secretkey",
+        displayName = "Test Webhook",
+        targetEvents = Some(List("METADATA", "FAKETARGET")),
+        isPrivate = false,
+        isDefault = true
+      )
+    )
+
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(400)
+    }
+  }
+
   test("can't create a webhook without an api url") {
     val req = write(
       CreateWebhookRequest(

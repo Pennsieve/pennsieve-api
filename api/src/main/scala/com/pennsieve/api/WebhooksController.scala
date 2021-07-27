@@ -140,7 +140,7 @@ class WebhooksController(
           .getWithSubscriptions(webhookId)
           .coreErrorToActionResult
 
-      } yield WebhookDTO(webhookMap.head._1, webhookMap.head._2)
+      } yield WebhookDTO(webhookMap._1, webhookMap._2)
 
       override val is = result.value.map(OkResult(_))
     }

@@ -18,23 +18,25 @@ package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
+import com.pennsieve.core.utilities.{
+  checkOrError,
+  checkOrErrorT,
+  slugify,
+  FutureEitherHelpers
+}
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.core.utilities.{ checkOrErrorT, slugify }
 import com.pennsieve.db.{ WebhooksMapper, _ }
-import com.pennsieve.domain._
+import com.pennsieve.domain.{ CoreError, _ }
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
-import slick.dbio.{ DBIOAction, NoStream }
-import slick.lifted.Rep
 
 import scala.concurrent.{ Await, ExecutionContext, Future }
-import scala.concurrent.duration._
 
 class WebhookManager(
   val db: Database,
   val actor: User,
   val webhooksMapper: WebhooksMapper,
-  val webhookEventSubcriptionsMapper: WebhookEventSubcriptionsMapper,
+  val webhookEventSubscriptionsMapper: WebhookEventSubcriptionsMapper,
   val webhookEventTypesMapper: WebhookEventTypesMapper
 ) {
 
@@ -52,7 +54,7 @@ class WebhookManager(
     createdBy: Int
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, (Webhook, Seq[WebhookEventSubcription])] = {
+  ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
     for {
       _ <- checkOrErrorT(apiUrl.trim.length < 256 && apiUrl.trim.length > 0)(
         PredicateError("api url must be less than or equal to 255 characters")
@@ -99,9 +101,19 @@ class WebhookManager(
       a row for each event that it is subscribed to.
        */
 
-      insertQuery: DBIO[(Webhook, Seq[WebhookEventSubcription])] = for {
+      insertQuery: DBIO[Webhook] = for {
 
         allTypes <- webhookEventTypesMapper.result
+
+        _ <- assert(
+          targetEvents match {
+            case Some(targetEvents) =>
+              targetEvents.forall(allTypes.map { _.eventName }.contains)
+            case None => {
+              true
+            }
+          }
+        )(PredicateError(s"Target events must be one of ${allTypes.toString}."))
 
         // insert the row in the webhook table
         webhookId: Int <- insertWebhook(row)
@@ -124,13 +136,11 @@ class WebhookManager(
           .result
           .head
 
-        // Return created subscriptions.
-        createdTargets <- webhookEventSubcriptionsMapper.getById(webhookId)
-      } yield (createdWebhook, createdTargets)
+      } yield createdWebhook
 
       // Run the SQL action sequence and return the webhook
       webhook <- db.run(insertQuery.transactionally).toEitherT
-    } yield webhook
+    } yield (webhook, targetEvents.getOrElse(List.empty))
   }
 
   def insertWebhook(row: Webhook): DBIO[Int] =
@@ -138,62 +148,83 @@ class WebhookManager(
 
   def insertSubscriptions(
     rows: Seq[WebhookEventSubcription]
-  ): DBIO[Option[Int]] = webhookEventSubcriptionsMapper ++= rows
+  ): DBIO[Option[Int]] = webhookEventSubscriptionsMapper ++= rows
 
+  /*
+  Get all webhooks for user without subscriptions
+   */
   def get(
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Seq[Webhook]] =
     db.run(webhooksMapper.find(actor).result).toEitherT
 
-  private def get(
-    id: Int
+  /*
+  Get all webhooks for user and subscriptions
+   */
+  def getWithSubscriptions(
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Webhook] =
-    db.run(webhooksMapper.get(id).result.headOption)
-      .whenNone[CoreError](NotFound(s"Webhook ($id)"))
+  ): EitherT[Future, CoreError, Seq[(Webhook, Seq[String])]] = {
+
+    val query = for {
+      w <- webhooksMapper.filter(
+        x => (x.isPrivate === false || x.createdBy === actor.id)
+      )
+      s <- webhookEventSubscriptionsMapper if w.id === s.webhookId
+      t <- webhookEventTypesMapper if t.id === s.webhookEventTypeId
+    } yield (w, t.eventName)
+
+    db.run(query.result)
+      .map { results =>
+        results
+          .groupBy(_._1)
+          .mapValues(values => values.map(_._2))
+          .toSeq
+      }
+      .toEitherT
+
+  }
 
   def getWithSubscriptions(
     id: Int
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Map[Webhook, Seq[String]]] = {
+  ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
 
     val query = for {
       w <- webhooksMapper
-      s <- webhookEventSubcriptionsMapper if w.id === s.webhookId
+      s <- webhookEventSubscriptionsMapper if w.id === s.webhookId
       t <- webhookEventTypesMapper if t.id === s.webhookEventTypeId
+
     } yield (w, t.eventName)
 
-    db.run(query.result)
-      .toEitherT
-      .map { results =>
-        results
-          .filter(_._1.id === id)
-          .groupBy(_._1)
-          .mapValues(values => values.map(_._2))
-      }
-
-  }
-
-  def authenticateAndGetWebhook(
-    id: Int
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Webhook] = {
     for {
-      webhook <- get(id)
+      // get the webhook with ID and associated subscriptions.,
+      // throw 404 when no webhook with ID exists
+      webhook <- db
+        .run(query.result)
+        .map { results =>
+          results
+            .filter(_._1.id === id)
+            .groupBy(_._1)
+            .mapValues(values => values.map(_._2))
+            .headOption
+        }
+        .whenNone[CoreError](NotFound(s"Webhook ($id)"))
 
+      // Check if user has permission to see webhook
+      // Throw 403 when user does not
       userId = actor.id
 
       _ <- checkOrErrorT[CoreError](
-        !(webhook.createdBy != userId && webhook.isPrivate)
+        !(webhook._1.createdBy != userId && webhook._1.isPrivate)
       )(
         InvalidAction(
-          s"user ${userId} does not have access to webhook ${webhook.id}"
+          s"user ${userId} does not have access to webhook ${webhook._1.id}"
         )
       )
+
     } yield webhook
   }
 

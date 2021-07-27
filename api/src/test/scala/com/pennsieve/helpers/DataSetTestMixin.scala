@@ -302,7 +302,7 @@ trait DataSetTestMixin { self: ApiSuite =>
     createdBy: Int = 1
   )(implicit
     ec: ExecutionContext
-  ): (Webhook, Seq[WebhookEventSubcription]) = {
+  ): (Webhook, Seq[String]) = {
     secureContainer.webhookManager
       .create(
         apiUrl = apiUrl,
@@ -315,8 +315,9 @@ trait DataSetTestMixin { self: ApiSuite =>
         targetEvents = targetEvents,
         createdBy
       )
-      .await
-      .right
-      .value
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
   }
 }
