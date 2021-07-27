@@ -34,12 +34,13 @@ import com.pennsieve.models.{
   PackageType,
   Team,
   User,
-  Webhook
+  Webhook,
+  WebhookEventSubcription
 }
 import com.pennsieve.clients.DatasetAssetClient
 import org.scalatest.EitherValues._
 
-import scala.concurrent.{ ExecutionContext }
+import scala.concurrent.ExecutionContext
 import com.pennsieve.test.helpers.EitherValue._
 
 import java.io.ByteArrayInputStream
@@ -295,12 +296,13 @@ trait DataSetTestMixin { self: ApiSuite =>
     description: String = "test webhook",
     secret: String = "secretkey123",
     displayName: String = "Test Webhook",
+    targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
     isPrivate: Boolean = false,
     isDefault: Boolean = true,
     createdBy: Int = 1
   )(implicit
     ec: ExecutionContext
-  ): Webhook = {
+  ): (Webhook, Seq[String]) = {
     secureContainer.webhookManager
       .create(
         apiUrl = apiUrl,
@@ -310,10 +312,12 @@ trait DataSetTestMixin { self: ApiSuite =>
         displayName = displayName,
         isPrivate = isPrivate,
         isDefault = isDefault,
+        targetEvents = targetEvents,
         createdBy
       )
-      .await
-      .right
-      .value
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
   }
 }

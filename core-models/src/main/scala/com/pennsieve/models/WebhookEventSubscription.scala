@@ -23,7 +23,11 @@ final case class WebhookEventSubcription(
   webhookId: Int,
   webhookEventTypeId: Int,
   id: Int = 0
-)
+) {
+  override def toString(): String = {
+    return "WebhookId: " + webhookId + " is subscribed to EventType: " + webhookEventTypeId
+  }
+}
 
 object WebhookEventSubcription {
   implicit val decoder: Decoder[WebhookEventSubcription] =
@@ -36,4 +40,5 @@ object WebhookEventSubcription {
    * class that defines a database table
    */
   val tupled = (this.apply _).tupled
+
 }

@@ -18,9 +18,10 @@ package com.pennsieve.db
 
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.models._
+import slick.dbio.Effect
+import slick.sql.SqlAction
 
 import java.time.ZonedDateTime
-
 import scala.concurrent.{ ExecutionContext, Future }
 
 final class WebhooksTable(schema: String, tag: Tag)
@@ -60,6 +61,9 @@ final class WebhooksTable(schema: String, tag: Tag)
 
 class WebhooksMapper(val organization: Organization)
     extends TableQuery(new WebhooksTable(organization.schemaId, _)) {
+  def getById(id: Int): DBIO[Option[Webhook]] =
+    this.filter(_.id === id).result.headOption
+
   def get(id: Int): Query[WebhooksTable, Webhook, Seq] =
     this.filter(_.id === id)
 

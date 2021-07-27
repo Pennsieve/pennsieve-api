@@ -16,9 +16,10 @@
 
 package com.pennsieve.dtos
 
-import com.pennsieve.models.{ Webhook }
+import com.pennsieve.models.{ Webhook, WebhookEventSubcription }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
+
 import java.time.ZonedDateTime
 
 final case class WebhookDTO(
@@ -31,6 +32,7 @@ final case class WebhookDTO(
   isPrivate: Boolean,
   isDefault: Boolean,
   isDisabled: Boolean,
+  eventTargets: Option[Seq[String]],
   createdBy: Int,
   createdAt: ZonedDateTime
 )
@@ -41,6 +43,7 @@ object WebhookDTO {
   implicit val decoder: Decoder[WebhookDTO] = deriveDecoder[WebhookDTO]
 
   def apply(webhook: Webhook): WebhookDTO = {
+
     WebhookDTO(
       id = webhook.id,
       apiUrl = webhook.apiUrl,
@@ -51,6 +54,26 @@ object WebhookDTO {
       isPrivate = webhook.isPrivate,
       isDefault = webhook.isDefault,
       isDisabled = webhook.isDisabled,
+      eventTargets = None,
+      createdBy = webhook.createdBy,
+      createdAt = webhook.createdAt
+    )
+  }
+
+  def apply(webhook: Webhook, target: Seq[String]): WebhookDTO = {
+//    val targetsStr: Option[Seq[Int]] = Some(target.map(x => x.id))
+
+    return WebhookDTO(
+      id = webhook.id,
+      apiUrl = webhook.apiUrl,
+      imageUrl = webhook.imageUrl,
+      description = webhook.description,
+      name = webhook.name,
+      displayName = webhook.displayName,
+      isPrivate = webhook.isPrivate,
+      isDefault = webhook.isDefault,
+      isDisabled = webhook.isDisabled,
+      eventTargets = Some(target),
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )

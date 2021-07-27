@@ -18,7 +18,8 @@ package com.pennsieve.api
 
 import com.pennsieve.helpers.DataSetTestMixin
 import com.pennsieve.helpers.MockAuditLogger
-import com.pennsieve.models.Webhook
+import com.pennsieve.models.{ Webhook, WebhookEventSubcription }
+
 import java.time.ZonedDateTime
 import com.pennsieve.dtos.WebhookDTO
 import org.json4s.jackson.Serialization.write
@@ -43,7 +44,11 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("get a webhook") {
-    val webhook = createWebhook()
+    val webhookSubscription = createWebhook()
+    val webhook = webhookSubscription._1
+    val subscriptions = webhookSubscription._2
+
+    subscriptions foreach println
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
@@ -107,6 +112,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "secretkey",
         displayName = "Test Webhook",
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = true,
         isDefault = true
       )
@@ -132,6 +138,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "secretkey",
         displayName = "Test Webhook",
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
         isDefault = true
       )
@@ -157,6 +164,25 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("Can't create a webhook for non-existing targetEvents") {
+    val req = write(
+      CreateWebhookRequest(
+        apiUrl = "https://www.api.com",
+        imageUrl = Some("https://www.image.com"),
+        description = "something something",
+        secret = "secretkey",
+        displayName = "Test Webhook",
+        targetEvents = Some(List("METADATA", "FAKETARGET")),
+        isPrivate = false,
+        isDefault = true
+      )
+    )
+
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(400)
+    }
+  }
+
   test("can't create a webhook without an api url") {
     val req = write(
       CreateWebhookRequest(
@@ -165,6 +191,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "secretkey",
         displayName = "Test Webhook",
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
         isDefault = true
       )
@@ -186,6 +213,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "secretkey",
         displayName = "Test Webhook",
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
         isDefault = true
       )
@@ -205,6 +233,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         description = "something something",
         secret = "",
         displayName = "Test Webhook",
+        targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
         isDefault = true
       )
