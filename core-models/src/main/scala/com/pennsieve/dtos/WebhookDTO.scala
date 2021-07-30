@@ -63,7 +63,7 @@ object WebhookDTO {
   def apply(webhook: Webhook, target: Seq[String]): WebhookDTO = {
 //    val targetsStr: Option[Seq[Int]] = Some(target.map(x => x.id))
 
-    return WebhookDTO(
+    WebhookDTO(
       id = webhook.id,
       apiUrl = webhook.apiUrl,
       imageUrl = webhook.imageUrl,
