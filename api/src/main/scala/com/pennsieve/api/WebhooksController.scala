@@ -109,15 +109,12 @@ class WebhooksController(
       val result: EitherT[Future, ActionResult, Seq[WebhookDTO]] =
         for {
           secureContainer <- getSecureContainer
-          organization = secureContainer.organization
-
-          integrations <- {
-            secureContainer.webhookManager
-              .get()
+          webhookMap <- {
+            secureContainer.webhookManager.getWithSubscriptions
               .coreErrorToActionResult()
           }
 
-        } yield integrations.map(WebhookDTO(_))
+        } yield webhookMap.map(x => WebhookDTO(x._1, x._2))
 
       override val is = result.value.map(OkResult(_))
     }
