@@ -16,6 +16,7 @@
 
 package com.pennsieve.managers
 
+import cats.data.OptionT.some
 import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.{
@@ -29,6 +30,7 @@ import com.pennsieve.db.{ WebhooksMapper, _ }
 import com.pennsieve.domain.{ CoreError, _ }
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
+import slick.relational.RelationalCapabilities.joinLeft
 
 import scala.concurrent.{ Await, ExecutionContext, Future }
 
@@ -168,22 +170,24 @@ class WebhookManager(
   ): EitherT[Future, CoreError, Seq[(Webhook, Seq[String])]] = {
 
     val query = for {
-      w <- webhooksMapper.filter(
+      ((w, _), t) <- webhooksMapper filter (
         x => (x.isPrivate === false || x.createdBy === actor.id)
-      )
-      s <- webhookEventSubscriptionsMapper if w.id === s.webhookId
-      t <- webhookEventTypesMapper if t.id === s.webhookEventTypeId
-    } yield (w, t.eventName)
+      ) joinLeft
+        webhookEventSubscriptionsMapper on (_.id === _.webhookId) joinLeft
+        webhookEventTypesMapper on (_._2.map(_.webhookEventTypeId) === _.id)
+    } yield (w, t)
 
     db.run(query.result)
       .map { results =>
         results
           .groupBy(_._1)
-          .mapValues(values => values.map(_._2))
+          .mapValues(_.map(_._2 match {
+            case Some(p: WebhookEventType) => p.eventName
+            case _ => null
+          }))
           .toSeq
       }
       .toEitherT
-
   }
 
   def getWithSubscriptions(
@@ -193,11 +197,11 @@ class WebhookManager(
   ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
 
     val query = for {
-      w <- webhooksMapper
-      s <- webhookEventSubscriptionsMapper if w.id === s.webhookId
-      t <- webhookEventTypesMapper if t.id === s.webhookEventTypeId
+      ((w, _), t) <- webhooksMapper joinLeft
+        webhookEventSubscriptionsMapper on (_.id === _.webhookId) joinLeft
+        webhookEventTypesMapper on (_._2.map(_.webhookEventTypeId) === _.id)
 
-    } yield (w, t.eventName)
+    } yield (w, t)
 
     for {
       // get the webhook with ID and associated subscriptions.,
@@ -208,7 +212,10 @@ class WebhookManager(
           results
             .filter(_._1.id === id)
             .groupBy(_._1)
-            .mapValues(values => values.map(_._2))
+            .mapValues(_.map(_._2 match {
+              case Some(p: WebhookEventType) => p.eventName
+              case _ => null
+            }))
             .headOption
         }
         .whenNone[CoreError](NotFound(s"Webhook ($id)"))
@@ -227,5 +234,4 @@ class WebhookManager(
 
     } yield webhook
   }
-
 }

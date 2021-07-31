@@ -114,6 +114,8 @@ class WebhooksController(
               .coreErrorToActionResult()
           }
 
+          _ = println(webhookMap)
+
         } yield webhookMap.map(x => WebhookDTO(x._1, x._2))
 
       override val is = result.value.map(OkResult(_))
