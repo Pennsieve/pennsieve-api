@@ -68,14 +68,21 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("get a list of webhooks") {
+
+    // Public webhook without event subscriptions
     val publicWebhook1 = createWebhook(
       displayName = "Public webhook 1",
-      createdBy = loggedInUser.id
+      createdBy = loggedInUser.id,
+      targetEvents = None
     )
+
+    // Public webhook with event subscriptions
     val publicWebhook2 = createWebhook(
       displayName = "Public webhook 2",
       createdBy = loggedInUser.id
     )
+
+    // Private webbhook with event subscriptions
     val privateWebhook1 =
       createWebhook(
         displayName = "Private webhook 1 ",
