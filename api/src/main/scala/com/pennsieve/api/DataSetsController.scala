@@ -18,7 +18,6 @@ package com.pennsieve.api
 
 import java.net.URL
 import java.time.{ LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime }
-
 import akka.Done
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.actor.ActorSystem
@@ -46,7 +45,7 @@ import com.pennsieve.doi.client.doi._
 import com.pennsieve.doi.models._
 import com.pennsieve.domain
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
-import com.pennsieve.domain._
+import com.pennsieve.domain.{ CoreError, _ }
 import com.pennsieve.dtos.Builders._
 import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.{
@@ -72,6 +71,7 @@ import com.pennsieve.notifications.{
 }
 import com.pennsieve.web.Settings
 import io.circe.syntax._
+
 import javax.servlet.http.{ HttpServletRequest, HttpServletResponse }
 import mouse.all._
 import net.ceedubs.ficus.Ficus._
@@ -2788,8 +2788,12 @@ class DataSetsController(
             .map(_.map(ContributorDTO(_)))
             .coreErrorToActionResult
 
+          isPublisher <- secureContainer.organizationManager
+            .isPublisher(secureContainer.organization)
+            .coreErrorToActionResult
+
           _ <- DataSetPublishingHelper
-            .gatherPublicationInfo(validated, contributors)
+            .gatherPublicationInfo(validated, contributors, isPublisher)
             .coreErrorToActionResult
 
           _ <- DataSetPublishingHelper
@@ -3000,11 +3004,16 @@ class DataSetsController(
             .getBearerToken(request)
             .toEitherT[Future]
 
+          isPublisher <- secureContainer.organizationManager
+            .isPublisher(secureContainer.organization)
+            .coreErrorToActionResult
+
           response <- validated.publicationType match {
             case PublicationType.Publication | PublicationType.Embargo =>
               for {
+
                 publicationInfo <- DataSetPublishingHelper
-                  .gatherPublicationInfo(validated, contributors)
+                  .gatherPublicationInfo(validated, contributors, isPublisher)
                   .coreErrorToActionResult
 
                 _ <- DataSetPublishingHelper
@@ -3049,8 +3058,9 @@ class DataSetsController(
               } yield response
             case PublicationType.Revision =>
               for {
+
                 publicationInfo <- DataSetPublishingHelper
-                  .gatherPublicationInfo(validated, contributors)
+                  .gatherPublicationInfo(validated, contributors, isPublisher)
                   .coreErrorToActionResult
 
                 _ <- DataSetPublishingHelper

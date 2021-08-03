@@ -741,7 +741,8 @@ case object DataSetPublishingHelper extends LazyLogging {
 
   def gatherPublicationInfo(
     validated: ValidatedPublicationStatusRequest,
-    contributors: Seq[ContributorDTO]
+    contributors: Seq[ContributorDTO],
+    isPublisher: Boolean
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, PublicationInfo] = {
@@ -785,12 +786,17 @@ case object DataSetPublishingHelper extends LazyLogging {
         case Some(orcidAuthorization) =>
           EitherT.rightT[Future, CoreError](orcidAuthorization.orcid)
         case None =>
-          EitherT.leftT[Future, String](
-            PredicateError(
-              "Dataset cannot be published if owner does not have an ORCID"
+          if (isPublisher)
+            EitherT.rightT[Future, CoreError]("0000-0000-0000-0000")
+          else
+            EitherT.leftT[Future, String](
+              PredicateError(
+                "Dataset cannot be published if owner does not have an ORCID"
+              )
             )
-          )
+
       }
+
       _ <- if (validated.dataset.tags.isEmpty)
         EitherT.leftT[Future, List[String]](
           PredicateError("Dataset cannot be published without tags")
