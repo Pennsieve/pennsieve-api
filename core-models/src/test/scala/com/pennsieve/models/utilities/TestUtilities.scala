@@ -38,6 +38,11 @@ class TestUtilities extends WordSpecLike with Matchers {
 
     }
 
+    "Unicode should work" in {
+      Utilities.escapeName("᚛ᚄᚓᚐᚋᚒᚄ ᚑᚄ") shouldBe "᚛ᚄᚓᚐᚋᚒᚄ ᚑᚄ"
+      Utilities.escapeName("᚛ᚄᚓᚐᚋᚒᚄ ᚑᚄ ~") shouldBe "᚛ᚄᚓᚐᚋᚒᚄ ᚑᚄ %7E"
+    }
+
     "preserve allowed S3 characters" in {
       Utilities.escapeName("My (file)") shouldBe "My (file)"
       Utilities.escapeName("file!") shouldBe "file!"

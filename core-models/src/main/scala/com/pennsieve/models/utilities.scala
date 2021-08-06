@@ -16,7 +16,8 @@
 
 package com.pennsieve.models
 
-import com.google.common.net.UrlEscapers
+import com.google.common.escape.Escaper
+import com.google.common.net.{ PercentEscaper, UrlEscapers }
 import org.apache.commons.io.FilenameUtils
 
 package object Utilities {
@@ -24,6 +25,7 @@ package object Utilities {
   def isNameValid(name: String): Boolean = {
     val AuthorizedCharacters =
       "^[\u00C0-\u1FFF\u2C00-\uD7FF\\w() %*_\\-'.!]{1,255}$".r
+    // reference: https://gist.github.com/pyliaorachel/9cbc3eeb38910f429d7bf49c0d77d07d
     //matches all "letter" characters from unicode plus digits and some special characters that are allowed by S3 for keys
     // % is technically not an authorized character by itself but the second regex takes care of that special case
 
@@ -74,6 +76,11 @@ package object Utilities {
     }
   }
 
+  private val URL_PATH_OTHER_SAFE_CHARS_AND_SPACE = "^[\u00C0-\u1FFF\u2C00-\uD7FF() %*_\\-'.!]$" + "-._~+ !$'()*,;&=@:"
+  def validNameEscaper =
+    new PercentEscaper(URL_PATH_OTHER_SAFE_CHARS_AND_SPACE, false)
+
+//  TODO: Truncate after 255 chars to match isNameValid --> ensure this is okay and can't cause name clash
   def escapeName(name: String): String = {
     if (name == ".")
       "%2E"
@@ -82,12 +89,9 @@ package object Utilities {
     else if (isNameValid(name))
       name
     else
-      UrlEscapers
-        .urlPathSegmentEscaper()
-        // S3 keys should only have one consecutive whitespace
+      validNameEscaper
+      // S3 keys should only have one consecutive whitespace
         .escape("\\s+".r.replaceAllIn(name, " "))
-        // this whitespace should not be encoded
-        .replaceAll("%20", " ")
         // plus sign are not allowed by S3
         .replaceAll("\\+", "%2B")
         // tildes are not allowed by S3

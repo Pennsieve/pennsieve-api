@@ -19,32 +19,14 @@ package com.pennsieve.core.utilities
 import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
-import com.pennsieve.auth.middleware.{
-  DatasetId,
-  DatasetNodeId,
-  Jwt,
-  OrganizationId,
-  Permission
-}
+import com.pennsieve.auth.middleware.{DatasetId, DatasetNodeId, Jwt, OrganizationId, Permission}
 import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.aws.email.Email
 import com.pennsieve.aws.sns.SNSContainer
-import com.pennsieve.db.{
-  CollectionMapper,
-  ContributorMapper,
-  DatasetPublicationStatusMapper,
-  DatasetTeamMapper,
-  DatasetUserMapper,
-  DatasetsMapper,
-  ExternalFilesMapper,
-  PackagesMapper,
-  WebhookEventSubcriptionsMapper,
-  WebhookEventTypesMapper,
-  WebhooksMapper
-}
-import com.pennsieve.domain.{ CoreError, DatasetRolePermissionError, NotFound }
+import com.pennsieve.db.{CollectionMapper, ContributorMapper, DatasetIntegrationsMapper, DatasetPublicationStatusMapper, DatasetTeamMapper, DatasetUserMapper, DatasetsMapper, ExternalFilesMapper, PackagesMapper, WebhookEventSubcriptionsMapper, WebhookEventTypesMapper, WebhooksMapper}
+import com.pennsieve.domain.{CoreError, DatasetRolePermissionError, NotFound}
 import com.pennsieve.managers._
-import com.pennsieve.models.{ Dataset, Organization, Package, Role, User }
+import com.pennsieve.models.{Dataset, Organization, Package, Role, User}
 import com.pennsieve.service.utilities.ContextLogger
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
@@ -55,7 +37,7 @@ import shapeless.Inl
 import shapeless.syntax.inject._
 
 import scala.concurrent.duration._
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 trait DatabaseContainer { self: Container =>
   val postgresHost: String = config.as[String]("postgres.host")
@@ -473,13 +455,17 @@ trait WebhookManagerContainer
   lazy val webhookEventTypesMapper: WebhookEventTypesMapper =
     new WebhookEventTypesMapper(self.organization)
 
+  lazy val datasetIntegrationsMapper: DatasetIntegrationsMapper =
+    new DatasetIntegrationsMapper(self.organization)
+
   lazy val webhookManager: WebhookManager =
     new WebhookManager(
       db,
       user,
       webhooksMapper,
       webhookEventSubcriptionsMapper,
-      webhookEventTypesMapper
+      webhookEventTypesMapper,
+      datasetIntegrationsMapper
     )
 
 }
