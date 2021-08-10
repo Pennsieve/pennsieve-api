@@ -16,12 +16,12 @@
 
 package com.pennsieve.db
 
+import com.pennsieve.domain.Error
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.models._
 
 import java.time.ZonedDateTime
-
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 final class DatasetIntegrationsTable(schema: String, tag: Tag)
     extends Table[DatasetIntegration](tag, Some(schema), "dataset_integrations") {
@@ -39,4 +39,28 @@ final class DatasetIntegrationsTable(schema: String, tag: Tag)
 }
 
 class DatasetIntegrationsMapper(val organization: Organization)
-    extends TableQuery(new DatasetIntegrationsTable(organization.schemaId, _))
+    extends TableQuery(new DatasetIntegrationsTable(organization.schemaId, _)) {
+
+
+  def getByDatasetAndWebhookId(
+     datasetId: Int,
+     webhookId: Int,
+   ): Query[DatasetIntegrationsTable, DatasetIntegration, Seq] =
+    this
+      .filter(_.datasetId === datasetId)
+      .filter(_.webhookId === webhookId)
+
+
+  def getOrCreate(
+    webhookId: Int,
+    datasetId: Int,
+    user: User
+                 )(implicit
+  ec: ExecutionContext): DBIO[DatasetIntegration] =
+    for {
+      existing <- this.filter(x => x.datasetId === datasetId && x.webhookId === webhookId).result.headOption
+      row = existing getOrElse DatasetIntegration(webhookId, datasetId, user.id)
+      _ <- this.insertOrUpdate(row)
+    } yield row
+
+}

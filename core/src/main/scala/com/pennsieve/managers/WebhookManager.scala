@@ -38,8 +38,9 @@ class WebhookManager(
   val db: Database,
   val actor: User,
   val webhooksMapper: WebhooksMapper,
-  val webhookEventSubscriptionsMapper: WebhookEventSubcriptionsMapper,
-  val webhookEventTypesMapper: WebhookEventTypesMapper
+  val webhookEventSubscriptionsMapper: WebhookEventSubscriptionsMapper,
+  val webhookEventTypesMapper: WebhookEventTypesMapper,
+  val datasetIntegrationsMapper: DatasetIntegrationsMapper
 ) {
 
   val organization: Organization = webhooksMapper.organization
@@ -151,6 +152,76 @@ class WebhookManager(
   def insertSubscriptions(
     rows: Seq[WebhookEventSubcription]
   ): DBIO[Option[Int]] = webhookEventSubscriptionsMapper ++= rows
+
+  def insertDatasetSubscriptions(
+    rows: Seq[DatasetIntegration]
+  ): DBIO[Option[Int]] = datasetIntegrationsMapper ++= rows
+
+  def removeDatasetSubscriptions(
+    rows: Seq[DatasetIntegration]
+  ): DBIO[Option[Int]] = datasetIntegrationsMapper ++= rows
+
+//  def updateDatasetSubscriptions(
+//      userId: Int,
+//      datasetId: Int,
+//      enableIntegrations: Seq[Int],
+//      disableIntegrations: Seq[Int])( implicit
+//        ec: ExecutionContext
+//      ): EitherT[Future, CoreError, Seq[Webhook]] = {
+//
+////      var allEnabled = db.run(datasetIntegrationsMapper
+////        .filter(_.datasetId === datasetId)
+////        .result).toEitherT
+//
+//      enabledIntegration = for {
+//
+//        results <- getOrCreateDatasetSubscriptions(
+//          datasetId,
+//          enableIntegrations
+//        )
+//
+//
+//
+//      } yield results
+//
+//
+//    // Get all enabled integrations for dataset
+//
+//    // create query to remove those that need removing
+//
+//    // add those who need to be added
+//
+//
+//  }
+
+  def getOrCreateDatasetSubscriptions(
+    datasetId: Int,
+    integrationIds: Seq[Int]
+     )(implicit
+       executionContext: ExecutionContext
+     ): EitherT[Future, CoreError, Seq[DatasetIntegration]] = {
+
+    db.run(
+      DBIO
+        .sequence(integrationIds.map {
+          case integrationId =>
+            datasetIntegrationsMapper.getOrCreate(
+              datasetId,
+              integrationId,
+              actor
+            )
+        })
+        .transactionally
+    )
+    .toEitherT
+  }
+
+
+  def getByDatasetId(
+    datasetId: Int
+  ): Query[DatasetIntegrationsTable, DatasetIntegration, Seq] =
+    datasetIntegrationsMapper.filter(_.datasetId === datasetId)
+
 
   /*
   Get all webhooks for user without subscriptions

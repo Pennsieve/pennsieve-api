@@ -264,6 +264,33 @@ trait ManagerSpec
   def timeSeriesAnnotationManager(): TimeSeriesAnnotationManager =
     new TimeSeriesAnnotationManager(db = database)
 
+
+  def webhookManager(
+    organization: Organization = testOrganization,
+    user: User = superAdmin
+                    ): WebhookManager = {
+
+    val webhooksMapper: WebhooksMapper =
+      new WebhooksMapper(organization)
+    val webhookEventSubscriptionsMapper: WebhookEventSubscriptionsMapper =
+      new WebhookEventSubscriptionsMapper(organization)
+    val webhookEventTypesMapper: WebhookEventTypesMapper =
+      new WebhookEventTypesMapper(organization)
+    val datasetIntegrationsMapper: DatasetIntegrationsMapper =
+      new DatasetIntegrationsMapper(organization)
+
+    new WebhookManager(
+      db = database,
+      actor = user,
+      webhooksMapper = webhooksMapper,
+      webhookEventSubscriptionsMapper = webhookEventSubscriptionsMapper,
+      webhookEventTypesMapper = webhookEventTypesMapper,
+      datasetIntegrationsMapper
+    )
+
+  }
+
+
   val provenance = "from unit test"
 
   def createSuperAdmin(email: String = "superadmin@pennsieve.org"): User =
