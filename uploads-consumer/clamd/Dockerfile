@@ -6,9 +6,6 @@ RUN apk add --no-cache --update libbz2 \
     apk add --no-cache --update netcat-openbsd && \
     sed -i 's/^#Foreground .*$/Foreground yes/g' /etc/clamav/clamd.conf && \
     sed -i 's/^#TCPSocket .*$/TCPSocket 3310/g' /etc/clamav/clamd.conf && \
-    sed -i 's/^#StreamMaxLength .*$/StreamMaxLength 0/g' /etc/clamav/clamd.conf && \
-    sed -i 's/^#MaxFileSize .*$/MaxFileSize 0/g' /etc/clamav/clamd.conf && \
-    sed -i 's/^#MaxScanSize .*$/MaxScanSize 0/g' /etc/clamav/clamd.conf && \
     sed -i 's/^#Foreground .*$/Foreground yes/g' /etc/clamav/freshclam.conf && \
     sed -i 's/^#Checks .*$/Checks 24/g' /etc/clamav/freshclam.conf && \
     mkdir /run/clamav && \
