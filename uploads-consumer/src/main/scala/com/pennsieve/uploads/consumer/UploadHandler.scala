@@ -23,6 +23,7 @@ import cats.data._
 import cats.implicits._
 import com.amazonaws.services.s3.AmazonS3URI
 import com.amazonaws.services.s3.model._
+import com.amazonaws.util.IOUtils.drainInputStream
 import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.core.utilities.JwtAuthenticator
@@ -431,6 +432,7 @@ object UploadHandler {
               // If the size of the file exceeds the ClamD limit, consider it clean.
               // TODO: use a better virus scanner that can handle large files.
               case exception: SizeLimitExceededException =>
+                drainInputStream(stream)
                 log.tierContext.error(exception.getMessage)
                 Clean
             }
