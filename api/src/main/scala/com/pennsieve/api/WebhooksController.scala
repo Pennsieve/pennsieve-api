@@ -45,7 +45,7 @@ case class CreateWebhookRequest(
   isDefault: Boolean
 )
 
-class WebhooksController(
+class WebhHooksController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
   system: ActorSystem,
@@ -142,6 +142,30 @@ class WebhooksController(
       } yield WebhookDTO(webhookMap._1, webhookMap._2)
 
       override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  delete(
+    "/:id",
+    operation(
+      apiOperation[Int]("deleteWebhook")
+        summary "delete a webhook for an organization"
+        parameters pathParam[Int]("id").description("webhook id")
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Int] = for {
+        secureContainer <- getSecureContainer
+        webhookId <- paramT[Int]("id")
+
+        deleted <- secureContainer.webhookManager
+          .delete(webhookId)
+          .coreErrorToActionResult
+
+      } yield deleted
+
+      override val is = result.value.map(OkResult)
+
     }
   }
 }

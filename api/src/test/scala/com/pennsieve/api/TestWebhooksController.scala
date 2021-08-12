@@ -251,4 +251,60 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       body should include("secret must be between 1 and 255 characters")
     }
   }
+
+  test("delete a webhook") {
+    val webhookSubscription = createWebhook(createdBy = loggedInUser.id)
+    val webhook = webhookSubscription._1
+
+    delete(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status should equal(200)
+      val resp = parsedBody.extract[Int]
+      resp should equal(1)
+    }
+    get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (404)
+      body should include(s"Webhook (${webhook.id}) not found")
+    }
+
+  }
+
+  test("can't delete a webhook that doesn't exist") {
+    delete("/1", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (404)
+      body should include("Webhook (1) not found")
+    }
+  }
+
+  test("can't delete another user's webhook") {
+    val webhookSubscription = createWebhook(createdBy = loggedInUser.id)
+    val webhook = webhookSubscription._1
+
+    delete(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
+      status should equal(403)
+      body should include(
+        s"User ${colleagueUser.id} cannot delete Webhook ${webhook.id}"
+      )
+    }
+
+    get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (200)
+    }
+
+  }
+
+  test("super admin can delete another user's webhook") {
+    val webhookSubscription = createWebhook(createdBy = loggedInUser.id)
+    val webhook = webhookSubscription._1
+
+    delete(s"/${webhook.id}", headers = authorizationHeader(adminJwt)) {
+      status should equal(200)
+      val resp = parsedBody.extract[Int]
+      resp should equal(1)
+    }
+
+    get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (404)
+    }
+
+  }
 }

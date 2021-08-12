@@ -110,7 +110,9 @@ class WebhookManager(
         _ <- assert(
           targetEvents match {
             case Some(targetEvents) =>
-              targetEvents.forall(allTypes.map { _.eventName }.contains)
+              targetEvents.forall(allTypes.map {
+                _.eventName
+              }.contains)
             case None => {
               true
             }
@@ -233,5 +235,40 @@ class WebhookManager(
       )
 
     } yield webhook
+  }
+
+  def delete(
+    webhookId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
+    for {
+      webhook <- db
+        .run(webhooksMapper.getById(webhookId))
+        .whenNone[CoreError](NotFound(s"Webhook ($webhookId)"))
+
+      affectedRowCount <- delete(webhook)
+
+    } yield affectedRowCount
+
+  }
+
+  def delete(
+    webhook: Webhook
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
+    val query = webhooksMapper.filter(_.id === webhook.id).delete
+
+    for {
+
+      _ <- checkOrErrorT[CoreError](
+        actor.isSuperAdmin || webhook.createdBy == actor.id
+      )(InvalidAction(s"User ${actor.id} cannot delete Webhook ${webhook.id}"))
+
+      affectedRowCount <- db.run(query).toEitherT
+
+    } yield affectedRowCount
+
   }
 }
