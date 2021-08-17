@@ -38,7 +38,8 @@ import com.pennsieve.models.{
   PackageState,
   PackageType,
   Team,
-  User
+  User,
+  Webhook
 }
 import com.pennsieve.core.utilities.PostgresDatabase
 import com.pennsieve.traits.PostgresProfile.api._
@@ -62,7 +63,8 @@ trait ManagerSpec
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with PostgresDockerContainer { self: TestSuite =>
+    with PostgresDockerContainer {
+  self: TestSuite =>
 
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
@@ -464,6 +466,35 @@ trait ManagerSpec
   ): (Contributor, Option[User]) = {
     contributorsManager(organization, creatingUser)
       .create(firstName, lastName, email, middleInitial, degree, orcid, userId)
+      .await
+      .right
+      .get
+  }
+
+  def createWebhook(
+    apiUrl: String = "https://www.api.com",
+    imageUrl: Option[String] = Some("https://www.image.com"),
+    description: String = "test webhook",
+    secret: String = "secretkey123",
+    displayName: String = "Test Webhook",
+    isPrivate: Boolean = false,
+    isDefault: Boolean = true,
+    targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
+    organization: Organization = testOrganization,
+    creatingUser: User = superAdmin
+  ): (Webhook, Seq[String]) = {
+    webhookManager(organization, creatingUser)
+      .create(
+        apiUrl,
+        imageUrl,
+        description,
+        secret,
+        displayName,
+        isPrivate,
+        isDefault,
+        targetEvents,
+        creatingUser.id
+      )
       .await
       .right
       .get

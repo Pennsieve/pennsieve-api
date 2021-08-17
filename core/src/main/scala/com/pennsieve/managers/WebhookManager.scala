@@ -240,12 +240,12 @@ class WebhookManager(
   /**
     * Returns [[Webhook]] with the given id if this manager's actor is either superAdmin or
     * the [[Webhook]] creator or has organization permission >= the given permission.
-    * Otherwise throws a Permission Error.
+    * Otherwise returns a [[PermissionError]].
     *
     * @param webhookId
     * @param withPermission
     * @param ec
-    * @return a Webhook if permitted or throws an error
+    * @return a [[Webhook]] if permitted or a [[PermissionError]] if not
     */
   def getWithPermissionCheck(
     webhookId: Int,
@@ -257,7 +257,7 @@ class WebhookManager(
       webhook <- db
         .run(webhooksMapper.getById(webhookId))
         .whenNone(NotFound(s"Webhook (${webhookId})"))
-      result <- db
+      organizationPermission <- db
         .run(
           OrganizationsMapper
             .getByNodeId(actor)(organization.nodeId)
@@ -265,7 +265,7 @@ class WebhookManager(
             .headOption
         )
         .whenNone(NotFound(organization.nodeId))
-      (_, userPermission) = result
+      (_, userPermission) = organizationPermission
       _ <- FutureEitherHelpers.assert[CoreError](
         actor.isSuperAdmin || webhook.createdBy == actor.id || userPermission >= withPermission
       )(
