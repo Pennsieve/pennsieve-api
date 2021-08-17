@@ -282,7 +282,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     delete(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
       status should equal(403)
       body should include(
-        s"User ${colleagueUser.id} cannot delete Webhook ${webhook.id}"
+        s"${colleagueUser.nodeId} does not have Administer for Webhook (${webhook.id})"
       )
     }
 
@@ -303,6 +303,25 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     }
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (404)
+    }
+
+  }
+
+  test("organization admin can delete another user's webhook") {
+    val webhookSubscription = createWebhook(createdBy = colleagueUser.id)
+    val webhook = webhookSubscription._1
+
+    //Make sure we're really testing org admin, not super admin
+    loggedInUser.isSuperAdmin should be(false)
+
+    delete(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status should equal(200)
+      val resp = parsedBody.extract[Int]
+      resp should equal(1)
+    }
+
+    get(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
       status shouldBe (404)
     }
 

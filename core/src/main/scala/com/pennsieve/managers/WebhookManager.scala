@@ -237,20 +237,41 @@ class WebhookManager(
     } yield webhook
   }
 
-  def delete(
-    webhookId: Int
+  /**
+    * Returns [[Webhook]] with the given id if this manager's actor is either superAdmin or
+    * the [[Webhook]] creator or has organization permission >= the given permission.
+    * Otherwise throws a Permission Error.
+    *
+    * @param webhookId
+    * @param withPermission
+    * @param ec
+    * @return a Webhook if permitted or throws an error
+    */
+  def getWithPermissionCheck(
+    webhookId: Int,
+    withPermission: DBPermission = DBPermission.Read
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] = {
+  ): EitherT[Future, CoreError, Webhook] = {
     for {
       webhook <- db
         .run(webhooksMapper.getById(webhookId))
-        .whenNone[CoreError](NotFound(s"Webhook ($webhookId)"))
-
-      affectedRowCount <- delete(webhook)
-
-    } yield affectedRowCount
-
+        .whenNone(NotFound(s"Webhook (${webhookId})"))
+      result <- db
+        .run(
+          OrganizationsMapper
+            .getByNodeId(actor)(organization.nodeId)
+            .result
+            .headOption
+        )
+        .whenNone(NotFound(organization.nodeId))
+      (_, userPermission) = result
+      _ <- FutureEitherHelpers.assert[CoreError](
+        actor.isSuperAdmin || webhook.createdBy == actor.id || userPermission >= withPermission
+      )(
+        PermissionError(actor.nodeId, withPermission, s"Webhook (${webhookId})")
+      )
+    } yield webhook
   }
 
   def delete(
@@ -261,13 +282,7 @@ class WebhookManager(
     val query = webhooksMapper.filter(_.id === webhook.id).delete
 
     for {
-
-      _ <- checkOrErrorT[CoreError](
-        actor.isSuperAdmin || webhook.createdBy == actor.id
-      )(InvalidAction(s"User ${actor.id} cannot delete Webhook ${webhook.id}"))
-
       affectedRowCount <- db.run(query).toEitherT
-
     } yield affectedRowCount
 
   }

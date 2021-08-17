@@ -32,7 +32,13 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.pennsieve.models.{ Role, User, Webhook, WebhookEventSubcription }
+import com.pennsieve.models.{
+  DBPermission,
+  Role,
+  User,
+  Webhook,
+  WebhookEventSubcription
+}
 
 case class CreateWebhookRequest(
   apiUrl: String,
@@ -45,7 +51,7 @@ case class CreateWebhookRequest(
   isDefault: Boolean
 )
 
-class WebhHooksController(
+class WebhooksController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
   system: ActorSystem,
@@ -157,9 +163,11 @@ class WebhHooksController(
       val result: EitherT[Future, ActionResult, Int] = for {
         secureContainer <- getSecureContainer
         webhookId <- paramT[Int]("id")
-
+        webhook <- secureContainer.webhookManager
+          .getWithPermissionCheck(webhookId, DBPermission.Administer)
+          .coreErrorToActionResult
         deleted <- secureContainer.webhookManager
-          .delete(webhookId)
+          .delete(webhook)
           .coreErrorToActionResult
 
       } yield deleted

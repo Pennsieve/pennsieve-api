@@ -264,12 +264,22 @@ trait ManagerSpec
   def timeSeriesAnnotationManager(): TimeSeriesAnnotationManager =
     new TimeSeriesAnnotationManager(db = database)
 
-  def webhookManager(organization: Organization = testOrganization,
-                     user : User = superAdmin): WebhookManager = {
+  def webhookManager(
+    organization: Organization = testOrganization,
+    user: User = superAdmin
+  ): WebhookManager = {
     val webhooksMapper = new WebhooksMapper(organization)
-    val webhookEventSubscriptionsMapper = new WebhookEventSubcriptionsMapper(organization)
+    val webhookEventSubscriptionsMapper = new WebhookEventSubcriptionsMapper(
+      organization
+    )
     val webhookEventTypesMapper = new WebhookEventTypesMapper(organization)
-    new WebhookManager(database, user, webhooksMapper, webhookEventSubscriptionsMapper, webhookEventTypesMapper)
+    new WebhookManager(
+      database,
+      user,
+      webhooksMapper,
+      webhookEventSubscriptionsMapper,
+      webhookEventTypesMapper
+    )
   }
 
   val provenance = "from unit test"
