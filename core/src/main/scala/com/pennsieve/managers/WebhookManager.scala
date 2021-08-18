@@ -16,11 +16,9 @@
 
 package com.pennsieve.managers
 
-import cats.data.OptionT.some
 import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.{
-  checkOrError,
   checkOrErrorT,
   slugify,
   FutureEitherHelpers
@@ -30,9 +28,8 @@ import com.pennsieve.db.{ WebhooksMapper, _ }
 import com.pennsieve.domain.{ CoreError, _ }
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
-import slick.relational.RelationalCapabilities.joinLeft
 
-import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.concurrent.{ ExecutionContext, Future }
 
 class WebhookManager(
   val db: Database,
@@ -242,9 +239,9 @@ class WebhookManager(
     * the [[Webhook]] creator or has organization permission >= the given permission.
     * Otherwise returns a [[PermissionError]].
     *
-    * @param webhookId
-    * @param withPermission
-    * @param ec
+    * @param webhookId id of the webhook to return
+    * @param withPermission the minimum permission required to return the webhook
+    * @param ec execution context
     * @return a [[Webhook]] if permitted or a [[PermissionError]] if not
     */
   def getWithPermissionCheck(
@@ -256,7 +253,7 @@ class WebhookManager(
     for {
       webhook <- db
         .run(webhooksMapper.getById(webhookId))
-        .whenNone(NotFound(s"Webhook (${webhookId})"))
+        .whenNone(NotFound(s"Webhook ($webhookId)"))
       organizationPermission <- db
         .run(
           OrganizationsMapper
@@ -268,9 +265,7 @@ class WebhookManager(
       (_, userPermission) = organizationPermission
       _ <- FutureEitherHelpers.assert[CoreError](
         actor.isSuperAdmin || webhook.createdBy == actor.id || userPermission >= withPermission
-      )(
-        PermissionError(actor.nodeId, withPermission, s"Webhook (${webhookId})")
-      )
+      )(PermissionError(actor.nodeId, withPermission, s"Webhook ($webhookId)"))
     } yield webhook
   }
 
