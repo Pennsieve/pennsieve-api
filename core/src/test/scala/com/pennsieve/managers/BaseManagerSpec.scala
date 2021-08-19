@@ -492,8 +492,7 @@ trait ManagerSpec
         displayName,
         isPrivate,
         isDefault,
-        targetEvents,
-        creatingUser.id
+        targetEvents
       )
       .await
       .right

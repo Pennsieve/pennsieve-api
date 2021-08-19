@@ -91,8 +91,7 @@ class WebhooksController(
             displayName = body.displayName,
             isPrivate = body.isPrivate,
             isDefault = body.isDefault,
-            targetEvents = body.targetEvents,
-            createdBy = secureContainer.user.id
+            targetEvents = body.targetEvents
           )
           .coreErrorToActionResult
 

@@ -49,8 +49,7 @@ class WebhookManager(
     displayName: String,
     isPrivate: Boolean,
     isDefault: Boolean,
-    targetEvents: Option[List[String]],
-    createdBy: Int
+    targetEvents: Option[List[String]]
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
@@ -93,7 +92,7 @@ class WebhookManager(
         isPrivate,
         isDefault,
         false,
-        createdBy
+        actor.id
       )
 
       /* Creating a SQL Action Sequence that inserts row for webhook and

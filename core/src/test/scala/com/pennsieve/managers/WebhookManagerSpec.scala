@@ -67,7 +67,6 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedIsPrivate = false
     val expectedIsDefault = true
     val expectedTargetEvents = List("METADATA", "PERMISSIONS")
-    val expectedCreatedBy = whManager.actor.id
 
     val result = whManager
       .create(
@@ -78,8 +77,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        Some(expectedTargetEvents),
-        expectedCreatedBy
+        Some(expectedTargetEvents)
       )
       .await
 
@@ -90,7 +88,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(returnedWebhook.imageUrl.get == expectedImageUrl)
     assert(returnedWebhook.isDefault == expectedIsDefault)
     assert(returnedWebhook.isPrivate == expectedIsPrivate)
-    assert(returnedWebhook.createdBy == expectedCreatedBy)
+    assert(returnedWebhook.createdBy == whManager.actor.id)
     assert(returnedWebhook.description == expectedDescription)
     assert(returnedWebhook.displayName == expectedDisplayName)
     assert(returnedWebhook.secret == expectedSecret)
