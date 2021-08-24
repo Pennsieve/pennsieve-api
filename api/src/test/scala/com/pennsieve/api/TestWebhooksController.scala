@@ -70,25 +70,15 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   test("get a list of webhooks") {
 
     // Public webhook without event subscriptions
-    val publicWebhook1 = createWebhook(
-      displayName = "Public webhook 1",
-      createdBy = loggedInUser.id,
-      targetEvents = None
-    )
+    val publicWebhook1 =
+      createWebhook(displayName = "Public webhook 1", targetEvents = None)
 
     // Public webhook with event subscriptions
-    val publicWebhook2 = createWebhook(
-      displayName = "Public webhook 2",
-      createdBy = loggedInUser.id
-    )
+    val publicWebhook2 = createWebhook(displayName = "Public webhook 2")
 
     // Private webbhook with event subscriptions
     val privateWebhook1 =
-      createWebhook(
-        displayName = "Private webhook 1 ",
-        isPrivate = true,
-        createdBy = loggedInUser.id
-      )
+      createWebhook(displayName = "Private webhook 1 ", isPrivate = true)
 
     get("", headers = authorizationHeader(loggedInJwt)) {
       status shouldBe (200)
@@ -250,5 +240,82 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       status should equal(400)
       body should include("secret must be between 1 and 255 characters")
     }
+  }
+
+  test("delete a webhook") {
+    val webhookSubscription = createWebhook()
+    val webhook = webhookSubscription._1
+
+    delete(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status should equal(200)
+      val resp = parsedBody.extract[Int]
+      resp should equal(1)
+    }
+    get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (404)
+      body should include(s"Webhook (${webhook.id}) not found")
+    }
+
+  }
+
+  test("can't delete a webhook that doesn't exist") {
+    delete("/1", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (404)
+      body should include("Webhook (1) not found")
+    }
+  }
+
+  test("can't delete another user's webhook") {
+    val webhookSubscription = createWebhook()
+    val webhook = webhookSubscription._1
+
+    delete(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
+      status should equal(403)
+      body should include(
+        s"${colleagueUser.nodeId} does not have Administer for Webhook (${webhook.id})"
+      )
+    }
+
+    get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (200)
+    }
+
+  }
+
+  test("super admin can delete another user's webhook") {
+    val webhookSubscription = createWebhook()
+    val webhook = webhookSubscription._1
+
+    delete(s"/${webhook.id}", headers = authorizationHeader(adminJwt)) {
+      status should equal(200)
+      val resp = parsedBody.extract[Int]
+      resp should equal(1)
+    }
+
+    get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (404)
+    }
+
+  }
+
+  test("organization admin can delete another user's webhook") {
+    val colleagueContainer =
+      secureContainerBuilder(colleagueUser, loggedInOrganization)
+    val webhookSubscription = createWebhook(container = colleagueContainer)
+    val webhook = webhookSubscription._1
+
+    //Make sure we're really testing org admin, not super admin
+    loggedInUser.isSuperAdmin should be(false)
+
+    delete(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status should equal(200)
+      val resp = parsedBody.extract[Int]
+      resp should equal(1)
+    }
+
+    get(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
+      status shouldBe (404)
+    }
+
   }
 }

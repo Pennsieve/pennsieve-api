@@ -48,7 +48,8 @@ import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
 import com.pennsieve.models.DBPermission.Delete
 
-trait DataSetTestMixin { self: ApiSuite =>
+trait DataSetTestMixin {
+  self: ApiSuite =>
 
   def createDataSet(
     name: String,
@@ -299,11 +300,11 @@ trait DataSetTestMixin { self: ApiSuite =>
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
     isPrivate: Boolean = false,
     isDefault: Boolean = true,
-    createdBy: Int = 1
+    container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext
   ): (Webhook, Seq[String]) = {
-    secureContainer.webhookManager
+    container.webhookManager
       .create(
         apiUrl = apiUrl,
         imageUrl = imageUrl,
@@ -312,8 +313,7 @@ trait DataSetTestMixin { self: ApiSuite =>
         displayName = displayName,
         isPrivate = isPrivate,
         isDefault = isDefault,
-        targetEvents = targetEvents,
-        createdBy
+        targetEvents = targetEvents
       )
       .await match {
       case Left(error) => throw error

@@ -16,11 +16,9 @@
 
 package com.pennsieve.managers
 
-import cats.data.OptionT.some
 import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.{
-  checkOrError,
   checkOrErrorT,
   slugify,
   FutureEitherHelpers
@@ -30,9 +28,8 @@ import com.pennsieve.db.{ WebhooksMapper, _ }
 import com.pennsieve.domain.{ CoreError, _ }
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
-import slick.relational.RelationalCapabilities.joinLeft
 
-import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.concurrent.{ ExecutionContext, Future }
 
 class WebhookManager(
   val db: Database,
@@ -52,8 +49,7 @@ class WebhookManager(
     displayName: String,
     isPrivate: Boolean,
     isDefault: Boolean,
-    targetEvents: Option[List[String]],
-    createdBy: Int
+    targetEvents: Option[List[String]]
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
@@ -96,7 +92,7 @@ class WebhookManager(
         isPrivate,
         isDefault,
         false,
-        createdBy
+        actor.id
       )
 
       /* Creating a SQL Action Sequence that inserts row for webhook and
@@ -110,7 +106,9 @@ class WebhookManager(
         _ <- assert(
           targetEvents match {
             case Some(targetEvents) =>
-              targetEvents.forall(allTypes.map { _.eventName }.contains)
+              targetEvents.forall(allTypes.map {
+                _.eventName
+              }.contains)
             case None => {
               true
             }
@@ -233,5 +231,53 @@ class WebhookManager(
       )
 
     } yield webhook
+  }
+
+  /**
+    * Returns [[Webhook]] with the given id if this manager's actor is either superAdmin or
+    * the [[Webhook]] creator or has organization permission >= the given permission.
+    * Otherwise returns a [[PermissionError]].
+    *
+    * @param webhookId id of the webhook to return
+    * @param withPermission the minimum permission required to return the webhook
+    * @param ec execution context
+    * @return a [[Webhook]] if permitted or a [[PermissionError]] if not
+    */
+  def getWithPermissionCheck(
+    webhookId: Int,
+    withPermission: DBPermission = DBPermission.Read
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Webhook] = {
+    for {
+      webhook <- db
+        .run(webhooksMapper.getById(webhookId))
+        .whenNone(NotFound(s"Webhook ($webhookId)"))
+      organizationPermission <- db
+        .run(
+          OrganizationsMapper
+            .getByNodeId(actor)(organization.nodeId)
+            .result
+            .headOption
+        )
+        .whenNone(NotFound(organization.nodeId))
+      (_, userPermission) = organizationPermission
+      _ <- FutureEitherHelpers.assert[CoreError](
+        actor.isSuperAdmin || webhook.createdBy == actor.id || userPermission >= withPermission
+      )(PermissionError(actor.nodeId, withPermission, s"Webhook ($webhookId)"))
+    } yield webhook
+  }
+
+  def delete(
+    webhook: Webhook
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
+    val query = webhooksMapper.filter(_.id === webhook.id).delete
+
+    for {
+      affectedRowCount <- db.run(query).toEitherT
+    } yield affectedRowCount
+
   }
 }
