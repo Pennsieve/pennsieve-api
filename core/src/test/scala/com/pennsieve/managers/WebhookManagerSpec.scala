@@ -16,7 +16,7 @@
 
 package com.pennsieve.managers
 
-import com.pennsieve.domain.{ NotFound, PermissionError }
+import com.pennsieve.domain.{ NotFound, PermissionError, PredicateError }
 import com.pennsieve.models.{
   DBPermission,
   User,
@@ -128,6 +128,156 @@ class WebhookManagerSpec extends BaseManagerSpec {
     }
 
     assert(expectedEventsSet.isEmpty)
+
+  }
+
+  it should "insert a webhook with no subscriptions into the database" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedImageUrl = "http://example.com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents = None
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        expectedTargetEvents
+      )
+      .await
+
+    assert(result.isRight)
+    val (returnedWebhook, returnedTargetEvents) = result.right.get
+    assert(returnedWebhook.apiUrl == expectedApiUrl)
+    assert(returnedWebhook.imageUrl.isDefined)
+    assert(returnedWebhook.imageUrl.get == expectedImageUrl)
+    assert(returnedWebhook.isDefault == expectedIsDefault)
+    assert(returnedWebhook.isPrivate == expectedIsPrivate)
+    assert(returnedWebhook.createdBy == whManager.actor.id)
+    assert(returnedWebhook.description == expectedDescription)
+    assert(returnedWebhook.displayName == expectedDisplayName)
+    assert(returnedWebhook.secret == expectedSecret)
+    assert(returnedTargetEvents.isEmpty)
+
+    val webhookRows =
+      database
+        .run(whManager.webhooksMapper.result)
+        .mapTo[Seq[Webhook]]
+        .await
+    assert(webhookRows.length == 1)
+    val actualWebhook = webhookRows.head
+    assert(actualWebhook.equals(returnedWebhook))
+
+    val subscriptionRows = database
+      .run(whManager.webhookEventSubscriptionsMapper.result)
+      .mapTo[Seq[WebhookEventSubcription]]
+      .await
+    assert(subscriptionRows.isEmpty)
+  }
+
+  it should "handle an empty target event list without error" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedImageUrl = "http://example.com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents = Nil
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isRight)
+    val (returnedWebhook, returnedTargetEvents) = result.right.get
+    assert(returnedWebhook.apiUrl == expectedApiUrl)
+    assert(returnedWebhook.imageUrl.isDefined)
+    assert(returnedWebhook.imageUrl.get == expectedImageUrl)
+    assert(returnedWebhook.isDefault == expectedIsDefault)
+    assert(returnedWebhook.isPrivate == expectedIsPrivate)
+    assert(returnedWebhook.createdBy == whManager.actor.id)
+    assert(returnedWebhook.description == expectedDescription)
+    assert(returnedWebhook.displayName == expectedDisplayName)
+    assert(returnedWebhook.secret == expectedSecret)
+    assert(returnedTargetEvents.isEmpty)
+
+    val webhookRows =
+      database
+        .run(whManager.webhooksMapper.result)
+        .mapTo[Seq[Webhook]]
+        .await
+    assert(webhookRows.length == 1)
+    val actualWebhook = webhookRows.head
+    assert(actualWebhook.equals(returnedWebhook))
+
+    val subscriptionRows = database
+      .run(whManager.webhookEventSubscriptionsMapper.result)
+      .mapTo[Seq[WebhookEventSubcription]]
+      .await
+    assert(subscriptionRows.isEmpty)
+  }
+
+  it should "return a PredicateError if used with an unknown target event" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedImageUrl = "http://example.com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents =
+      List("METADATA", "PERMISSIONS", "NON-EXISTENT EVENT")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+
+    val webhookRows =
+      database
+        .run(whManager.webhooksMapper.result)
+        .mapTo[Seq[Webhook]]
+        .await
+    assert(webhookRows.isEmpty)
+
+    val subscriptionRows = database
+      .run(whManager.webhookEventSubscriptionsMapper.result)
+      .mapTo[Seq[WebhookEventSubcription]]
+      .await
+    assert(subscriptionRows.isEmpty)
 
   }
 
