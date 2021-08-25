@@ -32,7 +32,13 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.pennsieve.models.{ Role, User, Webhook, WebhookEventSubcription }
+import com.pennsieve.models.{
+  DBPermission,
+  Role,
+  User,
+  Webhook,
+  WebhookEventSubcription
+}
 
 case class CreateWebhookRequest(
   apiUrl: String,
@@ -90,8 +96,7 @@ class WebhooksController(
             displayName = body.displayName,
             isPrivate = body.isPrivate,
             isDefault = body.isDefault,
-            targetEvents = body.targetEvents,
-            createdBy = secureContainer.user.id
+            targetEvents = body.targetEvents
           )
           .coreErrorToActionResult
 
@@ -166,6 +171,32 @@ class WebhooksController(
       } yield WebhookDTO(webhookMap._1, webhookMap._2)
 
       override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  delete(
+    "/:id",
+    operation(
+      apiOperation[Int]("deleteWebhook")
+        summary "delete a webhook for an organization"
+        parameters pathParam[Int]("id").description("webhook id")
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Int] = for {
+        secureContainer <- getSecureContainer
+        webhookId <- paramT[Int]("id")
+        webhook <- secureContainer.webhookManager
+          .getWithPermissionCheck(webhookId, DBPermission.Administer)
+          .coreErrorToActionResult
+        deleted <- secureContainer.webhookManager
+          .delete(webhook)
+          .coreErrorToActionResult
+
+      } yield deleted
+
+      override val is = result.value.map(OkResult)
+
     }
   }
 }
