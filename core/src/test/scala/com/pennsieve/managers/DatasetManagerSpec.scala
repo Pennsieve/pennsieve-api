@@ -627,7 +627,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(isLocked(dataset, otherTeamUser))
   }
 
-  "enableDataset" should "create a DatasetIntegration for the given dataset and webhook" in {
+  "enableWebhook" should "create a DatasetIntegration for the given dataset and webhook" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val (webhook, _) = createWebhook(creatingUser = user)
@@ -654,7 +654,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(actual.equals(returned))
   }
 
-  "enableDataset" should "should be idempotent" in {
+  "enableWebhook" should "should be idempotent" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val (webhook, _) = createWebhook(creatingUser = user)
@@ -681,7 +681,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(actual.equals(firstResult))
   }
 
-  "enableDataset" should "should ignore redundant invocations by a second user" in {
+  "enableWebhook" should "should ignore redundant invocations by a second user" in {
     val user1 = createUser()
     val dataset = createDataset(user = user1)
     val (webhook, _) = createWebhook(creatingUser = user1)
