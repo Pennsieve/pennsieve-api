@@ -66,7 +66,9 @@ object DatasetManager {
     val values: immutable.IndexedSeq[OrderByColumn] = findValues
 
     case object Name extends OrderByColumn
+
     case object UpdatedAt extends OrderByColumn
+
     case object IntId extends OrderByColumn
   }
 
@@ -80,6 +82,7 @@ object DatasetManager {
     val values: immutable.IndexedSeq[OrderByDirection] = findValues
 
     case object Asc extends OrderByDirection
+
     case object Desc extends OrderByDirection
 
     def toSlick[T](direction: OrderByDirection, column: Rep[T]) =
@@ -116,6 +119,8 @@ class DatasetManager(
     new DatasetPublicationStatusMapper(organization)
 
   val datasetContributorMapper = new DatasetContributorMapper(organization)
+
+  val datasetIntegrationsMapper = new DatasetIntegrationsMapper(organization)
 
   implicit val collectionMapper: CollectionMapper =
     new CollectionMapper(organization)
@@ -1288,7 +1293,7 @@ class DatasetManager(
   /**
     * Convert a multi-term query into a conjoined Postgres text query.
     *
-    *   Example: "cat dog bear" -> "cat & dog & bear"
+    * Example: "cat dog bear" -> "cat & dog & bear"
     *
     * @param query
     * @return
@@ -1563,5 +1568,39 @@ class DatasetManager(
     } yield updatedIgnoreFiles
 
     db.run(query.transactionally).toEitherT
+  }
+
+  def enableWebhook(
+    dataset: Dataset,
+    webhook: Webhook
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetIntegration] = {
+    for {
+      integration <- db
+        .run(
+          datasetIntegrationsMapper
+            .getOrCreate(webhook.id, dataset.id, actor)
+            .transactionally
+        )
+        .toEitherT
+    } yield integration
+  }
+
+  def disableWebhook(
+    dataset: Dataset,
+    webhook: Webhook
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
+    for {
+      deletedRowCount <- db
+        .run(
+          datasetIntegrationsMapper
+            .getByDatasetAndWebhookId(dataset.id, webhook.id)
+            .delete
+        )
+        .toEitherT
+    } yield deletedRowCount
   }
 }

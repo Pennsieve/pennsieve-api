@@ -39,7 +39,7 @@ final class WebhookEventSubscriptionsTable(schema: String, tag: Tag)
 
 class WebhookEventSubscriptionsMapper(val organization: Organization)
     extends TableQuery(
-      new WebhookEventSubcriptionsTable(organization.schemaId, _)
+      new WebhookEventSubscriptionsTable(organization.schemaId, _)
     ) {
 
   def getById(id: Int): DBIO[Seq[WebhookEventSubcription]] =

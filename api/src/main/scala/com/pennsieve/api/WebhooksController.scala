@@ -111,9 +111,11 @@ class WebhooksController(
     "/dataset/:id",
     operation(
       apiOperation[Int]("enableIntegrations")
-      summary "Enable integrations for a given dataset. Returns the number of active integrations for the dataset."
-      parameters bodyParam[List[UpdateDatasetIntegrationRequest]]("body").description(
-        "List of objects that specify whether a specific integration is enabled")
+        summary "Enable integrations for a given dataset. Returns the number of active integrations for the dataset."
+        parameters bodyParam[List[UpdateDatasetIntegrationRequest]]("body")
+          .description(
+            "List of objects that specify whether a specific integration is enabled"
+          )
     )
   ) {
     new AsyncResult {
@@ -121,9 +123,10 @@ class WebhooksController(
         for {
           secureContainer <- getSecureContainer
 
-        }
-
+        } yield -1
+      override val is = result.value.map(OkResult(_))
     }
+
   }
 
   get(

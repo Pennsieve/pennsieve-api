@@ -195,31 +195,26 @@ class WebhookManager(
   def getOrCreateDatasetSubscriptions(
     datasetId: Int,
     integrationIds: Seq[Int]
-     )(implicit
-       executionContext: ExecutionContext
-     ): EitherT[Future, CoreError, Seq[DatasetIntegration]] = {
+  )(implicit
+    executionContext: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DatasetIntegration]] = {
 
     db.run(
-      DBIO
-        .sequence(integrationIds.map {
-          case integrationId =>
-            datasetIntegrationsMapper.getOrCreate(
-              datasetId,
-              integrationId,
-              actor
-            )
-        })
-        .transactionally
-    )
-    .toEitherT
+        DBIO
+          .sequence(integrationIds.map {
+            case integrationId =>
+              datasetIntegrationsMapper
+                .getOrCreate(datasetId, integrationId, actor)
+          })
+          .transactionally
+      )
+      .toEitherT
   }
-
 
   def getByDatasetId(
     datasetId: Int
   ): Query[DatasetIntegrationsTable, DatasetIntegration, Seq] =
     datasetIntegrationsMapper.filter(_.datasetId === datasetId)
-
 
   /*
   Get all webhooks for user without subscriptions
