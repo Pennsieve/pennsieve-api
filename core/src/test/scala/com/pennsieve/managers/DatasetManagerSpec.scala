@@ -650,7 +650,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       .await
     assert(actualIntegrations.length == 1)
 
-    val actual = actualIntegrations(0)
+    val actual = actualIntegrations.head
     assert(actual.equals(returned))
   }
 
@@ -677,7 +677,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       .await
     assert(actualIntegrations.length == 1)
 
-    val actual = actualIntegrations(0)
+    val actual = actualIntegrations.head
     assert(actual.equals(firstResult))
   }
 
@@ -707,7 +707,63 @@ class DatasetManagerSpec extends BaseManagerSpec {
       .await
     assert(actualIntegrations.length == 1)
 
-    val actual = actualIntegrations(0)
+    val actual = actualIntegrations.head
     assert(actual.equals(firstResult))
   }
+
+  "disableWebhook" should "delete the DatasetIntegration for the given dataset and webhook" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (webhook, _) = createWebhook(creatingUser = user)
+    val dm = datasetManager(user = user)
+
+    dm.enableWebhook(dataset, webhook).await
+
+    val result = dm.disableWebhook(dataset, webhook).await
+    assert(result.isRight)
+    val deletedRowCount = result.right.get
+    assert(deletedRowCount == 1)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.isEmpty)
+  }
+
+  "disableWebhook" should "return 0 if the given webhook is not enabled for the given dataset" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (webhook1, _) = createWebhook(creatingUser = user)
+    val (webhook2, _) =
+      createWebhook(description = "Test webhook 2", creatingUser = user)
+
+    val dm = datasetManager(user = user)
+
+    val enabledWebhook = dm.enableWebhook(dataset, webhook2).await.right.get
+
+    val result = dm.disableWebhook(dataset, webhook1).await
+    assert(result.isRight)
+
+    val deletedRowCount = result.right.get
+    assert(deletedRowCount == 0)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.length == 1)
+
+    val actual = actualIntegrations.head
+    assert(actual.equals(enabledWebhook))
+  }
+
 }
