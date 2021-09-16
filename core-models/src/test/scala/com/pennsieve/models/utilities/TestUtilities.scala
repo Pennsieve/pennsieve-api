@@ -26,6 +26,10 @@ class TestUtilities extends WordSpecLike with Matchers {
       Utilities.escapeName("My file") shouldBe "My file"
     }
 
+    "trim long length" in {
+      Utilities.escapeName("1234567890" * 26) shouldBe "1234567890" * 25 + "12345"
+    }
+
     "remove bad characters" in {
       Utilities.escapeName("my/file") shouldBe "my%2Ffile"
       Utilities.escapeName("my~file") shouldBe "my%7Efile"
@@ -59,7 +63,7 @@ class TestUtilities extends WordSpecLike with Matchers {
     "change invalid special characters into valid characters" in {
       assert(
         Utilities
-          .isNameValid(Utilities.escapeName("@#$%^&+={}|[]:;<>?/\\,")) == true
+          .isNameValid(Utilities.escapeName("@#$%^&+={}|[]:;<>?/\\,"), true) == true
       )
     }
 
@@ -84,6 +88,12 @@ class TestUtilities extends WordSpecLike with Matchers {
           .isNameValid(("( -_*.!)")) == true
       )
     }
+
+    "work for names up to 255 chars" in {
+      assert(Utilities.isNameValid("1234567890" * 25 + "12345") == true)
+      assert(Utilities.isNameValid("1234567890" * 25 + "123456") == false)
+    }
+
   }
 
   "getPennsieveExtension" should {
