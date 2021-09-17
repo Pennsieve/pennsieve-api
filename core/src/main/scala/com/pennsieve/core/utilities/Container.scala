@@ -506,8 +506,7 @@ trait WebhookManagerContainer
       user,
       webhooksMapper,
       webhookEventSubscriptionsMapper,
-      webhookEventTypesMapper,
-      datasetIntegrationsMapper
+      webhookEventTypesMapper
     )
 
 }

@@ -1,0 +1,2 @@
+ALTER TABLE dataset_integrations
+ADD CONSTRAINT dataset_integrations_dataset_id_webhook_id_uniq UNIQUE (dataset_id, webhook_id);

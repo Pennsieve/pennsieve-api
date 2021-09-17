@@ -27,17 +27,17 @@ import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.db.{ WebhooksMapper, _ }
 import com.pennsieve.domain.{ CoreError, _ }
 import com.pennsieve.models._
+import com.pennsieve.traits.PostgresProfile
 import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 
 class WebhookManager(
-  val db: Database,
+  val db: PostgresProfile.api.Database,
   val actor: User,
   val webhooksMapper: WebhooksMapper,
   val webhookEventSubscriptionsMapper: WebhookEventSubscriptionsMapper,
-  val webhookEventTypesMapper: WebhookEventTypesMapper,
-  val datasetIntegrationsMapper: DatasetIntegrationsMapper
+  val webhookEventTypesMapper: WebhookEventTypesMapper
 ) {
 
   val organization: Organization = webhooksMapper.organization
@@ -151,71 +151,6 @@ class WebhookManager(
     rows: Seq[WebhookEventSubcription]
   ): DBIO[Option[Int]] = webhookEventSubscriptionsMapper ++= rows
 
-  def insertDatasetSubscriptions(
-    rows: Seq[DatasetIntegration]
-  ): DBIO[Option[Int]] = datasetIntegrationsMapper ++= rows
-
-  def removeDatasetSubscriptions(
-    rows: Seq[DatasetIntegration]
-  ): DBIO[Option[Int]] = datasetIntegrationsMapper ++= rows
-
-//  def updateDatasetSubscriptions(
-//      userId: Int,
-//      datasetId: Int,
-//      enableIntegrations: Seq[Int],
-//      disableIntegrations: Seq[Int])( implicit
-//        ec: ExecutionContext
-//      ): EitherT[Future, CoreError, Seq[Webhook]] = {
-//
-////      var allEnabled = db.run(datasetIntegrationsMapper
-////        .filter(_.datasetId === datasetId)
-////        .result).toEitherT
-//
-//      enabledIntegration = for {
-//
-//        results <- getOrCreateDatasetSubscriptions(
-//          datasetId,
-//          enableIntegrations
-//        )
-//
-//
-//
-//      } yield results
-//
-//
-//    // Get all enabled integrations for dataset
-//
-//    // create query to remove those that need removing
-//
-//    // add those who need to be added
-//
-//
-//  }
-
-  def getOrCreateDatasetSubscriptions(
-    datasetId: Int,
-    integrationIds: Seq[Int]
-  )(implicit
-    executionContext: ExecutionContext
-  ): EitherT[Future, CoreError, Seq[DatasetIntegration]] = {
-
-    db.run(
-        DBIO
-          .sequence(integrationIds.map {
-            case integrationId =>
-              datasetIntegrationsMapper
-                .getOrCreate(datasetId, integrationId, actor)
-          })
-          .transactionally
-      )
-      .toEitherT
-  }
-
-  def getByDatasetId(
-    datasetId: Int
-  ): Query[DatasetIntegrationsTable, DatasetIntegration, Seq] =
-    datasetIntegrationsMapper.filter(_.datasetId === datasetId)
-
   /*
   Get all webhooks for user without subscriptions
    */
@@ -304,9 +239,9 @@ class WebhookManager(
     * the [[Webhook]] creator or has organization permission >= the given permission.
     * Otherwise returns a [[PermissionError]].
     *
-    * @param webhookId id of the webhook to return
+    * @param webhookId      id of the webhook to return
     * @param withPermission the minimum permission required to return the webhook
-    * @param ec execution context
+    * @param ec             execution context
     * @return a [[Webhook]] if permitted or a [[PermissionError]] if not
     */
   def getWithPermissionCheck(
@@ -345,5 +280,33 @@ class WebhookManager(
       affectedRowCount <- db.run(query).toEitherT
     } yield affectedRowCount
 
+  }
+
+  /**
+    * Returns [[Webhook]] with the given id if this manager's actor is either superAdmin or
+    * the [[Webhook]] creator or if the webhook is public.
+    * Otherwise returns a [[InvalidAction]].
+    *
+    * @param webhookId id of the webhook to return
+    * @param ec        execution context
+    * @return a [[Webhook]] if permitted or a [[InvalidAction]] if not
+    */
+  def getForIntegration(
+    webhookId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Webhook] = {
+    for {
+      webhook <- db
+        .run(webhooksMapper.getById(webhookId))
+        .whenNone(NotFound(s"Webhook ($webhookId)"))
+      _ <- FutureEitherHelpers.assert[CoreError](
+        !webhook.isPrivate || actor.isSuperAdmin || webhook.createdBy == actor.id
+      )(
+        InvalidAction(
+          s"user ${actor.id} does not have dataset integration access to webhook ${webhook.id}"
+        )
+      )
+    } yield webhook
   }
 }

@@ -284,8 +284,7 @@ trait ManagerSpec
       actor = user,
       webhooksMapper = webhooksMapper,
       webhookEventSubscriptionsMapper = webhookEventSubscriptionsMapper,
-      webhookEventTypesMapper = webhookEventTypesMapper,
-      datasetIntegrationsMapper
+      webhookEventTypesMapper = webhookEventTypesMapper
     )
 
   }

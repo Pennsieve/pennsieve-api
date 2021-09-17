@@ -51,11 +51,6 @@ case class CreateWebhookRequest(
   isDefault: Boolean
 )
 
-case class UpdateDatasetIntegrationRequest(
-  integrationId: Int,
-  isEnabled: Boolean
-)
-
 class WebhooksController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
@@ -105,28 +100,6 @@ class WebhooksController(
 
       override val is = result.value.map(CreatedResult)
     }
-  }
-
-  put(
-    "/dataset/:id",
-    operation(
-      apiOperation[Int]("enableIntegrations")
-        summary "Enable integrations for a given dataset. Returns the number of active integrations for the dataset."
-        parameters bodyParam[List[UpdateDatasetIntegrationRequest]]("body")
-          .description(
-            "List of objects that specify whether a specific integration is enabled"
-          )
-    )
-  ) {
-    new AsyncResult {
-      val result: EitherT[Future, ActionResult, Int] =
-        for {
-          secureContainer <- getSecureContainer
-
-        } yield -1
-      override val is = result.value.map(OkResult(_))
-    }
-
   }
 
   get(
