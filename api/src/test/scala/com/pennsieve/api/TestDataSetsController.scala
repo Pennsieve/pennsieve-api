@@ -9196,7 +9196,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val response = parsedBody.extract[Seq[DatasetIntegration]]
       response.size shouldBe(2)
-      response.forall()
+      response.forall(di => di.datasetId shouldBe(dataset.id))
     }
   }
 
