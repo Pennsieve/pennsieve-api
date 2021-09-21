@@ -4497,7 +4497,7 @@ class DataSetsController(
             .getByNodeId(datasetId)
             .orNotFound
           _ <- secureContainer
-            .authorizeDataset(Set(DatasetPermission.ManageWebhooks))(dataset)
+            .authorizeDataset(Set(DatasetPermission.ViewWebhooks))(dataset)
             .coreErrorToActionResult
           datasetIntegrations <- secureContainer.datasetManager
             .getIntegrations(dataset)
