@@ -21,15 +21,10 @@ import org.apache.commons.io.FilenameUtils
 
 package object Utilities {
 
-  def isNameValid(name: String, isEscaped: Boolean = false): Boolean = {
+  def isNameValid(name: String): Boolean = {
     var AuthorizedCharacters =
-      "^[\u00C0-\u1FFF\u2C00-\uD7FF\\w() *_\\-'.!]{1,255}$".r
+      "^[\\p{L}\\p{N}() %*_\\-'.!]{1,255}$".r
     //matches all "letter" characters from unicode plus digits and some special characters that are allowed by S3 for keys
-
-    if (isEscaped)
-      AuthorizedCharacters =
-        "^[\u00C0-\u1FFF\u2C00-\uD7FF\\w() %*_\\-'.!]{1,255}$".r
-    // % is technically not an authorized character by itself but the second regex takes care of that special case
 
     val allCharactersValid: Boolean =
       AuthorizedCharacters.pattern
@@ -83,13 +78,13 @@ package object Utilities {
       "%2E"
     else if (name == "..")
       "%2E%2E"
-    else if (isNameValid(name, true))
+    else if (isNameValid(name))
       name
     else {
       val result = "\\s+".r
         .replaceAllIn(name, " ")
         // escape % signs
-        .replaceAll("%", "%25")
+        .replaceAll("%(?![2-9A-F][0-9A-F])", "%25")
         // plus sign are not allowed by S3
         .replaceAll("\\+", "%2B")
         // tildes are not allowed by S3
@@ -114,9 +109,10 @@ package object Utilities {
         .replaceAll(">", "%3E")
         .replaceAll("\\?", "%3F")
         .replaceAll("\\\\", "%5C")
+        .replaceAll("`", "%60")
 
       // Replace % characters not valid escape codes.
-      val escapedString = "^[^(\u00C0-\u1FFF\u2C00-\uD7FF\\w() %*_\\-'.!)]".r
+      val escapedString = "^[^(\\p{L}\\p{N}() %*_\\-'.!)]".r
         .replaceAllIn(result, "_")
 
       //trim string if exceeds 255 characters

@@ -52,7 +52,8 @@ class TestUtilities extends WordSpecLike with Matchers {
       Utilities.escapeName("file* 1") shouldBe "file* 1"
       Utilities.escapeName("() *_-'.!") shouldBe "() *_-'.!"
       Utilities.escapeName("Å") shouldBe "Å" //unicode test
-      Utilities.escapeName("%20+ %20+ %20+ %20+") shouldBe "%2520%2B %2520%2B %2520%2B %2520%2B"
+      Utilities.escapeName("%20+ %20+ %20+ %20+") shouldBe "%20%2B %20%2B %20%2B %20%2B"
+      Utilities.escapeName("%2+") shouldBe "%252%2B"
     }
 
     "replace UNIX path special characters" in {
@@ -63,7 +64,7 @@ class TestUtilities extends WordSpecLike with Matchers {
     "change invalid special characters into valid characters" in {
       assert(
         Utilities
-          .isNameValid(Utilities.escapeName("@#$%^&+={}|[]:;<>?/\\,"), true) == true
+          .isNameValid(Utilities.escapeName("@#$%^&+={}|[]:;<>?/\\,")) == true
       )
     }
 
