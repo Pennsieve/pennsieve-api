@@ -22,10 +22,9 @@ import org.apache.commons.io.FilenameUtils
 package object Utilities {
 
   def isNameValid(name: String): Boolean = {
-    val AuthorizedCharacters =
-      "^[\u00C0-\u1FFF\u2C00-\uD7FF\\w() %*_\\-'.!]{1,255}$".r
+    var AuthorizedCharacters =
+      "^[\\p{L}\\p{N}() %*_\\-'.!]{1,255}$".r
     //matches all "letter" characters from unicode plus digits and some special characters that are allowed by S3 for keys
-    // % is technically not an authorized character by itself but the second regex takes care of that special case
 
     val allCharactersValid: Boolean =
       AuthorizedCharacters.pattern
@@ -81,13 +80,11 @@ package object Utilities {
       "%2E%2E"
     else if (isNameValid(name))
       name
-    else
-      UrlEscapers
-        .urlPathSegmentEscaper()
-        // S3 keys should only have one consecutive whitespace
-        .escape("\\s+".r.replaceAllIn(name, " "))
-        // this whitespace should not be encoded
-        .replaceAll("%20", " ")
+    else {
+      val result = "\\s+".r
+        .replaceAllIn(name, " ")
+        // escape % signs
+        .replaceAll("%(?![2-9A-F][0-9A-F])", "%25")
         // plus sign are not allowed by S3
         .replaceAll("\\+", "%2B")
         // tildes are not allowed by S3
@@ -100,6 +97,28 @@ package object Utilities {
         .replaceAll("&", "%26")
         .replaceAll("=", "%3D")
         .replaceAll(";", "%3B")
+        .replaceAll("/", "%2F")
+        .replaceAll("\\{", "%7B")
+        .replaceAll("}", "%7D")
+        .replaceAll("\\[", "%5B")
+        .replaceAll("]", "%5D")
+        .replaceAll("\\|", "%7C")
+        .replaceAll("#", "%23")
+        .replaceAll("\\^", "%5E")
+        .replaceAll("<", "%3C")
+        .replaceAll(">", "%3E")
+        .replaceAll("\\?", "%3F")
+        .replaceAll("\\\\", "%5C")
+        .replaceAll("`", "%60")
+
+      // Replace % characters not valid escape codes.
+      val escapedString = "^[^(\\p{L}\\p{N}() %*_\\-'.!)]".r
+        .replaceAllIn(result, "_")
+
+      //trim string if exceeds 255 characters
+      escapedString.substring(0, Math.min(escapedString.length, 255))
+
+    }
 
   }
 }
