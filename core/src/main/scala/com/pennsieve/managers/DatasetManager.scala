@@ -26,36 +26,36 @@ import com.pennsieve.audit.middleware.TraceId
 import scala.util.Either
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.db.{DatasetPublicationStatusMapper, _}
+import com.pennsieve.db.{ DatasetPublicationStatusMapper, _ }
 import com.pennsieve.domain._
 import com.pennsieve.messages._
 import com.pennsieve.models._
 import com.pennsieve.core.utilities.checkOrErrorT
 import com.pennsieve.traits.PostgresProfile.api._
-import enumeratum.{Enum, EnumEntry}
+import enumeratum.{ Enum, EnumEntry }
 import org.postgresql.util.PSQLException
 import slick.ast.Ordering
 import slick.dbio.DBIO
-import slick.lifted.{ColumnOrdered, Query}
+import slick.lifted.{ ColumnOrdered, Query }
 import java.time.ZonedDateTime
 
 import scala.collection.immutable
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
 case class ChangeResponse(success: Boolean, message: Option[String] = None)
 
 case class Collaborators(
-                          users: Seq[User],
-                          organizations: Seq[Organization],
-                          teams: Seq[(Team, OrganizationTeam)]
-                        )
+  users: Seq[User],
+  organizations: Seq[Organization],
+  teams: Seq[(Team, OrganizationTeam)]
+)
 
 case class CollaboratorChanges(
-                                changes: Map[String, ChangeResponse],
-                                counts: CollaboratorCounts
-                              )
+  changes: Map[String, ChangeResponse],
+  counts: CollaboratorCounts
+)
 
 object DatasetManager {
 
@@ -94,10 +94,10 @@ object DatasetManager {
 }
 
 class DatasetManager(
-                      val db: Database,
-                      val actor: User,
-                      val datasetsMapper: DatasetsMapper
-                    ) {
+  val db: Database,
+  val actor: User,
+  val datasetsMapper: DatasetsMapper
+) {
 
   import DatasetManager._
 
@@ -149,17 +149,17 @@ class DatasetManager(
     new DatasetIgnoreFilesMapper(organization)
 
   def isLocked(
-                dataset: Dataset
-              )(implicit
-                ec: ExecutionContext
-              ): EitherT[Future, CoreError, Boolean] =
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] =
     db.run(datasetsMapper.isLocked(dataset, actor)).toEitherT
 
   def assertNotLocked(
-                       dataset: Dataset
-                     )(implicit
-                       ec: ExecutionContext
-                     ): EitherT[Future, CoreError, Unit] = {
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
     for {
       locked <- isLocked(dataset)
       _ <- checkOrErrorT(!locked)(LockedDatasetError(dataset.nodeId))
@@ -168,10 +168,10 @@ class DatasetManager(
   }
 
   def assertNotLocked(
-                       datasetId: Int
-                     )(implicit
-                       ec: ExecutionContext
-                     ): EitherT[Future, CoreError, Unit] = {
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
     for {
       dataset <- get(datasetId)
       _ <- assertNotLocked(dataset)
@@ -190,23 +190,23 @@ class DatasetManager(
     *  - Ignore files
     */
   def touchUpdatedAtTimestamp(
-                               dataset: Dataset
-                             )(implicit
-                               ec: ExecutionContext
-                             ): EitherT[Future, CoreError, Unit] =
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] =
     touchUpdatedAtTimestamp(dataset.id)
 
   def touchUpdatedAtTimestamp(
-                               datasetId: Int
-                             )(implicit
-                               ec: ExecutionContext
-                             ): EitherT[Future, CoreError, Unit] =
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] =
     db.run(
-      datasetsMapper
-        .get(datasetId)
-        .map(_.updatedAt)
-        .update(ZonedDateTime.now)
-    )
+        datasetsMapper
+          .get(datasetId)
+          .map(_.updatedAt)
+          .update(ZonedDateTime.now)
+      )
       .toEitherT
       .subflatMap {
         case 0 => Left(NotFound(s"dataset $datasetId not found"))
@@ -214,19 +214,19 @@ class DatasetManager(
       }
 
   def create(
-              name: String,
-              description: Option[String] = None,
-              state: DatasetState = DatasetState.READY,
-              automaticallyProcessPackages: Boolean = false,
-              statusId: Option[Int] = None,
-              license: Option[License] = None,
-              tags: List[String] = List.empty,
-              bannerId: Option[UUID] = None,
-              readmeId: Option[UUID] = None,
-              dataUseAgreement: Option[DataUseAgreement] = None
-            )(implicit
-              ec: ExecutionContext
-            ): EitherT[Future, CoreError, Dataset] = {
+    name: String,
+    description: Option[String] = None,
+    state: DatasetState = DatasetState.READY,
+    automaticallyProcessPackages: Boolean = false,
+    statusId: Option[Int] = None,
+    license: Option[License] = None,
+    tags: List[String] = List.empty,
+    bannerId: Option[UUID] = None,
+    readmeId: Option[UUID] = None,
+    dataUseAgreement: Option[DataUseAgreement] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Dataset] = {
     val nodeId = NodeCodes.generateId(NodeCodes.dataSetCode)
 
     for {
@@ -297,18 +297,18 @@ class DatasetManager(
   }
 
   def get(
-           id: Int
-         )(implicit
-           ec: ExecutionContext
-         ): EitherT[Future, CoreError, Dataset] =
+    id: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Dataset] =
     db.run(datasetsMapper.withoutDeleted.filter(_.id === id).result.headOption)
       .whenNone(NotFound(s"Dataset ($id)"))
 
   def getByExternalIdWithMaxRole(
-                                  externalId: ExternalId
-                                )(implicit
-                                  ec: ExecutionContext
-                                ): EitherT[Future, CoreError, (Dataset, Option[Role])] = {
+    externalId: ExternalId
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (Dataset, Option[Role])] = {
     for {
       result <- db
         .run(
@@ -331,58 +331,58 @@ class DatasetManager(
   }
 
   def getByAnyId(
-                  nodeOrIntId: String
-                )(implicit
-                  ec: ExecutionContext
-                ): EitherT[Future, CoreError, Dataset] =
+    nodeOrIntId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Dataset] =
     Try(nodeOrIntId.toInt).toOption
       .map(id => get(id))
       .getOrElse(getByNodeId(nodeOrIntId))
 
   def getByNodeId(
-                   nodeId: String
-                 )(implicit
-                   ec: ExecutionContext
-                 ): EitherT[Future, CoreError, Dataset] =
+    nodeId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Dataset] =
     db.run(
-      datasetsMapper.withoutDeleted
-        .filter(_.nodeId === nodeId)
-        .result
-        .headOption
-    )
+        datasetsMapper.withoutDeleted
+          .filter(_.nodeId === nodeId)
+          .result
+          .headOption
+      )
       .whenNone(NotFound(nodeId))
 
   def nameExists(name: String): Future[Boolean] =
     db.run(datasetsMapper.nameExists(name))
 
   def find(
-            withRole: Role
-          )(implicit
-            ec: ExecutionContext
-          ): EitherT[Future, CoreError, Seq[DatasetAndStatus]] =
+    withRole: Role
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DatasetAndStatus]] =
     find(actor, withRole, None)
 
   def find(
-            user: User,
-            withRole: Role,
-            datasetIds: Option[List[Int]] = None
-          )(implicit
-            ec: ExecutionContext
-          ): EitherT[Future, CoreError, Seq[DatasetAndStatus]] =
+    user: User,
+    withRole: Role,
+    datasetIds: Option[List[Int]] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DatasetAndStatus]] =
     db.run(datasetsMapper.find(user, Some(withRole), datasetIds)).toEitherT
 
   def getStatusLog(
-                    dataset: Dataset,
-                    limit: Int,
-                    offset: Int
-                  )(implicit
-                    ec: ExecutionContext
-                  )
-  : EitherT[
-    Future,
-    CoreError,
-    (Seq[(DatasetStatusLog, Option[User])], Long)
-  ] = {
+    dataset: Dataset,
+    limit: Int,
+    offset: Int
+  )(implicit
+    ec: ExecutionContext
+  )
+    : EitherT[
+      Future,
+      CoreError,
+      (Seq[(DatasetStatusLog, Option[User])], Long)
+    ] = {
     val startingQuery = datasetStatusLog.getStatusLogs(dataset.id)
 
     val finalQuery = startingQuery.drop(offset).take(limit)
@@ -397,10 +397,10 @@ class DatasetManager(
   }
 
   def getContributors(
-                       dataset: Dataset
-                     )(implicit
-                       ec: ExecutionContext
-                     ): EitherT[Future, CoreError, Seq[(Contributor, Option[User])]] =
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[(Contributor, Option[User])]] =
     for {
       contributors <- db
         .run(datasetContributor.getContributors(dataset).result)
@@ -408,10 +408,10 @@ class DatasetManager(
     } yield contributors
 
   def getCollaborators(
-                        dataset: Dataset
-                      )(implicit
-                        ec: ExecutionContext
-                      ): EitherT[Future, CoreError, Collaborators] = {
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Collaborators] = {
 
     val usersFuture =
       db.run(datasetUser.collaborators(dataset.id).map(_._2).result)
@@ -429,10 +429,10 @@ class DatasetManager(
   }
 
   def getCollaboratorCounts(
-                             dataset: Dataset
-                           )(implicit
-                             ec: ExecutionContext
-                           ): EitherT[Future, CoreError, CollaboratorCounts] = {
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, CollaboratorCounts] = {
     val userCountFuture =
       db.run(datasetUser.collaborators(dataset.id).length.result)
     val teamCountFuture = db.run(datasetTeam.teams(dataset.id).length.result)
@@ -448,10 +448,10 @@ class DatasetManager(
   }
 
   def getCollaboratorCounts(
-                             datasets: List[Dataset]
-                           )(implicit
-                             ec: ExecutionContext
-                           ): EitherT[Future, CoreError, Map[Dataset, CollaboratorCounts]] = {
+    datasets: List[Dataset]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Map[Dataset, CollaboratorCounts]] = {
 
     val query = for {
       userCounts <- datasetsMapper
@@ -496,21 +496,21 @@ class DatasetManager(
   // Note: this does not check if the user is part of the organization, so
   // calling this with a user outside of the org can give incorrect results
   def maxRole(
-               dataset: Dataset,
-               user: User
-             )(implicit
-               ec: ExecutionContext
-             ): EitherT[Future, CoreError, Role] =
+    dataset: Dataset,
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Role] =
     db.run(datasetsMapper.maxRoles(user.id))
       .map(_.get(dataset.id).flatten)
       .whenNone[CoreError](DatasetRolePermissionError(user.nodeId, dataset.id))
 
   def update(
-              dataset: Dataset,
-              checkforDuplicateNames: Boolean = true
-            )(implicit
-              ec: ExecutionContext
-            ): EitherT[Future, CoreError, Dataset] = {
+    dataset: Dataset,
+    checkforDuplicateNames: Boolean = true
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Dataset] = {
     for {
       _ <- FutureEitherHelpers.assert(dataset.name.trim.nonEmpty)(
         PredicateError("dataset name must not be empty")
@@ -555,7 +555,7 @@ class DatasetManager(
         .run(query.transactionally)
         .toEitherT[CoreError] {
           case e: PSQLException
-            if (e.getMessage() == "ERROR: value too long for type character varying(255)") =>
+              if (e.getMessage() == "ERROR: value too long for type character varying(255)") =>
             PredicateError("dataset name must be less than 255 characters"): CoreError
         }
 
@@ -568,11 +568,11 @@ class DatasetManager(
   }
 
   def delete(
-              traceId: TraceId,
-              dataset: Dataset
-            )(implicit
-              ec: ExecutionContext
-            ): EitherT[Future, CoreError, BackgroundJob] =
+    traceId: TraceId,
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, BackgroundJob] =
     for {
       _ <- assertNotLocked(dataset)
       _ <- update(dataset.copy(state = DatasetState.DELETING))
@@ -592,11 +592,11 @@ class DatasetManager(
     NodeCodes.nodeIdIsOneOf(validShareableNodeCodes, id)
 
   def addCollaborators(
-                        dataset: Dataset,
-                        collaboratorIds: Set[String]
-                      )(implicit
-                        ec: ExecutionContext
-                      ): EitherT[Future, CoreError, CollaboratorChanges] =
+    dataset: Dataset,
+    collaboratorIds: Set[String]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, CollaboratorChanges] =
     for {
       currentSharees <- db
         .run(datasetsMapper.currentSharees(dataset.id).result)
@@ -692,21 +692,21 @@ class DatasetManager(
       )
 
   def removeCollaborators(
-                           datasets: List[Dataset],
-                           collaborators: Set[String]
-                         )(implicit
-                           ec: ExecutionContext
-                         ): EitherT[Future, CoreError, List[CollaboratorChanges]] =
+    datasets: List[Dataset],
+    collaborators: Set[String]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[CollaboratorChanges]] =
     datasets.map { dataset =>
       removeCollaborators(dataset, collaborators)
     }.sequence
 
   def removeCollaborators(
-                           dataset: Dataset,
-                           collaborators: Set[String]
-                         )(implicit
-                           ec: ExecutionContext
-                         ): EitherT[Future, CoreError, CollaboratorChanges] = {
+    dataset: Dataset,
+    collaborators: Set[String]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, CollaboratorChanges] = {
 
     // only admins are allowed to make changes so we can assume the user
     // is the admin at this point
@@ -753,8 +753,8 @@ class DatasetManager(
         .delete
 
       updateOrganizationPermissionQuery = if (collaborators.exists(
-        NodeCodes.nodeIdIsA(_, NodeCodes.organizationCode)
-      )) {
+          NodeCodes.nodeIdIsA(_, NodeCodes.organizationCode)
+        )) {
         datasetsMapper
           .setOrganizationRole(dataset.id, None)
       } else {
@@ -803,19 +803,19 @@ class DatasetManager(
   }
 
   def getOwner(
-                dataset: Dataset
-              )(implicit
-                ec: ExecutionContext
-              ): EitherT[Future, CoreError, User] = {
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] = {
     db.run(datasetsMapper.owner(dataset.id))
       .whenNone[CoreError](NotFound(dataset.nodeId))
   }
 
   def getOwners(
-                 datasets: Seq[Dataset]
-               )(implicit
-                 ec: ExecutionContext
-               ): EitherT[Future, CoreError, Map[Dataset, User]] =
+    datasets: Seq[Dataset]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Map[Dataset, User]] =
     for {
       ownerMap <- db.run(datasetsMapper.owners(datasets.map(_.id))).toEitherT
 
@@ -830,35 +830,35 @@ class DatasetManager(
     } yield datasetsAndOwners.toMap
 
   def getManagers(
-                   dataset: Dataset
-                 )(implicit
-                   ec: ExecutionContext
-                 ): EitherT[Future, CoreError, List[User]] =
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[User]] =
     db.run(datasetsMapper.managers(dataset.id)).map(_.toList).toEitherT
 
   // NEW ROLE-BASED PERMISSIONS
 
   def canShareWithUser(
-                        user: User
-                      )(implicit
-                        ec: ExecutionContext
-                      ): EitherT[Future, CoreError, Unit] =
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] =
     db.run(
-      OrganizationUserMapper
-        .getBy(user.id, organization.id)
-        .result
-        .headOption
-    )
+        OrganizationUserMapper
+          .getBy(user.id, organization.id)
+          .result
+          .headOption
+      )
       .whenNone[CoreError](NotFound(s"user ${user.id}"))
       .map(_ => Unit)
 
   def addUserCollaborator(
-                           dataset: Dataset,
-                           user: User,
-                           role: Role
-                         )(implicit
-                           ec: ExecutionContext
-                         ): EitherT[Future, CoreError, OldRole] =
+    dataset: Dataset,
+    user: User,
+    role: Role
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, OldRole] =
     for {
       currentOwner <- getOwner(dataset)
 
@@ -889,27 +889,27 @@ class DatasetManager(
   case class OldRole(oldRole: Option[Role])
 
   def getUserCollaboratorRole(
-                               dataset: Dataset,
-                               user: User
-                             )(implicit
-                               ec: ExecutionContext
-                             ): EitherT[Future, CoreError, Option[Role]] =
+    dataset: Dataset,
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[Role]] =
     db.run(
-      datasetUser
-        .getBy(userId = user.id, datasetId = dataset.id)
-        .map(_.role)
-        .result
-        .headOption
-        .map(_.flatten)
-    )
+        datasetUser
+          .getBy(userId = user.id, datasetId = dataset.id)
+          .map(_.role)
+          .result
+          .headOption
+          .map(_.flatten)
+      )
       .toEitherT
 
   def addCollection(
-                     dataset: Dataset,
-                     collectionId: Int
-                   )(implicit
-                     ec: ExecutionContext
-                   ): EitherT[Future, CoreError, Collection] = {
+    dataset: Dataset,
+    collectionId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Collection] = {
     val query = for {
       collection <- collectionMapper
         .get(collectionId)
@@ -928,11 +928,11 @@ class DatasetManager(
   }
 
   def removeCollection(
-                        dataset: Dataset,
-                        collectionId: Int
-                      )(implicit
-                        ec: ExecutionContext
-                      ): EitherT[Future, CoreError, Collection] = {
+    dataset: Dataset,
+    collectionId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Collection] = {
     val query = for {
       collection <- collectionMapper
         .get(collectionId)
@@ -967,10 +967,10 @@ class DatasetManager(
   }
 
   def removeCollections(
-                         dataset: Dataset
-                       )(implicit
-                         ec: ExecutionContext
-                       ): EitherT[Future, CoreError, Unit] = {
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
     for {
       collections <- db
         .run(datasetCollection.getCollections(dataset).result)
@@ -980,10 +980,10 @@ class DatasetManager(
   }
 
   def getCollections(
-                      dataset: Dataset
-                    )(implicit
-                      ec: ExecutionContext
-                    ): EitherT[Future, CoreError, Seq[Collection]] =
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[Collection]] =
     for {
       collections <- db
         .run(datasetCollection.getCollections(dataset).result)
@@ -991,26 +991,26 @@ class DatasetManager(
     } yield collections
 
   def getContributor(
-                      dataset: Dataset,
-                      contributorId: Int
-                    )(implicit
-                      ec: ExecutionContext
-                    ): EitherT[Future, CoreError, DatasetContributor] = {
+    dataset: Dataset,
+    contributorId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetContributor] = {
     db.run(
-      datasetContributor
-        .getBy(dataset, contributorId)
-        .result
-        .headOption
-    )
+        datasetContributor
+          .getBy(dataset, contributorId)
+          .result
+          .headOption
+      )
       .whenNone[CoreError](NotFound(dataset.nodeId))
   }
 
   def addContributor(
-                      dataset: Dataset,
-                      contributorId: Int
-                    )(implicit
-                      ec: ExecutionContext
-                    ): EitherT[Future, CoreError, Unit] = {
+    dataset: Dataset,
+    contributorId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
     val addContributorQueries = for {
       //find the highest order of the contributors
       position <- datasetContributor
@@ -1039,12 +1039,12 @@ class DatasetManager(
   }
 
   def switchContributorOrder(
-                              dataset: Dataset,
-                              contributor: DatasetContributor,
-                              otherContributor: DatasetContributor
-                            )(implicit
-                              ec: ExecutionContext
-                            ): EitherT[Future, CoreError, Unit] = {
+    dataset: Dataset,
+    contributor: DatasetContributor,
+    otherContributor: DatasetContributor
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
 
     val switchContributorOrder = for {
       _ <- datasetContributor.updateContributorOrder(
@@ -1067,16 +1067,16 @@ class DatasetManager(
   }
 
   def removeContributor(
-                         dataset: Dataset,
-                         contributorId: Int
-                       )(implicit
-                         ec: ExecutionContext
-                       ): EitherT[Future, CoreError, Unit] =
+    dataset: Dataset,
+    contributorId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] =
     db.run(
-      datasetContributor
-        .getBy(dataset, contributorId)
-        .delete
-    )
+        datasetContributor
+          .getBy(dataset, contributorId)
+          .delete
+      )
       .toEitherT
       .subflatMap {
         case 0 => Left(NotFound(s"Contributor $contributorId"))
@@ -1084,12 +1084,12 @@ class DatasetManager(
       }
 
   def switchOwner(
-                   dataset: Dataset,
-                   currentOwner: User,
-                   newOwner: User
-                 )(implicit
-                   ec: ExecutionContext
-                 ): EitherT[Future, CoreError, Unit] = {
+    dataset: Dataset,
+    currentOwner: User,
+    newOwner: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
 
     val switchOwner = for {
       _ <- datasetUser.insertOrUpdate(
@@ -1120,19 +1120,19 @@ class DatasetManager(
   }
 
   def getUserCollaborators(
-                            dataset: Dataset
-                          )(implicit
-                            ec: ExecutionContext
-                          ): EitherT[Future, CoreError, List[(User, Role)]] =
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[(User, Role)]] =
     EitherT[Future, CoreError, List[(User, Role)]](
       db.run(
-        datasetUser
-          .getUsersBy(dataset.id)
-          .map {
-            case (dsUser, user) => (user, dsUser.role)
-          }
-          .result
-      )
+          datasetUser
+            .getUsersBy(dataset.id)
+            .map {
+              case (dsUser, user) => (user, dsUser.role)
+            }
+            .result
+        )
         .map(_.toList.traverse {
           case (user, Some(role)) => Either.right((user, role))
           case (user, None) =>
@@ -1141,11 +1141,11 @@ class DatasetManager(
     )
 
   def deleteUserCollaborator(
-                              dataset: Dataset,
-                              user: User
-                            )(implicit
-                              ec: ExecutionContext
-                            ): EitherT[Future, CoreError, OldRole] =
+    dataset: Dataset,
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, OldRole] =
     for {
       oldRole <- getUserCollaboratorRole(dataset, user)
 
@@ -1163,12 +1163,12 @@ class DatasetManager(
     } yield OldRole(oldRole)
 
   def addTeamCollaborator(
-                           dataset: Dataset,
-                           team: Team,
-                           role: Role
-                         )(implicit
-                           ec: ExecutionContext
-                         ): EitherT[Future, CoreError, OldRole] =
+    dataset: Dataset,
+    team: Team,
+    role: Role
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, OldRole] =
     for {
       oldRole <- getTeamCollaboratorRole(dataset, team)
 
@@ -1183,26 +1183,26 @@ class DatasetManager(
     } yield OldRole(oldRole)
 
   def getTeamCollaboratorRole(
-                               dataset: Dataset,
-                               team: Team
-                             )(implicit
-                               ec: ExecutionContext
-                             ): EitherT[Future, CoreError, Option[Role]] =
+    dataset: Dataset,
+    team: Team
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[Role]] =
     db.run(
-      datasetTeam
-        .getBy(teamId = team.id, datasetId = dataset.id)
-        .map(_.role)
-        .result
-        .headOption
-        .map(_.flatten)
-    )
+        datasetTeam
+          .getBy(teamId = team.id, datasetId = dataset.id)
+          .map(_.role)
+          .result
+          .headOption
+          .map(_.flatten)
+      )
       .toEitherT
 
   def getTeamCollaborators(
-                            dataset: Dataset
-                          )(implicit
-                            ec: ExecutionContext
-                          ): EitherT[Future, CoreError, List[(Team, Role)]] =
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[(Team, Role)]] =
     EitherT[Future, CoreError, List[(Team, Role)]](
       db.run(datasetTeam.teamsWithRoles(dataset.id).result)
         .map(_.toList.traverse {
@@ -1213,11 +1213,11 @@ class DatasetManager(
     )
 
   def deleteTeamCollaborator(
-                              dataset: Dataset,
-                              team: Team
-                            )(implicit
-                              ec: ExecutionContext
-                            ): EitherT[Future, CoreError, OldRole] =
+    dataset: Dataset,
+    team: Team
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, OldRole] =
     for {
       oldRole <- getTeamCollaboratorRole(dataset, team)
 
@@ -1232,20 +1232,20 @@ class DatasetManager(
     } yield OldRole(oldRole)
 
   def setOrganizationCollaboratorRole(
-                                       dataset: Dataset,
-                                       role: Option[Role]
-                                     )(implicit
-                                       ec: ExecutionContext
-                                     ): EitherT[Future, CoreError, Unit] =
+    dataset: Dataset,
+    role: Option[Role]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] =
     db.run(datasetsMapper.setOrganizationRole(dataset.id, role))
       .map(_ => ())
       .toEitherT
 
   def sourceFileCount(
-                       dataset: Dataset
-                     )(implicit
-                       ec: ExecutionContext
-                     ): EitherT[Future, CoreError, Long] = {
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Long] = {
     val query = packagesMapper
       .filter(p => p.datasetId === dataset.id)
       .filterNot(p => p.state === (PackageState.DELETING: PackageState))
@@ -1305,13 +1305,13 @@ class DatasetManager(
     * Full text search
     */
   private def fullTextSearch(
-                              query: Query[
-                                ((DatasetsTable, DatasetUserTable), UserTable),
-                                ((Dataset, DatasetUser), User),
-                                Seq
-                              ],
-                              textSearch: Option[String]
-                            ): Query[DatasetsTable, Dataset, Seq] =
+    query: Query[
+      ((DatasetsTable, DatasetUserTable), UserTable),
+      ((Dataset, DatasetUser), User),
+      Seq
+    ],
+    textSearch: Option[String]
+  ): Query[DatasetsTable, Dataset, Seq] =
     textSearch match {
       case Some(ts: String) => {
 
@@ -1341,8 +1341,8 @@ class DatasetManager(
 
         val usersContributors =
           q.groupBy {
-            case ((((_, _), dt: DatasetsTable), _), _) => dt.id
-          }
+              case ((((_, _), dt: DatasetsTable), _), _) => dt.id
+            }
             .map {
               case (datasetId, grouping) =>
                 (
@@ -1365,38 +1365,38 @@ class DatasetManager(
         } yield (d, uc._2)
 
         qq.filter {
-          case (dt: DatasetsTable, usersContributors) => {
+            case (dt: DatasetsTable, usersContributors) => {
 
-            val tokens = dt.id
-              .asColumnOf[String] ++ " " ++ dt.name.toLowerCase ++ " " ++
-              dt.description.getOrElse("").toLowerCase ++ " " ++
-              F.arrayToString(dt.tags, " ").toLowerCase ++ " " ++
-              F.arrayToString(usersContributors, " ").toLowerCase
+              val tokens = dt.id
+                .asColumnOf[String] ++ " " ++ dt.name.toLowerCase ++ " " ++
+                dt.description.getOrElse("").toLowerCase ++ " " ++
+                F.arrayToString(dt.tags, " ").toLowerCase ++ " " ++
+                F.arrayToString(usersContributors, " ").toLowerCase
 
-            val tokensWithoutNoise =
-              F.regexpReplace(
-                tokens,
-                "[\\[\\]\\(\\)\\-+\\.\\?!\t\n]",
-                " ",
-                "g"
-              )
+              val tokensWithoutNoise =
+                F.regexpReplace(
+                  tokens,
+                  "[\\[\\]\\(\\)\\-+\\.\\?!\t\n]",
+                  " ",
+                  "g"
+                )
 
-            // For simple queries consisting of a single word, append the Postgres full-text prefix search
-            // operator to the search term: "foo" -> "foo:*"
-            val textQuery: String = if (isSimpleQuery(ts)) {
-              s"${ts.trim.toLowerCase}:*"
-            } else if (isMultiTermQuery(ts)) {
-              multiTermToTextSearch(ts.trim.toLowerCase)
-            } else {
-              ts.trim.toLowerCase
+              // For simple queries consisting of a single word, append the Postgres full-text prefix search
+              // operator to the search term: "foo" -> "foo:*"
+              val textQuery: String = if (isSimpleQuery(ts)) {
+                s"${ts.trim.toLowerCase}:*"
+              } else if (isMultiTermQuery(ts)) {
+                multiTermToTextSearch(ts.trim.toLowerCase)
+              } else {
+                ts.trim.toLowerCase
+              }
+
+              val tv = toTsVector(tokens) @+ toTsVector(tokensWithoutNoise)
+
+              tv @@ toTsQuery(textQuery.bind)
+
             }
-
-            val tv = toTsVector(tokens) @+ toTsVector(tokensWithoutNoise)
-
-            tv @@ toTsQuery(textQuery.bind)
-
           }
-        }
           .map { case (dt: DatasetsTable, _) => dt }
       }
 
@@ -1405,159 +1405,160 @@ class DatasetManager(
     }
 
   def getDatasetPaginated(
-                           withRole: Role,
-                           limit: Option[Int],
-                           offset: Option[Int],
-                           orderBy: (OrderByColumn, OrderByDirection),
-                           status: Option[DatasetStatus],
-                           textSearch: Option[String],
-                           publicationStatuses: Option[Set[PublicationStatus]] = None,
-                           publicationTypes: Option[Set[PublicationType]] = None,
-                           canPublish: Option[Boolean] = None,
-                           restrictToRole: Boolean = false,
-                           collectionId: Option[Int] = None
-                         )(implicit
-                           ec: ExecutionContext
-                         ): EitherT[Future, CoreError, (Seq[DatasetAndStatus], Long)] = {
+    withRole: Role,
+    limit: Option[Int],
+    offset: Option[Int],
+    orderBy: (OrderByColumn, OrderByDirection),
+    status: Option[DatasetStatus],
+    textSearch: Option[String],
+    publicationStatuses: Option[Set[PublicationStatus]] = None,
+    publicationTypes: Option[Set[PublicationType]] = None,
+    canPublish: Option[Boolean] = None,
+    restrictToRole: Boolean = false,
+    collectionId: Option[Int] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (Seq[DatasetAndStatus], Long)] = {
 
     val query = datasetsMapper.maxRoles(actor.id).flatMap {
-      roleMap: Map[Int, Option[Role]] => {
-        val datasetIds: List[Int] = roleMap
-          .filter {
-            case (_, Some(role)) =>
-              if (restrictToRole) role == withRole
-              else role >= withRole
-            case (_, None) => false
-          }
-          .keys
-          .toList
-
-        // (1) Filter undeleted datasets in the set `datasetIds`:
-        val query = datasetsMapper.withoutDeleted
-          .filter(_.id.inSet(datasetIds))
-
-          // (2) Only match datasets with the supplied status:
-          .filterOpt(status)(_.statusId === _.id)
-
-          // (3) Add users:
-          .join(datasetUser)
-          .on(_.id === _.datasetId)
-          .join(UserMapper)
-          .on(_._2.userId === _.id)
-
-        val queryAfterCollectionFiltering =
-        // (4) Only match datasets with the supplied collectionId:
-          query
-            .joinLeft(datasetCollection)
-            .on(_._1._1.id === _.datasetId)
-            .filterOpt(collectionId)(_._2.map(_.collectionId) === _)
-            .map {
-              case (((dataset, datasetUser), user), collection) =>
-                ((dataset, datasetUser), user)
+      roleMap: Map[Int, Option[Role]] =>
+        {
+          val datasetIds: List[Int] = roleMap
+            .filter {
+              case (_, Some(role)) =>
+                if (restrictToRole) role == withRole
+                else role >= withRole
+              case (_, None) => false
             }
+            .keys
+            .toList
 
-        // (5) Perform full text search
-        val queryWithDistinct =
-          fullTextSearch(queryAfterCollectionFiltering, textSearch)
+          // (1) Filter undeleted datasets in the set `datasetIds`:
+          val query = datasetsMapper.withoutDeleted
+            .filter(_.id.inSet(datasetIds))
+
+            // (2) Only match datasets with the supplied status:
+            .filterOpt(status)(_.statusId === _.id)
+
+            // (3) Add users:
+            .join(datasetUser)
+            .on(_.id === _.datasetId)
+            .join(UserMapper)
+            .on(_._2.userId === _.id)
+
+          val queryAfterCollectionFiltering =
+            // (4) Only match datasets with the supplied collectionId:
+            query
+              .joinLeft(datasetCollection)
+              .on(_._1._1.id === _.datasetId)
+              .filterOpt(collectionId)(_._2.map(_.collectionId) === _)
+              .map {
+                case (((dataset, datasetUser), user), collection) =>
+                  ((dataset, datasetUser), user)
+              }
+
+          // (5) Perform full text search
+          val queryWithDistinct =
+            fullTextSearch(queryAfterCollectionFiltering, textSearch)
 
             // (6) Join to the dataset workflow status
-            .join(datasetStatusManager.datasetStatusMapper)
-            .on {
-              case (dataset, status) => dataset.statusId === status.id
+              .join(datasetStatusManager.datasetStatusMapper)
+              .on {
+                case (dataset, status) => dataset.statusId === status.id
+              }
+
+              // (7) Join to publication status
+              .joinLeft(datasetPublicationStatusMapper)
+              .on(_._1.publicationStatusId === _.id)
+
+              // (8) Compute whether the dataset is in a publishable state or is locked
+              .map {
+                case ((dataset, status), publicationStatus) =>
+                  (
+                    dataset,
+                    status,
+                    publicationStatus,
+                    datasetsMapper.canPublish(dataset),
+                    datasetsMapper
+                      .isLockedLifted(dataset, publicationStatus, actor)
+                  )
+              }
+              // (9) Optionally filter by whether the dataset can be published
+              .filterOpt(canPublish)(_._4 === _)
+
+              // (10) Filter by publication status and publication type
+              .filterOpt(publicationTypes)(
+                _._3.map(_.publicationType) inSet (_)
+              )
+              .filterOpt(publicationStatuses)(
+                _._3
+                  .map(_.publicationStatus)
+                  .getOrElse((PublicationStatus.Draft: PublicationStatus))
+                  .inSet(_)
+              )
+
+              // (11) Ensure uniqueness in results
+              .distinct
+
+          val queryWithSort = orderBy match {
+            case (OrderByColumn.Name, direction) =>
+              if (direction == OrderByDirection.Desc)
+                queryWithDistinct.sortBy(_._1.name.desc)
+              else queryWithDistinct.sortBy(_._1.name.asc)
+            case (OrderByColumn.UpdatedAt, direction) =>
+              if (direction == OrderByDirection.Desc)
+                queryWithDistinct.sortBy(_._1.updatedAt.desc)
+              else queryWithDistinct.sortBy(_._1.updatedAt.asc)
+            case (OrderByColumn.IntId, direction) =>
+              if (direction == OrderByDirection.Desc)
+                queryWithDistinct.sortBy(_._1.id.desc)
+              else queryWithDistinct.sortBy(_._1.id.asc)
+          }
+
+          val queryWithOffset =
+            offset.foldLeft(queryWithSort) { (query, offset) =>
+              query.drop(offset)
             }
 
-            // (7) Join to publication status
-            .joinLeft(datasetPublicationStatusMapper)
-            .on(_._1.publicationStatusId === _.id)
-
-            // (8) Compute whether the dataset is in a publishable state or is locked
-            .map {
-              case ((dataset, status), publicationStatus) =>
-                (
-                  dataset,
-                  status,
-                  publicationStatus,
-                  datasetsMapper.canPublish(dataset),
-                  datasetsMapper
-                    .isLockedLifted(dataset, publicationStatus, actor)
-                )
+          val finalQuery = limit
+            .foldLeft(queryWithOffset) { (query, limit) =>
+              query.take(limit)
             }
-            // (9) Optionally filter by whether the dataset can be published
-            .filterOpt(canPublish)(_._4 === _)
 
-            // (10) Filter by publication status and publication type
-            .filterOpt(publicationTypes)(
-              _._3.map(_.publicationType) inSet (_)
-            )
-            .filterOpt(publicationStatuses)(
-              _._3
-                .map(_.publicationStatus)
-                .getOrElse((PublicationStatus.Draft: PublicationStatus))
-                .inSet(_)
+          for {
+            totalCount <- queryWithDistinct.size.result
+              .map(_.toLong)
+            datasetsAndPublicationStatus <- finalQuery.result
+          } yield
+            (
+              datasetsAndPublicationStatus.map(DatasetAndStatus.apply _ tupled),
+              totalCount
             )
 
-            // (11) Ensure uniqueness in results
-            .distinct
-
-        val queryWithSort = orderBy match {
-          case (OrderByColumn.Name, direction) =>
-            if (direction == OrderByDirection.Desc)
-              queryWithDistinct.sortBy(_._1.name.desc)
-            else queryWithDistinct.sortBy(_._1.name.asc)
-          case (OrderByColumn.UpdatedAt, direction) =>
-            if (direction == OrderByDirection.Desc)
-              queryWithDistinct.sortBy(_._1.updatedAt.desc)
-            else queryWithDistinct.sortBy(_._1.updatedAt.asc)
-          case (OrderByColumn.IntId, direction) =>
-            if (direction == OrderByDirection.Desc)
-              queryWithDistinct.sortBy(_._1.id.desc)
-            else queryWithDistinct.sortBy(_._1.id.asc)
         }
-
-        val queryWithOffset =
-          offset.foldLeft(queryWithSort) { (query, offset) =>
-            query.drop(offset)
-          }
-
-        val finalQuery = limit
-          .foldLeft(queryWithOffset) { (query, limit) =>
-            query.take(limit)
-          }
-
-        for {
-          totalCount <- queryWithDistinct.size.result
-            .map(_.toLong)
-          datasetsAndPublicationStatus <- finalQuery.result
-        } yield
-          (
-            datasetsAndPublicationStatus.map(DatasetAndStatus.apply _ tupled),
-            totalCount
-          )
-
-      }
     }
     db.run(query).toEitherT
   }
 
   def getIgnoreFiles(
-                      dataset: Dataset
-                    )(implicit
-                      ec: ExecutionContext
-                    ): EitherT[Future, CoreError, Seq[DatasetIgnoreFile]] = {
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DatasetIgnoreFile]] = {
     db.run(
-      datasetIgnoreFiles
-        .getIgnoreFilesByDatasetId(dataset.id)
-        .result
-    )
+        datasetIgnoreFiles
+          .getIgnoreFilesByDatasetId(dataset.id)
+          .result
+      )
       .toEitherT
   }
 
   def setIgnoreFiles(
-                      dataset: Dataset,
-                      ignoreFiles: Seq[DatasetIgnoreFile]
-                    )(implicit
-                      ec: ExecutionContext
-                    ): EitherT[Future, CoreError, Seq[DatasetIgnoreFile]] = {
+    dataset: Dataset,
+    ignoreFiles: Seq[DatasetIgnoreFile]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DatasetIgnoreFile]] = {
     val query = for {
       currentIgnoreFiles <- datasetIgnoreFiles
         .getIgnoreFilesByDatasetId(dataset.id)
@@ -1570,21 +1571,23 @@ class DatasetManager(
   }
 
   def getIntegrations(
-                       dataset: Dataset
-                     )(implicit
-                       ec: ExecutionContext): EitherT[Future, CoreError, Seq[DatasetIntegration]] = {
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DatasetIntegration]] = {
     for {
       integrations <- db
-        .run(datasetIntegrationsMapper.getByDatasetId(dataset.id).result).toEitherT
+        .run(datasetIntegrationsMapper.getByDatasetId(dataset.id).result)
+        .toEitherT
     } yield integrations
   }
 
   def enableWebhook(
-                     dataset: Dataset,
-                     webhook: Webhook
-                   )(implicit
-                     ec: ExecutionContext
-                   ): EitherT[Future, CoreError, DatasetIntegration] = {
+    dataset: Dataset,
+    webhook: Webhook
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetIntegration] = {
     for {
       integration <- db
         .run(
@@ -1597,11 +1600,11 @@ class DatasetManager(
   }
 
   def disableWebhook(
-                      dataset: Dataset,
-                      webhook: Webhook
-                    )(implicit
-                      ec: ExecutionContext
-                    ): EitherT[Future, CoreError, Int] = {
+    dataset: Dataset,
+    webhook: Webhook
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
     for {
       deletedRowCount <- db
         .run(

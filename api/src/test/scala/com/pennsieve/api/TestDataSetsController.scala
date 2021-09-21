@@ -9180,6 +9180,26 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("get enabled dataset webhook integrations") {
+    val dataset = createDataSet("test-dataset")
+    val (enabledWebhook1, _) = createWebhook()
+    val (disabledWebhook, _) = createWebhook()
+    val (enabledWebhook2, _) = createWebhook()
+
+    enableWebhook(dataset, enabledWebhook1)
+    enableWebhook(dataset, enabledWebhook2)
+
+    get(
+      s"/${dataset.nodeId}/webhook",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[Seq[DatasetIntegration]]
+      response.size shouldBe(2)
+      response.forall()
+    }
+  }
+
   test("enable dataset webhook integration") {
     val dataset = createDataSet("test-dataset")
     val (webhook, _) = createWebhook()
@@ -9195,6 +9215,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.enabledBy should equal(loggedInUser.id)
     }
   }
+
   test(
     "cannot enable dataset webhook integration without ManageWebhook permission on dataset"
   ) {

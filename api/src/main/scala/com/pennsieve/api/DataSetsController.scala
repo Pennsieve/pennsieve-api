@@ -4478,6 +4478,35 @@ class DataSetsController(
     }
   }
 
+  get(
+    "/:id/webhook",
+    operation(
+      apiOperation[Seq[DatasetIntegration]]("getIntegrations")
+        summary "Return the enabled integrations for a given dataset. Returns a list of DatasetIntegration."
+        parameters (
+          pathParam[String]("id").description("dataset id")
+        )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Seq[DatasetIntegration]] =
+        for {
+          secureContainer <- getSecureContainer
+          datasetId <- paramT[String]("id")
+          dataset <- secureContainer.datasetManager
+            .getByNodeId(datasetId)
+            .orNotFound
+          _ <- secureContainer
+            .authorizeDataset(Set(DatasetPermission.ManageWebhooks))(dataset)
+            .coreErrorToActionResult
+          datasetIntegrations <- secureContainer.datasetManager
+            .getIntegrations(dataset)
+            .coreErrorToActionResult
+        } yield datasetIntegrations
+      override val is = result.value.map(OkResult(_))
+    }
+
+  }
   put(
     "/:id/webhook/:webhookId",
     operation(
