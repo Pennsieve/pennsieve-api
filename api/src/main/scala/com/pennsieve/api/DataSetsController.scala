@@ -4479,12 +4479,12 @@ class DataSetsController(
   }
 
   put(
-    ":datasetId/webhook/:webhookId",
+    "/:id/webhook/:webhookId",
     operation(
       apiOperation[DatasetIntegration]("enableIntegration")
         summary "Enable integration for a given dataset. Returns a DatasetIntegration."
         parameters (
-          pathParam[String]("datasetId").description("dataset id"),
+          pathParam[String]("id").description("dataset id"),
           pathParam[Int]("webhookId").description("webhook id")
       )
     )
@@ -4493,7 +4493,7 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, DatasetIntegration] =
         for {
           secureContainer <- getSecureContainer
-          datasetId <- paramT[String]("datasetId")
+          datasetId <- paramT[String]("id")
           webhookId <- paramT[Int]("webhookId")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
@@ -4514,12 +4514,12 @@ class DataSetsController(
   }
 
   delete(
-    ":datasetId/webhook/:webhookId",
+    "/:id/webhook/:webhookId",
     operation(
       apiOperation[Int]("disableIntegration")
         summary "Disable integration for a given dataset. Returns the number of disabled integrations."
         parameters (
-          pathParam[String]("datasetId").description("dataset id"),
+          pathParam[String]("id").description("dataset id"),
           pathParam[Int]("webhookId").description("webhook id")
       )
     )
@@ -4528,7 +4528,7 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, Int] =
         for {
           secureContainer <- getSecureContainer
-          datasetId <- paramT[String]("datasetId")
+          datasetId <- paramT[String]("id")
           webhookId <- paramT[Int]("webhookId")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)

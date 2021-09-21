@@ -53,6 +53,12 @@ class DatasetIntegrationsMapper(val organization: Organization)
       .filter(_.datasetId === datasetId)
       .filter(_.webhookId === webhookId)
 
+  def getByDatasetId(
+    datasetId: Int
+  ): Query[DatasetIntegrationsTable, DatasetIntegration, Seq] =
+    this
+      .filter(_.datasetId === datasetId)
+
   def getOrCreate(
     webhookId: Int,
     datasetId: Int,

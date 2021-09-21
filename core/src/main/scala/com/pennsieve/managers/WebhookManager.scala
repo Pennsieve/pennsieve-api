@@ -304,7 +304,7 @@ class WebhookManager(
         !webhook.isPrivate || actor.isSuperAdmin || webhook.createdBy == actor.id
       )(
         InvalidAction(
-          s"user ${actor.id} does not have dataset integration access to webhook ${webhook.id}"
+          s"user ${actor.nodeId} does not have dataset integration access to webhook ${webhook.id}"
         )
       )
     } yield webhook
