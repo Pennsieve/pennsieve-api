@@ -9223,6 +9223,32 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test(
+    "get dataset webhook integrations with ViewWebhook permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    addUserCollaborator(dataset, colleagueUser, Role.Viewer)
+    val (enabledWebhook1, _) = createWebhook()
+    enableWebhook(dataset, enabledWebhook1)
+    val (enabledWebhook2, _) = createWebhook()
+    enableWebhook(dataset, enabledWebhook2)
+
+    get(
+      s"/${dataset.nodeId}/webhook",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[Seq[DatasetIntegration]]
+      response.size shouldBe (2)
+      response.forall(di => di.datasetId.equals(dataset.id))
+      response.forall(di => di.enabledBy.equals(loggedInUser.id))
+      response.map(_.webhookId) should contain theSameElementsAs (Set(
+        enabledWebhook1.id,
+        enabledWebhook2.id
+      ))
+    }
+  }
+
   test("enable dataset webhook integration") {
     val dataset = createDataSet("test-dataset")
     val (webhook, _) = createWebhook()
@@ -9253,6 +9279,26 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       body should include(
         s"${colleagueUser.nodeId} does not have permission to access dataset ${dataset.id}"
       )
+    }
+  }
+
+  test(
+    "enable dataset webhook integration with ManageWebhooks permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    addUserCollaborator(dataset, colleagueUser, Role.Manager)
+
+    val (webhook, _) = createWebhook()
+
+    put(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[DatasetIntegration]
+      response.datasetId should equal(dataset.id)
+      response.webhookId should equal(webhook.id)
+      response.enabledBy should equal(colleagueUser.id)
     }
   }
 
@@ -9288,6 +9334,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response should equal(1)
     }
   }
+
   test(
     "cannot disable dataset webhook integration without ManageWebhook permission on dataset"
   ) {
@@ -9304,6 +9351,26 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       body should include(
         s"${colleagueUser.nodeId} does not have permission to access dataset ${dataset.id}"
       )
+    }
+  }
+
+  test(
+    "disable dataset webhook integration with ManageWebhooks permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    addUserCollaborator(dataset, colleagueUser, Role.Manager)
+
+    val (webhook, _) = createWebhook()
+
+    enableWebhook(dataset, webhook)
+
+    delete(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[Int]
+      response should equal(1)
     }
   }
 
