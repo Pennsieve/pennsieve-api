@@ -2931,8 +2931,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("""user1 creates data set that belongs to org
-    | and superAdmin switches ownership to user2, belonging to the same org
-    | user1 should be made manager and user2 be made owner""".stripMargin) {
+      | and superAdmin switches ownership to user2, belonging to the same org
+      | user1 should be made manager and user2 be made owner""".stripMargin) {
 
     val myDS = createDataSet("My DataSet")
 
@@ -3012,8 +3012,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("""user1 creates data set that belongs to org
-         |and user2 switches ownership to user2, belonging to the same org
-         | should not work""".stripMargin) {
+      |and user2 switches ownership to user2, belonging to the same org
+      | should not work""".stripMargin) {
     // create
     val myDS = createDataSet("My DataSet")
 
@@ -3029,8 +3029,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("""user1 creates data set that belongs to org
-         |and switches ownership to user2, not belonging to the same org
-         |we should get a 404""".stripMargin) {
+      |and switches ownership to user2, not belonging to the same org
+      |we should get a 404""".stripMargin) {
     // create
     val myDS = createDataSet("My DataSet")
 
@@ -3046,8 +3046,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("""user1 creates data set that belongs to org
-         |and switches ownership to user2, belonging to the same org
-         |then tries to get it back and gets a 403""".stripMargin) {
+      |and switches ownership to user2, belonging to the same org
+      |then tries to get it back and gets a 403""".stripMargin) {
     // create
     val myDS = createDataSet("My DataSet")
 
@@ -3720,8 +3720,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   // 6. user creates data set that belongs to org then attempts to share it with a system team
   // system teams cannot be added by users
   test("""system team user creates data set that belongs to org
-         |then shares it with a system team
-         |users cannot perform this action""") {
+      |then shares it with a system team
+      |users cannot perform this action""") {
     // create
     val myDS = createDataSet("My DataSet")
 
@@ -8745,7 +8745,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       s"/${dataset.nodeId}/ignore-files",
       request,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) { status shouldBe 200 }
+    ) {
+      status shouldBe 200
+    }
 
     val updatedIgnoreFiles = Seq(
       DatasetIgnoreFileDTO("file4.py"),
@@ -8785,7 +8787,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       s"/${dataset.nodeId}/ignore-files",
       request,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) { status shouldBe 200 }
+    ) {
+      status shouldBe 200
+    }
 
     val deleteRequest = write(Seq())
     putJson(
@@ -9175,4 +9179,218 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       )
     }
   }
+
+  test("get enabled dataset webhook integrations") {
+    val dataset = createDataSet("test-dataset")
+    val (enabledWebhook1, _) = createWebhook()
+    val (_, _) = createWebhook()
+    val (enabledWebhook2, _) = createWebhook()
+
+    enableWebhook(dataset, enabledWebhook1)
+    enableWebhook(dataset, enabledWebhook2)
+
+    get(
+      s"/${dataset.nodeId}/webhook",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[Seq[DatasetIntegration]]
+      response.size shouldBe (2)
+      response.forall(di => di.datasetId.equals(dataset.id))
+      response.forall(di => di.enabledBy.equals(loggedInUser.id))
+      response.map(_.webhookId) should contain theSameElementsAs (Set(
+        enabledWebhook1.id,
+        enabledWebhook2.id
+      ))
+    }
+  }
+
+  test(
+    "cannot get dataset webhook integrations without ViewWebhook permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    val (webhook, _) = createWebhook()
+    enableWebhook(dataset, webhook)
+
+    get(
+      s"/${dataset.nodeId}/webhook",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+      body should include(
+        s"${colleagueUser.nodeId} does not have permission to access dataset ${dataset.id}"
+      )
+    }
+  }
+
+  test(
+    "get dataset webhook integrations with ViewWebhook permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    addUserCollaborator(dataset, colleagueUser, Role.Viewer)
+    val (enabledWebhook1, _) = createWebhook()
+    enableWebhook(dataset, enabledWebhook1)
+    val (enabledWebhook2, _) = createWebhook()
+    enableWebhook(dataset, enabledWebhook2)
+
+    get(
+      s"/${dataset.nodeId}/webhook",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[Seq[DatasetIntegration]]
+      response.size shouldBe (2)
+      response.forall(di => di.datasetId.equals(dataset.id))
+      response.forall(di => di.enabledBy.equals(loggedInUser.id))
+      response.map(_.webhookId) should contain theSameElementsAs (Set(
+        enabledWebhook1.id,
+        enabledWebhook2.id
+      ))
+    }
+  }
+
+  test("enable dataset webhook integration") {
+    val dataset = createDataSet("test-dataset")
+    val (webhook, _) = createWebhook()
+
+    put(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[DatasetIntegration]
+      response.datasetId should equal(dataset.id)
+      response.webhookId should equal(webhook.id)
+      response.enabledBy should equal(loggedInUser.id)
+    }
+  }
+
+  test(
+    "cannot enable dataset webhook integration without ManageWebhook permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    val (webhook, _) = createWebhook()
+
+    put(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+      body should include(
+        s"${colleagueUser.nodeId} does not have permission to access dataset ${dataset.id}"
+      )
+    }
+  }
+
+  test(
+    "enable dataset webhook integration with ManageWebhooks permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    addUserCollaborator(dataset, colleagueUser, Role.Manager)
+
+    val (webhook, _) = createWebhook()
+
+    put(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[DatasetIntegration]
+      response.datasetId should equal(dataset.id)
+      response.webhookId should equal(webhook.id)
+      response.enabledBy should equal(colleagueUser.id)
+    }
+  }
+
+  test("cannot enable dataset webhook integration if webhook is not public") {
+    val dataset = createDataSet("test-dataset")
+    addUserCollaborator(dataset, colleagueUser, Role.Manager)
+
+    val (webhook, _) = createWebhook(isPrivate = true)
+    put(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+      body should include(
+        s"${colleagueUser.nodeId} does not have dataset integration access to webhook ${webhook.id}"
+      )
+    }
+
+  }
+
+  test("disable dataset webhook integration") {
+    val dataset = createDataSet("test-dataset")
+    val (webhook, _) = createWebhook()
+
+    enableWebhook(dataset, webhook)
+
+    delete(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[Int]
+      response should equal(1)
+    }
+  }
+
+  test(
+    "cannot disable dataset webhook integration without ManageWebhook permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    val (webhook, _) = createWebhook()
+
+    enableWebhook(dataset, webhook)
+
+    delete(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+      body should include(
+        s"${colleagueUser.nodeId} does not have permission to access dataset ${dataset.id}"
+      )
+    }
+  }
+
+  test(
+    "disable dataset webhook integration with ManageWebhooks permission on dataset"
+  ) {
+    val dataset = createDataSet("test-dataset")
+    addUserCollaborator(dataset, colleagueUser, Role.Manager)
+
+    val (webhook, _) = createWebhook()
+
+    enableWebhook(dataset, webhook)
+
+    delete(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[Int]
+      response should equal(1)
+    }
+  }
+
+  test("cannot disable dataset webhook integration if webhook is not public") {
+    val dataset = createDataSet("test-dataset")
+    addUserCollaborator(dataset, colleagueUser, Role.Manager)
+
+    val (webhook, _) = createWebhook(isPrivate = true)
+    enableWebhook(dataset, webhook)
+
+    delete(
+      s"/${dataset.nodeId}/webhook/${webhook.id}",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+      body should include(
+        s"${colleagueUser.nodeId} does not have dataset integration access to webhook ${webhook.id}"
+      )
+    }
+
+  }
+
 }

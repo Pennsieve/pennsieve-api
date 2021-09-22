@@ -32,13 +32,14 @@ import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.db.{
   CollectionMapper,
   ContributorMapper,
+  DatasetIntegrationsMapper,
   DatasetPublicationStatusMapper,
   DatasetTeamMapper,
   DatasetUserMapper,
   DatasetsMapper,
   ExternalFilesMapper,
   PackagesMapper,
-  WebhookEventSubcriptionsMapper,
+  WebhookEventSubscriptionsMapper,
   WebhookEventTypesMapper,
   WebhooksMapper
 }
@@ -57,7 +58,8 @@ import shapeless.syntax.inject._
 import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
 
-trait DatabaseContainer { self: Container =>
+trait DatabaseContainer {
+  self: Container =>
   val postgresHost: String = config.as[String]("postgres.host")
   val postgresPort: Int = config.as[Int]("postgres.port")
   val postgresDatabaseName: String = config.as[String]("postgres.database")
@@ -84,7 +86,8 @@ trait DatabaseContainer { self: Container =>
   lazy val db: Database = postgresDatabase.forURL
 }
 
-trait DataDBContainer { self: Container =>
+trait DataDBContainer {
+  self: Container =>
   lazy val dataPostgresHost: String = config.as[String]("data.postgres.host")
   lazy val dataPostgresPort: Int = config.as[Int]("data.postgres.port")
   lazy val dataPostgresDatabase: String =
@@ -106,7 +109,8 @@ trait DataDBContainer { self: Container =>
   lazy val dataDB: Database = postgresDataDatabase.forURL
 }
 
-trait MessageTemplatesContainer { self: Container =>
+trait MessageTemplatesContainer {
+  self: Container =>
 
   lazy val host: String = config.as[String]("email.host")
   lazy val discoverHost: String = config.as[String]("discover_app.host")
@@ -142,7 +146,8 @@ class SecureContainer(
   override lazy val db: Database = _db
 }
 
-trait CoreContainer extends UserManagerContainer { self: Container =>
+trait CoreContainer extends UserManagerContainer {
+  self: Container =>
 
   val userInviteManager: UserInviteManager
   val organizationManager: OrganizationManager
@@ -155,7 +160,8 @@ trait InsecureCoreContainer
     with OrganizationManagerContainer
     with TermsOfServiceManagerContainer
     with TokenManagerContainer
-    with ContextLoggingContainer { self: Container =>
+    with ContextLoggingContainer {
+  self: Container =>
 
   lazy val userInviteManager: UserInviteManager = new UserInviteManager(db)
 }
@@ -177,7 +183,8 @@ trait SecureCoreContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
     with WebhookManagerContainer
-    with DatasetAssetsContainer { self: SecureContainer =>
+    with DatasetAssetsContainer {
+  self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
     new AnnotationManager(self.organization, db)
@@ -291,11 +298,13 @@ trait ChangelogContainer {
 
 }
 
-trait RequestContextContainer extends OrganizationContainer { self: Container =>
+trait RequestContextContainer extends OrganizationContainer {
+  self: Container =>
   val user: User
 }
 
-trait OrganizationContainer { self: Container =>
+trait OrganizationContainer {
+  self: Container =>
   val organization: Organization
 }
 
@@ -306,7 +315,8 @@ trait DatasetContainer {
 trait DatasetManagerContainer
     extends DatasetMapperContainer
     with DatabaseContainer
-    with RequestContextContainer { self: Container =>
+    with RequestContextContainer {
+  self: Container =>
 
   lazy val datasetManager: DatasetManager =
     new DatasetManager(db, user, datasetsMapper)
@@ -315,13 +325,15 @@ trait DatasetManagerContainer
 trait DatasetPreviewManagerContainer
     extends DatasetMapperContainer
     with DatabaseContainer
-    with RequestContextContainer { self: Container =>
+    with RequestContextContainer {
+  self: Container =>
 
   lazy val datasetPreviewManager: DatasetPreviewManager =
     new DatasetPreviewManager(db, datasetsMapper)
 }
 
-trait DatasetMapperContainer { self: OrganizationContainer =>
+trait DatasetMapperContainer {
+  self: OrganizationContainer =>
 
   lazy val datasetsMapper: DatasetsMapper = new DatasetsMapper(
     self.organization
@@ -332,7 +344,8 @@ trait ContributorManagerContainer
     extends OrganizationContainer
     with UserManagerContainer
     with DatabaseContainer
-    with RequestContextContainer { self: Container =>
+    with RequestContextContainer {
+  self: Container =>
 
   lazy val contributorsMapper: ContributorMapper = new ContributorMapper(
     self.organization
@@ -346,7 +359,8 @@ trait ContributorManagerContainer
 trait CollectionManagerContainer
     extends OrganizationContainer
     with DatabaseContainer
-    with RequestContextContainer { self: Container =>
+    with RequestContextContainer {
+  self: Container =>
 
   lazy val collectionMapper: CollectionMapper =
     new CollectionMapper(self.organization)
@@ -362,7 +376,8 @@ trait DatasetAssetsContainer {
     new DatasetAssetsManager(db, datasetsMapper)
 }
 
-trait ExternalFilesMapperContainer { self: OrganizationContainer =>
+trait ExternalFilesMapperContainer {
+  self: OrganizationContainer =>
   lazy val externalFilesMapper: ExternalFilesMapper =
     new ExternalFilesMapper(self.organization)
 }
@@ -383,30 +398,35 @@ trait PackageContainer {
     new PackageManager(datasetManager)
 }
 
-trait OrganizationManagerContainer { self: DatabaseContainer =>
+trait OrganizationManagerContainer {
+  self: DatabaseContainer =>
   lazy val organizationManager: OrganizationManager = new OrganizationManager(
     db
   )
 }
 
-trait TokenManagerContainer { self: DatabaseContainer =>
+trait TokenManagerContainer {
+  self: DatabaseContainer =>
   lazy val tokenManager: TokenManager = new TokenManager(db)
 }
 
-trait TermsOfServiceManagerContainer { self: DatabaseContainer =>
+trait TermsOfServiceManagerContainer {
+  self: DatabaseContainer =>
   lazy val pennsieveTermsOfServiceManager: PennsieveTermsOfServiceManager =
     new PennsieveTermsOfServiceManager(db)
   lazy val customTermsOfServiceManager: CustomTermsOfServiceManager =
     new CustomTermsOfServiceManager(db)
 }
 
-trait UserManagerContainer extends DatabaseContainer { self: Container =>
+trait UserManagerContainer extends DatabaseContainer {
+  self: Container =>
   lazy val userManager = new UserManager(db)
 }
 
 trait TimeSeriesManagerContainer
     extends OrganizationContainer
-    with DatabaseContainer { self: Container =>
+    with DatabaseContainer {
+  self: Container =>
   lazy val timeSeriesManager: TimeSeriesManager =
     new TimeSeriesManager(db, organization)
 }
@@ -417,7 +437,8 @@ trait FilesManagerContainer
     with PackagesMapperContainer
     with DatabaseContainer
     with DataDBContainer
-    with StorageContainer { self: Container =>
+    with StorageContainer {
+  self: Container =>
   lazy val fileManager: FileManager =
     new FileManager(packageManager, organization)
 }
@@ -432,7 +453,8 @@ trait ExternalFilesContainer extends ExternalFilesMapperContainer {
 
 trait ExternalPublicationContainer
     extends OrganizationContainer
-    with DatabaseContainer { self: Container =>
+    with DatabaseContainer {
+  self: Container =>
 
   lazy val externalPublicationManager =
     new ExternalPublicationManager(db, organization)
@@ -440,7 +462,8 @@ trait ExternalPublicationContainer
 
 trait DimensionManagerContainer
     extends DatabaseContainer
-    with OrganizationContainer { self: Container =>
+    with OrganizationContainer {
+  self: Container =>
 
   lazy val dimensionManager: DimensionManager =
     new DimensionManager(db, organization)
@@ -461,24 +484,28 @@ trait ContextLoggingContainer {
 trait WebhookManagerContainer
     extends OrganizationContainer
     with DatabaseContainer
-    with RequestContextContainer { self: Container =>
+    with RequestContextContainer {
+  self: Container =>
 
   lazy val webhooksMapper: WebhooksMapper = new WebhooksMapper(
     self.organization
   )
 
-  lazy val webhookEventSubcriptionsMapper: WebhookEventSubcriptionsMapper =
-    new WebhookEventSubcriptionsMapper(self.organization)
+  lazy val webhookEventSubscriptionsMapper: WebhookEventSubscriptionsMapper =
+    new WebhookEventSubscriptionsMapper(self.organization)
 
   lazy val webhookEventTypesMapper: WebhookEventTypesMapper =
     new WebhookEventTypesMapper(self.organization)
+
+  lazy val datasetIntegrationsMapper: DatasetIntegrationsMapper =
+    new DatasetIntegrationsMapper(self.organization)
 
   lazy val webhookManager: WebhookManager =
     new WebhookManager(
       db,
       user,
       webhooksMapper,
-      webhookEventSubcriptionsMapper,
+      webhookEventSubscriptionsMapper,
       webhookEventTypesMapper
     )
 

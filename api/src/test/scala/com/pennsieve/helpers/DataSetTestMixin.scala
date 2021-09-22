@@ -22,6 +22,7 @@ import com.pennsieve.models.{
   DataUseAgreement,
   Dataset,
   DatasetAsset,
+  DatasetIntegration,
   DatasetState,
   Degree,
   License,
@@ -32,6 +33,7 @@ import com.pennsieve.models.{
   Package,
   PackageState,
   PackageType,
+  Role,
   Team,
   User,
   Webhook,
@@ -319,5 +321,35 @@ trait DataSetTestMixin {
       case Left(error) => throw error
       case Right(value) => value
     }
+  }
+
+  def addUserCollaborator(
+    dataset: Dataset,
+    collaborator: User,
+    role: Role,
+    container: SecureAPIContainer = secureContainer
+  )(implicit
+    ec: ExecutionContext
+  ): Option[Role] = {
+    container.datasetManager
+      .addUserCollaborator(dataset, collaborator, role)
+      .await
+      .right
+      .get
+      .oldRole
+  }
+
+  def enableWebhook(
+    dataset: Dataset,
+    webhook: Webhook,
+    container: SecureAPIContainer = secureContainer
+  )(implicit
+    ec: ExecutionContext
+  ): DatasetIntegration = {
+    container.datasetManager
+      .enableWebhook(dataset, webhook)
+      .await
+      .right
+      .get
   }
 }

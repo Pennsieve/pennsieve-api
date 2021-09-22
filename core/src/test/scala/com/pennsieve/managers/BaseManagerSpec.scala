@@ -63,8 +63,7 @@ trait ManagerSpec
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with PersistantTestContainers
-    with PostgresDockerContainer {
-  self: TestSuite =>
+    with PostgresDockerContainer { self: TestSuite =>
 
   var userManager: UserManager = _
   var userInviteManager: UserInviteManager = _
@@ -270,18 +269,24 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): WebhookManager = {
-    val webhooksMapper = new WebhooksMapper(organization)
-    val webhookEventSubscriptionsMapper = new WebhookEventSubcriptionsMapper(
-      organization
-    )
-    val webhookEventTypesMapper = new WebhookEventTypesMapper(organization)
+
+    val webhooksMapper: WebhooksMapper =
+      new WebhooksMapper(organization)
+    val webhookEventSubscriptionsMapper: WebhookEventSubscriptionsMapper =
+      new WebhookEventSubscriptionsMapper(organization)
+    val webhookEventTypesMapper: WebhookEventTypesMapper =
+      new WebhookEventTypesMapper(organization)
+    val datasetIntegrationsMapper: DatasetIntegrationsMapper =
+      new DatasetIntegrationsMapper(organization)
+
     new WebhookManager(
-      database,
-      user,
-      webhooksMapper,
-      webhookEventSubscriptionsMapper,
-      webhookEventTypesMapper
+      db = database,
+      actor = user,
+      webhooksMapper = webhooksMapper,
+      webhookEventSubscriptionsMapper = webhookEventSubscriptionsMapper,
+      webhookEventTypesMapper = webhookEventTypesMapper
     )
+
   }
 
   val provenance = "from unit test"

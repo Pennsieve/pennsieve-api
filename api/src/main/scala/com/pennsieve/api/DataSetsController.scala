@@ -4478,6 +4478,105 @@ class DataSetsController(
     }
   }
 
+  get(
+    "/:id/webhook",
+    operation(
+      apiOperation[Seq[DatasetIntegration]]("getIntegrations")
+        summary "Return the enabled integrations for a given dataset. Returns a list of DatasetIntegration."
+        parameters (
+          pathParam[String]("id").description("dataset id")
+        )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Seq[DatasetIntegration]] =
+        for {
+          secureContainer <- getSecureContainer
+          datasetId <- paramT[String]("id")
+          dataset <- secureContainer.datasetManager
+            .getByNodeId(datasetId)
+            .orNotFound
+          _ <- secureContainer
+            .authorizeDataset(Set(DatasetPermission.ViewWebhooks))(dataset)
+            .coreErrorToActionResult
+          datasetIntegrations <- secureContainer.datasetManager
+            .getIntegrations(dataset)
+            .coreErrorToActionResult
+        } yield datasetIntegrations
+      override val is = result.value.map(OkResult(_))
+    }
+
+  }
+  put(
+    "/:id/webhook/:webhookId",
+    operation(
+      apiOperation[DatasetIntegration]("enableIntegration")
+        summary "Enable integration for a given dataset. Returns a DatasetIntegration."
+        parameters (
+          pathParam[String]("id").description("dataset id"),
+          pathParam[Int]("webhookId").description("webhook id")
+      )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, DatasetIntegration] =
+        for {
+          secureContainer <- getSecureContainer
+          datasetId <- paramT[String]("id")
+          webhookId <- paramT[Int]("webhookId")
+          dataset <- secureContainer.datasetManager
+            .getByNodeId(datasetId)
+            .orNotFound
+          _ <- secureContainer
+            .authorizeDataset(Set(DatasetPermission.ManageWebhooks))(dataset)
+            .coreErrorToActionResult
+          webhook <- secureContainer.webhookManager
+            .getForIntegration(webhookId)
+            .coreErrorToActionResult
+          datasetIntegration <- secureContainer.datasetManager
+            .enableWebhook(dataset, webhook)
+            .coreErrorToActionResult
+        } yield datasetIntegration
+      override val is = result.value.map(OkResult(_))
+    }
+
+  }
+
+  delete(
+    "/:id/webhook/:webhookId",
+    operation(
+      apiOperation[Int]("disableIntegration")
+        summary "Disable integration for a given dataset. Returns the number of disabled integrations."
+        parameters (
+          pathParam[String]("id").description("dataset id"),
+          pathParam[Int]("webhookId").description("webhook id")
+      )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Int] =
+        for {
+          secureContainer <- getSecureContainer
+          datasetId <- paramT[String]("id")
+          webhookId <- paramT[Int]("webhookId")
+          dataset <- secureContainer.datasetManager
+            .getByNodeId(datasetId)
+            .orNotFound
+          _ <- secureContainer
+            .authorizeDataset(Set(DatasetPermission.ManageWebhooks))(dataset)
+            .coreErrorToActionResult
+          webhook <- secureContainer.webhookManager
+            .getForIntegration(webhookId)
+            .coreErrorToActionResult
+          deletedRowCount <- secureContainer.datasetManager
+            .disableWebhook(dataset, webhook)
+            .coreErrorToActionResult
+        } yield deletedRowCount
+      override val is = result.value.map(OkResult(_))
+    }
+
+  }
+
   /**
     * Demo / sandbox users are a special case. They should not be able to share
     * datasets under any circumstances.

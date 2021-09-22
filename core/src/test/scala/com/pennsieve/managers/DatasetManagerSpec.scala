@@ -25,6 +25,7 @@ import com.pennsieve.models._
 import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.OptionValues._
 import org.scalatest.Matchers._
+import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -625,4 +626,144 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(isLocked(dataset, superAdmin))
     assert(isLocked(dataset, otherTeamUser))
   }
+
+  "enableWebhook" should "create a DatasetIntegration for the given dataset and webhook" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (webhook, _) = createWebhook(creatingUser = user)
+    val dm = datasetManager(user = user)
+
+    val result = dm.enableWebhook(dataset, webhook).await
+    assert(result.isRight)
+    val returned = result.right.get
+    assert(returned.datasetId == dataset.id)
+    assert(returned.webhookId == webhook.id)
+    assert(returned.enabledBy == user.id)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.length == 1)
+
+    val actual = actualIntegrations.head
+    assert(actual.equals(returned))
+  }
+
+  "enableWebhook" should "should be idempotent" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (webhook, _) = createWebhook(creatingUser = user)
+    val dm = datasetManager(user = user)
+
+    val firstResult = dm.enableWebhook(dataset, webhook).await.right.get
+    val secondResultEither = dm.enableWebhook(dataset, webhook).await
+    assert(secondResultEither.isRight)
+    val secondResult = secondResultEither.right.get
+
+    assert(firstResult.equals(secondResult))
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.length == 1)
+
+    val actual = actualIntegrations.head
+    assert(actual.equals(firstResult))
+  }
+
+  "enableWebhook" should "should ignore redundant invocations by a second user" in {
+    val user1 = createUser()
+    val dataset = createDataset(user = user1)
+    val (webhook, _) = createWebhook(creatingUser = user1)
+    val dm1 = datasetManager(user = user1)
+
+    val firstResult = dm1.enableWebhook(dataset, webhook).await.right.get
+
+    val user2 = createUser()
+    val dm2 = datasetManager(user = user2)
+    val secondResultEither = dm2.enableWebhook(dataset, webhook).await
+    assert(secondResultEither.isRight)
+    val secondResult = secondResultEither.right.get
+
+    assert(firstResult.equals(secondResult))
+
+    val actualIntegrations = database
+      .run(
+        dm2.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.length == 1)
+
+    val actual = actualIntegrations.head
+    assert(actual.equals(firstResult))
+  }
+
+  "disableWebhook" should "delete the DatasetIntegration for the given dataset and webhook" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (webhook, _) = createWebhook(creatingUser = user)
+    val dm = datasetManager(user = user)
+
+    dm.enableWebhook(dataset, webhook).await
+
+    val result = dm.disableWebhook(dataset, webhook).await
+    assert(result.isRight)
+    val deletedRowCount = result.right.get
+    assert(deletedRowCount == 1)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.isEmpty)
+  }
+
+  "disableWebhook" should "return 0 if the given webhook is not enabled for the given dataset" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (webhook1, _) = createWebhook(creatingUser = user)
+    val (webhook2, _) =
+      createWebhook(description = "Test webhook 2", creatingUser = user)
+
+    val dm = datasetManager(user = user)
+
+    val enabledWebhook = dm.enableWebhook(dataset, webhook2).await.right.get
+
+    val result = dm.disableWebhook(dataset, webhook1).await
+    assert(result.isRight)
+
+    val deletedRowCount = result.right.get
+    assert(deletedRowCount == 0)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.length == 1)
+
+    val actual = actualIntegrations.head
+    assert(actual.equals(enabledWebhook))
+  }
+
 }

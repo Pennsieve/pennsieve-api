@@ -16,11 +16,11 @@
 
 package com.pennsieve.db
 
+import com.pennsieve.domain.Error
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.models._
 
 import java.time.ZonedDateTime
-
 import scala.concurrent.{ ExecutionContext, Future }
 
 final class DatasetIntegrationsTable(schema: String, tag: Tag)
@@ -28,9 +28,13 @@ final class DatasetIntegrationsTable(schema: String, tag: Tag)
 
   // set by the database
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
+
   def webhookId = column[Int]("webhook_id")
+
   def datasetId = column[Int]("dataset_id")
+
   def enabledBy = column[Int]("enabled_by")
+
   def enabledOn =
     column[ZonedDateTime]("enabled_on", O.AutoInc) // set by the database on insert
 
@@ -39,4 +43,38 @@ final class DatasetIntegrationsTable(schema: String, tag: Tag)
 }
 
 class DatasetIntegrationsMapper(val organization: Organization)
-    extends TableQuery(new DatasetIntegrationsTable(organization.schemaId, _))
+    extends TableQuery(new DatasetIntegrationsTable(organization.schemaId, _)) {
+
+  def getByDatasetAndWebhookId(
+    datasetId: Int,
+    webhookId: Int
+  ): Query[DatasetIntegrationsTable, DatasetIntegration, Seq] =
+    this
+      .filter(_.datasetId === datasetId)
+      .filter(_.webhookId === webhookId)
+
+  def getByDatasetId(
+    datasetId: Int
+  ): Query[DatasetIntegrationsTable, DatasetIntegration, Seq] =
+    this
+      .filter(_.datasetId === datasetId)
+
+  def getOrCreate(
+    webhookId: Int,
+    datasetId: Int,
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): DBIO[DatasetIntegration] = {
+    val lookUp = this
+      .filter(x => x.datasetId === datasetId && x.webhookId === webhookId)
+      .result
+    for {
+      existing <- lookUp.headOption
+      row = existing getOrElse DatasetIntegration(webhookId, datasetId, user.id)
+      _ <- this.insertOrUpdate(row)
+      populatedRow <- lookUp.head
+    } yield populatedRow
+  }
+
+}
