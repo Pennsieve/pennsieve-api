@@ -42,7 +42,7 @@ package object Utilities {
       : Option[String] = ForbiddenPercentSign findFirstIn name
     //since we're using a negative lookahead, the elements won't be captured the same way and we cannot use the same method to test if the regex found something
 
-    allCharactersValid && !badPercentSignDetected.isDefined && !severalWhiteSpacesInARow.isDefined
+    allCharactersValid && badPercentSignDetected.isEmpty && severalWhiteSpacesInARow.isEmpty
   }
 
   def getPennsieveExtension(fileName: String): String = {
@@ -112,7 +112,7 @@ package object Utilities {
         .replaceAll("`", "%60")
 
       // Replace % characters not valid escape codes.
-      val escapedString = "^[^(\\p{L}\\p{N}() %*_\\-'.!)]".r
+      val escapedString = "^[^\\p{L}\\p{N}() %*_\\-'.!]".r
         .replaceAllIn(result, "_")
 
       //trim string if exceeds 255 characters
