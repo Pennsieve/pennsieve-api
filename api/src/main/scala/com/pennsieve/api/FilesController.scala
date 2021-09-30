@@ -340,7 +340,7 @@ class FilesController(
 
       files <- Either
         .fromOption[CoreError, NonEmptyList[String]](
-          NonEmptyList.fromList(packagePreview.files.map(_.fileName)),
+          NonEmptyList.fromList(packagePreview.files.map(_.escapedFileName)),
           ServiceError("missing list of uploaded files")
         )
         .toEitherT[Future]
