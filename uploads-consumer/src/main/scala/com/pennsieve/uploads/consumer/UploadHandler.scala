@@ -457,7 +457,13 @@ object UploadHandler {
 
       _ <- scanResult match {
         case Clean =>
-          handleCleanAsset(organization, asset, storageS3URI, uploadPayload)
+          handleCleanAsset(
+            organization,
+            asset,
+            uploadS3URI,
+            storageS3URI,
+            uploadPayload
+          )
         case Infected =>
           handleInfectedAsset(organization, asset, uploadPayload)
         // This should never happen because ClamD only returns Clean and Infected
@@ -474,6 +480,7 @@ object UploadHandler {
   def handleCleanAsset(
     organization: Organization,
     asset: S3Object,
+    uploadS3URI: AmazonS3URI,
     storageS3URI: AmazonS3URI,
     uploadPayload: Upload
   )(implicit
@@ -488,9 +495,7 @@ object UploadHandler {
     implicit val datasetUser = new DatasetUserMapper(organization)
     implicit val datasetTeam = new DatasetTeamMapper(organization)
 
-    log.tierContext.info(
-      s"Clean. Moving s3://${asset.getBucketName}/${asset.getKey} to $storageS3URI"
-    )
+    log.tierContext.info(s"Clean. Moving $uploadS3URI to $storageS3URI")
 
     for {
       dataset <- datasets.getDataset(uploadPayload.datasetId)
@@ -516,8 +521,8 @@ object UploadHandler {
       updateCount <- updateFile(
         files,
         uploadPayload.packageId,
-        existingBucket = asset.getBucketName,
-        existingKey = asset.getKey,
+        existingBucket = uploadS3URI.getBucket,
+        existingKey = uploadS3URI.getKey,
         newBucket = storageS3URI.getBucket,
         newKey = storageS3URI.getKey,
         fileState
