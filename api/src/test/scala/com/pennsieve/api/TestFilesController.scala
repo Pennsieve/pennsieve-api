@@ -284,7 +284,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
       val pkg1 = packageManager.get(job1.packageId).await.right.value
       val parent1 = packageManager.get(pkg1.parentId.get).await.right.value
 
-      assert(pkg1.name == "test%2BIMG")
+      assert(pkg1.name == "test+IMG")
       assert(parent1.name == destination.name)
       assert(parent1.parentId.isEmpty)
 
@@ -884,7 +884,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
       "Image",
       None,
       None,
-      Some("test%2BIMG")
+      Some("test_IMG")
     )
 
     val request = UploadCompleteRequest(preview, None)
