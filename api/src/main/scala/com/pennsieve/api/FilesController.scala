@@ -399,7 +399,7 @@ class FilesController(
           } yield FileChecksum(c, h.hash)
 
           UploadSourceFile(
-            s3File.escapedFileName,
+            s3File.fileName,
             fileType,
             FilesController.generateS3Key(
               s3File.escapedFileName,
@@ -733,8 +733,7 @@ class FilesController(
         for {
           pkg <- secureContainer.packageManager
             .create(
-              packagePreview.escapedPackageName
-                .getOrElse(escapeName(packagePreview.packageName)),
+              packagePreview.packageName,
               packagePreview.packageType,
               PackageState.UNAVAILABLE,
               dataset,
