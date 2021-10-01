@@ -919,7 +919,8 @@ class PackagesController(
                       if (ext == "") p.packageName
                       else s"${p.packageName}.${ext}"
                     } else {
-                      FilenameUtils.getName(p.s3Key)
+                      p.fileName
+//                      FilenameUtils.getName(p.s3Key)
                     }
                   },
                   packageName = p.packageName,
