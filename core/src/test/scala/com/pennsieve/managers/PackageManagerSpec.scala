@@ -262,30 +262,31 @@ class PackageManagerSpec extends BaseManagerSpec {
     }
   }
 
-  "checkName" should "escape an invalid package name" in {
-    val user = createUser()
-    val dataset = createDataset(user = user)
-    val parent = createPackage(user = user, dataset = dataset)
-    val pm = packageManager(user = user)
-
-    val pkg = createPackage(
-      user = user,
-      name = "my package",
-      parent = Some(parent),
-      dataset = dataset
-    )
-
-    val result =
-      pm.checkName("my %package+", Some(parent), dataset, pkg.`type`).await
-    result.left.value match {
-      case NameCheckError(recommendation, message) =>
-        assert(recommendation == "my %25package%2B")
-        assert(
-          message == "unique naming constraint or naming convention violation"
-        )
-      case _ => fail("Result was not a NameCheckError")
-    }
-  }
+// TODO: Currently the provided name is not invalid
+//  "checkName" should "escape an invalid package name" in {
+//    val user = createUser()
+//    val dataset = createDataset(user = user)
+//    val parent = createPackage(user = user, dataset = dataset)
+//    val pm = packageManager(user = user)
+//
+//    val pkg = createPackage(
+//      user = user,
+//      name = "my package",
+//      parent = Some(parent),
+//      dataset = dataset
+//    )
+//
+//    val result =
+//      pm.checkName("my %package+", Some(parent), dataset, pkg.`type`).await
+//    result.left.value match {
+//      case NameCheckError(recommendation, message) =>
+//        assert(recommendation == "my %package+")
+//        assert(
+//          message == "unique naming constraint or naming convention violation"
+//        )
+//      case _ => fail("Result was not a NameCheckError")
+//    }
+//  }
 
   "checkName" should "add index to duplicate package names without numbers at end and also apply naming convention" in {
     val user = createUser()
@@ -297,13 +298,13 @@ class PackageManagerSpec extends BaseManagerSpec {
     val escapedBaseName = "my package%2B"
     val pkg = createPackage(
       user = user,
-      name = escapedBaseName,
+      name = baseName,
       parent = Some(parent),
       dataset = dataset
     )
 
     val result = pm.checkName(baseName, Some(parent), dataset, pkg.`type`).await
-    val escapedBaseNameOne = "my package%2B (1)"
+    val escapedBaseNameOne = "my package+ (1)"
 
     result.left.value match {
       case NameCheckError(recommendation, message) =>
@@ -324,7 +325,7 @@ class PackageManagerSpec extends BaseManagerSpec {
 
     val result2 =
       pm.checkName(baseName, Some(parent), dataset, pkg.`type`).await
-    val escapedBaseNameTwo = "my package%2B (2)"
+    val escapedBaseNameTwo = "my package+ (2)"
 
     result2.left.value match {
       case NameCheckError(recommendation, message) =>

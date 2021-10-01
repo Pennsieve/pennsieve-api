@@ -116,12 +116,12 @@ class PackageManager(datasetManager: DatasetManager) {
       _ <- FutureEitherHelpers.assert(name.trim.nonEmpty)(
         PredicateError("package name must not be empty")
       )
-
-      _ <- checkOrErrorT(isNameValid(name))(
-        PredicateError(
-          s"Invalid package name, please follow the naming conventions"
-        )
-      )
+//TODO: Update this to check for valid packageNames again. This should be different between packages and collections
+//      _ <- checkOrErrorT(isNameValid(name))(
+//        PredicateError(
+//          s"Invalid package name, please follow the naming conventions"
+//        )
+//      )
 
       createPackage = for {
         // If the package's name is taken use a generated recommendation

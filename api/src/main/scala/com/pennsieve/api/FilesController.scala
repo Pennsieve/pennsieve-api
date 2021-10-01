@@ -55,7 +55,7 @@ import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
 import com.pennsieve.managers.FileManager
 import com.pennsieve.managers.FileManager.UploadSourceFile
-import com.pennsieve.models.Utilities.escapeName
+//import com.pennsieve.models.Utilities.escapeName
 import com.pennsieve.models.{
   ChangelogEventDetail,
   CollectionUpload,
@@ -340,7 +340,7 @@ class FilesController(
 
       files <- Either
         .fromOption[CoreError, NonEmptyList[String]](
-          NonEmptyList.fromList(packagePreview.files.map(_.escapedFileName)),
+          NonEmptyList.fromList(packagePreview.files.map(_.fileName)),
           ServiceError("missing list of uploaded files")
         )
         .toEitherT[Future]
@@ -390,7 +390,7 @@ class FilesController(
     val files: List[UploadSourceFile] =
       preview.files.map { s3File: S3File =>
         {
-          val (_, extension) = splitFileName(s3File.escapedFileName)
+          val (_, extension) = splitFileName(s3File.fileName)
           val fileType = getFileType(extension)
 
           val checksum = for {
@@ -399,7 +399,7 @@ class FilesController(
           } yield FileChecksum(c, h.hash)
 
           UploadSourceFile(
-            s3File.escapedFileName,
+            s3File.fileName,
             fileType,
             FilesController.generateS3Key(
               s3File.escapedFileName,
@@ -733,8 +733,7 @@ class FilesController(
         for {
           pkg <- secureContainer.packageManager
             .create(
-              packagePreview.escapedPackageName
-                .getOrElse(escapeName(packagePreview.packageName)),
+              packagePreview.packageName,
               packagePreview.packageType,
               PackageState.UNAVAILABLE,
               dataset,
