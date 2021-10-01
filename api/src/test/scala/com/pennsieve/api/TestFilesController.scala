@@ -902,6 +902,7 @@ class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
             (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
           val pkg = packageManager.get(job.packageId).await.right.value
           val srcFiles = fileManager.getSources(pkg).await.right.value
+//          assert(srcFiles == 1)
           assert(
             srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr")
           )
