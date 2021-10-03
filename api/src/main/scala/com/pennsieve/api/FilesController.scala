@@ -77,7 +77,7 @@ import com.pennsieve.models.{
   User
 }
 import com.pennsieve.uploads._
-import com.pennsieve.core.utilities.cleanS3Key
+import com.pennsieve.models.Utilities.cleanS3Key
 import com.pennsieve.web.Settings
 import org.scalatra._
 import org.scalatra.swagger.Swagger

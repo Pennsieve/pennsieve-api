@@ -146,16 +146,6 @@ package object utilities {
   }
 
   /**
-    * Generate a clean S3 key from a string. This is used to map file-names and
-    * folder names to s3 key components
-    *
-    * @param key
-    * @return
-    */
-   def cleanS3Key(key: String): String =
-    key.replaceAll("[^a-zA-Z0-9./@-]", "_")
-
-  /**
     * Convert a display name to an UPPER_SNAKECASE slug
     *
     * Adapted from https://gist.github.com/sam/5213151
