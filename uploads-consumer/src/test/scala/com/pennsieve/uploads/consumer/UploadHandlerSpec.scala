@@ -612,7 +612,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       runHandler(jobId, payload).value should equal(Clean)
 
       getFiles(`package`).map(_.name) should equal(
-        Vector("hello!! weird%3Dfilename")
+        Vector("hello!! weird=filename")
       )
     }
 

@@ -87,7 +87,9 @@ package object Utilities {
     } else if (key == "..")
       "%2E%2E"
     else
-      "^[^\\p{L}\\p{N}() *_\\-'.!]".r.replaceAllIn(key, "_")
+      "^[^\\p{L}\\p{N}()*_ \\-'.!]".r
+        .replaceAllIn(key, "_")
+        .replaceAll("\\s+", " ")
   }
 
 //    key.replaceAll("[^a-zA-Z0-9./@-]", "_")
