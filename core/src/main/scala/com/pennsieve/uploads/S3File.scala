@@ -16,7 +16,6 @@
 
 package com.pennsieve.uploads
 import com.pennsieve.models.FileHash
-import com.pennsieve.models.FileHash._
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import com.pennsieve.models.Utilities._
@@ -32,17 +31,17 @@ case class S3File(
 
 object S3File {
   def apply(file: FileUpload): S3File =
-    S3File(file.uploadId, file.fileName, escapeName(file.fileName), file.size)
+    S3File(file.uploadId, file.fileName, cleanS3Key(file.fileName), file.size)
 
   def apply(uploadId: Int, fileName: String, size: Long): S3File =
-    S3File(Some(uploadId), fileName, escapeName(fileName), Some(size))
+    S3File(Some(uploadId), fileName, cleanS3Key(fileName), Some(size))
 
   def apply(
     uploadId: Option[Int],
     fileName: String,
     size: Option[Long]
   ): S3File =
-    S3File(uploadId, fileName, escapeName(fileName), size)
+    S3File(uploadId, fileName, cleanS3Key(fileName), size)
 
   implicit val decodeS3File: Decoder[S3File] =
     deriveDecoder[S3File]

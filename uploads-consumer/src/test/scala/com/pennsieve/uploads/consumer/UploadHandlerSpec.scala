@@ -219,7 +219,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       val `package`: Package = createPackage(dataset, `type` = PackageType.Text)
 
       val uploadKey: String = createUploadKey(jobId, "hello spaces.txt")
-      val storageKey: String = createStorageKey(jobId, "hello_spaces.txt")
+      val storageKey: String = createStorageKey(jobId, "hello spaces.txt")
 
       val upload: PutObjectResult = consumerContainer.s3
         .putObject(
@@ -612,7 +612,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       runHandler(jobId, payload).value should equal(Clean)
 
       getFiles(`package`).map(_.name) should equal(
-        Vector("hello!! weird%3Dfilename")
+        Vector("hello!! weird=filename")
       )
     }
 
@@ -799,9 +799,9 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
     val srcFiles = uploadKeysAndUploads.map {
       case (s3Key, _) => {
-        val fileName = escapeName(
+        val fileName =
           FilenameUtils.removeExtension(FilenameUtils.getName(s3Key))
-        )
+
         val (_, extension) = splitFileName(fileName)
         val fileType = getFileType(extension)
         UploadSourceFile(
