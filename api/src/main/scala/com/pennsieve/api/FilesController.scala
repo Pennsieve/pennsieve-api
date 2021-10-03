@@ -77,6 +77,7 @@ import com.pennsieve.models.{
   User
 }
 import com.pennsieve.uploads._
+import com.pennsieve.models.Utilities.cleanS3Key
 import com.pennsieve.web.Settings
 import org.scalatra._
 import org.scalatra.swagger.Swagger
@@ -124,6 +125,16 @@ object FilesController {
     if (usingUploadService) s"${user.id}/$importId/"
     else s"${user.email}/$importId/"
 
+  /**
+    * Determines S3 location for uploaded files
+    *
+    * @param file: actual file name/folder name on platform
+    * @param user
+    * @param importId
+    * @param hasPreview
+    * @param usingUploadService
+    * @return
+    */
   def generateS3Key(
     file: String,
     user: User,
@@ -133,7 +144,7 @@ object FilesController {
   ): String = {
     if (hasPreview) {
       s"${FilesController
-        .uploadsDirectory(user, importId, usingUploadService)}$file"
+        .uploadsDirectory(user, importId, usingUploadService)}${cleanS3Key(file)}"
     } else {
       file
     }
@@ -402,7 +413,7 @@ class FilesController(
             s3File.fileName,
             fileType,
             FilesController.generateS3Key(
-              s3File.escapedFileName,
+              s3File.fileName,
               user,
               preview.importId,
               hasPreview,
