@@ -47,7 +47,7 @@ import com.pennsieve.models.{
   PackageState,
   Upload
 }
-import com.pennsieve.core.utilities.cleanS3Key
+import com.pennsieve.models.Utilities.cleanS3Key
 import com.pennsieve.service.utilities.{ ContextLogger, LogContext }
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.uploads.consumer.antivirus.{
