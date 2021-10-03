@@ -23,7 +23,6 @@ import com.pennsieve.models.FileExtensions.fileTypeMap
 import com.pennsieve.models.{ FileType, Organization }
 import com.pennsieve.models.FileType.GenericData
 import com.pennsieve.models.Utilities.{
-  escapeName,
   getFullExtension,
   getPennsieveExtension
 }

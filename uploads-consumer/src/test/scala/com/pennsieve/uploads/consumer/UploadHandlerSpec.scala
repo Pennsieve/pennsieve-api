@@ -799,9 +799,9 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
     val srcFiles = uploadKeysAndUploads.map {
       case (s3Key, _) => {
-        val fileName = escapeName(
+        val fileName =
           FilenameUtils.removeExtension(FilenameUtils.getName(s3Key))
-        )
+
         val (_, extension) = splitFileName(fileName)
         val fileType = getFileType(extension)
         UploadSourceFile(

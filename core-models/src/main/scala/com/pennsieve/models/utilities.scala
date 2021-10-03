@@ -80,8 +80,17 @@ package object Utilities {
     * @param key
     * @return
     */
-  def cleanS3Key(key: String): String =
-    key.replaceAll("[^a-zA-Z0-9./@-]", "_")
+  def cleanS3Key(key: String): String = {
+    //  TODO: Allow for all unicode characters. Verify S3 restrictions
+    if (key == ".") {
+      "%2E"
+    } else if (key == "..")
+      "%2E%2E"
+    else
+      "^[^\\p{L}\\p{N}() *_\\-'.!]".r.replaceAllIn(key, "_")
+  }
+
+//    key.replaceAll("[^a-zA-Z0-9./@-]", "_")
 
   def escapeName(name: String): String = {
     if (name == ".")

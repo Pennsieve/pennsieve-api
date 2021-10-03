@@ -127,7 +127,7 @@ object BuildCopyRequests {
               } else {
                 ' '
               }}".trim)
-                .map(escapeName)
+                .map(cleanS3Key)
             )
 
           new CopyAction(
@@ -143,9 +143,9 @@ object BuildCopyRequests {
       files
         .map(file => {
           val packageKey =
-            joinKeys((fileDirectory +: parentPath :+ pkg.name).map(escapeName))
+            joinKeys((fileDirectory +: parentPath :+ pkg.name).map(cleanS3Key))
 
-          val fileKey = joinKeys(packageKey, escapeName(file.fileName))
+          val fileKey = joinKeys(packageKey, cleanS3Key(file.fileName))
 
           new CopyAction(
             pkg,
