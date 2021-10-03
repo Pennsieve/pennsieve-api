@@ -47,6 +47,7 @@ import com.pennsieve.models.{
   PackageState,
   Upload
 }
+import com.pennsieve.core.utilities.cleanS3Key
 import com.pennsieve.service.utilities.{ ContextLogger, LogContext }
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.uploads.consumer.antivirus.{
@@ -115,9 +116,6 @@ object UploadHandler {
   // `job-manifests` prefix is used for the ETL S3 trigger in order to dispatch workflows
   def manifestKey(importId: JobId): String =
     s"job-manifests/$importId/manifest.json"
-
-  private def cleanS3Key(key: String): String =
-    key.replaceAll("[^a-zA-Z0-9./@-]", "_")
 
   private def createStorageS3URI(
     organization: Organization,
