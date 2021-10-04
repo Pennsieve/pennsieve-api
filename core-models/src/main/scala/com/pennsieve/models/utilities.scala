@@ -89,6 +89,7 @@ package object Utilities {
       """[^\p{L}\p{N}()*_ \-'.!]""".r
         .replaceAllIn(key, "_")
         .replaceAll("\\s+", " ")
+        .trim
 
   }
 

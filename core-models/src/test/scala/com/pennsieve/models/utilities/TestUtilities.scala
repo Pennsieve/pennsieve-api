@@ -33,6 +33,10 @@ class TestUtilities extends WordSpecLike with Matchers {
       Utilities.cleanS3Key("file; 1") shouldBe "file_ 1"
     }
 
+    "names should be trimmed in" in {
+      Utilities.cleanS3Key(" hello ") shouldBe "hello"
+    }
+
     "preserve spaces in escaped keys" in {
       Utilities.cleanS3Key("My file") shouldBe "My file"
     }
