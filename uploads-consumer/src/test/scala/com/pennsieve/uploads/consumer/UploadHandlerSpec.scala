@@ -44,7 +44,6 @@ import com.pennsieve.db.OrganizationsMapper
 import com.pennsieve.managers.FileManager.UploadSourceFile
 import com.pennsieve.managers.{ DatasetManager, FileManager, PackageManager }
 import com.pennsieve.models
-import com.pennsieve.models.Utilities.escapeName
 import com.pennsieve.models.{
   Dataset,
   FileChecksum,

@@ -55,7 +55,6 @@ import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
 import com.pennsieve.managers.FileManager
 import com.pennsieve.managers.FileManager.UploadSourceFile
-//import com.pennsieve.models.Utilities.escapeName
 import com.pennsieve.models.{
   ChangelogEventDetail,
   CollectionUpload,

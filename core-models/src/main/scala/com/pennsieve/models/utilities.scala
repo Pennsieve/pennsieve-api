@@ -81,15 +81,16 @@ package object Utilities {
     * @return
     */
   def cleanS3Key(key: String): String = {
-    //  TODO: Allow for all unicode characters. Verify S3 restrictions
     if (key == ".") {
       "%2E"
     } else if (key == "..")
       "%2E%2E"
     else
-      "^[^\\p{L}\\p{N}()*_ \\-'.!]".r
+      """[^\p{L}\p{N}()*_ \-'.!]""".r
         .replaceAllIn(key, "_")
         .replaceAll("\\s+", " ")
+        .trim
+
   }
 
 //    key.replaceAll("[^a-zA-Z0-9./@-]", "_")

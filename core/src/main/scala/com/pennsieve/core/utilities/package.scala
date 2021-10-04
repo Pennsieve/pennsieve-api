@@ -106,8 +106,6 @@ package object utilities {
   ): Either[NameCheckError, String] = {
     val childNames = children.map(_.toLowerCase)
     val validatedName = name
-    //TODO: Check whether we need to do this
-    //    val validatedName = escapeName(name)
     val extension = getFullExtension(validatedName) match {
       case Some(extension) => "." + extension
       case None => ""
