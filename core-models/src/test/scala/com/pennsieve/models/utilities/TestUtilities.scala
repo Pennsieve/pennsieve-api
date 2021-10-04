@@ -21,6 +21,53 @@ import io.circe.parser.decode
 
 class TestUtilities extends WordSpecLike with Matchers {
 
+  "safeS3Key" should {
+    "remove bad characters" in {
+      Utilities.cleanS3Key("++file") shouldBe "__file"
+      Utilities.cleanS3Key("my/file") shouldBe "my_file"
+      Utilities.cleanS3Key("my~file") shouldBe "my_file"
+      Utilities.cleanS3Key("many     spaces") shouldBe "many spaces"
+      Utilities.cleanS3Key("file+1") shouldBe "file_1"
+      Utilities.cleanS3Key("file, 1") shouldBe "file_ 1"
+      Utilities.cleanS3Key("file: 1") shouldBe "file_ 1"
+      Utilities.cleanS3Key("file; 1") shouldBe "file_ 1"
+    }
+
+    "preserve spaces in escaped keys" in {
+      Utilities.cleanS3Key("My file") shouldBe "My file"
+    }
+
+    "preserve allowed S3 characters" in {
+      Utilities.cleanS3Key("My (file)") shouldBe "My (file)"
+      Utilities.cleanS3Key("file!") shouldBe "file!"
+      Utilities.cleanS3Key("fi-le") shouldBe "fi-le"
+      Utilities.cleanS3Key("fi_le") shouldBe "fi_le"
+      Utilities.cleanS3Key("file.zip") shouldBe "file.zip"
+      Utilities.cleanS3Key("'file'") shouldBe "'file'"
+      Utilities.cleanS3Key("file* 1") shouldBe "file* 1"
+      Utilities.cleanS3Key("() *_-'.!") shouldBe "() *_-'.!"
+      Utilities.cleanS3Key("Å") shouldBe "Å" //unicode test
+    }
+
+    "replace UNIX path special characters" in {
+      Utilities.cleanS3Key(".") shouldBe "%2E"
+      Utilities.cleanS3Key("..") shouldBe "%2E%2E"
+    }
+
+    "be idempotent" in {
+      assert(
+        Utilities.cleanS3Key("my+file") == Utilities
+          .cleanS3Key(Utilities.cleanS3Key("my+file"))
+      )
+      val crazyFileName =
+        "@ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo .png"
+      Utilities.cleanS3Key(crazyFileName) shouldBe Utilities.escapeName(
+        Utilities.cleanS3Key(crazyFileName)
+      )
+    }
+
+  }
+
   "escapeName" should {
     "preserve spaces in escaped keys" in {
       Utilities.escapeName("My file") shouldBe "My file"

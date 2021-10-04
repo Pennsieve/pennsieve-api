@@ -130,7 +130,7 @@ object PackagePreview {
           hasWorkflow,
           importId,
           packageInfo.icon.toString,
-          escapedPackageName = Some(escapeName(packageName))
+          escapedPackageName = Some(cleanS3Key(packageName))
         )
       }
   }

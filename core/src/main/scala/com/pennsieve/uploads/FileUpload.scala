@@ -41,8 +41,8 @@ object FileUpload {
     size: Option[Long]
   ): FileUpload = {
     val (baseName, extension) = utilities.splitFileName(fileName)
-    val escapedFileName = escapeName(fileName)
-    val escapedBaseName = escapeName(baseName)
+    val escapedFileName = cleanS3Key(fileName)
+    val escapedBaseName = cleanS3Key(baseName)
 
     val fileType = utilities.getFileType(extension)
     val info = FileTypeInfo.get(fileType)
