@@ -136,25 +136,25 @@ class PackageManagerSpec extends BaseManagerSpec {
     assert(result.isLeft)
   }
 
-  "updating a package's name" should "fail if the name has a forbidden character" in {
-    val user = createUser()
-    val dataset = createDataset(user = user)
-
-    val p = createPackage(user = user, dataset = dataset)
-    val pkg = createPackage(
-      name = "test",
-      user = user,
-      dataset = dataset,
-      parent = Some(p),
-      `type` = PackageType.Image
-    )
-
-    val pm = packageManager(user = user)
-
-    val result = pm.update(pkg.copy(name = "test+")).await
-
-    assert(result.isLeft)
-  }
+//  "updating a package's name" should "fail if the name has a forbidden character" in {
+//    val user = createUser()
+//    val dataset = createDataset(user = user)
+//
+//    val p = createPackage(user = user, dataset = dataset)
+//    val pkg = createPackage(
+//      name = "test",
+//      user = user,
+//      dataset = dataset,
+//      parent = Some(p),
+//      `type` = PackageType.Image
+//    )
+//
+//    val pm = packageManager(user = user)
+//
+//    val result = pm.update(pkg.copy(name = "test+")).await
+//
+//    assert(result.isLeft)
+//  }
 
   "updating a package's name" should "fail if the name has a % that is not part of an html encoding sequence" in {
     val user = createUser()
