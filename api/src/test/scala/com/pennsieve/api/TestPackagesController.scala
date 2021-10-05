@@ -963,7 +963,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(400)
-      response.body should include("new name must be different than old name")
+      response.body should include("package name must be unique")
     }
 
     secureContainer.packageManager
