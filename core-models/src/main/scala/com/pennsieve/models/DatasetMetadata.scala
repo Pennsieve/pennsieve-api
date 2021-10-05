@@ -190,6 +190,7 @@ object DatasetMetadata {
 }
 
 case class FileManifest(
+  name: String,
   path: String,
   size: Long,
   fileType: FileType,
@@ -197,7 +198,7 @@ case class FileManifest(
   id: Option[UUID] = None
 ) extends Ordered[FileManifest] {
 
-  def name: String = FilenameUtils.getName(path)
+//  def name: String = FilenameUtils.getName(path)
 
   // Order files lexicographically by path
   def compare(that: FileManifest) =
