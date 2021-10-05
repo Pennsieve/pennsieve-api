@@ -529,15 +529,6 @@ class PackageManager(datasetManager: DatasetManager) {
         }
       )(ServiceError("a package must belong to the same dataset as its parent"))
 
-      _ <- checkOrErrorT(
-//        isNameValid(packageToUpdate.name) || old.name == packageToUpdate.name
-        old.name == packageToUpdate.name
-      )(
-        PredicateError(
-          s"Invalid package name, new name must be different than old name"
-        )
-      )
-
       nameCheckQuery = if (old.name == packageToUpdate.name) {
         DBIO.successful(())
       } else {
