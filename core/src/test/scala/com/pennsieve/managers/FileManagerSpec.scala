@@ -298,34 +298,34 @@ class FileManagerSpec extends BaseManagerSpec {
     )
   }
 
-  "files" should "not be created if it does not follow naming conventions" in {
-
-    val user = createUser()
-    val pkg = createPackage(testOrganization, user)
-
-    val fm = fileManager(organization = testOrganization, user = user)
-
-    val fileCreationResult = fm
-      .create(
-        name = "Test++",
-        `type` = FileType.GenericData,
-        `package` = pkg,
-        s3Bucket = "bucket/" + generateRandomString(),
-        s3Key = "key/" + generateRandomString(),
-        objectType = Source,
-        processingState = FileProcessingState.Unprocessed,
-        size = 0,
-        uploadedState = None
-      )
-      .await
-
-    assert(
-      fileCreationResult === Left(
-        PredicateError(
-          s"Invalid file name, please follow the naming conventions"
-        )
-      )
-    )
-  }
+//  "files" should "not be created if it does not follow naming conventions" in {
+//
+//    val user = createUser()
+//    val pkg = createPackage(testOrganization, user)
+//
+//    val fm = fileManager(organization = testOrganization, user = user)
+//
+//    val fileCreationResult = fm
+//      .create(
+//        name = "Test++",
+//        `type` = FileType.GenericData,
+//        `package` = pkg,
+//        s3Bucket = "bucket/" + generateRandomString(),
+//        s3Key = "key/" + generateRandomString(),
+//        objectType = Source,
+//        processingState = FileProcessingState.Unprocessed,
+//        size = 0,
+//        uploadedState = None
+//      )
+//      .await
+//
+//    assert(
+//      fileCreationResult === Left(
+//        PredicateError(
+//          s"Invalid file name, please follow the naming conventions"
+//        )
+//      )
+//    )
+//  }
 
 }
