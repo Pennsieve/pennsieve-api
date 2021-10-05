@@ -145,7 +145,7 @@ object FilesController {
       s"${FilesController
         .uploadsDirectory(user, importId, usingUploadService)}${cleanS3Key(file)}"
     } else {
-      file
+      cleanS3Key(file)
     }
   }
 
