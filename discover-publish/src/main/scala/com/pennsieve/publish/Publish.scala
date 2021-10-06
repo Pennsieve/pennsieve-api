@@ -395,7 +395,15 @@ object Publish extends StrictLogging {
         .leftMap[CoreError](ThrowableError)
 
     } yield
-      (readmeKey, FileManifest(README_FILENAME,README_FILENAME, readmeSize, FileType.Markdown))
+      (
+        readmeKey,
+        FileManifest(
+          README_FILENAME,
+          README_FILENAME,
+          readmeSize,
+          FileType.Markdown
+        )
+      )
   }
 
   /**
@@ -414,7 +422,8 @@ object Publish extends StrictLogging {
     // size of metadata.json for the manifest, but we need the size
     // to be encoded in the JSON file before we can compute the size.
     // Set size to 0 for now, and revise it later.
-    val metadataManifest = FileManifest(METADATA_FILENAME,METADATA_FILENAME, 0, FileType.Json)
+    val metadataManifest =
+      FileManifest(METADATA_FILENAME, METADATA_FILENAME, 0, FileType.Json)
 
     val unsizedMetadata = DatasetMetadataV4_0(
       pennsieveDatasetId = container.publishedDatasetId,
