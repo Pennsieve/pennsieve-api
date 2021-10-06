@@ -64,6 +64,7 @@ object PackagesExport extends LazyLogging {
     Sink.fold(Nil: List[FileManifest])(
       (accum, action: CopyAction) =>
         FileManifest(
+          name = action.file.name,
           path = action.fileKey,
           size = action.file.size,
           fileType = action.file.fileType,

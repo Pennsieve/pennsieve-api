@@ -622,7 +622,7 @@ class TestPublish
       val pkg1 = createPackage(testUser, name = "pkg1")
       val file1 = createFile(
         pkg1,
-        name = "file",
+        name = "file1",
         s3Key = "key/file.txt",
         content = "data data",
         size = 1234
@@ -723,27 +723,32 @@ class TestPublish
           files = List(
             FileManifest(
               Publish.BANNER_FILENAME,
+              Publish.BANNER_FILENAME,
               bannerJpg.length,
               FileType.JPEG
             ),
             FileManifest(
               Publish.METADATA_FILENAME,
+              Publish.METADATA_FILENAME,
               metadata.getBytes("utf-8").length,
               FileType.Json
             ),
             FileManifest(
+              "file2",
               "files/pkg2/file2.dcm",
               2222,
               FileType.DICOM,
               Some(pkg2.nodeId)
             ),
             FileManifest(
+              "file3",
               "files/pkg2/file3.dcm",
               3333,
               FileType.DICOM,
               Some(pkg2.nodeId)
             ),
             FileManifest(
+              "file1",
               "files/pkg1.txt",
               1234,
               FileType.Text,
@@ -751,10 +756,12 @@ class TestPublish
             ),
             FileManifest(
               Publish.README_FILENAME,
+              Publish.README_FILENAME,
               readmeMarkdown.length,
               FileType.Markdown
             ),
             FileManifest(
+              "schema.json",
               "metadata/schema.json",
               schemaJson.length,
               FileType.Json
@@ -783,7 +790,7 @@ class TestPublish
       val pkg1 = createPackage(testUser, name = "pkg1")
       val file1 = createFile(
         pkg1,
-        name = "file",
+        name = "file1",
         s3Key = "key/file.txt",
         content = "data data",
         size = 1234
@@ -882,27 +889,32 @@ class TestPublish
           files = List(
             FileManifest(
               Publish.BANNER_FILENAME,
+              Publish.BANNER_FILENAME,
               bannerJpg.length,
               FileType.JPEG
             ),
             FileManifest(
               Publish.METADATA_FILENAME,
+              Publish.METADATA_FILENAME,
               metadata.getBytes("utf-8").length,
               FileType.Json
             ),
             FileManifest(
+              "file2",
               "files/pkg2/file2.dcm",
               2222,
               FileType.DICOM,
               Some(pkg2.nodeId)
             ),
             FileManifest(
+              "file3",
               "files/pkg2/file3.dcm",
               3333,
               FileType.DICOM,
               Some(pkg2.nodeId)
             ),
             FileManifest(
+              "file1",
               "files/pkg1.txt",
               1234,
               FileType.Text,
@@ -910,10 +922,12 @@ class TestPublish
             ),
             FileManifest(
               Publish.README_FILENAME,
+              Publish.README_FILENAME,
               readmeMarkdown.length,
               FileType.Markdown
             ),
             FileManifest(
+              "schema.json",
               "metadata/schema.json",
               schemaJson.length,
               FileType.Json
