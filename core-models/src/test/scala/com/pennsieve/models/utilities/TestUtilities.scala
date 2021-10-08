@@ -26,30 +26,30 @@ class TestUtilities extends WordSpecLike with Matchers {
       Utilities.cleanS3Key("++file") shouldBe "__file"
       Utilities.cleanS3Key("my/file") shouldBe "my_file"
       Utilities.cleanS3Key("my~file") shouldBe "my_file"
-      Utilities.cleanS3Key("many     spaces") shouldBe "many spaces"
+      Utilities.cleanS3Key("many     spaces") shouldBe "many_____spaces"
       Utilities.cleanS3Key("file+1") shouldBe "file_1"
-      Utilities.cleanS3Key("file, 1") shouldBe "file_ 1"
-      Utilities.cleanS3Key("file: 1") shouldBe "file_ 1"
-      Utilities.cleanS3Key("file; 1") shouldBe "file_ 1"
+      Utilities.cleanS3Key("file, 1") shouldBe "file__1"
+      Utilities.cleanS3Key("file: 1") shouldBe "file__1"
+      Utilities.cleanS3Key("file; 1") shouldBe "file__1"
     }
 
-    "names should be trimmed in" in {
-      Utilities.cleanS3Key(" hello ") shouldBe "hello"
-    }
+//    "names should be trimmed in" in {
+//      Utilities.cleanS3Key(" hello ") shouldBe "hello_"
+//    }
 
-    "preserve spaces in escaped keys" in {
-      Utilities.cleanS3Key("My file") shouldBe "My file"
-    }
+//    "preserve spaces in escaped keys" in {
+//      Utilities.cleanS3Key("My file") shouldBe "My file"
+//    }
 
     "preserve allowed S3 characters" in {
-      Utilities.cleanS3Key("My (file)") shouldBe "My (file)"
+      Utilities.cleanS3Key("My (file)") shouldBe "My_(file)"
       Utilities.cleanS3Key("file!") shouldBe "file!"
       Utilities.cleanS3Key("fi-le") shouldBe "fi-le"
       Utilities.cleanS3Key("fi_le") shouldBe "fi_le"
       Utilities.cleanS3Key("file.zip") shouldBe "file.zip"
       Utilities.cleanS3Key("'file'") shouldBe "'file'"
-      Utilities.cleanS3Key("file* 1") shouldBe "file* 1"
-      Utilities.cleanS3Key("() *_-'.!") shouldBe "() *_-'.!"
+      Utilities.cleanS3Key("file* 1") shouldBe "file*_1"
+      Utilities.cleanS3Key("()*_-'.!") shouldBe "()*_-'.!"
       Utilities.cleanS3Key("Å") shouldBe "Å" //unicode test
     }
 
@@ -75,82 +75,6 @@ class TestUtilities extends WordSpecLike with Matchers {
     }
 
   }
-
-//  "escapeName" should {
-//    "preserve spaces in escaped keys" in {
-//      Utilities.escapeName("My file") shouldBe "My file"
-//    }
-//
-//    "trim long length" in {
-//      Utilities.escapeName("1234567890" * 26) shouldBe "1234567890" * 25 + "12345"
-//    }
-//
-//    "remove bad characters" in {
-//      Utilities.escapeName("my/file") shouldBe "my%2Ffile"
-//      Utilities.escapeName("my~file") shouldBe "my%7Efile"
-//      Utilities.escapeName("many     spaces") shouldBe "many spaces"
-//      Utilities.escapeName("file+1") shouldBe "file%2B1"
-//      Utilities.escapeName("file, 1") shouldBe "file%2C 1"
-//      Utilities.escapeName("file: 1") shouldBe "file%3A 1"
-//      Utilities.escapeName("file; 1") shouldBe "file%3B 1"
-//      Utilities.escapeName("@#$%^&+={}|[]:;<>?/\\,") shouldBe "%40%23%24%25%5E%26%2B%3D%7B%7D%7C%5B%5D%3A%3B%3C%3E%3F%2F%5C%2C"
-//
-//    }
-//
-//    "preserve allowed S3 characters" in {
-//      Utilities.escapeName("My (file)") shouldBe "My (file)"
-//      Utilities.escapeName("file!") shouldBe "file!"
-//      Utilities.escapeName("fi-le") shouldBe "fi-le"
-//      Utilities.escapeName("fi_le") shouldBe "fi_le"
-//      Utilities.escapeName("file.zip") shouldBe "file.zip"
-//      Utilities.escapeName("'file'") shouldBe "'file'"
-//      Utilities.escapeName("file* 1") shouldBe "file* 1"
-//      Utilities.escapeName("() *_-'.!") shouldBe "() *_-'.!"
-//      Utilities.escapeName("Å") shouldBe "Å" //unicode test
-//      Utilities.escapeName("%20+ %20+ %20+ %20+") shouldBe "%20%2B %20%2B %20%2B %20%2B"
-//      Utilities.escapeName("%2+") shouldBe "%252%2B"
-//    }
-//
-//    "replace UNIX path special characters" in {
-//      Utilities.escapeName(".") shouldBe "%2E"
-//      Utilities.escapeName("..") shouldBe "%2E%2E"
-//    }
-//
-//    "change invalid special characters into valid characters" in {
-//      assert(
-//        Utilities
-//          .isNameValid(Utilities.escapeName("@#$%^&+={}|[]:;<>?/\\,")) == true
-//      )
-//    }
-//
-//    "be idempotent" in {
-//      assert(
-//        Utilities.escapeName("my+file") == Utilities
-//          .escapeName(Utilities.escapeName("my+file"))
-//      )
-//      val crazyFileName =
-//        "@ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo @ ! _ %20foo .png"
-//      Utilities.escapeName(crazyFileName) shouldBe Utilities.escapeName(
-//        Utilities.escapeName(crazyFileName)
-//      )
-//
-//    }
-//  }
-//
-//  "isNameValid" should {
-//    "be true for all valid special characters" in {
-//      assert(
-//        Utilities
-//          .isNameValid(("( -_*.!)")) == true
-//      )
-//    }
-//
-//    "work for names up to 255 chars" in {
-//      assert(Utilities.isNameValid("1234567890" * 25 + "12345") == true)
-//      assert(Utilities.isNameValid("1234567890" * 25 + "123456") == false)
-//    }
-//
-//  }
 
   "getPennsieveExtension" should {
     "return the proper extension" in {
