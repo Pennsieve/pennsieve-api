@@ -16,8 +16,7 @@
 
 package com.pennsieve.models.deserialization
 
-import com.pennsieve.models.ExternalId
-
+import com.pennsieve.models.{ ExternalId, FileManifest, FileType }
 import org.scalatest.{ Matchers, WordSpecLike }
 import io.circe.parser.decode
 import io.circe.syntax._
@@ -61,6 +60,36 @@ class ExternalIdSpec extends WordSpecLike with Matchers {
         ExternalId.intId(12) -> "value1",
         ExternalId.nodeId("N:package:1234") -> "value2"
       )
+    )
+  }
+
+  "A Filemanifest with no specific name decodes the name" in {
+    decode[FileManifest]("""{
+      "path" : "packages/brain.dcm",
+      "size" : 15010,
+      "fileType" : "DICOM",
+      "sourcePackageId" : "N:package:1"
+    }""").right.get shouldBe FileManifest(
+      "brain.dcm",
+      "packages/brain.dcm",
+      15010,
+      FileType.DICOM,
+      Some("N:package:1")
+    )
+  }
+  "A Filemanifest with specific name decodes the name" in {
+    decode[FileManifest]("""{
+      "name" : "testName",
+      "path" : "packages/brain.dcm",
+      "size" : 15010,
+      "fileType" : "DICOM",
+      "sourcePackageId" : "N:package:1"
+    }""").right.get shouldBe FileManifest(
+      "testName",
+      "packages/brain.dcm",
+      15010,
+      FileType.DICOM,
+      Some("N:package:1")
     )
   }
 }
