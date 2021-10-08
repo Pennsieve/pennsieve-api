@@ -280,6 +280,10 @@ class PackagesController(
         )
         (oldPackage, dataset) = result
 
+        sources <- secureContainer.fileManager
+          .getSources(oldPackage)
+          .coreErrorToActionResult
+
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
           .coreErrorToActionResult
@@ -325,7 +329,12 @@ class PackagesController(
           )
           .coreErrorToActionResult
 
-        _ <- if (oldPackage.name != updatedPackage.name)
+        _ <- if (oldPackage.name != updatedPackage.name) {
+          if (sources.length == 1) {
+            secureContainer.fileManager
+              .renameFile(sources.head, updatedPackage.name)
+          }
+
           for {
             parent <- secureContainer.packageManager
               .getParent(oldPackage)
@@ -342,7 +351,7 @@ class PackagesController(
               )
               .coreErrorToActionResult
           } yield ()
-        else EitherT.rightT[Future, ActionResult](())
+        } else EitherT.rightT[Future, ActionResult](())
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)

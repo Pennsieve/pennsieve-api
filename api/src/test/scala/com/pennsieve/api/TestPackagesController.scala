@@ -928,6 +928,104 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test(
+    "update package name with multiple source file should not updates file names"
+  ) {
+    val oldName = s"testFileOldName"
+    val testPackage = packageManager
+      .create(
+        oldName,
+        PackageType.PDF,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .right
+      .value
+
+    val filesManager = new FileManager(packageManager, loggedInOrganization)
+    val testFile = (1 to 2).toList.map { idx =>
+      filesManager
+        .create(
+          name = s"$oldName$idx",
+          `type` = FileType.BFTS,
+          `package` = testPackage,
+          s3Bucket = "testBucket",
+          s3Key = "testKey",
+          objectType = FileObjectType.Source,
+          processingState = FileProcessingState.Unprocessed,
+          size = 1
+        )
+        .await
+        .right
+        .value
+    }
+
+    val request = """{"name":"Updated Package","state": "READY","uploader":"""" + loggedInUser.id + """"}"""
+
+    putJson(
+      s"/${testPackage.nodeId}",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val updatedFile =
+        filesManager.get(testFile.head.id, testPackage).await.right.value
+      updatedFile.name should not equal ("Updated Package")
+
+    }
+  }
+
+  test("update package name with single source updates file name") {
+    val oldName = s"testFileOldName"
+    val testPackage = packageManager
+      .create(
+        oldName,
+        PackageType.PDF,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .right
+      .value
+
+    val filesManager = new FileManager(packageManager, loggedInOrganization)
+    val testFile = filesManager
+      .create(
+        name = oldName,
+        `type` = FileType.BFTS,
+        `package` = testPackage,
+        s3Bucket = "testBucket",
+        s3Key = "testKey",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        size = 1
+      )
+      .await
+      .right
+      .value
+
+    val request = """{"name":"Updated Package","state": "READY","uploader":"""" + loggedInUser.id + """"}"""
+
+    putJson(
+      s"/${testPackage.nodeId}",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val updatedFile =
+        filesManager.get(testFile.id, testPackage).await.right.value
+      updatedFile.name should equal("Updated Package")
+
+    }
+  }
+
   test("update package name ignores package in DELETING state") {
     val pdfPackage = packageManager
       .create(
