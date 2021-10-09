@@ -217,8 +217,8 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       val jobId = createJobId
       val `package`: Package = createPackage(dataset, `type` = PackageType.Text)
 
-      val uploadKey: String = createUploadKey(jobId, "hello spaces.txt")
-      val storageKey: String = createStorageKey(jobId, "hello spaces.txt")
+      val uploadKey: String = createUploadKey(jobId, "hello_spaces.txt")
+      val storageKey: String = createStorageKey(jobId, "hello_spaces.txt")
 
       val upload: PutObjectResult = consumerContainer.s3
         .putObject(
