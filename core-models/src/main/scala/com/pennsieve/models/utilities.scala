@@ -76,10 +76,8 @@ package object Utilities {
       "%2E%2E"
     else {
       val result =
-        """[^\p{L}\p{N}()*_ \-'.!]""".r
+        """[^\p{L}\p{N}()*_\-'.!]""".r
           .replaceAllIn(key, "_")
-          .replaceAll("\\s+", " ")
-          .trim
 
       result.substring(0, Math.min(result.length, 128))
     }

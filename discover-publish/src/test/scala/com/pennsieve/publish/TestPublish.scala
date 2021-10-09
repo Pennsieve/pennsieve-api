@@ -1244,8 +1244,8 @@ class TestPublish
           file,
           publishBucket,
           testKey,
-          s"files/grandparent/parent/My Notes.txt",
-          s"files/grandparent/parent/My Notes.txt"
+          s"files/grandparent/parent/My_Notes.txt",
+          s"files/grandparent/parent/My_Notes.txt"
         )
       )
     }
@@ -1262,8 +1262,8 @@ class TestPublish
           file,
           publishBucket,
           testKey,
-          s"files/grandparent/parent/My Notes.text",
-          s"files/grandparent/parent/My Notes.text"
+          s"files/grandparent/parent/My_Notes.text",
+          s"files/grandparent/parent/My_Notes.text"
         )
       )
     }
@@ -1290,16 +1290,16 @@ class TestPublish
           file1,
           publishBucket,
           testKey,
-          s"files/grandparent/parent/Brain stuff/brain_01.dcm",
-          s"files/grandparent/parent/Brain stuff"
+          s"files/grandparent/parent/Brain_stuff/brain_01.dcm",
+          s"files/grandparent/parent/Brain_stuff"
         ),
         CopyAction(
           pkg,
           file2,
           publishBucket,
           testKey,
-          s"files/grandparent/parent/Brain stuff/brain_02.dcm",
-          s"files/grandparent/parent/Brain stuff"
+          s"files/grandparent/parent/Brain_stuff/brain_02.dcm",
+          s"files/grandparent/parent/Brain_stuff"
         )
       )
     }
@@ -1318,8 +1318,8 @@ class TestPublish
         PackagesExport.exportPackageSources(publishContainer).await
 
       idMap shouldBe Map(
-        ExternalId.nodeId(pkg1.nodeId) -> "files/Brain stuff",
-        ExternalId.intId(pkg1.id) -> "files/Brain stuff",
+        ExternalId.nodeId(pkg1.nodeId) -> "files/Brain_stuff",
+        ExternalId.intId(pkg1.id) -> "files/Brain_stuff",
         ExternalId.nodeId(pkg2.nodeId) -> "files/p2.txt",
         ExternalId.intId(pkg2.id) -> "files/p2.txt"
       )
