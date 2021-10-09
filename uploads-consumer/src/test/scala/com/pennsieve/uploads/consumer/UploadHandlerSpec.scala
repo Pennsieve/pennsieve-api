@@ -226,7 +226,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
           uploadKey,
           new File(
             getClass
-              .getResource("/inputs/hello spaces.txt")
+              .getResource("/inputs/hello_spaces.txt")
               .getPath
               .replace("%20", " ")
           )
@@ -252,7 +252,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       getFiles(`package`).map(_.s3Key) should contain theSameElementsAs Seq(
         storageKey
       )
-      getFiles(`package`).map(_.name) should equal(Vector("hello spaces"))
+      getFiles(`package`).map(_.name) should equal(Vector("hello_spaces"))
     }
 
     "process a clean file without a workflow" in {
