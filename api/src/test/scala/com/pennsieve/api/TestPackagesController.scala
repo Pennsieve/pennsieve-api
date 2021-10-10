@@ -2476,7 +2476,10 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     "download-manifest produces a manifest for a simple package with one file"
   ) {
     val rootPackage =
-      createTestDownloadPackage("root", packageType = PackageType.Image)
+      createTestDownloadPackage(
+        "file1.ome.tiff",
+        packageType = PackageType.Image
+      )
     createTestDownloadFile("file1.ome.tiff", rootPackage)
 
     val request = s"""{"nodeIds": ["${rootPackage.nodeId}"]}"""
@@ -2502,9 +2505,9 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
 
       payload.data.head.fileExtension shouldBe Some("ome.tiff")
 
-      payload.data.head.fileName shouldBe ("root.ome.tiff")
+      payload.data.head.fileName shouldBe ("file1.ome.tiff")
 
-      payload.data.head.packageName shouldBe ("root")
+      payload.data.head.packageName shouldBe ("file1.ome.tiff")
 
     }
   }
@@ -2542,11 +2545,11 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     val root = createTestDownloadPackage("root")
     val child1 =
       createTestDownloadPackage(
-        "child1",
+        "child1.pdf",
         Some(root),
         packageType = PackageType.Image
       )
-    createTestDownloadFile("child.pdf", child1)
+    createTestDownloadFile("child1.pdf", child1)
     val child2 =
       createTestDownloadPackage("child2", Some(root))
 
@@ -2574,7 +2577,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       fileNames.contains("child1.pdf") shouldBe true
 
       val packageNames = payload.data.map(_.packageName).toSet
-      packageNames shouldBe Set("child1")
+      packageNames shouldBe Set("child1.pdf")
     }
   }
 
@@ -2673,7 +2676,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
 
     val childCollection1 =
       createTestDownloadPackage(
-        "child.1",
+        "childFile.pdf",
         Some(rootCollection1),
         packageType = PackageType.Image
       )
@@ -2692,7 +2695,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     createTestDownloadFile("grandChildFile2", grandChildCollection1)
 
     val grandChildCollection2 = createTestDownloadPackage(
-      "grandChild.2",
+      "grandChildFileFlat.pdf",
       Some(childCollectionC1),
       PackageType.Image
     )
@@ -2708,7 +2711,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     val childCollection2 =
       createTestDownloadPackage("child.2", Some(rootCollection2))
     val grandChildCollectionC2 = createTestDownloadPackage(
-      "grandChild.C2",
+      "childFileNoRoot.pdf",
       Some(childCollection2),
       PackageType.Image
     )
@@ -2719,7 +2722,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       *    rootFile
       */
     val rootCollection3 =
-      createTestDownloadPackage("root.3", packageType = PackageType.Image)
+      createTestDownloadPackage("rootFile.pdf", packageType = PackageType.Image)
     createTestDownloadFile("rootFile.pdf", rootCollection3)
 
     val request =
@@ -2739,7 +2742,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       payload.header.count shouldBe 6
 
       payload.data
-        .find(e => e.fileName == "child.1.pdf")
+        .find(e => e.fileName == "childFile.pdf")
         .get
         .path should equal(List("root.1"))
       payload.data
@@ -2751,15 +2754,15 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         .get
         .path should equal(List("root.1", "child.C1", "grandChild.1"))
       payload.data
-        .find(e => e.fileName == "grandChild.2.pdf")
+        .find(e => e.fileName == "grandChildFileFlat.pdf")
         .get
         .path should equal(List("root.1", "child.C1"))
       payload.data
-        .find(e => e.fileName == "grandChild.C2.pdf")
+        .find(e => e.fileName == "childFileNoRoot.pdf")
         .get
         .path should equal(List("child.2"))
       payload.data
-        .find(e => e.fileName == "root.3.pdf")
+        .find(e => e.fileName == "rootFile.pdf")
         .get
         .path should equal(List.empty)
 
@@ -2768,14 +2771,14 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
 
   test("download-manifest can generate archives that cross datasets") {
     val rootPackage =
-      createTestDownloadPackage("root", packageType = PackageType.Image)
+      createTestDownloadPackage("file1.pdf", packageType = PackageType.Image)
     createTestDownloadFile("file1.pdf", rootPackage)
     val dataset2 = secureDataSetManager
       .create("Another", Some("Another Dataset"))
       .await
       .value
     val rootPackage2 = createTestDownloadPackage(
-      "root2",
+      "file2.pdf",
       dataset = dataset2,
       packageType = PackageType.Image
     )
@@ -2799,8 +2802,8 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       payload.data.length shouldBe 2
 
       val fileNames = payload.data.map(_.fileName)
-      fileNames.contains("root.pdf") shouldBe true
-      fileNames.contains("root2.pdf") shouldBe true
+      fileNames.contains("file2.pdf") shouldBe true
+      fileNames.contains("file1.pdf") shouldBe true
     }
   }
 
