@@ -9393,4 +9393,89 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   }
 
+  test("create dataset in presence of default webhooks") {
+    val (webhook, _) = createWebhook(isDefault = true)
+
+    val createReq = write(
+      CreateDataSetRequest(
+        name = "A New DataSet",
+        description = None,
+        properties = Nil
+      )
+    )
+
+    postJson(
+      s"",
+      createReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+
+      val result: WrappedDataset = parsedBody
+        .extract[DataSetDTO]
+        .content
+
+      val datasetId = result.intId
+      val integrations = secureContainer.db
+        .run(
+          secureContainer.datasetIntegrationsMapper
+            .getByDatasetId(datasetId)
+            .result
+        )
+        .await
+
+      integrations.size should equal(1)
+      integrations.head.webhookId should equal(webhook.id)
+      integrations.head.enabledBy should equal(loggedInUser.id)
+    }
+
+  }
+
+  test("create dataset in presence of default and requested webhooks") {
+    val (defaultWebhook, _) = createWebhook(isDefault = true)
+    val (webhook, _) = createWebhook()
+
+    val createReq = write(
+      CreateDataSetRequest(
+        name = "A New DataSet",
+        description = None,
+        properties = Nil,
+        includedWebhookIds = List(webhook.id)
+      )
+    )
+
+    postJson(
+      s"",
+      createReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+
+      val result: WrappedDataset = parsedBody
+        .extract[DataSetDTO]
+        .content
+
+      val datasetId = result.intId
+      val integrations = secureContainer.db
+        .run(
+          secureContainer.datasetIntegrationsMapper
+            .getByDatasetId(datasetId)
+            .result
+        )
+        .await
+
+      integrations.size should equal(2)
+
+      val actualDefault = integrations.filter(_.webhookId == defaultWebhook.id)
+      actualDefault.size should equal(1)
+      actualDefault.head.enabledBy should equal(loggedInUser.id)
+
+      val actualRequested = integrations.filter(_.webhookId == webhook.id)
+      actualRequested.size should equal(1)
+      actualRequested.head.enabledBy should equal(loggedInUser.id)
+
+    }
+
+  }
+
 }

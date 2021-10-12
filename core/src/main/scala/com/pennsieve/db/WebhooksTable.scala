@@ -29,16 +29,27 @@ final class WebhooksTable(schema: String, tag: Tag)
 
   // set by the database
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
+
   def apiUrl = column[String]("api_url")
+
   def imageUrl = column[Option[String]]("image_url")
+
   def description = column[String]("description")
+
   def secret = column[String]("secret")
+
   def name = column[String]("name")
+
   def displayName = column[String]("display_name")
+
   def isPrivate = column[Boolean]("is_private")
+
   def isDefault = column[Boolean]("is_default")
+
   def isDisabled = column[Boolean]("is_disabled")
+
   def createdBy = column[Int]("created_by")
+
   def createdAt =
     column[ZonedDateTime]("created_at", O.AutoInc) // set by the database on insert
 
@@ -69,4 +80,22 @@ class WebhooksMapper(val organization: Organization)
 
   def find(user: User): Query[WebhooksTable, Webhook, Seq] =
     this.filter(x => (x.isPrivate === false || x.createdBy === user.id))
+
+  def getDefaults(
+    user: User,
+    includedIds: Option[Set[Int]] = None,
+    excludedIds: Option[Set[Int]] = None
+  ): Query[WebhooksTable, Webhook, Seq] = {
+    this
+      .filter(
+        wh =>
+          wh.isDefault
+            || (wh.id inSetBind includedIds
+              .getOrElse(Set.empty))
+      )
+      .filterNot(_.id inSetBind excludedIds.getOrElse(Set.empty))
+      .filter(
+        wh => !wh.isPrivate || user.isSuperAdmin || wh.createdBy === user.id
+      )
+  }
 }

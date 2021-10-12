@@ -483,7 +483,7 @@ trait ManagerSpec
     secret: String = "secretkey123",
     displayName: String = "Test Webhook",
     isPrivate: Boolean = false,
-    isDefault: Boolean = true,
+    isDefault: Boolean = false,
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
     organization: Organization = testOrganization,
     creatingUser: User = superAdmin
