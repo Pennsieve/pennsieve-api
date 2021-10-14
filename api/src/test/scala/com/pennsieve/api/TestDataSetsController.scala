@@ -22,7 +22,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import cats.implicits._
-import com.pennsieve.auth.middleware.{ Jwt, OrganizationId, UserClaim, UserId }
 import com.pennsieve.aws.email.LoggingEmailer
 import com.pennsieve.clients.{ MockDatasetAssetClient, MockModelServiceClient }
 import com.pennsieve.db.TeamsMapper
@@ -50,19 +49,17 @@ import com.pennsieve.notifications.{
 }
 import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.parser.decode
-import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
 import org.apache.http.HttpHeaders
 import org.json4s._
 import org.json4s.jackson.Serialization.{ read, write }
 import org.scalatest.EitherValues._
+import org.scalatest.Inspectors.forAll
 import org.scalatest.OptionValues._
 import org.scalatra.test.{ BytesPart, FilePart }
-import shapeless.syntax.inject._
 
 import java.time.ZonedDateTime
 import scala.concurrent.Future
-import scala.concurrent.duration.{ DurationDouble, FiniteDuration }
 
 class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
@@ -9196,8 +9193,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val response = parsedBody.extract[Seq[DatasetIntegration]]
       response.size shouldBe (2)
-      response.forall(di => di.datasetId.equals(dataset.id))
-      response.forall(di => di.enabledBy.equals(loggedInUser.id))
+      forAll(response)(_.datasetId.equals(dataset.id))
+      forAll(response)(_.enabledBy.equals(loggedInUser.id))
       response.map(_.webhookId) should contain theSameElementsAs (Set(
         enabledWebhook1.id,
         enabledWebhook2.id
@@ -9240,8 +9237,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val response = parsedBody.extract[Seq[DatasetIntegration]]
       response.size shouldBe (2)
-      response.forall(di => di.datasetId.equals(dataset.id))
-      response.forall(di => di.enabledBy.equals(loggedInUser.id))
+      forAll(response)(_.datasetId.equals(dataset.id))
+      forAll(response)(_.enabledBy.equals(loggedInUser.id))
       response.map(_.webhookId) should contain theSameElementsAs (Set(
         enabledWebhook1.id,
         enabledWebhook2.id
@@ -9473,6 +9470,58 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       val actualRequested = integrations.filter(_.webhookId == webhook.id)
       actualRequested.size should equal(1)
       actualRequested.head.enabledBy should equal(loggedInUser.id)
+
+    }
+
+  }
+
+  test("create dataset with excluded and requested webhooks") {
+    val (defaultWebhook1, _) = createWebhook(isDefault = true)
+    val (defaultWebhook2, _) = createWebhook(isDefault = true)
+    val (defaultWebhook3, _) = createWebhook(isDefault = true)
+    val (excludedDefaultWebhook, _) = createWebhook(isDefault = true)
+
+    val (includedWebhook1, _) = createWebhook()
+    val (includedWebhook2, _) = createWebhook(isPrivate = true)
+
+    val createReq = write(
+      CreateDataSetRequest(
+        name = "A New DataSet",
+        description = None,
+        properties = Nil,
+        includedWebhookIds = List(includedWebhook1.id, includedWebhook2.id),
+        excludedWebhookIds = List(excludedDefaultWebhook.id)
+      )
+    )
+
+    postJson(
+      s"",
+      createReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+
+      val result: WrappedDataset = parsedBody
+        .extract[DataSetDTO]
+        .content
+
+      val datasetId = result.intId
+      val integrations = secureContainer.db
+        .run(
+          secureContainer.datasetIntegrationsMapper
+            .getByDatasetId(datasetId)
+            .result
+        )
+        .await
+
+      forAll(integrations)(_.enabledBy should equal(loggedInUser.id))
+      integrations.map(_.webhookId) should contain theSameElementsAs Set(
+        defaultWebhook1.id,
+        defaultWebhook2.id,
+        defaultWebhook3.id,
+        includedWebhook1.id,
+        includedWebhook2.id
+      )
 
     }
 

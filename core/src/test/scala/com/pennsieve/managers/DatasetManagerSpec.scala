@@ -16,14 +16,11 @@
 
 package com.pennsieve.managers
 
-import cats.data._
 import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
-import com.pennsieve.domain.CoreError
 import com.pennsieve.managers.DatasetManager.{ OrderByColumn, OrderByDirection }
 import com.pennsieve.models._
 import com.pennsieve.test.helpers.EitherValue._
-import org.scalatest.OptionValues._
 import org.scalatest.Matchers._
 import slick.jdbc.PostgresProfile.api._
 
@@ -1106,6 +1103,17 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val enabledCountOpt = result.right.get
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 0)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.isEmpty)
+
   }
 
   it should "work when all default dataset integrations are excluded" in {
@@ -1125,6 +1133,48 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val enabledCountOpt = result.right.get
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 0)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.isEmpty)
+
+  }
+
+  it should "work when default dataset integrations are included and excluded" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (defaultWebhook, _) = createWebhook(isDefault = true)
+
+    val dm = datasetManager(user = user)
+
+    val result = dm
+      .enableDefaultWebhooks(
+        dataset,
+        includedWebhookIds = Some(Set(defaultWebhook.id)),
+        excludedWebhookIds = Some(Set(defaultWebhook.id))
+      )
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 0)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.isEmpty)
+
   }
 
 }
