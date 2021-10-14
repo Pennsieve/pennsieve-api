@@ -622,7 +622,7 @@ class TestPublish
       val pkg1 = createPackage(testUser, name = "pkg1")
       val file1 = createFile(
         pkg1,
-        name = "file",
+        name = "file1",
         s3Key = "key/file.txt",
         content = "data data",
         size = 1234
@@ -723,27 +723,32 @@ class TestPublish
           files = List(
             FileManifest(
               Publish.BANNER_FILENAME,
+              Publish.BANNER_FILENAME,
               bannerJpg.length,
               FileType.JPEG
             ),
             FileManifest(
               Publish.METADATA_FILENAME,
+              Publish.METADATA_FILENAME,
               metadata.getBytes("utf-8").length,
               FileType.Json
             ),
             FileManifest(
+              "file2",
               "files/pkg2/file2.dcm",
               2222,
               FileType.DICOM,
               Some(pkg2.nodeId)
             ),
             FileManifest(
+              "file3",
               "files/pkg2/file3.dcm",
               3333,
               FileType.DICOM,
               Some(pkg2.nodeId)
             ),
             FileManifest(
+              "file1",
               "files/pkg1.txt",
               1234,
               FileType.Text,
@@ -751,10 +756,12 @@ class TestPublish
             ),
             FileManifest(
               Publish.README_FILENAME,
+              Publish.README_FILENAME,
               readmeMarkdown.length,
               FileType.Markdown
             ),
             FileManifest(
+              "schema.json",
               "metadata/schema.json",
               schemaJson.length,
               FileType.Json
@@ -783,7 +790,7 @@ class TestPublish
       val pkg1 = createPackage(testUser, name = "pkg1")
       val file1 = createFile(
         pkg1,
-        name = "file",
+        name = "file1",
         s3Key = "key/file.txt",
         content = "data data",
         size = 1234
@@ -882,27 +889,32 @@ class TestPublish
           files = List(
             FileManifest(
               Publish.BANNER_FILENAME,
+              Publish.BANNER_FILENAME,
               bannerJpg.length,
               FileType.JPEG
             ),
             FileManifest(
               Publish.METADATA_FILENAME,
+              Publish.METADATA_FILENAME,
               metadata.getBytes("utf-8").length,
               FileType.Json
             ),
             FileManifest(
+              "file2",
               "files/pkg2/file2.dcm",
               2222,
               FileType.DICOM,
               Some(pkg2.nodeId)
             ),
             FileManifest(
+              "file3",
               "files/pkg2/file3.dcm",
               3333,
               FileType.DICOM,
               Some(pkg2.nodeId)
             ),
             FileManifest(
+              "file1",
               "files/pkg1.txt",
               1234,
               FileType.Text,
@@ -910,10 +922,12 @@ class TestPublish
             ),
             FileManifest(
               Publish.README_FILENAME,
+              Publish.README_FILENAME,
               readmeMarkdown.length,
               FileType.Markdown
             ),
             FileManifest(
+              "schema.json",
               "metadata/schema.json",
               schemaJson.length,
               FileType.Json
@@ -1230,8 +1244,8 @@ class TestPublish
           file,
           publishBucket,
           testKey,
-          s"files/grandparent/parent/My Notes.txt",
-          s"files/grandparent/parent/My Notes.txt"
+          s"files/grandparent/parent/My_Notes.txt",
+          s"files/grandparent/parent/My_Notes.txt"
         )
       )
     }
@@ -1248,8 +1262,8 @@ class TestPublish
           file,
           publishBucket,
           testKey,
-          s"files/grandparent/parent/My Notes.text",
-          s"files/grandparent/parent/My Notes.text"
+          s"files/grandparent/parent/My_Notes.text",
+          s"files/grandparent/parent/My_Notes.text"
         )
       )
     }
@@ -1276,16 +1290,16 @@ class TestPublish
           file1,
           publishBucket,
           testKey,
-          s"files/grandparent/parent/Brain stuff/brain_01.dcm",
-          s"files/grandparent/parent/Brain stuff"
+          s"files/grandparent/parent/Brain_stuff/brain_01.dcm",
+          s"files/grandparent/parent/Brain_stuff"
         ),
         CopyAction(
           pkg,
           file2,
           publishBucket,
           testKey,
-          s"files/grandparent/parent/Brain stuff/brain_02.dcm",
-          s"files/grandparent/parent/Brain stuff"
+          s"files/grandparent/parent/Brain_stuff/brain_02.dcm",
+          s"files/grandparent/parent/Brain_stuff"
         )
       )
     }
@@ -1304,8 +1318,8 @@ class TestPublish
         PackagesExport.exportPackageSources(publishContainer).await
 
       idMap shouldBe Map(
-        ExternalId.nodeId(pkg1.nodeId) -> "files/Brain stuff",
-        ExternalId.intId(pkg1.id) -> "files/Brain stuff",
+        ExternalId.nodeId(pkg1.nodeId) -> "files/Brain_stuff",
+        ExternalId.intId(pkg1.id) -> "files/Brain_stuff",
         ExternalId.nodeId(pkg2.nodeId) -> "files/p2.txt",
         ExternalId.intId(pkg2.id) -> "files/p2.txt"
       )

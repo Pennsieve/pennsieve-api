@@ -121,6 +121,29 @@ case class DatasetMetadataV4_0(
   pennsieveSchemaVersion: String = "4.0"
 ) extends DatasetMetadata
 
+case class DatasetMetadataV5_0(
+  pennsieveDatasetId: Int,
+  version: Int,
+  revision: Option[Int],
+  name: String,
+  description: String,
+  creator: PublishedContributor,
+  contributors: List[PublishedContributor],
+  sourceOrganization: String,
+  keywords: List[String],
+  datePublished: LocalDate,
+  license: Option[License],
+  `@id`: String, // DOI
+  publisher: String = "The University of Pennsylvania",
+  `@context`: String = "http://schema.org/",
+  `@type`: String = "Dataset",
+  schemaVersion: String = "http://schema.org/version/3.7/",
+  collections: Option[List[PublishedCollection]] = None,
+  relatedPublications: Option[List[PublishedExternalPublication]] = None,
+  files: List[FileManifest] = List.empty,
+  pennsieveSchemaVersion: String = "4.0"
+) extends DatasetMetadata
+
 object DatasetMetadataV4_0 {
   implicit val encoder: Encoder[DatasetMetadataV4_0] =
     deriveEncoder[DatasetMetadataV4_0]
@@ -190,6 +213,7 @@ object DatasetMetadata {
 }
 
 case class FileManifest(
+  name: String,
   path: String,
   size: Long,
   fileType: FileType,
@@ -197,7 +221,13 @@ case class FileManifest(
   id: Option[UUID] = None
 ) extends Ordered[FileManifest] {
 
-  def name: String = FilenameUtils.getName(path)
+  def this(
+    path: String,
+    size: Long,
+    fileType: FileType,
+    sourcePackageId: Option[String]
+  ) =
+    this(FilenameUtils.getName(path), path, size, fileType, sourcePackageId)
 
   // Order files lexicographically by path
   def compare(that: FileManifest) =
@@ -208,6 +238,41 @@ case class FileManifest(
 object FileManifest {
   implicit val encoder: Encoder[FileManifest] =
     deriveEncoder[FileManifest].mapJson(_.mapObject(_.remove("id")))
-  implicit val decoder: Decoder[FileManifest] =
-    deriveDecoder[FileManifest]
+  implicit val decoder: Decoder[FileManifest] = new Decoder[FileManifest] {
+    final def apply(c: HCursor): Decoder.Result[FileManifest] =
+      for {
+        path <- c.downField("path").as[String]
+        name <- c.downField("name").as[Option[String]]
+        size <- c.downField("size").as[Long]
+        fileType <- c.downField("fileType").as[FileType]
+        sourcePackageId <- c.downField("sourcePackageId").as[Option[String]]
+        id <- c.downField("id").as[Option[UUID]]
+
+        mappedName = if (name.isEmpty) {
+          FilenameUtils.getName(path)
+        } else {
+          name.get
+        }
+      } yield {
+        new FileManifest(mappedName, path, size, fileType, sourcePackageId, id)
+      }
+  }
+
+  def apply(
+    /**
+      * Used in older versions of the schema.
+      */
+    path: String,
+    size: Long,
+    fileType: FileType,
+    sourcePackageId: Option[String]
+  ): FileManifest = {
+    FileManifest(
+      FilenameUtils.getName(path),
+      path,
+      size,
+      fileType,
+      sourcePackageId
+    )
+  }
 }

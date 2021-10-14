@@ -19,7 +19,7 @@ package com.pennsieve.managers
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
 import com.pennsieve.db.FilesTable.{ OrderByColumn, OrderByDirection }
 import com.pennsieve.db.{ FilesMapper, FilesTable, PackagesMapper }
 import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
@@ -501,5 +501,36 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Option[FileType]] =
     db.run(files.getPackageFileType(`package`)).toEitherT
+
+  def renameFile(
+    `file`: File,
+    newName: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, File] = {
+    val fileToUpdate = `file`.copy(name = newName)
+
+    for {
+      currentUpdatedAt <- db
+        .run(for {
+          _ <- files
+            .assertNameIsUnique(fileToUpdate.name, fileToUpdate.packageId)
+          _ <- files
+            .get(fileToUpdate.id)
+            .map(_.name)
+            .update(newName)
+          updatedAt <- files
+            .get(fileToUpdate.id)
+            .map(_.updatedAt)
+            .result
+            .headOption
+        } yield updatedAt)
+        .toEitherT
+
+    } yield
+      fileToUpdate.copy(
+        updatedAt = currentUpdatedAt.getOrElse(fileToUpdate.updatedAt)
+      )
+  }
 
 }

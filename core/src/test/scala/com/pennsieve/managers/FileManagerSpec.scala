@@ -278,6 +278,39 @@ class FileManagerSpec extends BaseManagerSpec {
     )
   }
 
+  "Renaming source files" should "only work if the updated name is unique in package" in {
+
+    val user = createUser()
+    val pkg = createPackage(testOrganization, user)
+    val fileOne = createFile(
+      name = "file-1",
+      container = pkg,
+      user = user,
+      objectType = FileObjectType.Source,
+      processingState = FileProcessingState.Processed
+    )
+    val fileTwo = createFile(
+      name = "file-2",
+      container = pkg,
+      user = user,
+      objectType = FileObjectType.File,
+      processingState = FileProcessingState.NotProcessable
+    )
+
+    val fm = fileManager(organization = testOrganization, user = user)
+    val updatedFile = fm.renameFile(fileOne, "updatedName").await.value
+    assert(updatedFile.name == "updatedName")
+
+    val shouldFailFile = fm.renameFile(fileOne, "file-2").await
+
+    assert(
+      shouldFailFile === Left(
+        PredicateError(s"File name must be unique within Package")
+      )
+    )
+
+  }
+
   "pending source files" should "not be ignored if excludePending is false" in {
 
     val user = createUser()
@@ -298,34 +331,34 @@ class FileManagerSpec extends BaseManagerSpec {
     )
   }
 
-  "files" should "not be created if it does not follow naming conventions" in {
-
-    val user = createUser()
-    val pkg = createPackage(testOrganization, user)
-
-    val fm = fileManager(organization = testOrganization, user = user)
-
-    val fileCreationResult = fm
-      .create(
-        name = "Test++",
-        `type` = FileType.GenericData,
-        `package` = pkg,
-        s3Bucket = "bucket/" + generateRandomString(),
-        s3Key = "key/" + generateRandomString(),
-        objectType = Source,
-        processingState = FileProcessingState.Unprocessed,
-        size = 0,
-        uploadedState = None
-      )
-      .await
-
-    assert(
-      fileCreationResult === Left(
-        PredicateError(
-          s"Invalid file name, please follow the naming conventions"
-        )
-      )
-    )
-  }
+//  "files" should "not be created if it does not follow naming conventions" in {
+//
+//    val user = createUser()
+//    val pkg = createPackage(testOrganization, user)
+//
+//    val fm = fileManager(organization = testOrganization, user = user)
+//
+//    val fileCreationResult = fm
+//      .create(
+//        name = "Test++",
+//        `type` = FileType.GenericData,
+//        `package` = pkg,
+//        s3Bucket = "bucket/" + generateRandomString(),
+//        s3Key = "key/" + generateRandomString(),
+//        objectType = Source,
+//        processingState = FileProcessingState.Unprocessed,
+//        size = 0,
+//        uploadedState = None
+//      )
+//      .await
+//
+//    assert(
+//      fileCreationResult === Left(
+//        PredicateError(
+//          s"Invalid file name, please follow the naming conventions"
+//        )
+//      )
+//    )
+//  }
 
 }

@@ -280,6 +280,10 @@ class PackagesController(
         )
         (oldPackage, dataset) = result
 
+        sources <- secureContainer.fileManager
+          .getSources(oldPackage)
+          .coreErrorToActionResult
+
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
           .coreErrorToActionResult
@@ -325,7 +329,12 @@ class PackagesController(
           )
           .coreErrorToActionResult
 
-        _ <- if (oldPackage.name != updatedPackage.name)
+        _ <- if (oldPackage.name != updatedPackage.name) {
+          if (sources.length == 1) {
+            secureContainer.fileManager
+              .renameFile(sources.head, updatedPackage.name)
+          }
+
           for {
             parent <- secureContainer.packageManager
               .getParent(oldPackage)
@@ -342,7 +351,7 @@ class PackagesController(
               )
               .coreErrorToActionResult
           } yield ()
-        else EitherT.rightT[Future, ActionResult](())
+        } else EitherT.rightT[Future, ActionResult](())
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
@@ -907,22 +916,7 @@ class PackagesController(
               case ((datasetIds, rootNodeIds, downloadResponse), p) => {
                 val newEntry: DownloadManifestEntry = DownloadManifestEntry(
                   nodeId = p.nodeId,
-                  // NOTE:
-                  // Packages containing a single file should always assume the name of the parent package. Only in
-                  // cases where there are multiple source files associated with a package, should the original file
-                  // names be used when constructing an archive file for download from this manifest
-                  // the file extension is also passed to avoid issues with potential double-extensions in zipIt
-                  fileName = {
-                    if (p.packageFileCount === 1) {
-                      val ext =
-                        Utilities.getFullExtension(p.s3Key).getOrElse("")
-                      if (ext == "") p.packageName
-                      else s"${p.packageName}.${ext}"
-                    } else {
-                      p.fileName
-//                      FilenameUtils.getName(p.s3Key)
-                    }
-                  },
+                  fileName = p.fileName,
                   packageName = p.packageName,
                   // append the package's own name to the path ONLY if it contains multiple files
                   path =

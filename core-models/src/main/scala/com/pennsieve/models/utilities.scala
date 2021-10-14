@@ -16,33 +16,22 @@
 
 package com.pennsieve.models
 
-import com.google.common.net.UrlEscapers
 import org.apache.commons.io.FilenameUtils
 
 package object Utilities {
 
+  /**
+    * isNameValid should check if file/package name is valid.
+    * Currently, we do not have any restrictions. Escaping for S3 is handled
+    * separately with cleanS3Key method in core-models/Utilities
+    *
+    * TODO: Add meaningful restrictions such as length and maybe path characters?
+    *
+    * @param name
+    * @return
+    */
   def isNameValid(name: String): Boolean = {
-    var AuthorizedCharacters =
-      "^[\\p{L}\\p{N}() %*_\\-'.!]{1,255}$".r
-    //matches all "letter" characters from unicode plus digits and some special characters that are allowed by S3 for keys
-
-    val allCharactersValid: Boolean =
-      AuthorizedCharacters.pattern
-        .matcher(name)
-        .matches
-
-    val multipleContiguousSpaces = " {2,}".r
-
-    val severalWhiteSpacesInARow = multipleContiguousSpaces.findFirstIn(name)
-
-    val ForbiddenPercentSign = "%(?![2-9A-F][0-9A-F])".r
-    //negative lookahead: this regex will match any % that is not followed by an hexadecimal code for an html entity (between 20 and FF)
-
-    val badPercentSignDetected
-      : Option[String] = ForbiddenPercentSign findFirstIn name
-    //since we're using a negative lookahead, the elements won't be captured the same way and we cannot use the same method to test if the regex found something
-
-    allCharactersValid && badPercentSignDetected.isEmpty && severalWhiteSpacesInARow.isEmpty
+    true
   }
 
   def getPennsieveExtension(fileName: String): String = {
@@ -85,62 +74,64 @@ package object Utilities {
       "%2E"
     } else if (key == "..")
       "%2E%2E"
-    else
-      """[^\p{L}\p{N}()*_ \-'.!]""".r
-        .replaceAllIn(key, "_")
-        .replaceAll("\\s+", " ")
-        .trim
+    else {
+      val result =
+        """[^\p{L}\p{N}()*_\-'.!]""".r
+          .replaceAllIn(key, "_")
+
+      result.substring(0, Math.min(result.length, 128))
+    }
 
   }
 
 //    key.replaceAll("[^a-zA-Z0-9./@-]", "_")
 
-  def escapeName(name: String): String = {
-    if (name == ".")
-      "%2E"
-    else if (name == "..")
-      "%2E%2E"
-    else if (isNameValid(name))
-      name
-    else {
-      val result = "\\s+".r
-        .replaceAllIn(name, " ")
-        // escape % signs
-        .replaceAll("%(?![2-9A-F][0-9A-F])", "%25")
-        // plus sign are not allowed by S3
-        .replaceAll("\\+", "%2B")
-        // tildes are not allowed by S3
-        .replaceAll("~", "%7E")
-        // the following characters  are not allowed by our naming convention
-        .replaceAll(":", "%3A")
-        .replaceAll(",", "%2C")
-        .replaceAll("@", "%40")
-        .replaceAll("\\$", "%24")
-        .replaceAll("&", "%26")
-        .replaceAll("=", "%3D")
-        .replaceAll(";", "%3B")
-        .replaceAll("/", "%2F")
-        .replaceAll("\\{", "%7B")
-        .replaceAll("}", "%7D")
-        .replaceAll("\\[", "%5B")
-        .replaceAll("]", "%5D")
-        .replaceAll("\\|", "%7C")
-        .replaceAll("#", "%23")
-        .replaceAll("\\^", "%5E")
-        .replaceAll("<", "%3C")
-        .replaceAll(">", "%3E")
-        .replaceAll("\\?", "%3F")
-        .replaceAll("\\\\", "%5C")
-        .replaceAll("`", "%60")
-
-      // Replace % characters not valid escape codes.
-      val escapedString = "^[^\\p{L}\\p{N}() %*_\\-'.!]".r
-        .replaceAllIn(result, "_")
-
-      //trim string if exceeds 255 characters
-      escapedString.substring(0, Math.min(escapedString.length, 255))
-
-    }
-
-  }
+//  def escapeName(name: String): String = {
+//    if (name == ".")
+//      "%2E"
+//    else if (name == "..")
+//      "%2E%2E"
+//    else if (isNameValid(name))
+//      name
+//    else {
+//      val result = "\\s+".r
+//        .replaceAllIn(name, " ")
+//        // escape % signs
+//        .replaceAll("%(?![2-9A-F][0-9A-F])", "%25")
+//        // plus sign are not allowed by S3
+//        .replaceAll("\\+", "%2B")
+//        // tildes are not allowed by S3
+//        .replaceAll("~", "%7E")
+//        // the following characters  are not allowed by our naming convention
+//        .replaceAll(":", "%3A")
+//        .replaceAll(",", "%2C")
+//        .replaceAll("@", "%40")
+//        .replaceAll("\\$", "%24")
+//        .replaceAll("&", "%26")
+//        .replaceAll("=", "%3D")
+//        .replaceAll(";", "%3B")
+//        .replaceAll("/", "%2F")
+//        .replaceAll("\\{", "%7B")
+//        .replaceAll("}", "%7D")
+//        .replaceAll("\\[", "%5B")
+//        .replaceAll("]", "%5D")
+//        .replaceAll("\\|", "%7C")
+//        .replaceAll("#", "%23")
+//        .replaceAll("\\^", "%5E")
+//        .replaceAll("<", "%3C")
+//        .replaceAll(">", "%3E")
+//        .replaceAll("\\?", "%3F")
+//        .replaceAll("\\\\", "%5C")
+//        .replaceAll("`", "%60")
+//
+//      // Replace % characters not valid escape codes.
+//      val escapedString = "^[^\\p{L}\\p{N}() %*_\\-'.!]".r
+//        .replaceAllIn(result, "_")
+//
+//      //trim string if exceeds 255 characters
+//      escapedString.substring(0, Math.min(escapedString.length, 255))
+//
+//    }
+//
+//  }
 }

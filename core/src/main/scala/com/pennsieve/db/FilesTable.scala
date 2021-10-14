@@ -16,7 +16,7 @@
 
 package com.pennsieve.db
 
-import com.pennsieve.domain.NotFound
+import com.pennsieve.domain.{ NotFound, PredicateError }
 import com.pennsieve.models.FileObjectType.{ Source, View, File => FileT }
 import com.pennsieve.models.{
   File,
@@ -29,9 +29,9 @@ import com.pennsieve.models.{
   Package
 }
 import com.pennsieve.traits.PostgresProfile.api._
+
 import java.time.ZonedDateTime
 import java.util.UUID
-
 import com.pennsieve.db.FilesTable.{ OrderByColumn, OrderByDirection }
 import enumeratum.{ Enum, EnumEntry }
 import slick.ast.Ordering
@@ -176,6 +176,25 @@ class FilesMapper(val organization: Organization)
       .result
       .headOption
   }
+
+  def assertNameIsUnique(
+    name: String,
+    packageId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): DBIO[Unit] =
+    for {
+      nameExistInPackage <- this
+        .filter(_.packageId === packageId)
+        .filter(_.name === `name`)
+        .exists
+        .result
+
+      _ <- assert(!nameExistInPackage)(
+        PredicateError("File name must be unique within Package")
+      )
+
+    } yield ()
 
   def getByS3bucketAndS3Key(
     s3bucket: String,
