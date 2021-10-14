@@ -101,7 +101,9 @@ case class CreateDataSetRequest(
   status: Option[String] = None,
   automaticallyProcessPackages: Boolean = false,
   license: Option[License] = None,
-  tags: List[String] = List.empty
+  tags: List[String] = List.empty,
+  includedWebhookIds: List[Int] = List.empty,
+  excludedWebhookIds: List[Int] = List.empty
 )
 
 case class UpdateDataSetRequest(
@@ -860,6 +862,20 @@ class DataSetsController(
             license = body.license,
             tags = body.tags,
             dataUseAgreement = dataUseAgreement
+          )
+          .coreErrorToActionResult
+
+        includedWebhookIds = if (body.includedWebhookIds.isEmpty) None
+        else Some(body.includedWebhookIds.toSet)
+
+        excludedWebhookIds = if (body.excludedWebhookIds.isEmpty) None
+        else Some(body.excludedWebhookIds.toSet)
+
+        _ <- secureContainer.datasetManager
+          .enableDefaultWebhooks(
+            newDataset,
+            includedWebhookIds,
+            excludedWebhookIds
           )
           .coreErrorToActionResult
 

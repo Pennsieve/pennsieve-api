@@ -301,7 +301,7 @@ trait DataSetTestMixin {
     displayName: String = "Test Webhook",
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
     isPrivate: Boolean = false,
-    isDefault: Boolean = true,
+    isDefault: Boolean = false,
     container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext

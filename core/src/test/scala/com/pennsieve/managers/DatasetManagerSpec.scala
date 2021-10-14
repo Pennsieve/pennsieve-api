@@ -16,14 +16,11 @@
 
 package com.pennsieve.managers
 
-import cats.data._
 import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
-import com.pennsieve.domain.CoreError
 import com.pennsieve.managers.DatasetManager.{ OrderByColumn, OrderByDirection }
 import com.pennsieve.models._
 import com.pennsieve.test.helpers.EitherValue._
-import org.scalatest.OptionValues._
 import org.scalatest.Matchers._
 import slick.jdbc.PostgresProfile.api._
 
@@ -764,6 +761,420 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     val actual = actualIntegrations.head
     assert(actual.equals(enabledWebhook))
+  }
+
+  "enableDefaultWebhooks" should "create the default dataset integrations" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (defaultWebhook, _) =
+      createWebhook(description = "default webhook", isDefault = true)
+    createWebhook(description = "not default")
+
+    val dm = datasetManager(user = user)
+
+    val result = dm.enableDefaultWebhooks(dataset).await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 1)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.length == 1)
+
+    val actual = actualIntegrations.head
+    assert(actual.datasetId.equals(dataset.id))
+    assert(actual.webhookId.equals(defaultWebhook.id))
+    assert(actual.enabledBy.equals(user.id))
+  }
+
+  it should "create the default dataset integrations for any authorized user" in {
+    val webhookCreator = createUser()
+    val (defaultWebhook, _) =
+      createWebhook(
+        creatingUser = webhookCreator,
+        description = "default webhook",
+        isDefault = true
+      )
+
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val dm = datasetManager(user = user)
+
+    val result = dm.enableDefaultWebhooks(dataset).await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 1)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .filter(_.datasetId === dataset.id)
+          .result
+      )
+      .mapTo[Seq[DatasetIntegration]]
+      .await
+    assert(actualIntegrations.length == 1)
+
+    val actual = actualIntegrations.head
+    assert(actual.datasetId.equals(dataset.id))
+    assert(actual.webhookId.equals(defaultWebhook.id))
+    assert(actual.enabledBy.equals(user.id))
+  }
+
+  it should "create the default and requested dataset integrations" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (defaultWebhook, _) =
+      createWebhook(description = "default webhook", isDefault = true)
+    val (requestedWebhook, _) =
+      createWebhook(description = "requested but not default")
+
+    val dm = datasetManager(user = user)
+
+    val result = dm
+      .enableDefaultWebhooks(dataset, Some(Set(requestedWebhook.id)), None)
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 2)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.length == 2)
+    val actualDefault =
+      actualIntegrations.filter(_.webhookId == defaultWebhook.id)
+    assert(actualDefault.size == 1)
+    assert(actualDefault.head.datasetId.equals(dataset.id))
+    assert(actualDefault.head.enabledBy.equals(user.id))
+
+    val actualRequested =
+      actualIntegrations.filter(_.webhookId == requestedWebhook.id)
+    assert(actualRequested.size == 1)
+    assert(actualRequested.head.datasetId.equals(dataset.id))
+    assert(actualRequested.head.enabledBy.equals(user.id))
+
+  }
+
+  it should "create the default and requested dataset integrations if the requested webhook is private and created by the requesting user" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (defaultWebhook, _) =
+      createWebhook(description = "default webhook", isDefault = true)
+    val (requestedWebhook, _) =
+      createWebhook(
+        creatingUser = user,
+        description = "requested but not default",
+        isPrivate = true
+      )
+
+    val dm = datasetManager(user = user)
+
+    val result = dm
+      .enableDefaultWebhooks(
+        dataset,
+        includedWebhookIds = Some(Set(requestedWebhook.id))
+      )
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 2)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.length == 2)
+    val actualDefault =
+      actualIntegrations.filter(_.webhookId == defaultWebhook.id)
+    assert(actualDefault.size == 1)
+    assert(actualDefault.head.datasetId.equals(dataset.id))
+    assert(actualDefault.head.enabledBy.equals(user.id))
+
+    val actualRequested =
+      actualIntegrations.filter(_.webhookId == requestedWebhook.id)
+    assert(actualRequested.size == 1)
+    assert(actualRequested.head.datasetId.equals(dataset.id))
+    assert(actualRequested.head.enabledBy.equals(user.id))
+
+  }
+
+  it should "create the default and requested dataset integrations if the requested webhook is private and requesting user is super admin" in {
+    val dataset = createDataset(user = superAdmin)
+    val (defaultWebhook, _) =
+      createWebhook(description = "default webhook", isDefault = true)
+
+    val privateWebhookCreator = createUser()
+
+    val (requestedWebhook, _) =
+      createWebhook(
+        creatingUser = privateWebhookCreator,
+        description = "requested but not default",
+        isPrivate = true
+      )
+
+    val dm = datasetManager(user = superAdmin)
+
+    val result = dm
+      .enableDefaultWebhooks(
+        dataset,
+        includedWebhookIds = Some(Set(requestedWebhook.id))
+      )
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 2)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.length == 2)
+    val actualDefault =
+      actualIntegrations.filter(_.webhookId == defaultWebhook.id)
+    assert(actualDefault.size == 1)
+    assert(actualDefault.head.datasetId.equals(dataset.id))
+    assert(actualDefault.head.enabledBy.equals(superAdmin.id))
+
+    val actualRequested =
+      actualIntegrations.filter(_.webhookId == requestedWebhook.id)
+    assert(actualRequested.size == 1)
+    assert(actualRequested.head.datasetId.equals(dataset.id))
+    assert(actualRequested.head.enabledBy.equals(superAdmin.id))
+
+  }
+
+  it should "not create any excluded default dataset integrations" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (defaultWebhook, _) =
+      createWebhook(description = "default webhook", isDefault = true)
+    val (defaultExcludedWebhook, _) =
+      createWebhook(description = "default but excluded", isDefault = true)
+
+    val dm = datasetManager(user = user)
+
+    val result = dm
+      .enableDefaultWebhooks(
+        dataset,
+        None,
+        Some(Set(defaultExcludedWebhook.id))
+      )
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 1)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.length == 1)
+
+    val actualIntegration =
+      actualIntegrations.head
+    assert(actualIntegration.webhookId.equals(defaultWebhook.id))
+    assert(actualIntegration.datasetId.equals(dataset.id))
+    assert(actualIntegration.enabledBy.equals(user.id))
+
+  }
+
+  it should "not create any requested dataset integrations for private webhooks not created by user" in {
+    val webhookCreator = createUser()
+    val (privateWebhook, _) = createWebhook(
+      creatingUser = webhookCreator,
+      description = "private webhook",
+      isPrivate = true
+    )
+    val (defaultWebhook, _) =
+      createWebhook(description = "default webhook", isDefault = true)
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val dm = datasetManager(user = user)
+
+    val result = dm
+      .enableDefaultWebhooks(
+        dataset,
+        includedWebhookIds = Some(Set(privateWebhook.id))
+      )
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 1)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.length == 1)
+
+    val actualIntegration =
+      actualIntegrations.head
+    assert(actualIntegration.webhookId.equals(defaultWebhook.id))
+    assert(actualIntegration.datasetId.equals(dataset.id))
+    assert(actualIntegration.enabledBy.equals(user.id))
+
+  }
+
+  it should "create the requested dataset integrations and not any excluded defaults" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (defaultWebhook, _) =
+      createWebhook(description = "default webhook", isDefault = true)
+    val (requestedWebhook, _) =
+      createWebhook(description = "requested but not default")
+
+    val dm = datasetManager(user = user)
+
+    val result = dm
+      .enableDefaultWebhooks(
+        dataset,
+        Some(Set(requestedWebhook.id)),
+        Some(Set(defaultWebhook.id))
+      )
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 1)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.length == 1)
+
+    val actualRequested =
+      actualIntegrations.head
+    assert(actualRequested.webhookId.equals(requestedWebhook.id))
+    assert(actualRequested.datasetId.equals(dataset.id))
+    assert(actualRequested.enabledBy.equals(user.id))
+
+  }
+
+  it should "work when there are no default dataset integrations" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val dm = datasetManager(user = user)
+
+    val result = dm.enableDefaultWebhooks(dataset).await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 0)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.isEmpty)
+
+  }
+
+  it should "work when all default dataset integrations are excluded" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (defaultWebhook, _) = createWebhook(isDefault = true)
+
+    val dm = datasetManager(user = user)
+
+    val result = dm
+      .enableDefaultWebhooks(
+        dataset,
+        excludedWebhookIds = Some(Set(defaultWebhook.id))
+      )
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 0)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.isEmpty)
+
+  }
+
+  it should "work when default dataset integrations are included and excluded" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val (defaultWebhook, _) = createWebhook(isDefault = true)
+
+    val dm = datasetManager(user = user)
+
+    val result = dm
+      .enableDefaultWebhooks(
+        dataset,
+        includedWebhookIds = Some(Set(defaultWebhook.id)),
+        excludedWebhookIds = Some(Set(defaultWebhook.id))
+      )
+      .await
+    assert(result.isRight)
+    val enabledCountOpt = result.right.get
+    assert(enabledCountOpt.isDefined)
+    assert(enabledCountOpt.get == 0)
+
+    val actualIntegrations = database
+      .run(
+        dm.datasetIntegrationsMapper
+          .getByDatasetId(dataset.id)
+          .result
+      )
+      .await
+
+    assert(actualIntegrations.isEmpty)
+
   }
 
 }

@@ -20,7 +20,6 @@ import java.util.UUID
 
 import cats.data._
 import cats.implicits._
-import cats.Applicative
 import com.pennsieve.audit.middleware.TraceId
 
 import scala.util.Either
@@ -40,7 +39,6 @@ import slick.lifted.{ ColumnOrdered, Query }
 import java.time.ZonedDateTime
 
 import scala.collection.immutable
-import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
@@ -121,6 +119,8 @@ class DatasetManager(
   val datasetContributorMapper = new DatasetContributorMapper(organization)
 
   val datasetIntegrationsMapper = new DatasetIntegrationsMapper(organization)
+
+  val webhooksMapper = new WebhooksMapper(organization)
 
   implicit val collectionMapper: CollectionMapper =
     new CollectionMapper(organization)
@@ -1614,5 +1614,28 @@ class DatasetManager(
         )
         .toEitherT
     } yield deletedRowCount
+  }
+
+  def enableDefaultWebhooks(
+    dataset: Dataset,
+    includedWebhookIds: Option[Set[Int]] = None,
+    excludedWebhookIds: Option[Set[Int]] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[Int]] = {
+
+    val insertAction = for {
+      whToEnable <- webhooksMapper
+        .getDefaults(actor, includedWebhookIds, excludedWebhookIds)
+        .map(_.id)
+        .result
+      insert <- datasetIntegrationsMapper ++= whToEnable.map(
+        DatasetIntegration(_, dataset.id, actor.id)
+      )
+    } yield insert
+
+    for {
+      runInsert <- db.run(insertAction).toEitherT
+    } yield runInsert
   }
 }
