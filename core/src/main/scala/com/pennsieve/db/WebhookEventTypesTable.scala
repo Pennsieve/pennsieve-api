@@ -26,6 +26,7 @@ final class WebhookEventTypesTable(schema: String, tag: Tag)
 
   // set by the database
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
+
   def eventName = column[String]("event_name")
 
   def * =
@@ -33,4 +34,8 @@ final class WebhookEventTypesTable(schema: String, tag: Tag)
 }
 
 class WebhookEventTypesMapper(val organization: Organization)
-    extends TableQuery(new WebhookEventTypesTable(organization.schemaId, _))
+    extends TableQuery(new WebhookEventTypesTable(organization.schemaId, _)) {
+
+  def getNameById(id: Int): DBIO[Option[String]] =
+    this.filter(_.id === id).map(_.eventName).result.headOption
+}

@@ -152,6 +152,25 @@ class WebhookManager(
     rows: Seq[WebhookEventSubcription]
   ): DBIO[Option[Int]] = webhookEventSubscriptionsMapper ++= rows
 
+  def update(
+    webhook: Webhook
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Webhook] = {
+
+    val action = for {
+      rowCount <- webhooksMapper
+        .filter(_.id === webhook.id)
+        .update(webhook)
+      updatedWebhook <- rowCount match {
+        case 0 => DBIO.failed(NotFound(s"Webhook (${webhook.id})"))
+        case _ => webhooksMapper.filter(_.id === webhook.id).result.head
+      }
+    } yield updatedWebhook
+
+    db.run(action.transactionally).toEitherT
+  }
+
   /*
   Get all webhooks for user without subscriptions
    */
