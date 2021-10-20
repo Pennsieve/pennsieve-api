@@ -281,6 +281,210 @@ class WebhookManagerSpec extends BaseManagerSpec {
 
   }
 
+  it should "return a PredicateError if apiUrl is empty" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = ""
+    val expectedImageUrl = "http://example.com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents =
+      List("METADATA", "PERMISSIONS")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+
+    val webhookRows =
+      database
+        .run(whManager.webhooksMapper.result)
+        .mapTo[Seq[Webhook]]
+        .await
+    assert(webhookRows.isEmpty)
+
+    val subscriptionRows = database
+      .run(whManager.webhookEventSubscriptionsMapper.result)
+      .mapTo[Seq[WebhookEventSubcription]]
+      .await
+    assert(subscriptionRows.isEmpty)
+
+  }
+
+  it should "return a PredicateError if displayName is too long" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedImageUrl = "http://example.com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook" * 100
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents =
+      List("METADATA", "PERMISSIONS")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+
+    val webhookRows =
+      database
+        .run(whManager.webhooksMapper.result)
+        .mapTo[Seq[Webhook]]
+        .await
+    assert(webhookRows.isEmpty)
+
+    val subscriptionRows = database
+      .run(whManager.webhookEventSubscriptionsMapper.result)
+      .mapTo[Seq[WebhookEventSubcription]]
+      .await
+    assert(subscriptionRows.isEmpty)
+
+  }
+
+  it should "return a PredicateError if imageUrl is too long" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedImageUrl = "http://" + "example" * 100 + ".com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents =
+      List("METADATA", "PERMISSIONS")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+
+    val webhookRows =
+      database
+        .run(whManager.webhooksMapper.result)
+        .mapTo[Seq[Webhook]]
+        .await
+    assert(webhookRows.isEmpty)
+
+    val subscriptionRows = database
+      .run(whManager.webhookEventSubscriptionsMapper.result)
+      .mapTo[Seq[WebhookEventSubcription]]
+      .await
+    assert(subscriptionRows.isEmpty)
+
+  }
+
+  it should "handle an empty image url without error" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents = List("METADATA", "PERMISSIONS")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(""),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isRight)
+    val (returnedWebhook, returnedTargetEvents) = result.right.get
+    assert(returnedWebhook.apiUrl == expectedApiUrl)
+    assert(returnedWebhook.imageUrl.isEmpty)
+    assert(returnedWebhook.isDefault == expectedIsDefault)
+    assert(returnedWebhook.isPrivate == expectedIsPrivate)
+    assert(returnedWebhook.createdBy == whManager.actor.id)
+    assert(returnedWebhook.description == expectedDescription)
+    assert(returnedWebhook.displayName == expectedDisplayName)
+    assert(returnedWebhook.secret == expectedSecret)
+    assert(returnedTargetEvents.equals(expectedTargetEvents))
+
+    val webhookRows =
+      database
+        .run(whManager.webhooksMapper.result)
+        .mapTo[Seq[Webhook]]
+        .await
+    assert(webhookRows.length == 1)
+    val actualWebhook = webhookRows.head
+    assert(actualWebhook.equals(returnedWebhook))
+
+    val subscriptionRows = database
+      .run(whManager.webhookEventSubscriptionsMapper.result)
+      .mapTo[Seq[WebhookEventSubcription]]
+      .await
+    assert(subscriptionRows.length == expectedTargetEvents.length)
+    assert(subscriptionRows.forall(_.webhookId == actualWebhook.id))
+    val expectedEventsSet = expectedTargetEvents.to[collection.mutable.Set]
+    for (subscriptionRow <- subscriptionRows) {
+      val eventTypeId = subscriptionRow.webhookEventTypeId
+
+      val eventTypeRow = database
+        .run(
+          whManager.webhookEventTypesMapper
+            .filter(_.id === eventTypeId)
+            .result
+            .headOption
+        )
+        .mapTo[Some[WebhookEventType]]
+        .await
+
+      assert(eventTypeRow.isDefined)
+      assert(expectedEventsSet.remove(eventTypeRow.get.eventName))
+    }
+
+    assert(expectedEventsSet.isEmpty)
+
+  }
+
   "getWithPermissionCheck" should "return a webhook to its creator" in {
     val (webhook, _) = createWebhook(creatingUser = orgReader)
     val whManager = webhookManager(user = orgReader)

@@ -54,26 +54,27 @@ class WebhookManager(
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
+
+    val trimmedImageUrl = imageUrl match {
+      case None => None
+      case Some(url) if url.trim.isEmpty => None
+      case Some(url) => Some(url.trim)
+    }
+
     for {
       _ <- checkOrErrorT(apiUrl.trim.length < 256 && apiUrl.trim.length > 0)(
-        PredicateError("api url must be less than or equal to 255 characters")
+        PredicateError("api url must be between 1 and 255 characters")
       )
 
-      trimmedImageUrl = imageUrl match {
-        case None => None
-        case Some(url) if url.trim.isEmpty => None
-        case Some(url) =>
-          checkOrErrorT(url.trim.length < 256)(
-            PredicateError(
-              "image url must be less than or equal to 255 characters"
-            )
-          )
-          Some(url.trim)
-      }
+      _ <- checkOrErrorT(
+        trimmedImageUrl.isEmpty || trimmedImageUrl.get.length < 256
+      )(
+        PredicateError("image url must be less than or equal to 255 characters")
+      )
 
       _ <- checkOrErrorT(
         description.trim.length < 200 && description.trim.length > 0
-      )(PredicateError("description must be between 1 and 200 characters"))
+      )(PredicateError("description must be between 1 and 199 characters"))
 
       _ <- checkOrErrorT(secret.trim.length < 256 && secret.trim.length > 0)(
         PredicateError("secret must be between 1 and 255 characters")
