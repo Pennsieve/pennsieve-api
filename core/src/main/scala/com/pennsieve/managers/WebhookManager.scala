@@ -19,8 +19,10 @@ package com.pennsieve.managers
 import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.{
+  checkOrError,
   checkOrErrorT,
   slugify,
+  trimOptional,
   FutureEitherHelpers
 }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
@@ -42,7 +44,7 @@ class WebhookManager(
 
   val organization: Organization = webhooksMapper.organization
 
-  def create(
+  def validate(
     apiUrl: String,
     imageUrl: Option[String],
     description: String,
@@ -50,16 +52,12 @@ class WebhookManager(
     displayName: String,
     isPrivate: Boolean,
     isDefault: Boolean,
-    targetEvents: Option[List[String]]
+    isDisabled: Boolean
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
+  ): EitherT[Future, PredicateError, Webhook] = {
 
-    val trimmedImageUrl = imageUrl match {
-      case None => None
-      case Some(url) if url.trim.isEmpty => None
-      case Some(url) => Some(url.trim)
-    }
+    val trimmedImageUrl = trimOptional(imageUrl)
 
     for {
       _ <- checkOrErrorT(apiUrl.trim.length < 256 && apiUrl.trim.length > 0)(
@@ -93,8 +91,36 @@ class WebhookManager(
         displayName.trim,
         isPrivate,
         isDefault,
-        false,
+        isDisabled,
         actor.id
+      )
+    } yield row
+  }
+
+  def create(
+    apiUrl: String,
+    imageUrl: Option[String],
+    description: String,
+    secret: String,
+    displayName: String,
+    isPrivate: Boolean,
+    isDefault: Boolean,
+    targetEvents: Option[List[String]]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
+
+    for {
+
+      row <- validate(
+        apiUrl,
+        imageUrl,
+        description,
+        secret,
+        displayName,
+        isPrivate,
+        isDefault,
+        isDisabled = false
       )
 
       /* Creating a SQL Action Sequence that inserts row for webhook and
@@ -162,9 +188,10 @@ class WebhookManager(
       rowCount <- webhooksMapper
         .filter(_.id === webhook.id)
         .update(webhook)
-      updatedWebhook <- rowCount match {
-        case 0 => DBIO.failed(NotFound(s"Webhook (${webhook.id})"))
-        case _ => webhooksMapper.filter(_.id === webhook.id).result.head
+      updatedWebhook <- if (rowCount == 0) {
+        DBIO.failed(NotFound(s"Webhook (${webhook.id})"))
+      } else {
+        webhooksMapper.filter(_.id === webhook.id).result.head
       }
     } yield updatedWebhook
 

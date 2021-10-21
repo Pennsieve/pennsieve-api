@@ -155,4 +155,13 @@ package object utilities {
       .trim
       .replaceAll("\\s+", "_")
       .toUpperCase
+
+  /**
+    * Returns an Option wrapped trimmed version of [[optionalStr]] if present, otherwise None
+    * @param optionalStr
+    * @return either trimmed, non-empty Some or None
+    */
+  def trimOptional(optionalStr: Option[String]): Option[String] = {
+    optionalStr.flatMap(s => Option(s.trim).filter(_.nonEmpty))
+  }
 }
