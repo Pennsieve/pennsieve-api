@@ -46,6 +46,16 @@ class WebhookEventTypesMapper(val organization: Organization)
     this.filter(_.eventName inSetBind targetEvents).result
   }
 
+  def getTargetEventIds(targetEvents: List[String]): DBIO[Seq[Int]] = {
+    this.filter(_.eventName inSetBind targetEvents).map(_.id).result
+  }
+
+  def getTargetEvents(
+    targetEvents: List[String]
+  ): DBIO[Seq[WebhookEventType]] = {
+    this.filter(_.eventName inSetBind targetEvents).result
+  }
+
   def getTargetEventTypesQuery(
     targetEvents: List[String]
   ): Query[WebhookEventTypesTable, WebhookEventType, Seq] = {

@@ -299,6 +299,37 @@ class WebhookManager(
       case Left(error) => DBIO.failed(error)
     }
 
+    val updateEvents = targetEvents match {
+      case None => DBIO.successful()
+      case Some(Nil) =>
+        webhookEventSubscriptionsMapper
+          .filter(_.webhookId === webhook.id)
+          .delete
+      case Some(events) =>
+        for {
+          requestedEventIds <- webhookEventTypesMapper.getTargetEventIds(events)
+          _ <- assert(requestedEventIds.toSet.size == events.toSet.size)(
+            PredicateError(s"${events} contains an unknown event name")
+          )
+          // Delete subscriptions not in requested events
+          _ <- webhookEventSubscriptionsMapper
+            .filter(_.webhookId === webhook.id)
+            .filterNot(_.id inSet requestedEventIds)
+            .delete
+
+          // Insert requested subscriptions that don't already exist
+          existingSubscriptionEventIds <- webhookEventSubscriptionsMapper
+            .filter(_.webhookId === webhook.id)
+            .map(_.webhookEventTypeId)
+            .result
+          _ <- insertSubscriptions(
+            requestedEventIds
+              .filterNot(existingSubscriptionEventIds contains _)
+              .map(WebhookEventSubcription(webhook.id, _))
+          )
+        } yield DBIO.successful()
+    }
+
     val action = for {
       rowCount <- updateWebhookAction
       updatedWebhook <- if (rowCount == 0) {
@@ -306,6 +337,7 @@ class WebhookManager(
       } else {
         webhooksMapper.filter(_.id === webhook.id).result.head
       }
+      _ <- updateEvents
       eventNames <- getEventNames(webhook.id).result
     } yield (updatedWebhook, eventNames)
 

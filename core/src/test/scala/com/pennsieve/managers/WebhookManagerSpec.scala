@@ -495,17 +495,22 @@ class WebhookManagerSpec extends BaseManagerSpec {
 
   "update" should "update and return the modified webhook" in {
     val (webhook, subscriptions) =
-      createWebhook(description = "original description")
+      createWebhook(
+        description = "original description",
+        targetEvents = Some(List("METADATA", "STATUS"))
+      )
     val newDescription = "new description"
+    val newEvents = List("STATUS", "FILES")
     val whManager = webhookManager()
 
     val updatedWebhook = webhook.copy(description = newDescription)
-    val result = whManager.update(updatedWebhook).await
+    val result =
+      whManager.update(updatedWebhook, targetEvents = Some(newEvents)).await
 
     assert(result.isRight)
     val (returnedWebhook, returnedEvents) = result.right.get
     assert(returnedWebhook.description == newDescription)
-    assert(returnedEvents.toSet == subscriptions.toSet)
+    assert(returnedEvents.toSet == newEvents.toSet)
 
     checkActualWebhooks(whManager, returnedWebhook)
     checkActualSubscriptions(whManager, returnedWebhook.id, returnedEvents)
