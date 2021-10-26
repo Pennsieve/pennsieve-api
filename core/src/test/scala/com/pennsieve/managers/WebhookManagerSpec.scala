@@ -503,11 +503,12 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val result = whManager.update(updatedWebhook).await
 
     assert(result.isRight)
-    val returnedWebhook = result.right.get
+    val (returnedWebhook, returnedEvents) = result.right.get
     assert(returnedWebhook.description == newDescription)
+    assert(returnedEvents.toSet == subscriptions.toSet)
 
     checkActualWebhooks(whManager, returnedWebhook)
-    checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
+    checkActualSubscriptions(whManager, returnedWebhook.id, returnedEvents)
   }
 
   it should "work if no changes were made" in {
@@ -517,7 +518,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
 
     val result = whManager.update(webhook).await
     assert(result.isRight)
-    val returnedWebhook = result.right.get
+    val (returnedWebhook, returnedEvents) = result.right.get
+    assert(webhook == returnedWebhook)
+    assert(subscriptions == returnedEvents)
 
     checkActualWebhooks(whManager, returnedWebhook)
     checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
@@ -609,8 +612,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val result = whManager.update(updatedWebhook).await
 
     assert(result.isRight)
-    val returnedWebhook = result.right.get
+    val (returnedWebhook, returnedEvents) = result.right.get
     assert(returnedWebhook.imageUrl.isEmpty)
+    assert(returnedEvents == subscriptions)
 
     checkActualWebhooks(whManager, returnedWebhook)
     checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
@@ -625,8 +629,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val result = whManager.update(updatedWebhook).await
 
     assert(result.isRight)
-    val returnedWebhook = result.right.get
+    val (returnedWebhook, returnedEvents) = result.right.get
     assert(returnedWebhook.imageUrl.isEmpty)
+    assert(returnedEvents == subscriptions)
 
     checkActualWebhooks(whManager, returnedWebhook)
     checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)

@@ -277,11 +277,20 @@ class WebhookManager(
     rows: Seq[WebhookEventSubcription]
   ): DBIO[Option[Int]] = webhookEventSubscriptionsMapper ++= rows
 
+  def getEventNames(webhookId: Int): Query[Rep[String], String, Seq] = {
+    for {
+      (sub, event) <- webhookEventSubscriptionsMapper join webhookEventTypesMapper on (_.webhookEventTypeId === _.id)
+      if (sub.webhookId === webhookId)
+    } yield event.eventName
+  }
+
   def update(
-    webhook: Webhook
+    webhook: Webhook,
+    targetEvents: Option[List[String]] = None
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Webhook] = {
+  ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
+
     val validated = validateWebhook(webhook)
 
     val updateWebhookAction = validated match {
@@ -297,7 +306,8 @@ class WebhookManager(
       } else {
         webhooksMapper.filter(_.id === webhook.id).result.head
       }
-    } yield updatedWebhook
+      eventNames <- getEventNames(webhook.id).result
+    } yield (updatedWebhook, eventNames)
 
     db.run(action.transactionally).toEitherT
   }

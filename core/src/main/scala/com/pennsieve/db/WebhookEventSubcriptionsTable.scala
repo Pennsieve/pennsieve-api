@@ -19,8 +19,6 @@ package com.pennsieve.db
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.models._
 
-import scala.concurrent.{ ExecutionContext, Future }
-
 final class WebhookEventSubscriptionsTable(schema: String, tag: Tag)
     extends Table[WebhookEventSubcription](
       tag,
