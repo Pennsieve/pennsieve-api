@@ -16,6 +16,7 @@
 
 package com.pennsieve.db
 
+import com.pennsieve.domain.PredicateError
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.models._
 
@@ -38,4 +39,16 @@ class WebhookEventTypesMapper(val organization: Organization)
 
   def getNameById(id: Int): DBIO[Option[String]] =
     this.filter(_.id === id).map(_.eventName).result.headOption
+
+  def getTargetEventTypes(
+    targetEvents: List[String]
+  ): DBIO[Seq[WebhookEventType]] = {
+    this.filter(_.eventName inSetBind targetEvents).result
+  }
+
+  def getTargetEventTypesQuery(
+    targetEvents: List[String]
+  ): Query[WebhookEventTypesTable, WebhookEventType, Seq] = {
+    this.filter(_.eventName inSetBind targetEvents)
+  }
 }

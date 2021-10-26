@@ -53,36 +53,95 @@ class WebhookManager(
     isPrivate: Boolean,
     isDefault: Boolean,
     isDisabled: Boolean
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, PredicateError, Webhook] = {
+  ): Either[PredicateError, Webhook] = {
 
+    val validated = validateTuple(
+      apiUrl,
+      imageUrl,
+      description,
+      secret,
+      displayName,
+      isPrivate,
+      isDefault,
+      isDisabled
+    )
+
+    validated.map {
+      case (
+          apiUrl,
+          imageUrl,
+          description,
+          secret,
+          name,
+          displayName,
+          isPrivate,
+          isDefault,
+          isDisabled
+          ) =>
+        Webhook(
+          apiUrl = apiUrl,
+          imageUrl = imageUrl,
+          description = description,
+          secret = secret,
+          name = name,
+          displayName = displayName,
+          isPrivate = isPrivate,
+          isDefault = isDefault,
+          isDisabled = isDisabled,
+          createdBy = actor.id
+        )
+    }
+  }
+
+  def validateTuple(
+    apiUrl: String,
+    imageUrl: Option[String],
+    description: String,
+    secret: String,
+    displayName: String,
+    isPrivate: Boolean,
+    isDefault: Boolean,
+    isDisabled: Boolean
+  ): Either[
+    PredicateError,
+    (
+      String,
+      Option[String],
+      String,
+      String,
+      String,
+      String,
+      Boolean,
+      Boolean,
+      Boolean
+    )
+  ] = {
     val trimmedImageUrl = trimOptional(imageUrl)
 
     for {
-      _ <- checkOrErrorT(apiUrl.trim.length < 256 && apiUrl.trim.length > 0)(
+      _ <- checkOrError(apiUrl.trim.length < 256 && apiUrl.trim.length > 0)(
         PredicateError("api url must be between 1 and 255 characters")
       )
 
-      _ <- checkOrErrorT(
+      _ <- checkOrError(
         trimmedImageUrl.isEmpty || trimmedImageUrl.get.length < 256
       )(
         PredicateError("image url must be less than or equal to 255 characters")
       )
 
-      _ <- checkOrErrorT(
+      _ <- checkOrError(
         description.trim.length < 200 && description.trim.length > 0
       )(PredicateError("description must be between 1 and 199 characters"))
 
-      _ <- checkOrErrorT(secret.trim.length < 256 && secret.trim.length > 0)(
+      _ <- checkOrError(secret.trim.length < 256 && secret.trim.length > 0)(
         PredicateError("secret must be between 1 and 255 characters")
       )
 
-      _ <- checkOrErrorT(
+      _ <- checkOrError(
         displayName.trim.length < 256 && displayName.trim.length > 0
       )(PredicateError("display name must be between 1 and 255 characters"))
 
-      row = Webhook(
+      row = (
         apiUrl.trim,
         trimmedImageUrl,
         description.trim,
@@ -91,10 +150,47 @@ class WebhookManager(
         displayName.trim,
         isPrivate,
         isDefault,
-        isDisabled,
-        actor.id
+        isDisabled
       )
     } yield row
+  }
+
+  def validateWebhook(webhook: Webhook): Either[PredicateError, Webhook] = {
+    val validated = validateTuple(
+      webhook.apiUrl,
+      webhook.imageUrl,
+      webhook.description,
+      webhook.secret,
+      webhook.displayName,
+      webhook.isPrivate,
+      webhook.isDefault,
+      webhook.isDisabled
+    )
+
+    validated.map {
+      case (
+          apiUrl,
+          imageUrl,
+          description,
+          secret,
+          name,
+          displayName,
+          isPrivate,
+          isDefault,
+          isDisabled
+          ) =>
+        webhook.copy(
+          apiUrl = apiUrl,
+          imageUrl = imageUrl,
+          description = description,
+          secret = secret,
+          name = name,
+          displayName = displayName,
+          isPrivate = isPrivate,
+          isDefault = isDefault,
+          isDisabled = isDisabled
+        )
+    }
   }
 
   def create(
@@ -112,7 +208,7 @@ class WebhookManager(
 
     for {
 
-      row <- validate(
+      row <- (validate(
         apiUrl,
         imageUrl,
         description,
@@ -121,7 +217,10 @@ class WebhookManager(
         isPrivate,
         isDefault,
         isDisabled = false
-      )
+      ) match {
+        case Left(error) => Future.failed(error)
+        case Right(webhook) => Future.successful(webhook)
+      }).toEitherT
 
       /* Creating a SQL Action Sequence that inserts row for webhook and
       a row for each event that it is subscribed to.
@@ -183,11 +282,16 @@ class WebhookManager(
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Webhook] = {
+    val validated = validateWebhook(webhook)
+
+    val updateWebhookAction = validated match {
+      case Right(updates) =>
+        webhooksMapper.filter(_.id === webhook.id).update(updates)
+      case Left(error) => DBIO.failed(error)
+    }
 
     val action = for {
-      rowCount <- webhooksMapper
-        .filter(_.id === webhook.id)
-        .update(webhook)
+      rowCount <- updateWebhookAction
       updatedWebhook <- if (rowCount == 0) {
         DBIO.failed(NotFound(s"Webhook (${webhook.id})"))
       } else {

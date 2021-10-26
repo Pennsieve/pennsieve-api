@@ -501,6 +501,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
 
     val updatedWebhook = webhook.copy(description = newDescription)
     val result = whManager.update(updatedWebhook).await
+
     assert(result.isRight)
     val returnedWebhook = result.right.get
     assert(returnedWebhook.description == newDescription)
@@ -526,10 +527,10 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val unsavedWebhook = Webhook(
       "https://example.com/api",
       None,
-      "",
-      "",
-      "",
-      "",
+      "description",
+      "secret",
+      "name",
+      "display name",
       isPrivate = false,
       isDefault = true,
       isDisabled = false,
@@ -545,6 +546,90 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(error.isInstanceOf[NotFound])
     assert(error.getMessage.contains(unsavedWebhook.id.toString))
     checkActualWebhooks(whManager)
+  }
+
+  it should "return a PredicateError if apiUrl is updated to empty" in {
+    val (webhook, subscriptions) =
+      createWebhook()
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(apiUrl = "")
+    val result = whManager.update(updatedWebhook).await
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+    assert(error.getMessage contains "api url")
+
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
+  }
+
+  it should "return a PredicateError if displayName is updated to a value that is too long" in {
+    val (webhook, subscriptions) =
+      createWebhook()
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(displayName = "display name" * 300)
+    val result = whManager.update(updatedWebhook).await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+    assert(error.getMessage contains "display name")
+
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
+  }
+
+  it should "return a PredicateError if image url is updated to a value that is too long" in {
+    val (webhook, subscriptions) =
+      createWebhook()
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(
+      imageUrl = Some("https://" + "example" * 300 + ".com/image.jpg")
+    )
+    val result = whManager.update(updatedWebhook).await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+    assert(error.getMessage contains "image url")
+
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
+  }
+
+  it should "work if image url is updated to an empty value" in {
+    val (webhook, subscriptions) =
+      createWebhook(imageUrl = Some("http://www.example.com/image.jpg"))
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(imageUrl = Some(""))
+    val result = whManager.update(updatedWebhook).await
+
+    assert(result.isRight)
+    val returnedWebhook = result.right.get
+    assert(returnedWebhook.imageUrl.isEmpty)
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
+  }
+
+  it should "work if image url is updated to None" in {
+    val (webhook, subscriptions) =
+      createWebhook(imageUrl = Some("http://www.example.com/image.jpg"))
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(imageUrl = None)
+    val result = whManager.update(updatedWebhook).await
+
+    assert(result.isRight)
+    val returnedWebhook = result.right.get
+    assert(returnedWebhook.imageUrl.isEmpty)
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
   }
 
   "delete" should "return 1 and delete the webhook and its subscriptions" in {
