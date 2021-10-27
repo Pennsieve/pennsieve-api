@@ -119,7 +119,7 @@ class WebhookManager(
     val trimmedImageUrl = trimOptional(imageUrl)
 
     for {
-      _ <- checkOrError(apiUrl.trim.length < 256 && apiUrl.trim.length > 0)(
+      _ <- checkOrError(apiUrl.trim.length < 256 && apiUrl.trim.nonEmpty)(
         PredicateError("api url must be between 1 and 255 characters")
       )
 
@@ -130,15 +130,15 @@ class WebhookManager(
       )
 
       _ <- checkOrError(
-        description.trim.length < 200 && description.trim.length > 0
+        description.trim.length < 200 && description.trim.nonEmpty
       )(PredicateError("description must be between 1 and 199 characters"))
 
-      _ <- checkOrError(secret.trim.length < 256 && secret.trim.length > 0)(
+      _ <- checkOrError(secret.trim.length < 256 && secret.trim.nonEmpty)(
         PredicateError("secret must be between 1 and 255 characters")
       )
 
       _ <- checkOrError(
-        displayName.trim.length < 256 && displayName.trim.length > 0
+        displayName.trim.length < 256 && displayName.trim.nonEmpty
       )(PredicateError("display name must be between 1 and 255 characters"))
 
       row = (
@@ -277,11 +277,75 @@ class WebhookManager(
     rows: Seq[WebhookEventSubcription]
   ): DBIO[Option[Int]] = webhookEventSubscriptionsMapper ++= rows
 
-  def getEventNames(webhookId: Int): Query[Rep[String], String, Seq] = {
+  def getSubscribedEventNames(
+    webhookId: Int
+  ): Query[Rep[String], String, Seq] = {
     for {
       (sub, event) <- webhookEventSubscriptionsMapper join webhookEventTypesMapper on (_.webhookEventTypeId === _.id)
-      if (sub.webhookId === webhookId)
+      if sub.webhookId === webhookId
     } yield event.eventName
+  }
+
+  /**
+    * Returns a [[DBIO]] that will update the event subscriptions of the webhook with id `webhookId` to match those
+    * in `requestedEvents` if non-empty and then return the names of events currently subscribed to by
+    * the webhook.
+    *
+    * Updates are performed by deleting any event subscriptions not listed in `requestedEvents`
+    * and creating any subscriptions listed in `requestedEvents` which do not currently exist.
+    *
+    * If `requestedEvents` is [[None]] no subscription updates will be performed.
+    *
+    * If `requestedEvents` is [[Some(Nil)]] all subscriptions will be deleted.
+    *
+    * if `requestedEvents` contains unknown events the action will fail with a [[PredicateError]].
+    *
+    * @param webhookId id of the webhook being updated
+    * @param requestedEvents names of events
+    * @param ec execution context
+    * @return the names of events to which the given webhook currently subscribes
+    */
+  def updateEventsAction(
+    webhookId: Int,
+    requestedEvents: Option[List[String]]
+  )(implicit
+    ec: ExecutionContext
+  ): DBIO[Seq[String]] = {
+    requestedEvents match {
+      case None =>
+        for (currentEventNames <- getSubscribedEventNames(webhookId).result)
+          yield currentEventNames
+      case Some(Nil) =>
+        for {
+          _ <- webhookEventSubscriptionsMapper
+            .filter(_.webhookId === webhookId)
+            .delete
+        } yield Nil
+      case Some(events) =>
+        for {
+          requestedEventIds <- webhookEventTypesMapper.getTargetEventIds(events)
+          _ <- assert(requestedEventIds.toSet.size == events.toSet.size)(
+            PredicateError(s"$events contains an unknown event name")
+          )
+          // Delete subscriptions not in requested events
+          _ <- webhookEventSubscriptionsMapper
+            .filter(_.webhookId === webhookId)
+            .filterNot(_.id inSet requestedEventIds)
+            .delete
+
+          // Insert requested subscriptions that don't already exist
+          existingSubscriptionEventIds <- webhookEventSubscriptionsMapper
+            .filter(_.webhookId === webhookId)
+            .map(_.webhookEventTypeId)
+            .result
+          _ <- insertSubscriptions(
+            requestedEventIds
+              .filterNot(existingSubscriptionEventIds contains _)
+              .map(WebhookEventSubcription(webhookId, _))
+          )
+        } yield events
+    }
+
   }
 
   def update(
@@ -291,43 +355,10 @@ class WebhookManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
 
-    val validated = validateWebhook(webhook)
-
-    val updateWebhookAction = validated match {
+    val updateWebhookAction: DBIO[Int] = validateWebhook(webhook) match {
       case Right(updates) =>
         webhooksMapper.filter(_.id === webhook.id).update(updates)
       case Left(error) => DBIO.failed(error)
-    }
-
-    val updateEvents = targetEvents match {
-      case None => DBIO.successful()
-      case Some(Nil) =>
-        webhookEventSubscriptionsMapper
-          .filter(_.webhookId === webhook.id)
-          .delete
-      case Some(events) =>
-        for {
-          requestedEventIds <- webhookEventTypesMapper.getTargetEventIds(events)
-          _ <- assert(requestedEventIds.toSet.size == events.toSet.size)(
-            PredicateError(s"${events} contains an unknown event name")
-          )
-          // Delete subscriptions not in requested events
-          _ <- webhookEventSubscriptionsMapper
-            .filter(_.webhookId === webhook.id)
-            .filterNot(_.id inSet requestedEventIds)
-            .delete
-
-          // Insert requested subscriptions that don't already exist
-          existingSubscriptionEventIds <- webhookEventSubscriptionsMapper
-            .filter(_.webhookId === webhook.id)
-            .map(_.webhookEventTypeId)
-            .result
-          _ <- insertSubscriptions(
-            requestedEventIds
-              .filterNot(existingSubscriptionEventIds contains _)
-              .map(WebhookEventSubcription(webhook.id, _))
-          )
-        } yield DBIO.successful()
     }
 
     val action = for {
@@ -337,9 +368,8 @@ class WebhookManager(
       } else {
         webhooksMapper.filter(_.id === webhook.id).result.head
       }
-      _ <- updateEvents
-      eventNames <- getEventNames(webhook.id).result
-    } yield (updatedWebhook, eventNames)
+      currentEventNames <- updateEventsAction(webhook.id, targetEvents)
+    } yield (updatedWebhook, currentEventNames)
 
     db.run(action.transactionally).toEitherT
   }

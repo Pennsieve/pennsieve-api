@@ -391,7 +391,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val actualWhIdEvents = database.run(whIdEventQuery.result).await
     assert(actualWhIdEvents.length == expectedTargetEvents.length)
     assert(actualWhIdEvents.forall(_._1 == expectedWebhookId))
-    assert(actualWhIdEvents.map(_._2).toSet.equals(expectedTargetEvents.toSet))
+    assert(actualWhIdEvents.map(_._2).toSet == expectedTargetEvents.toSet)
   }
 
   /**
@@ -494,7 +494,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
   }
 
   "update" should "update and return the modified webhook" in {
-    val (webhook, subscriptions) =
+    val (webhook, _) =
       createWebhook(
         description = "original description",
         targetEvents = Some(List("METADATA", "STATUS"))
@@ -525,10 +525,45 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(result.isRight)
     val (returnedWebhook, returnedEvents) = result.right.get
     assert(webhook == returnedWebhook)
-    assert(subscriptions == returnedEvents)
+    assert(returnedEvents == subscriptions)
 
     checkActualWebhooks(whManager, returnedWebhook)
     checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
+  }
+
+  it should "delete all event subscriptions if targetEvents is Some but empty" in {
+    val (webhook, _) =
+      createWebhook(targetEvents = Some(List("FILES", "METADATA")))
+    val whManager = webhookManager()
+
+    val result = whManager.update(webhook, targetEvents = Some(Nil)).await
+    assert(result.isRight)
+    val (returnedWebhook, returnedEvents) = result.right.get
+    assert(webhook == returnedWebhook)
+    assert(returnedEvents.isEmpty)
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    assertNoSubscriptions(whManager)
+  }
+
+  it should "return a PredicateError if targetEvents contains a non-existent event name" in {
+    val (webhook, subscriptions) =
+      createWebhook(targetEvents = Some(List("FILES", "METADATA")))
+    val whManager = webhookManager()
+
+    val result = whManager
+      .update(
+        webhook,
+        targetEvents = Some(List("FILES", "STATUS", "NON-EVENT"))
+      )
+      .await
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+    assert(error.getMessage.contains("NON-EVENT"))
+
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
   }
 
   it should "return a NotFound error if given an non-existent webhook" in {
