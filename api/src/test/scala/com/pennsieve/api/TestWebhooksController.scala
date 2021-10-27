@@ -466,6 +466,83 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("can't remove api url") {
+    val (webhook, _) =
+      createWebhook()
+    val newApiUrl = Some("")
+    val req = write(UpdateWebhookRequest(apiUrl = newApiUrl))
+
+    putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(400)
+      body should include("api url must be between 1 and 255 characters")
+    }
+  }
+
+  test("get correct error if updated api url is too long") {
+    val (webhook, _) =
+      createWebhook()
+    val newApiUrl = Some("http://" + "example" * 400 + ".com")
+    val req = write(UpdateWebhookRequest(apiUrl = newApiUrl))
+
+    putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(400)
+      body should include("api url must be between 1 and 255 characters")
+    }
+  }
+
+  test("get correct error if updated image url is too long") {
+    val (webhook, _) =
+      createWebhook()
+    val newImageUrl = Some("http://" + "example" * 400 + ".com/image.jpg")
+    val req = write(UpdateWebhookRequest(imageUrl = newImageUrl))
+
+    putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(400)
+      body should include("image url")
+    }
+  }
+
+  test("get correct error if updated event does not exist") {
+    val (webhook, _) =
+      createWebhook()
+    val newTargetEvents = Some(List("NON-EVENT"))
+    val req = write(UpdateWebhookRequest(targetEvents = newTargetEvents))
+
+    putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(400)
+      body should include("unknown event name")
+    }
+  }
+
+  test("get not found response if updating a webhook that does not exist") {
+    val req =
+      write(UpdateWebhookRequest(apiUrl = Some("https://example.com/api")))
+
+    putJson(s"/15", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(404)
+      body should include(s"Webhook (15) not found")
+
+    }
+  }
+
+  test("can't update another user's webhook") {
+    val (webhook, _) = createWebhook(apiUrl = "https://example.com/api/v1")
+    val req =
+      write(UpdateWebhookRequest(apiUrl = Some("https://example.com/api/v2")))
+
+    putJson(s"/${webhook.id}", req, headers = authorizationHeader(colleagueJwt)) {
+      status should equal(403)
+      body should include(
+        s"${colleagueUser.nodeId} does not have Administer for Webhook (${webhook.id})"
+      )
+    }
+
+    get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
+      status shouldBe (200)
+    }
+
+  }
+
   def checkProperties(
     webserviceResponse: WebhookDTO,
     expectedWebhook: Webhook,
