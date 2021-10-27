@@ -32,6 +32,7 @@ import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile
 import com.pennsieve.traits.PostgresProfile.api._
 
+import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
 
 class WebhookManager(
@@ -44,7 +45,7 @@ class WebhookManager(
 
   val organization: Organization = webhooksMapper.organization
 
-  def validate(
+  def validateWebhookValues(
     apiUrl: String,
     imageUrl: Option[String],
     description: String,
@@ -52,70 +53,11 @@ class WebhookManager(
     displayName: String,
     isPrivate: Boolean,
     isDefault: Boolean,
-    isDisabled: Boolean
+    isDisabled: Boolean,
+    createdBy: Int = actor.id,
+    createdAt: ZonedDateTime = ZonedDateTime.now(),
+    id: Int = 0
   ): Either[PredicateError, Webhook] = {
-
-    val validated = validateTuple(
-      apiUrl,
-      imageUrl,
-      description,
-      secret,
-      displayName,
-      isPrivate,
-      isDefault,
-      isDisabled
-    )
-
-    validated.map {
-      case (
-          apiUrl,
-          imageUrl,
-          description,
-          secret,
-          name,
-          displayName,
-          isPrivate,
-          isDefault,
-          isDisabled
-          ) =>
-        Webhook(
-          apiUrl = apiUrl,
-          imageUrl = imageUrl,
-          description = description,
-          secret = secret,
-          name = name,
-          displayName = displayName,
-          isPrivate = isPrivate,
-          isDefault = isDefault,
-          isDisabled = isDisabled,
-          createdBy = actor.id
-        )
-    }
-  }
-
-  def validateTuple(
-    apiUrl: String,
-    imageUrl: Option[String],
-    description: String,
-    secret: String,
-    displayName: String,
-    isPrivate: Boolean,
-    isDefault: Boolean,
-    isDisabled: Boolean
-  ): Either[
-    PredicateError,
-    (
-      String,
-      Option[String],
-      String,
-      String,
-      String,
-      String,
-      Boolean,
-      Boolean,
-      Boolean
-    )
-  ] = {
     val trimmedImageUrl = trimOptional(imageUrl)
 
     for {
@@ -141,7 +83,7 @@ class WebhookManager(
         displayName.trim.length < 256 && displayName.trim.nonEmpty
       )(PredicateError("display name must be between 1 and 255 characters"))
 
-      row = (
+      validated = Webhook(
         apiUrl.trim,
         trimmedImageUrl,
         description.trim,
@@ -150,13 +92,16 @@ class WebhookManager(
         displayName.trim,
         isPrivate,
         isDefault,
-        isDisabled
+        isDisabled,
+        createdBy,
+        createdAt,
+        id
       )
-    } yield row
+    } yield validated
   }
 
   def validateWebhook(webhook: Webhook): Either[PredicateError, Webhook] = {
-    val validated = validateTuple(
+    validateWebhookValues(
       webhook.apiUrl,
       webhook.imageUrl,
       webhook.description,
@@ -164,33 +109,11 @@ class WebhookManager(
       webhook.displayName,
       webhook.isPrivate,
       webhook.isDefault,
-      webhook.isDisabled
+      webhook.isDisabled,
+      webhook.createdBy,
+      webhook.createdAt,
+      webhook.id
     )
-
-    validated.map {
-      case (
-          apiUrl,
-          imageUrl,
-          description,
-          secret,
-          name,
-          displayName,
-          isPrivate,
-          isDefault,
-          isDisabled
-          ) =>
-        webhook.copy(
-          apiUrl = apiUrl,
-          imageUrl = imageUrl,
-          description = description,
-          secret = secret,
-          name = name,
-          displayName = displayName,
-          isPrivate = isPrivate,
-          isDefault = isDefault,
-          isDisabled = isDisabled
-        )
-    }
   }
 
   def create(
@@ -206,9 +129,10 @@ class WebhookManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
 
-    for {
+    val insertQuery: DBIO[(Webhook, Seq[String])] = for {
 
-      row <- (validate(
+      // insert the row in the webhook table
+      webhookId: Int <- validateWebhookValues(
         apiUrl,
         imageUrl,
         description,
@@ -218,56 +142,24 @@ class WebhookManager(
         isDefault,
         isDisabled = false
       ) match {
-        case Left(error) => Future.failed(error)
-        case Right(webhook) => Future.successful(webhook)
-      }).toEitherT
+        case Right(webhook) => insertWebhook(webhook)
+        case Left(error) => DBIO.failed(error)
+      }
 
-      /* Creating a SQL Action Sequence that inserts row for webhook and
-      a row for each event that it is subscribed to.
-       */
+      // insert the subscriptions
+      subscribedEvents <- updateEventsAction(webhookId, targetEvents)
 
-      insertQuery: DBIO[Webhook] = for {
+      // return created webhook with populated Id
+      createdWebhook: Webhook <- webhooksMapper
+        .filter(_.id === webhookId)
+        .result
+        .head
 
-        allTypes <- webhookEventTypesMapper.result
+    } yield (createdWebhook, subscribedEvents)
 
-        _ <- assert(
-          targetEvents match {
-            case Some(targetEvents) =>
-              targetEvents.forall(allTypes.map {
-                _.eventName
-              }.contains)
-            case None => {
-              true
-            }
-          }
-        )(PredicateError(s"Target events must be one of ${allTypes.toString}."))
+    // Run the SQL action sequence and return the webhook
+    db.run(insertQuery.transactionally).toEitherT
 
-        // insert the row in the webhook table
-        webhookId: Int <- insertWebhook(row)
-
-        // insert one row per subscription in the event subscription table
-        _ <- insertSubscriptions(
-          for {
-            target <- targetEvents.getOrElse(List.empty)
-
-          } yield
-            WebhookEventSubcription(
-              webhookId,
-              allTypes.filter(_.eventName == target).head.id
-            )
-        )
-
-        // return created webhook with populated Id
-        createdWebhook: Webhook <- webhooksMapper
-          .filter(_.id === webhookId)
-          .result
-          .head
-
-      } yield createdWebhook
-
-      // Run the SQL action sequence and return the webhook
-      webhook <- db.run(insertQuery.transactionally).toEitherT
-    } yield (webhook, targetEvents.getOrElse(List.empty))
   }
 
   def insertWebhook(row: Webhook): DBIO[Int] =
@@ -300,9 +192,9 @@ class WebhookManager(
     *
     * if `requestedEvents` contains unknown events the action will fail with a [[PredicateError]].
     *
-    * @param webhookId id of the webhook being updated
+    * @param webhookId       id of the webhook being updated
     * @param requestedEvents names of events
-    * @param ec execution context
+    * @param ec              execution context
     * @return the names of events to which the given webhook currently subscribes
     */
   def updateEventsAction(
