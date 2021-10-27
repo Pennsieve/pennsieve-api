@@ -27,18 +27,11 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.core.utilities.checkOrErrorT
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.pennsieve.models.{
-  DBPermission,
-  Role,
-  User,
-  Webhook,
-  WebhookEventSubcription
-}
+import com.pennsieve.models.DBPermission
 
 case class CreateWebhookRequest(
   apiUrl: String,
@@ -49,6 +42,18 @@ case class CreateWebhookRequest(
   targetEvents: Option[List[String]],
   isPrivate: Boolean,
   isDefault: Boolean
+)
+
+case class UpdateWebhookRequest(
+  apiUrl: Option[String] = None,
+  imageUrl: Option[String] = None,
+  description: Option[String] = None,
+  secret: Option[String] = None,
+  displayName: Option[String] = None,
+  targetEvents: Option[List[String]] = None,
+  isPrivate: Option[Boolean] = None,
+  isDefault: Option[Boolean] = None,
+  isDisabled: Option[Boolean] = None
 )
 
 class WebhooksController(
@@ -98,7 +103,7 @@ class WebhooksController(
       } yield
         WebhookDTO(newWebhookAndSubscriptions._1, newWebhookAndSubscriptions._2)
 
-      override val is = result.value.map(CreatedResult)
+      override val is: Future[ActionResult] = result.value.map(CreatedResult)
     }
   }
 
@@ -123,7 +128,7 @@ class WebhooksController(
 
         } yield webhookMap.map(x => WebhookDTO(x._1, x._2))
 
-      override val is = result.value.map(OkResult(_))
+      override val is: Future[ActionResult] = result.value.map(OkResult(_))
     }
   }
 
@@ -146,7 +151,48 @@ class WebhooksController(
 
       } yield WebhookDTO(webhookMap._1, webhookMap._2)
 
-      override val is = result.value.map(OkResult(_))
+      override val is: Future[ActionResult] = result.value.map(OkResult(_))
+    }
+  }
+
+  put(
+    "/:id",
+    operation(
+      apiOperation[WebhookDTO]("updateWebhook")
+        summary "update a webhook for an organization"
+        parameters (pathParam[Int]("id").description("webhook id"),
+        bodyParam[UpdateWebhookRequest]("body")
+          .description("updates to webhook properties"))
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, WebhookDTO] = for {
+        secureContainer <- getSecureContainer
+        webhookId <- paramT[Int]("id")
+        body <- extractOrErrorT[UpdateWebhookRequest](parsedBody)
+
+        webhook <- secureContainer.webhookManager
+          .getWithPermissionCheck(webhookId, DBPermission.Administer)
+          .coreErrorToActionResult
+
+        updatedWebhook = webhook.copy(
+          apiUrl = body.apiUrl.getOrElse(webhook.apiUrl),
+          imageUrl = body.imageUrl.orElse(webhook.imageUrl),
+          description = body.description.getOrElse(webhook.description),
+          secret = body.secret.getOrElse(webhook.secret),
+          displayName = body.displayName.getOrElse(webhook.displayName),
+          isPrivate = body.isPrivate.getOrElse(webhook.isPrivate),
+          isDefault = body.isDefault.getOrElse(webhook.isDefault),
+          isDisabled = body.isDisabled.getOrElse(webhook.isDisabled)
+        )
+        updatedWebhookAndEvents <- secureContainer.webhookManager
+          .update(updatedWebhook, body.targetEvents)
+          .coreErrorToActionResult
+
+      } yield WebhookDTO(updatedWebhookAndEvents._1, updatedWebhookAndEvents._2)
+
+      override val is: Future[ActionResult] = result.value.map(OkResult)
+
     }
   }
 
@@ -171,7 +217,7 @@ class WebhooksController(
 
       } yield deleted
 
-      override val is = result.value.map(OkResult)
+      override val is: Future[ActionResult] = result.value.map(OkResult)
 
     }
   }
