@@ -188,12 +188,12 @@ class ChangelogManager(
 
   def formatMessageForSNS(dataset: Dataset, event: ChangelogEventDetail): String =
     f"""{
-       |    "datasetId": "${dataset.id}",
-       |    "organizationId": "${organization.id}",
-       |    "eventCategory" : "${eventCategory(event)}",
-       |    "eventType": "${event.eventType.toString}",
-       |    "eventDetail": ${event.asJson.noSpaces}
-       |}""".stripMargin
+       |    'datasetId': '${dataset.id}',
+       |    'organizationId': '${organization.id}',
+       |    'eventCategory': '${eventCategory(event)}',
+       |    'eventType': '${event.eventType.toString}',
+       |    'eventDetail': ${event.asJson.noSpaces}
+       |}""".stripMargin.replaceAll("\n", "").replaceAll(" +", " ").replaceAll("\"","'")
 
   def getEvents(
     dataset: Dataset,
