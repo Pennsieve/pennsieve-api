@@ -706,7 +706,11 @@ case object DataSetPublishingHelper extends LazyLogging {
       _ <- checkOrError[CoreError](
         if (requestedType == PublicationType.Revision)
           lastCompletedPublicationType.exists(
-            _ in Seq(PublicationType.Publication, PublicationType.Revision, PublicationType.Release)
+            _ in Seq(
+              PublicationType.Publication,
+              PublicationType.Revision,
+              PublicationType.Release
+            )
           )
         else true
       )(PredicateError(s"Only published datasets can be revised"))
@@ -715,7 +719,11 @@ case object DataSetPublishingHelper extends LazyLogging {
       _ <- checkOrError[CoreError](
         if (requestedType == PublicationType.Embargo)
           !lastCompletedPublicationType.exists(
-            _ in Seq(PublicationType.Publication, PublicationType.Revision, PublicationType.Release)
+            _ in Seq(
+              PublicationType.Publication,
+              PublicationType.Revision,
+              PublicationType.Release
+            )
           )
         else true
       )(PredicateError(s"May not embargo dataset that is currently published"))

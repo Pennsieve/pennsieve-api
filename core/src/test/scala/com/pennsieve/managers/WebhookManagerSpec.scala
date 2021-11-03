@@ -17,13 +17,7 @@
 package com.pennsieve.managers
 
 import com.pennsieve.domain.{ NotFound, PermissionError, PredicateError }
-import com.pennsieve.models.{
-  DBPermission,
-  User,
-  Webhook,
-  WebhookEventSubcription,
-  WebhookEventType
-}
+import com.pennsieve.models._
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -94,41 +88,12 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(returnedWebhook.secret == expectedSecret)
     assert(returnedTargetEvents.equals(expectedTargetEvents))
 
-    val webhookRows =
-      database
-        .run(whManager.webhooksMapper.result)
-        .mapTo[Seq[Webhook]]
-        .await
-    assert(webhookRows.length == 1)
-    val actualWebhook = webhookRows.head
-    assert(actualWebhook.equals(returnedWebhook))
-
-    val subscriptionRows = database
-      .run(whManager.webhookEventSubscriptionsMapper.result)
-      .mapTo[Seq[WebhookEventSubcription]]
-      .await
-    assert(subscriptionRows.length == expectedTargetEvents.length)
-    assert(subscriptionRows.forall(_.webhookId == actualWebhook.id))
-    val expectedEventsSet = expectedTargetEvents.to[collection.mutable.Set]
-    for (subscriptionRow <- subscriptionRows) {
-      val eventTypeId = subscriptionRow.webhookEventTypeId
-
-      val eventTypeRow = database
-        .run(
-          whManager.webhookEventTypesMapper
-            .filter(_.id === eventTypeId)
-            .result
-            .headOption
-        )
-        .mapTo[Some[WebhookEventType]]
-        .await
-
-      assert(eventTypeRow.isDefined)
-      assert(expectedEventsSet.remove(eventTypeRow.get.eventName))
-    }
-
-    assert(expectedEventsSet.isEmpty)
-
+    checkActualWebhooks(whManager, returnedWebhook)
+    checkActualSubscriptions(
+      whManager,
+      returnedWebhook.id,
+      expectedTargetEvents
+    )
   }
 
   it should "insert a webhook with no subscriptions into the database" in {
@@ -168,20 +133,8 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(returnedWebhook.secret == expectedSecret)
     assert(returnedTargetEvents.isEmpty)
 
-    val webhookRows =
-      database
-        .run(whManager.webhooksMapper.result)
-        .mapTo[Seq[Webhook]]
-        .await
-    assert(webhookRows.length == 1)
-    val actualWebhook = webhookRows.head
-    assert(actualWebhook.equals(returnedWebhook))
-
-    val subscriptionRows = database
-      .run(whManager.webhookEventSubscriptionsMapper.result)
-      .mapTo[Seq[WebhookEventSubcription]]
-      .await
-    assert(subscriptionRows.isEmpty)
+    checkActualWebhooks(whManager, returnedWebhook)
+    assertNoSubscriptions(whManager)
   }
 
   it should "handle an empty target event list without error" in {
@@ -221,20 +174,8 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(returnedWebhook.secret == expectedSecret)
     assert(returnedTargetEvents.isEmpty)
 
-    val webhookRows =
-      database
-        .run(whManager.webhooksMapper.result)
-        .mapTo[Seq[Webhook]]
-        .await
-    assert(webhookRows.length == 1)
-    val actualWebhook = webhookRows.head
-    assert(actualWebhook.equals(returnedWebhook))
-
-    val subscriptionRows = database
-      .run(whManager.webhookEventSubscriptionsMapper.result)
-      .mapTo[Seq[WebhookEventSubcription]]
-      .await
-    assert(subscriptionRows.isEmpty)
+    checkActualWebhooks(whManager, returnedWebhook)
+    assertNoSubscriptions(whManager)
   }
 
   it should "return a PredicateError if used with an unknown target event" in {
@@ -266,19 +207,203 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val error = result.left.get
     assert(error.isInstanceOf[PredicateError])
 
-    val webhookRows =
-      database
-        .run(whManager.webhooksMapper.result)
-        .mapTo[Seq[Webhook]]
-        .await
-    assert(webhookRows.isEmpty)
+    checkActualWebhooks(whManager)
+    assertNoSubscriptions(whManager)
+  }
 
+  it should "return a PredicateError if apiUrl is empty" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = ""
+    val expectedImageUrl = "http://example.com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents =
+      List("METADATA", "PERMISSIONS")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+
+    checkActualWebhooks(whManager)
+    assertNoSubscriptions(whManager)
+  }
+
+  it should "return a PredicateError if displayName is too long" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedImageUrl = "http://example.com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook" * 100
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents =
+      List("METADATA", "PERMISSIONS")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+
+    checkActualWebhooks(whManager)
+    assertNoSubscriptions(whManager)
+  }
+
+  it should "return a PredicateError if imageUrl is too long" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedImageUrl = "http://" + "example" * 100 + ".com/image.jpg"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents =
+      List("METADATA", "PERMISSIONS")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(expectedImageUrl),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+
+    checkActualWebhooks(whManager)
+    assertNoSubscriptions(whManager)
+  }
+
+  it should "handle an empty image url without error" in {
+    val whManager = webhookManager()
+    val expectedApiUrl = "http://api.example.com"
+    val expectedDescription = "test webhook"
+    val expectedSecret = "secret123"
+    val expectedDisplayName = "Test Webhook"
+    val expectedIsPrivate = false
+    val expectedIsDefault = true
+    val expectedTargetEvents = List("METADATA", "PERMISSIONS")
+
+    val result = whManager
+      .create(
+        expectedApiUrl,
+        Some(""),
+        expectedDescription,
+        expectedSecret,
+        expectedDisplayName,
+        expectedIsPrivate,
+        expectedIsDefault,
+        Some(expectedTargetEvents)
+      )
+      .await
+
+    assert(result.isRight)
+    val (returnedWebhook, returnedTargetEvents) = result.right.get
+    assert(returnedWebhook.apiUrl == expectedApiUrl)
+    assert(returnedWebhook.imageUrl.isEmpty)
+    assert(returnedWebhook.isDefault == expectedIsDefault)
+    assert(returnedWebhook.isPrivate == expectedIsPrivate)
+    assert(returnedWebhook.createdBy == whManager.actor.id)
+    assert(returnedWebhook.description == expectedDescription)
+    assert(returnedWebhook.displayName == expectedDisplayName)
+    assert(returnedWebhook.secret == expectedSecret)
+    assert(returnedTargetEvents.equals(expectedTargetEvents))
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    checkActualSubscriptions(
+      whManager,
+      returnedWebhook.id,
+      expectedTargetEvents
+    )
+  }
+
+  /**
+    * Looks at all webhooks in database and checks that they are equal to the [[expectedWebhooks]] in some order.
+    *
+    * @param whManager
+    * @param expectedWebhooks
+    */
+  def checkActualWebhooks(
+    whManager: WebhookManager,
+    expectedWebhooks: Webhook*
+  ): Unit = {
+    val webhookRows = database
+      .run(whManager.webhooksMapper.result)
+      .mapTo[Seq[Webhook]]
+      .await
+    assert(webhookRows.length == expectedWebhooks.length)
+    assert(webhookRows.toSet.equals(expectedWebhooks.toSet))
+  }
+
+  /**
+    * Looks at all event subscriptions in database and verifies that each subscription
+    * has the [[expectedWebhookId]] and that the actual events match those in [[expectedTargetEvents]]
+    *
+    * @param whManager
+    * @param expectedWebhookId
+    * @param expectedTargetEvents
+    */
+  def checkActualSubscriptions(
+    whManager: WebhookManager,
+    expectedWebhookId: Int,
+    expectedTargetEvents: Seq[String]
+  ): Unit = {
+    val whIdEventQuery = for {
+      (sub, event) <- whManager.webhookEventSubscriptionsMapper join whManager.webhookEventTypesMapper on (_.webhookEventTypeId === _.id)
+    } yield (sub.webhookId, event.eventName)
+
+    val actualWhIdEvents = database.run(whIdEventQuery.result).await
+    assert(actualWhIdEvents.length == expectedTargetEvents.length)
+    assert(actualWhIdEvents.forall(_._1 == expectedWebhookId))
+    assert(actualWhIdEvents.map(_._2).toSet == expectedTargetEvents.toSet)
+  }
+
+  /**
+    * Checks that there are no webhook event subscriptions in the database
+    *
+    * @param whManager
+    */
+  def assertNoSubscriptions(whManager: WebhookManager): Unit = {
     val subscriptionRows = database
       .run(whManager.webhookEventSubscriptionsMapper.result)
-      .mapTo[Seq[WebhookEventSubcription]]
       .await
     assert(subscriptionRows.isEmpty)
-
   }
 
   "getWithPermissionCheck" should "return a webhook to its creator" in {
@@ -368,6 +493,190 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(error.isInstanceOf[NotFound])
   }
 
+  "update" should "update and return the modified webhook" in {
+    val (webhook, _) =
+      createWebhook(
+        description = "original description",
+        targetEvents = Some(List("METADATA", "STATUS"))
+      )
+    val newDescription = "new description"
+    val newEvents = List("STATUS", "FILES")
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(description = newDescription)
+    val result =
+      whManager.update(updatedWebhook, targetEvents = Some(newEvents)).await
+
+    assert(result.isRight)
+    val (returnedWebhook, returnedEvents) = result.right.get
+    assert(returnedWebhook.description == newDescription)
+    assert(returnedEvents.toSet == newEvents.toSet)
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    checkActualSubscriptions(whManager, returnedWebhook.id, returnedEvents)
+  }
+
+  it should "work if no changes were made" in {
+    val (webhook, subscriptions) =
+      createWebhook()
+    val whManager = webhookManager()
+
+    val result = whManager.update(webhook).await
+    assert(result.isRight)
+    val (returnedWebhook, returnedEvents) = result.right.get
+    assert(webhook == returnedWebhook)
+    assert(returnedEvents == subscriptions)
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
+  }
+
+  it should "delete all event subscriptions if targetEvents is Some but empty" in {
+    val (webhook, _) =
+      createWebhook(targetEvents = Some(List("FILES", "METADATA")))
+    val whManager = webhookManager()
+
+    val result = whManager.update(webhook, targetEvents = Some(Nil)).await
+    assert(result.isRight)
+    val (returnedWebhook, returnedEvents) = result.right.get
+    assert(webhook == returnedWebhook)
+    assert(returnedEvents.isEmpty)
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    assertNoSubscriptions(whManager)
+  }
+
+  it should "return a PredicateError if targetEvents contains a non-existent event name" in {
+    val (webhook, subscriptions) =
+      createWebhook(targetEvents = Some(List("FILES", "METADATA")))
+    val whManager = webhookManager()
+
+    val result = whManager
+      .update(
+        webhook,
+        targetEvents = Some(List("FILES", "STATUS", "NON-EVENT"))
+      )
+      .await
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+    assert(error.getMessage.contains("NON-EVENT"))
+
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
+  }
+
+  it should "return a NotFound error if given an non-existent webhook" in {
+    val unsavedWebhook = Webhook(
+      "https://example.com/api",
+      None,
+      "description",
+      "secret",
+      "name",
+      "display name",
+      isPrivate = false,
+      isDefault = true,
+      isDisabled = false,
+      1
+    )
+
+    val whManager = webhookManager()
+    val result = whManager.update(unsavedWebhook).await
+
+    assert(result.isLeft)
+
+    val error = result.left.get
+    assert(error.isInstanceOf[NotFound])
+    assert(error.getMessage.contains(unsavedWebhook.id.toString))
+    checkActualWebhooks(whManager)
+  }
+
+  it should "return a PredicateError if apiUrl is updated to empty" in {
+    val (webhook, subscriptions) =
+      createWebhook()
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(apiUrl = "")
+    val result = whManager.update(updatedWebhook).await
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+    assert(error.getMessage contains "api url")
+
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
+  }
+
+  it should "return a PredicateError if displayName is updated to a value that is too long" in {
+    val (webhook, subscriptions) =
+      createWebhook()
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(displayName = "display name" * 300)
+    val result = whManager.update(updatedWebhook).await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+    assert(error.getMessage contains "display name")
+
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
+  }
+
+  it should "return a PredicateError if image url is updated to a value that is too long" in {
+    val (webhook, subscriptions) =
+      createWebhook()
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(
+      imageUrl = Some("https://" + "example" * 300 + ".com/image.jpg")
+    )
+    val result = whManager.update(updatedWebhook).await
+
+    assert(result.isLeft)
+    val error = result.left.get
+    assert(error.isInstanceOf[PredicateError])
+    assert(error.getMessage contains "image url")
+
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
+  }
+
+  it should "work if image url is updated to an empty value" in {
+    val (webhook, subscriptions) =
+      createWebhook(imageUrl = Some("http://www.example.com/image.jpg"))
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(imageUrl = Some(""))
+    val result = whManager.update(updatedWebhook).await
+
+    assert(result.isRight)
+    val (returnedWebhook, returnedEvents) = result.right.get
+    assert(returnedWebhook.imageUrl.isEmpty)
+    assert(returnedEvents == subscriptions)
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
+  }
+
+  it should "work if image url is updated to None" in {
+    val (webhook, subscriptions) =
+      createWebhook(imageUrl = Some("http://www.example.com/image.jpg"))
+    val whManager = webhookManager()
+
+    val updatedWebhook = webhook.copy(imageUrl = None)
+    val result = whManager.update(updatedWebhook).await
+
+    assert(result.isRight)
+    val (returnedWebhook, returnedEvents) = result.right.get
+    assert(returnedWebhook.imageUrl.isEmpty)
+    assert(returnedEvents == subscriptions)
+
+    checkActualWebhooks(whManager, returnedWebhook)
+    checkActualSubscriptions(whManager, returnedWebhook.id, subscriptions)
+  }
+
   "delete" should "return 1 and delete the webhook and its subscriptions" in {
     val (webhook, _) = createWebhook()
     val (webhook2, webhook2Subs) = createWebhook(
@@ -380,20 +689,8 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val deletedRowCount = result.right.get
     assert(deletedRowCount == 1)
 
-    val webhookRows =
-      database
-        .run(whManager.webhooksMapper.result)
-        .mapTo[Seq[Webhook]]
-        .await
-    assert(webhookRows.length == 1)
-    assert(webhookRows.head.id == webhook2.id)
-
-    val subscriptionRows = database
-      .run(whManager.webhookEventSubscriptionsMapper.result)
-      .mapTo[Seq[WebhookEventSubcription]]
-      .await
-    assert(subscriptionRows.length == webhook2Subs.length)
-    assert(subscriptionRows.forall(_.webhookId == webhook2.id))
+    checkActualWebhooks(whManager, webhook2)
+    checkActualSubscriptions(whManager, webhook2.id, webhook2Subs)
   }
 
   it should "return 0 if given a non-persisted Webhook" in {
@@ -416,19 +713,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(deletedRowCount == 0)
 
     val whManager = webhookManager()
-    val webhookRows =
-      database
-        .run(whManager.webhooksMapper.result)
-        .mapTo[Seq[Webhook]]
-        .await
-    assert(webhookRows.length == 1)
-    assert(webhookRows.head.id == webhook.id)
-
-    val subscriptionRows = database
-      .run(whManager.webhookEventSubscriptionsMapper.result)
-      .mapTo[Seq[WebhookEventSubcription]]
-      .await
-    assert(subscriptionRows.length == subscriptions.length)
-    assert(subscriptionRows.forall(_.webhookId == webhook.id))
+    checkActualWebhooks(whManager, webhook)
+    checkActualSubscriptions(whManager, webhook.id, subscriptions)
   }
 }

@@ -73,7 +73,7 @@ object WebhookDTO {
       isPrivate = webhook.isPrivate,
       isDefault = webhook.isDefault,
       isDisabled = webhook.isDisabled,
-      eventTargets = Some(target),
+      eventTargets = Option(target).filter(_.nonEmpty),
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )

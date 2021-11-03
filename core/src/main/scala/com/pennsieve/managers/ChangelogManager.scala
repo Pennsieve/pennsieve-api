@@ -30,6 +30,9 @@ import com.github.tminglei.slickpg.utils.PlainSQLUtils
 import com.pennsieve.aws.sns.{ SNS, SNSClient }
 import com.typesafe.scalalogging.LazyLogging
 import io.circe._
+//import io.circe.generic.auto._
+//import io.circe.parser._
+import io.circe.syntax._
 import io.circe.parser.decode
 import slick.jdbc.{ GetResult, PositionedParameters, SetParameter }
 import software.amazon.awssdk.services.sns.SnsAsyncClient
@@ -89,7 +92,7 @@ class ChangelogManager(
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, PublishResponse] = {
-    sns.publish(snsTopic, detail.toString)
+    sns.publish(snsTopic, formatMessageForSNS(dataset, detail))
   }
 
   def toSnsMessage(
@@ -159,7 +162,7 @@ class ChangelogManager(
       println(sns)
       println(eventDetail.toString)
       println(snsTopic)
-      sns.publish(snsTopic, eventDetail._1.toString)
+      sns.publish(snsTopic, formatMessageForSNS(dataset, eventDetail._1))
     })
 
   def logEvents(
@@ -181,6 +184,25 @@ class ChangelogManager(
     } yield changelogEventAndType
 
   }
+
+  def eventCategory(event: ChangelogEventDetail): String =
+    event.eventType.category match {
+      case ChangelogEventCategory.DATASET => "METADATA"
+      case ChangelogEventCategory.PACKAGES => "FILES"
+      case ChangelogEventCategory.PUBLISHING => "PUBLISHING"
+      case ChangelogEventCategory.PERMISSIONS => "PERMISSIONS"
+      case ChangelogEventCategory.MODELS_AND_RECORDS => "RECORDS_AND_MODELS"
+      case _ => "UNKNOWN"
+    }
+
+  def formatMessageForSNS(dataset: Dataset, event: ChangelogEventDetail): String =
+    f"""{
+     |    "datasetId": "${dataset.id}",
+     |    "organizationId": "${organization.id}",
+     |    "eventCategory": "${eventCategory(event)}",
+     |    "eventType": "${event.eventType.toString}",
+     |    "eventDetail": ${event.asJson.noSpaces}
+     |}""".stripMargin.replaceAll("\n", "").replaceAll(" +", " ")
 
   def getEvents(
     dataset: Dataset,
