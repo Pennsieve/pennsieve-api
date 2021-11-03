@@ -113,7 +113,8 @@ class MessageTemplates(
     reviewer: User,
     date: String,
     emailAddress: String,
-    org: Organization
+    org: Organization,
+    message: String
   ): String =
     GeneratedMessageTemplates.datasetRevisionNeeded(
       host = host,
@@ -122,7 +123,8 @@ class MessageTemplates(
       reviewerName = reviewer.fullName,
       date = date,
       emailAddress = emailAddress,
-      organizationNodeId = org.nodeId
+      organizationNodeId = org.nodeId,
+      message = message
     )
 
   def datasetAcceptedForPublication(

@@ -92,6 +92,15 @@ class ChangelogManager(
     sns.publish(snsTopic, detail.toString)
   }
 
+  def toSnsMessage(
+    detail: ChangelogEventDetail,
+    dataset: Dataset
+                  ) (implicit
+  ec: ExecutionContext
+  ): String = {
+
+  }
+
   def logEvent(
     dataset: Dataset,
     detail: ChangelogEventDetail,
