@@ -2953,7 +2953,8 @@ class DataSetsController(
               validated.dataset,
               secureContainer.user,
               validated.owner,
-              secureContainer.organization
+              secureContainer.organization,
+              comments
             )
           } else {
             EitherT

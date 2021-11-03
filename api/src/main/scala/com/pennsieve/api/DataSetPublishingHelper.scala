@@ -295,20 +295,23 @@ case object DataSetPublishingHelper extends LazyLogging {
     dataset: Dataset,
     reviewer: User,
     owner: User,
-    org: Organization
+    org: Organization,
+    message: Option[String]
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
-          val message = insecureContainer.messageTemplates
+          val certainMessage = message.getOrElse("No information provided")
+          val content = insecureContainer.messageTemplates
             .datasetRevisionNeeded(
               dataset,
               reviewer,
               today(),
               contributorEmail,
-              org
+              org,
+              certainMessage
             )
 
           val subject =
@@ -322,7 +325,7 @@ case object DataSetPublishingHelper extends LazyLogging {
             .sendEmail(
               to = Email(contributorEmail),
               from = Settings.support_email,
-              message = message,
+              message = content,
               subject = subject
             )
             .leftMap(error => InternalServerError(error.getMessage))

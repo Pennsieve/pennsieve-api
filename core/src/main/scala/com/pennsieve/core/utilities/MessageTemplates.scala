@@ -31,18 +31,18 @@ class MessageTemplates(
   val supportEmail: Email
 ) {
 
-  // TODO: move to Cognito and remove. This email is now unused
-  def newAccount(
-    emailAddress: String,
-    orgId: String,
-    newUserToken: String
-  ): String =
-    GeneratedMessageTemplates.newAccountCreation(
-      host = host,
-      emailAddress = emailAddress,
-      organizationNodeId = orgId,
-      newUserToken = newUserToken
-    )
+//  // TODO: move to Cognito and remove. This email is now unused
+//  def newAccount(
+//    emailAddress: String,
+//    orgId: String,
+//    newUserToken: String
+//  ): String =
+//    GeneratedMessageTemplates.newAccountCreation(
+//      host = host,
+//      emailAddress = emailAddress,
+//      organizationNodeId = orgId,
+//      newUserToken = newUserToken
+//    )
 
   def addedToOrganization(
     emailAddress: String,
@@ -71,12 +71,12 @@ class MessageTemplates(
       administrator = administrator
     )
 
-  def passwordReset(emailAddress: String, token: String): String =
-    GeneratedMessageTemplates.passwordReset(
-      host = host,
-      token = token,
-      emailAddress = emailAddress
-    )
+//  def passwordReset(emailAddress: String, token: String): String =
+//    GeneratedMessageTemplates.passwordReset(
+//      host = host,
+//      token = token,
+//      emailAddress = emailAddress
+//    )
 
   def datasetOwnerChangedNotification(
     emailAddress: String,
@@ -113,7 +113,8 @@ class MessageTemplates(
     reviewer: User,
     date: String,
     emailAddress: String,
-    org: Organization
+    org: Organization,
+    message: String
   ): String =
     GeneratedMessageTemplates.datasetRevisionNeeded(
       host = host,
@@ -122,7 +123,8 @@ class MessageTemplates(
       reviewerName = reviewer.fullName,
       date = date,
       emailAddress = emailAddress,
-      organizationNodeId = org.nodeId
+      organizationNodeId = org.nodeId,
+      message = message
     )
 
   def datasetAcceptedForPublication(
