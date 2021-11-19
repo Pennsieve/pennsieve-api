@@ -12,13 +12,13 @@ resource "aws_ssm_parameter" "bitly_access_token" {
 resource "aws_ssm_parameter" "cognito_user_pool_id" {
   name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-id"
   type  = "String"
-  value = data.terraform_remote_state.authentication_service.outputs.user_pool_id
+  value = data.terraform_remote_state.authentication_service.outputs.user_pool_2_id
 }
 
 resource "aws_ssm_parameter" "cognito_user_pool_app_client_id" {
   name  = "/${var.environment_name}/${var.service_name}/cognito-user-pool-app-client-id"
   type  = "String"
-  value = data.terraform_remote_state.authentication_service.outputs.user_pool_client_id
+  value = data.terraform_remote_state.authentication_service.outputs.user_pool_2_client_id
 }
 
 resource "aws_ssm_parameter" "cognito_token_pool_id" {
