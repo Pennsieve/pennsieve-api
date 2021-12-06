@@ -125,7 +125,7 @@ data "aws_iam_policy_document" "cognito_iam_policy_document" {
     ]
 
     resources = [
-      data.terraform_remote_state.authentication_service.outputs.user_pool_2_arn,
+      data.terraform_remote_state.authentication_service.outputs.user_pool_arn,
     ]
   }
 
