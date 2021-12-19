@@ -90,6 +90,7 @@ object ChangelogEventDetail {
       case d: AcceptRevision => d.asJson
       case d: RejectRevision => d.asJson
       case d: CancelRevision => d.asJson
+      case d: CustomEvent => d.asJson
     }
 
   def decoder[A <: ChangelogEventDetail](
@@ -233,6 +234,16 @@ object ChangelogEventDetail {
   object AddTag {
     implicit val encoder: Encoder[AddTag] = deriveEncoder[AddTag]
     implicit val decoder: Decoder[AddTag] = deriveDecoder[AddTag]
+  }
+
+  case class CustomEvent(event_type: String, message: String)
+      extends ChangelogEventDetail {
+    val eventType = CUSTOM_EVENT
+  }
+
+  object CustomEvent {
+    implicit val encoder: Encoder[CustomEvent] = deriveEncoder[CustomEvent]
+    implicit val decoder: Decoder[CustomEvent] = deriveDecoder[CustomEvent]
   }
 
   case class RemoveTag(name: String) extends ChangelogEventDetail {
