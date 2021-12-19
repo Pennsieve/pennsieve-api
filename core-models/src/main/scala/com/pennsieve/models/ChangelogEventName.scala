@@ -144,6 +144,11 @@ object ChangelogEventName
     val category = MODELS_AND_RECORDS
   }
 
+  // CUSTOM EVENTS
+  case object CUSTOM_EVENT extends ChangelogEventName {
+    val category = CUSTOM_EVENTS
+  }
+
   // PUBLISHING
 
   case object REQUEST_PUBLICATION extends ChangelogEventName {

@@ -9527,4 +9527,24 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   }
 
+  test("Send a custom event to the integrations") {
+
+    val createReq = write(
+      CustomEventRequest(
+        eventType = "Integration Response",
+        message = "This is a test message"
+      )
+    )
+
+    val dataset = createDataSet("test-dataset")
+
+    postJson(
+      s"${dataset.nodeId}/event",
+      createReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+  }
 }

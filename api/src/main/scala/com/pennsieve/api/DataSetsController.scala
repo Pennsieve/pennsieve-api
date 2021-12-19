@@ -172,6 +172,8 @@ case class PreviewAccessRequest(
   dataUseAgreementId: Option[Int] = None
 )
 
+case class CustomEventRequest(eventType: String, message: String)
+
 /**
   * TODO: should all user information be included here? The UserDTO contains the
   * email address of users, should that be exposed when we allow previewing
@@ -4492,6 +4494,57 @@ class DataSetsController(
           )
 
       override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  val triggerEvent: OperationBuilder = (
+    apiOperation[Unit]("triggerEvent")
+      .summary("Message that should be send to subscribed integrations")
+      .parameters(
+        pathParam[String]("id").description("data set id"),
+        bodyParam[CustomEventRequest]("eventType").required
+          .description("Custom type of the event"),
+        bodyParam[CustomEventRequest]("message").required
+          .description("Message that should be send to subscribed integrations")
+      )
+    )
+
+  post("/:id/event", operation(triggerEvent)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Unit] = for {
+        datasetId <- paramT[String]("id")
+        secureContainer <- getSecureContainer
+
+        // Prevent sending custom events from __sandbox__
+        _ <- assertNotDemoOrganization(secureContainer)
+
+        // Parse body of request
+        customEventRequest <- extractOrErrorT[CustomEventRequest](parsedBody)
+
+        // Get the associated dataset
+        dataset <- secureContainer.datasetManager
+          .getByNodeId(datasetId)
+          .orNotFound
+
+        // Ensure the user has permissions to trigger custom events
+        _ <- secureContainer
+          .authorizeDataset(Set(DatasetPermission.TriggerCustomEvents))(dataset)
+          .coreErrorToActionResult
+
+        // Log the event in the changelog and send to integrations
+        _ <- secureContainer.changelogManager
+          .logEvent(
+            dataset,
+            ChangelogEventDetail.CustomEvent(
+              event_type = customEventRequest.eventType,
+              message = customEventRequest.message
+            )
+          )
+          .coreErrorToActionResult
+
+      } yield ()
+
+      override val is = result.value.map(OkResult)
     }
   }
 

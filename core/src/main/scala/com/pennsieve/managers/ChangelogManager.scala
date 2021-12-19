@@ -186,7 +186,10 @@ class ChangelogManager(
       case _ => "UNKNOWN"
     }
 
-  def formatMessageForSNS(dataset: Dataset, event: ChangelogEventDetail): String =
+  def formatMessageForSNS(
+    dataset: Dataset,
+    event: ChangelogEventDetail
+  ): String =
     f"""{
      |    "datasetId": "${dataset.id}",
      |    "organizationId": "${organization.id}",
