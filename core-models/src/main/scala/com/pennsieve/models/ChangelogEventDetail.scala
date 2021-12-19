@@ -147,6 +147,7 @@ object ChangelogEventDetail {
       case ACCEPT_REVISION => AcceptRevision.decoder.widen
       case REJECT_REVISION => RejectRevision.decoder.widen
       case CANCEL_REVISION => CancelRevision.decoder.widen
+      case CUSTOM_EVENT => CustomEvent.decoder.widen
     }
 
   def fromPublicationStatus(

@@ -9536,12 +9536,14 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       )
     )
 
+    val dataset = createDataSet("test-dataset")
+
     postJson(
-      s"/event",
+      s"${dataset.nodeId}/event",
       createReq,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(201)
+      status should equal(200)
     }
 
   }
