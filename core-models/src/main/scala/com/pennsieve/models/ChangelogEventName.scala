@@ -146,7 +146,7 @@ object ChangelogEventName
 
   // CUSTOM EVENTS
   case object CUSTOM_EVENT extends ChangelogEventName {
-    val category = CUSTOM_EVENTS
+    val category = CUSTOM
   }
 
   // PUBLISHING

@@ -47,5 +47,5 @@ object ChangelogEventCategory
   case object PACKAGES extends ChangelogEventCategory
   case object MODELS_AND_RECORDS extends ChangelogEventCategory
   case object PUBLISHING extends ChangelogEventCategory
-  case object CUSTOM_EVENTS extends ChangelogEventCategory
+  case object CUSTOM extends ChangelogEventCategory
 }
