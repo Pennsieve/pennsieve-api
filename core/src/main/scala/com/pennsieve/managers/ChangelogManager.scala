@@ -183,6 +183,7 @@ class ChangelogManager(
       case ChangelogEventCategory.PUBLISHING => "PUBLISHING"
       case ChangelogEventCategory.PERMISSIONS => "PERMISSIONS"
       case ChangelogEventCategory.MODELS_AND_RECORDS => "RECORDS_AND_MODELS"
+      case ChangelogEventCategory.CUSTOM => "CUSTOM"
       case _ => "UNKNOWN"
     }
 
