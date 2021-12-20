@@ -4502,10 +4502,8 @@ class DataSetsController(
       .summary("Message that should be send to subscribed integrations")
       .parameters(
         pathParam[String]("id").description("data set id"),
-        bodyParam[CustomEventRequest]("eventType").required
-          .description("Custom type of the event"),
-        bodyParam[CustomEventRequest]("message").required
-          .description("Message that should be send to subscribed integrations")
+        bodyParam[CustomEventRequest]("body").required
+          .description("EventType and message to be delivered to integrations"),
       )
     )
 
