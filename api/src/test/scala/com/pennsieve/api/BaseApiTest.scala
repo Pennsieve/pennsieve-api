@@ -39,6 +39,7 @@ import com.pennsieve.models.{
   PayloadType,
   Role,
   Token,
+  TokenSecret,
   User
 }
 import com.pennsieve.clients.{
@@ -57,7 +58,6 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.utilities._
 import com.pennsieve.web.SwaggerApp
-import com.pennsieve.dtos.Secret
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
 import com.pennsieve.models.PublishStatus.{ PublishFailed, PublishSucceeded }
@@ -248,6 +248,7 @@ trait ApiSuite
   var externalUser: User = _
   var superAdmin: User = _
   var sandboxUser: User = _
+  var integrationUser: User = _
 
   var pennsieve: Organization = _
   var loggedInOrganization: Organization = _
@@ -270,7 +271,7 @@ trait ApiSuite
   var loggedInSandboxUserJwt: String = _
 
   var apiToken: Token = _
-  var secret: Secret = _
+  var secret: TokenSecret = _
   var apiJwt: String = _
 
   var dataset: Dataset = _
@@ -322,6 +323,20 @@ trait ApiSuite
     "cred",
     "",
     "http://other.com",
+    0,
+    false,
+    None
+  )
+  val integrationUserDefinition = User(
+    NodeCodes.generateId(NodeCodes.userCode),
+    "test@integration.com",
+    "first",
+    None,
+    "last",
+    None,
+    "cred",
+    "",
+    "http://integration.com",
     0,
     false,
     None
@@ -505,6 +520,7 @@ trait ApiSuite
     )
 
     sandboxUser = userManager.create(sandboxUserDefinition).await.value
+    integrationUser = userManager.create(integrationUserDefinition).await.value
 
     organizationManager
       .addUser(sandboxOrganization, sandboxUser, Administer)

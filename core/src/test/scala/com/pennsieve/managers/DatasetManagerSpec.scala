@@ -630,7 +630,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val (webhook, _) = createWebhook(creatingUser = user)
     val dm = datasetManager(user = user)
 
-    val result = dm.enableWebhook(dataset, webhook).await
+    val result = dm.enableWebhook(dataset, webhook, integrationUser).await
     assert(result.isRight)
     val returned = result.right.get
     assert(returned.datasetId == dataset.id)
@@ -657,8 +657,10 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val (webhook, _) = createWebhook(creatingUser = user)
     val dm = datasetManager(user = user)
 
-    val firstResult = dm.enableWebhook(dataset, webhook).await.right.get
-    val secondResultEither = dm.enableWebhook(dataset, webhook).await
+    val firstResult =
+      dm.enableWebhook(dataset, webhook, integrationUser).await.right.get
+    val secondResultEither =
+      dm.enableWebhook(dataset, webhook, integrationUser).await
     assert(secondResultEither.isRight)
     val secondResult = secondResultEither.right.get
 
@@ -684,11 +686,13 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val (webhook, _) = createWebhook(creatingUser = user1)
     val dm1 = datasetManager(user = user1)
 
-    val firstResult = dm1.enableWebhook(dataset, webhook).await.right.get
+    val firstResult =
+      dm1.enableWebhook(dataset, webhook, integrationUser).await.right.get
 
     val user2 = createUser()
     val dm2 = datasetManager(user = user2)
-    val secondResultEither = dm2.enableWebhook(dataset, webhook).await
+    val secondResultEither =
+      dm2.enableWebhook(dataset, webhook, integrationUser).await
     assert(secondResultEither.isRight)
     val secondResult = secondResultEither.right.get
 
@@ -714,9 +718,9 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val (webhook, _) = createWebhook(creatingUser = user)
     val dm = datasetManager(user = user)
 
-    dm.enableWebhook(dataset, webhook).await
+    dm.enableWebhook(dataset, webhook, integrationUser).await
 
-    val result = dm.disableWebhook(dataset, webhook).await
+    val result = dm.disableWebhook(dataset, webhook, integrationUser).await
     assert(result.isRight)
     val deletedRowCount = result.right.get
     assert(deletedRowCount == 1)
@@ -741,9 +745,10 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager(user = user)
 
-    val enabledWebhook = dm.enableWebhook(dataset, webhook2).await.right.get
+    val enabledWebhook =
+      dm.enableWebhook(dataset, webhook2, integrationUser).await.right.get
 
-    val result = dm.disableWebhook(dataset, webhook1).await
+    val result = dm.disableWebhook(dataset, webhook1, integrationUser).await
     assert(result.isRight)
 
     val deletedRowCount = result.right.get

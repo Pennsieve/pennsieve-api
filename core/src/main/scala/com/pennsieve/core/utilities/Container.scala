@@ -194,7 +194,8 @@ trait SecureCoreContainer
   lazy val onboardingManager = new OnboardingManager(db)
   override lazy val organizationManager: SecureOrganizationManager =
     new SecureOrganizationManager(db, user)
-  lazy val tokenManager: SecureTokenManager = new SecureTokenManager(user, db)
+  lazy val tokenManager: SecureTokenManager =
+    new SecureTokenManager(user, db)
   lazy val teamManager: TeamManager = TeamManager(organizationManager)
   lazy val userInviteManager: UserInviteManager = new UserInviteManager(db)
 

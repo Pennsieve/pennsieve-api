@@ -302,6 +302,8 @@ trait DataSetTestMixin {
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
     isPrivate: Boolean = false,
     isDefault: Boolean = false,
+    hasAccess: Boolean = false,
+    integrationUser: User = integrationUser,
     container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext
@@ -315,7 +317,9 @@ trait DataSetTestMixin {
         displayName = displayName,
         isPrivate = isPrivate,
         isDefault = isDefault,
-        targetEvents = targetEvents
+        hasAccess = hasAccess,
+        targetEvents = targetEvents,
+        integrationUser = integrationUser
       )
       .await match {
       case Left(error) => throw error
@@ -346,8 +350,13 @@ trait DataSetTestMixin {
   )(implicit
     ec: ExecutionContext
   ): DatasetIntegration = {
+
+    val integrationUser = container.userManager.get(
+      webhook.integrationUserId
+    ).await.right.get
+
     container.datasetManager
-      .enableWebhook(dataset, webhook)
+      .enableWebhook(dataset, webhook, integrationUser)
       .await
       .right
       .get

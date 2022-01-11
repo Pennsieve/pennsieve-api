@@ -9329,6 +9329,12 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val response = parsedBody.extract[Int]
       response should equal(1)
+
+      // dataset should not longer be shared with integrationuser
+      val users = secureContainer.datasetManager.getUserCollaborators(dataset).await
+      users.map(_._1.id) should not include webhook.integrationUserId
+
+
     }
   }
 

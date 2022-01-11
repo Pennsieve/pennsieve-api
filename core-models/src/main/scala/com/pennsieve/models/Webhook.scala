@@ -31,6 +31,8 @@ final case class Webhook(
   isPrivate: Boolean,
   isDefault: Boolean,
   isDisabled: Boolean,
+  hasAccess: Boolean,
+  integrationUserId: Int,
   createdBy: Int,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0

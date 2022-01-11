@@ -17,7 +17,6 @@
 package com.pennsieve.managers
 
 import java.util.UUID
-
 import cats.data._
 import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
@@ -25,7 +24,11 @@ import com.pennsieve.audit.middleware.TraceId
 import scala.util.Either
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.db.{ DatasetPublicationStatusMapper, _ }
+import com.pennsieve.db.{
+  DatasetPublicationStatusMapper,
+  WebhookEventSubscriptionsMapper,
+  _
+}
 import com.pennsieve.domain._
 import com.pennsieve.messages._
 import com.pennsieve.models._
@@ -36,8 +39,8 @@ import org.postgresql.util.PSQLException
 import slick.ast.Ordering
 import slick.dbio.DBIO
 import slick.lifted.{ ColumnOrdered, Query }
-import java.time.ZonedDateTime
 
+import java.time.ZonedDateTime
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
@@ -1584,7 +1587,8 @@ class DatasetManager(
 
   def enableWebhook(
     dataset: Dataset,
-    webhook: Webhook
+    webhook: Webhook,
+    integrationUser: User
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, DatasetIntegration] = {
@@ -1596,12 +1600,16 @@ class DatasetManager(
             .transactionally
         )
         .toEitherT
+
+      _ <- addUserCollaborator(dataset, integrationUser, Role.Editor)
+
     } yield integration
   }
 
   def disableWebhook(
     dataset: Dataset,
-    webhook: Webhook
+    webhook: Webhook,
+    integrationUser: User
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Int] = {
@@ -1613,6 +1621,8 @@ class DatasetManager(
             .delete
         )
         .toEitherT
+
+      _ <- deleteUserCollaborator(dataset, integrationUser)
     } yield deletedRowCount
   }
 
@@ -1634,8 +1644,25 @@ class DatasetManager(
       )
     } yield insert
 
+    val insertAction2 = for {
+      whToEnable <- webhooksMapper
+        .getDefaults(actor, includedWebhookIds, excludedWebhookIds)
+        .map(_.integrationUserId)
+        .result
+
+      role = Role.Manager
+
+      insert2 <- datasetUser ++= whToEnable.map(
+        DatasetUser(dataset.id, _, role.toPermission, Some(role))
+      )
+
+    } yield insert2
+
     for {
       runInsert <- db.run(insertAction).toEitherT
+      _ <- db.run(insertAction2).toEitherT
+
     } yield runInsert
+
   }
 }

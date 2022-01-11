@@ -16,10 +16,14 @@
 
 package com.pennsieve.api
 
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.core.utilities.{ checkOrErrorT, slugify }
-import com.pennsieve.helpers.DataSetTestMixin
-import com.pennsieve.helpers.MockAuditLogger
-import com.pennsieve.dtos.WebhookDTO
+import com.pennsieve.helpers.{
+  Authenticator,
+  DataSetTestMixin,
+  MockAuditLogger
+}
+import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO }
 import com.pennsieve.models.Webhook
 import org.json4s.jackson.Serialization.write
 import org.scalatest.OptionValues._
@@ -27,6 +31,7 @@ import org.scalatest.OptionValues._
 class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
   val auditLogger = new MockAuditLogger()
+  val mockCognito = new MockCognito()
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -37,6 +42,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         secureContainerBuilder,
         system,
         auditLogger,
+        mockCognito,
         system.dispatcher
       ),
       "/*"
@@ -47,8 +53,6 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     val webhookSubscription = createWebhook()
     val webhook = webhookSubscription._1
     val subscriptions = webhookSubscription._2
-
-    subscriptions foreach println
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
@@ -100,6 +104,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         secret = "secretkey",
         displayName = "Test Webhook",
         targetEvents = Some(List("METADATA", "FILES")),
+        hasAccess = false,
         isPrivate = true,
         isDefault = true
       )
@@ -126,6 +131,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         secret = "secretkey",
         displayName = "Test Webhook",
         targetEvents = Some(List("METADATA", "FILES")),
+        hasAccess = false,
         isPrivate = false,
         isDefault = true
       )
@@ -143,11 +149,13 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       webhook.isDefault should equal(true)
       webhook.isDisabled should equal(false)
       webhook.createdBy should equal(loggedInUser.id)
+      webhook.tokenSecret.get shouldBe a[APITokenSecretDTO]
 
       get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
         status should equal(200)
         parsedBody.extract[WebhookDTO].id shouldBe (webhook.id)
       }
+
     }
   }
 
@@ -161,7 +169,8 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         displayName = "Test Webhook",
         targetEvents = Some(List("METADATA", "FAKETARGET")),
         isPrivate = false,
-        isDefault = true
+        isDefault = true,
+        hasAccess = false
       )
     )
 
@@ -180,7 +189,8 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         displayName = "Test Webhook",
         targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
-        isDefault = true
+        isDefault = true,
+        hasAccess = false
       )
     )
 
@@ -200,7 +210,8 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         displayName = "Test Webhook",
         targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
-        isDefault = true
+        isDefault = true,
+        hasAccess = false
       )
     )
 
@@ -220,7 +231,8 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         displayName = "Test Webhook",
         targetEvents = Some(List("METADATA", "FILES")),
         isPrivate = false,
-        isDefault = true
+        isDefault = true,
+        hasAccess = false
       )
     )
 
@@ -575,6 +587,8 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     webserviceResponse.id should equal(expectedWebhook.id)
     webserviceResponse.createdAt should equal(expectedWebhook.createdAt)
     webserviceResponse.createdBy should equal(expectedWebhook.createdBy)
+    webserviceResponse.tokenSecret.get shouldBe None
+
     if (expectedEvents.isEmpty) {
       webserviceResponse.eventTargets shouldBe None
     } else {

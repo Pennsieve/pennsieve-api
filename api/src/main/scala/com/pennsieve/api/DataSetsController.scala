@@ -4503,7 +4503,7 @@ class DataSetsController(
       .parameters(
         pathParam[String]("id").description("data set id"),
         bodyParam[CustomEventRequest]("body").required
-          .description("EventType and message to be delivered to integrations"),
+          .description("EventType and message to be delivered to integrations")
       )
     )
 
@@ -4601,8 +4601,10 @@ class DataSetsController(
           webhook <- secureContainer.webhookManager
             .getForIntegration(webhookId)
             .coreErrorToActionResult
+          integrationUser <- secureContainer.userManager
+            .get(webhook.integrationUserId)
           datasetIntegration <- secureContainer.datasetManager
-            .enableWebhook(dataset, webhook)
+            .enableWebhook(dataset, webhook, integrationUser)
             .coreErrorToActionResult
         } yield datasetIntegration
       override val is = result.value.map(OkResult(_))
@@ -4636,8 +4638,10 @@ class DataSetsController(
           webhook <- secureContainer.webhookManager
             .getForIntegration(webhookId)
             .coreErrorToActionResult
+          integrationUser <- secureContainer.userManager
+            .get(webhook.integrationUserId)
           deletedRowCount <- secureContainer.datasetManager
-            .disableWebhook(dataset, webhook)
+            .disableWebhook(dataset, webhook, integrationUser)
             .coreErrorToActionResult
         } yield deletedRowCount
       override val is = result.value.map(OkResult(_))

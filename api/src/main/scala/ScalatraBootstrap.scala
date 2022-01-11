@@ -292,6 +292,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.secureContainerBuilder,
         system,
         bootstrapHelper.auditLogger,
+        bootstrapHelper.cognitoClient,
         ec
       )
       context mount (webhooksController, "/webhooks/*", "webhooks")

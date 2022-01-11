@@ -17,7 +17,13 @@
 package com.pennsieve.managers
 
 import com.pennsieve.aws.cognito.CognitoClient
-import com.pennsieve.models.{ CognitoId, Organization, Token, User }
+import com.pennsieve.models.{
+  CognitoId,
+  Organization,
+  Token,
+  TokenSecret,
+  User
+}
 import cats.data.EitherT
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.traits.PostgresProfile.api._
@@ -25,7 +31,7 @@ import com.pennsieve.db.{ OrganizationsMapper, TokensMapper }
 import cats.implicits._
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.domain.{ CoreError, NotFound, PermissionError }
-import com.pennsieve.dtos.Secret
+import com.pennsieve.models.TokenSecret
 import com.pennsieve.models.DBPermission.{ Read, Write }
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -39,9 +45,9 @@ class TokenManager(db: Database) {
     cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, (Token, Secret)] = {
+  ): EitherT[Future, CoreError, (Token, TokenSecret)] = {
     val tokenString = java.util.UUID.randomUUID.toString
-    val secret = Secret(java.util.UUID.randomUUID.toString)
+    val secret = TokenSecret(java.util.UUID.randomUUID.toString)
 
     for {
       cognitoId <- cognitoClient
@@ -138,7 +144,7 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
     cognitoClient: CognitoClient
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, (Token, Secret)] =
+  ): EitherT[Future, CoreError, (Token, TokenSecret)] =
     for {
       _ <- FutureEitherHelpers.assert[CoreError](user.id == actor.id)(
         PermissionError(actor.nodeId, Write, "")

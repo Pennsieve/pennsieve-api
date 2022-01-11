@@ -17,11 +17,10 @@
 package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
-
 import com.pennsieve.models.Token
-
-// TODO: move to models
-case class Secret(plaintext: String) extends AnyVal
+import com.pennsieve.models.TokenSecret
+import io.circe.{ Decoder, Encoder }
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 
 case class APITokenSecretDTO(
   name: String,
@@ -31,7 +30,13 @@ case class APITokenSecretDTO(
 )
 
 object APITokenSecretDTO {
-  def apply(token: Token, secret: Secret): APITokenSecretDTO =
+
+  implicit val encoder: Encoder[APITokenSecretDTO] =
+    deriveEncoder[APITokenSecretDTO]
+  implicit val decoder: Decoder[APITokenSecretDTO] =
+    deriveDecoder[APITokenSecretDTO]
+
+  def apply(token: Token, secret: TokenSecret): APITokenSecretDTO =
     new APITokenSecretDTO(
       token.name,
       token.token,
@@ -39,6 +44,6 @@ object APITokenSecretDTO {
       token.lastUsed
     )
 
-  def apply(token_secret: (Token, Secret)): APITokenSecretDTO =
+  def apply(token_secret: (Token, TokenSecret)): APITokenSecretDTO =
     APITokenSecretDTO(token_secret._1, token_secret._2)
 }
