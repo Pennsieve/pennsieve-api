@@ -105,8 +105,8 @@ class WebhooksController(
           )
           .coreErrorToActionResult
 
-        // Not sure if necessary
-        _ <- secureContainer.organizationManager
+        // Adding the integrationuser to the organization
+        _ <- insecureContainer.organizationManager
           .addUser(
             secureContainer.organization,
             integrationUser,

@@ -9259,6 +9259,17 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.datasetId should equal(dataset.id)
       response.webhookId should equal(webhook.id)
       response.enabledBy should equal(loggedInUser.id)
+
+      // dataset should not longer be shared with integrationuser
+      val usersAndRoles =
+        secureContainer.datasetManager
+          .getUserCollaborators(dataset)
+          .await
+          .right
+          .get
+
+      val integrationUserIds = usersAndRoles.map(_._1.id)
+      integrationUserIds should contain(webhook.integrationUserId)
     }
   }
 
@@ -9331,9 +9342,15 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response should equal(1)
 
       // dataset should not longer be shared with integrationuser
-      val users = secureContainer.datasetManager.getUserCollaborators(dataset).await
-      users.map(_._1.id) should not include webhook.integrationUserId
+      val usersAndRoles =
+        secureContainer.datasetManager
+          .getUserCollaborators(dataset)
+          .await
+          .right
+          .get
 
+      val integrationUserIds = usersAndRoles.map(_._1.id)
+      integrationUserIds should not contain webhook.integrationUserId
 
     }
   }

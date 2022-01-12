@@ -351,9 +351,8 @@ trait DataSetTestMixin {
     ec: ExecutionContext
   ): DatasetIntegration = {
 
-    val integrationUser = container.userManager.get(
-      webhook.integrationUserId
-    ).await.right.get
+    val integrationUser =
+      container.userManager.get(webhook.integrationUserId).await.right.get
 
     container.datasetManager
       .enableWebhook(dataset, webhook, integrationUser)

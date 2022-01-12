@@ -262,6 +262,8 @@ trait ApiSuite
 
   var colleagueJwt: String = _
 
+  var integrationJwt: String = _
+
   var externalJwt: String = _
 
   var adminJwt: String = _
@@ -385,6 +387,7 @@ trait ApiSuite
     loggedInUser = userManager.create(me).await.value
     colleagueUser = userManager.create(colleague).await.value
     externalUser = userManager.create(other).await.value
+    integrationUser = userManager.create(integrationUserDefinition).await.value
 
     secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
 
@@ -416,6 +419,10 @@ trait ApiSuite
       .addUser(externalOrganization, externalUser, Delete)
       .await
       .value
+    organizationManager
+      .addUser(loggedInOrganization, integrationUser, Administer)
+      .await
+      .value
 
     loggedInJwt = Authenticator.createUserToken(
       loggedInUser,
@@ -424,6 +431,11 @@ trait ApiSuite
 
     colleagueJwt = Authenticator.createUserToken(
       colleagueUser,
+      loggedInOrganization
+    )(jwtConfig, insecureContainer.db, ec)
+
+    integrationJwt = Authenticator.createUserToken(
+      integrationUser,
       loggedInOrganization
     )(jwtConfig, insecureContainer.db, ec)
 
@@ -520,7 +532,6 @@ trait ApiSuite
     )
 
     sandboxUser = userManager.create(sandboxUserDefinition).await.value
-    integrationUser = userManager.create(integrationUserDefinition).await.value
 
     organizationManager
       .addUser(sandboxOrganization, sandboxUser, Administer)

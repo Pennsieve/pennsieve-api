@@ -4603,6 +4603,7 @@ class DataSetsController(
             .coreErrorToActionResult
           integrationUser <- secureContainer.userManager
             .get(webhook.integrationUserId)
+            .coreErrorToActionResult
           datasetIntegration <- secureContainer.datasetManager
             .enableWebhook(dataset, webhook, integrationUser)
             .coreErrorToActionResult
@@ -4640,6 +4641,7 @@ class DataSetsController(
             .coreErrorToActionResult
           integrationUser <- secureContainer.userManager
             .get(webhook.integrationUserId)
+            .coreErrorToActionResult
           deletedRowCount <- secureContainer.datasetManager
             .disableWebhook(dataset, webhook, integrationUser)
             .coreErrorToActionResult
