@@ -48,6 +48,10 @@ final class WebhooksTable(schema: String, tag: Tag)
 
   def isDisabled = column[Boolean]("is_disabled")
 
+  def hasAccess = column[Boolean]("has_access")
+
+  def integrationUserId = column[Int]("integration_user_id")
+
   def createdBy = column[Int]("created_by")
 
   def createdAt =
@@ -64,6 +68,8 @@ final class WebhooksTable(schema: String, tag: Tag)
       isPrivate,
       isDefault,
       isDisabled,
+      hasAccess,
+      integrationUserId,
       createdBy,
       createdAt,
       id

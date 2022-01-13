@@ -54,6 +54,8 @@ class WebhookManager(
     isPrivate: Boolean,
     isDefault: Boolean,
     isDisabled: Boolean,
+    hasAccess: Boolean,
+    integrationUserId: Int,
     createdBy: Int = actor.id,
     createdAt: ZonedDateTime = ZonedDateTime.now(),
     id: Int = 0
@@ -79,6 +81,10 @@ class WebhookManager(
         PredicateError("secret must be between 1 and 255 characters")
       )
 
+      _ <- checkOrError(integrationUserId > 0)(
+        PredicateError("integration user should be populated")
+      )
+
       _ <- checkOrError(
         displayName.trim.length < 256 && displayName.trim.nonEmpty
       )(PredicateError("display name must be between 1 and 255 characters"))
@@ -93,6 +99,8 @@ class WebhookManager(
         isPrivate,
         isDefault,
         isDisabled,
+        hasAccess,
+        integrationUserId,
         createdBy,
         createdAt,
         id
@@ -110,6 +118,8 @@ class WebhookManager(
       webhook.isPrivate,
       webhook.isDefault,
       webhook.isDisabled,
+      webhook.hasAccess,
+      webhook.integrationUserId,
       webhook.createdBy,
       webhook.createdAt,
       webhook.id
@@ -124,7 +134,9 @@ class WebhookManager(
     displayName: String,
     isPrivate: Boolean,
     isDefault: Boolean,
-    targetEvents: Option[List[String]]
+    hasAccess: Boolean,
+    targetEvents: Option[List[String]],
+    integrationUser: User
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Webhook, Seq[String])] = {
@@ -140,7 +152,9 @@ class WebhookManager(
         displayName,
         isPrivate,
         isDefault,
-        isDisabled = false
+        isDisabled = false,
+        hasAccess,
+        integrationUser.id
       ) match {
         case Right(webhook) => insertWebhook(webhook)
         case Left(error) => DBIO.failed(error)

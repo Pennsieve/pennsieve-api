@@ -20,7 +20,8 @@ import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
-import com.pennsieve.dtos._
+import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO }
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
@@ -31,7 +32,7 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.pennsieve.models.DBPermission
+import com.pennsieve.models.{ DBPermission, NodeCodes, Role, User }
 
 case class CreateWebhookRequest(
   apiUrl: String,
@@ -40,6 +41,7 @@ case class CreateWebhookRequest(
   secret: String,
   displayName: String,
   targetEvents: Option[List[String]],
+  hasAccess: Boolean,
   isPrivate: Boolean,
   isDefault: Boolean
 )
@@ -51,6 +53,7 @@ case class UpdateWebhookRequest(
   secret: Option[String] = None,
   displayName: Option[String] = None,
   targetEvents: Option[List[String]] = None,
+  hasAccess: Option[Boolean] = None,
   isPrivate: Option[Boolean] = None,
   isDefault: Option[Boolean] = None,
   isDisabled: Option[Boolean] = None
@@ -61,6 +64,7 @@ class WebhooksController(
   val secureContainerBuilder: SecureContainerBuilderType,
   system: ActorSystem,
   auditLogger: Auditor,
+  cognitoClient: CognitoClient,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -87,6 +91,41 @@ class WebhooksController(
 
         body <- extractOrErrorT[CreateWebhookRequest](parsedBody)
 
+        // All integrations have an associated user, but not all have API Key
+        integrationUser <- secureContainer.userManager
+          .createIntegrationUser(
+            User(
+              nodeId = NodeCodes.generateId(NodeCodes.userCode),
+              "",
+              firstName = "Integration",
+              middleInitial = None,
+              degree = None,
+              lastName = "body.displayName"
+            )
+          )
+          .coreErrorToActionResult
+
+        // Adding the integrationuser to the organization
+        _ <- insecureContainer.organizationManager
+          .addUser(
+            secureContainer.organization,
+            integrationUser,
+            DBPermission.Write
+          )
+          .coreErrorToActionResult
+
+        // Create the API-Token and Secret:
+        // Using INSECURE CONTAINER as we are creating an API key using a different user than the targeted user.
+        tokenSecret <- insecureContainer.tokenManager
+          .create(
+            name = "Integration-user",
+            user = integrationUser,
+            organization = secureContainer.organization,
+            cognitoClient = cognitoClient
+          )
+          .coreErrorToActionResult
+
+        // Create the webhook and eventType subscriptions.
         newWebhookAndSubscriptions <- secureContainer.webhookManager
           .create(
             apiUrl = body.apiUrl,
@@ -94,14 +133,20 @@ class WebhooksController(
             description = body.description,
             secret = body.secret,
             displayName = body.displayName,
+            hasAccess = body.hasAccess,
             isPrivate = body.isPrivate,
             isDefault = body.isDefault,
-            targetEvents = body.targetEvents
+            targetEvents = body.targetEvents,
+            integrationUser = integrationUser
           )
           .coreErrorToActionResult
 
       } yield
-        WebhookDTO(newWebhookAndSubscriptions._1, newWebhookAndSubscriptions._2)
+        WebhookDTO(
+          newWebhookAndSubscriptions._1,
+          newWebhookAndSubscriptions._2,
+          Some(APITokenSecretDTO(tokenSecret))
+        )
 
       override val is: Future[ActionResult] = result.value.map(CreatedResult)
     }
@@ -211,8 +256,27 @@ class WebhooksController(
         webhook <- secureContainer.webhookManager
           .getWithPermissionCheck(webhookId, DBPermission.Administer)
           .coreErrorToActionResult
+
         deleted <- secureContainer.webhookManager
           .delete(webhook)
+          .coreErrorToActionResult
+
+        // Remove users associated with Webhook
+        integrationMember <- insecureContainer.userManager
+          .get(webhook.integrationUserId)
+          .coreErrorToActionResult
+
+        userDatasets <- secureContainer.datasetManager
+          .find(integrationMember, Role.Viewer)
+          .map(_.map(_.dataset).toList)
+          .coreErrorToActionResult()
+
+        _ <- secureContainer.datasetManager
+          .removeCollaborators(userDatasets, Set(integrationMember.nodeId))
+          .coreErrorToActionResult()
+
+        _ <- secureContainer.organizationManager
+          .removeUser(secureContainer.organization, integrationMember)
           .coreErrorToActionResult
 
       } yield deleted

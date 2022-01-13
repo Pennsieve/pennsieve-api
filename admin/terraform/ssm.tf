@@ -100,11 +100,11 @@ resource "aws_ssm_parameter" "data_postgres_user" {
   value = "${var.environment_name}_${var.service_name}_user"
 }
 
-# resource "aws_ssm_parameter" "discover_service_host" {
-#   name  = "/${var.environment_name}/${var.service_name}/discover-service-host"
-#   type  = "String"
-#   value = "https://${data.terraform_remote_state.discover_service.outputs.internal_fqdn}"
-# }
+resource "aws_ssm_parameter" "discover_service_host" {
+  name  = "/${var.environment_name}/${var.service_name}/discover-service-host"
+  type  = "String"
+  value = "https://${data.terraform_remote_state.discover_service.outputs.internal_fqdn}"
+}
 
 resource "aws_ssm_parameter" "email_host" {
   name  = "/${var.environment_name}/${var.service_name}/email-host"

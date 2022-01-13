@@ -85,7 +85,7 @@ trait ManagerSpec
   var extraOrganizationIds: Seq[Int] = Nil
 
   var superAdmin: User = _
-
+  var integrationUser: User = _
   var database: Database = _
   var postgresDB: PostgresDatabase = _
 
@@ -99,6 +99,11 @@ trait ManagerSpec
 
     testDataset =
       createDataset(testOrganization, name = "super admin's test dataset")
+
+    integrationUser = createUser(
+      email = "integrationAdmin@example.com",
+      permission = DBPermission.Administer
+    )
 
     super.beforeEach()
   }
@@ -484,10 +489,15 @@ trait ManagerSpec
     displayName: String = "Test Webhook",
     isPrivate: Boolean = false,
     isDefault: Boolean = false,
+    hasAccess: Boolean = false,
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
     organization: Organization = testOrganization,
     creatingUser: User = superAdmin
   ): (Webhook, Seq[String]) = {
+
+    val integrationUser =
+      createUser(email = "", permission = DBPermission.Administer)
+
     webhookManager(organization, creatingUser)
       .create(
         apiUrl,
@@ -497,7 +507,9 @@ trait ManagerSpec
         displayName,
         isPrivate,
         isDefault,
-        targetEvents
+        hasAccess,
+        targetEvents,
+        integrationUser
       )
       .await
       .right

@@ -290,11 +290,13 @@ class OrganizationManager(db: Database) {
     val upsertQuery = OrganizationUserMapper.insertOrUpdate(
       OrganizationUser(organization.id, user.id, permission)
     )
+
     val contributorMapper = new ContributorMapper(organization)
 
     db.run(upsertQuery)
       .toEitherT
       .flatMap { count =>
+        // update contributor table if entry exist with same email
         if (count == 1) {
           for {
             emailInContributorTable <- db
@@ -306,7 +308,7 @@ class OrganizationManager(db: Database) {
               )
               .toEitherT
 
-            _ = if (emailInContributorTable)
+            _ = if (!user.email.isEmpty && emailInContributorTable)
               upgradeContributor(user.email, user.id, contributorMapper)
           } yield ()
 

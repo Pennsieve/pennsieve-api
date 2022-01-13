@@ -19,7 +19,7 @@ package com.pennsieve.aws.cognito
 import cats.implicits._
 import com.pennsieve.aws.email.Email
 import com.pennsieve.domain.{ NotFound, PredicateError }
-import com.pennsieve.dtos.Secret
+import com.pennsieve.models.TokenSecret
 import com.pennsieve.models.{ CognitoId, Organization }
 import com.typesafe.config.Config
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
@@ -59,7 +59,7 @@ trait CognitoClient {
 
   def createClientToken(
     token: String,
-    secret: Secret,
+    secret: TokenSecret,
     organization: Organization
   )(implicit
     ec: ExecutionContext
@@ -147,7 +147,7 @@ class Cognito(
     */
   def createClientToken(
     token: String,
-    secret: Secret,
+    secret: TokenSecret,
     organization: Organization
   )(implicit
     ec: ExecutionContext

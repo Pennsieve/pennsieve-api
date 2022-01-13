@@ -36,16 +36,16 @@ data "terraform_remote_state" "data_postgres" {
   }
 }
 
-# # Import Discover Service Data
-# data "terraform_remote_state" "discover_service" {
-#   backend = "s3"
+ # Import Discover Service Data
+ data "terraform_remote_state" "discover_service" {
+   backend = "s3"
 
-#   config = {
-#     bucket = "${var.aws_account}-terraform-state"
-#     key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/discover-service/terraform.tfstate"
-#     region = "us-east-1"
-#   }
-# }
+   config = {
+     bucket = "${var.aws_account}-terraform-state"
+     key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/discover-service/terraform.tfstate"
+     region = "us-east-1"
+   }
+ }
 
 # Import ECS Cluster Data
 data "terraform_remote_state" "ecs_cluster" {

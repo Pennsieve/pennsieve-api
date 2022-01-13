@@ -16,7 +16,12 @@
 
 package com.pennsieve.dtos
 
-import com.pennsieve.models.{ Webhook, WebhookEventSubcription }
+import com.pennsieve.models.{
+  Token,
+  TokenSecret,
+  Webhook,
+  WebhookEventSubcription
+}
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 
@@ -32,7 +37,9 @@ final case class WebhookDTO(
   isPrivate: Boolean,
   isDefault: Boolean,
   isDisabled: Boolean,
+  hasAccess: Boolean,
   eventTargets: Option[Seq[String]],
+  tokenSecret: Option[APITokenSecretDTO],
   createdBy: Int,
   createdAt: ZonedDateTime
 )
@@ -54,7 +61,9 @@ object WebhookDTO {
       isPrivate = webhook.isPrivate,
       isDefault = webhook.isDefault,
       isDisabled = webhook.isDisabled,
+      hasAccess = webhook.hasAccess,
       eventTargets = None,
+      tokenSecret = None,
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )
@@ -73,9 +82,57 @@ object WebhookDTO {
       isPrivate = webhook.isPrivate,
       isDefault = webhook.isDefault,
       isDisabled = webhook.isDisabled,
+      hasAccess = webhook.hasAccess,
       eventTargets = Option(target).filter(_.nonEmpty),
+      tokenSecret = None,
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )
+  }
+
+  def apply(
+    webhook: Webhook,
+    target: Seq[String],
+    tokenSecretDTO: Option[APITokenSecretDTO]
+  ): WebhookDTO = {
+    //    val targetsStr: Option[Seq[Int]] = Some(target.map(x => x.id))
+
+    tokenSecretDTO match {
+      case Some(tokenSecretDTO) =>
+        WebhookDTO(
+          id = webhook.id,
+          apiUrl = webhook.apiUrl,
+          imageUrl = webhook.imageUrl,
+          description = webhook.description,
+          name = webhook.name,
+          displayName = webhook.displayName,
+          isPrivate = webhook.isPrivate,
+          isDefault = webhook.isDefault,
+          isDisabled = webhook.isDisabled,
+          hasAccess = webhook.hasAccess,
+          eventTargets = Option(target).filter(_.nonEmpty),
+          tokenSecret = Some(tokenSecretDTO),
+          createdBy = webhook.createdBy,
+          createdAt = webhook.createdAt
+        )
+      case _ =>
+        WebhookDTO(
+          id = webhook.id,
+          apiUrl = webhook.apiUrl,
+          imageUrl = webhook.imageUrl,
+          description = webhook.description,
+          name = webhook.name,
+          displayName = webhook.displayName,
+          isPrivate = webhook.isPrivate,
+          isDefault = webhook.isDefault,
+          isDisabled = webhook.isDisabled,
+          hasAccess = webhook.hasAccess,
+          eventTargets = Option(target).filter(_.nonEmpty),
+          tokenSecret = None,
+          createdBy = webhook.createdBy,
+          createdAt = webhook.createdAt
+        )
+    }
+
   }
 }

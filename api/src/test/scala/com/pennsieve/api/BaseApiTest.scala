@@ -39,6 +39,7 @@ import com.pennsieve.models.{
   PayloadType,
   Role,
   Token,
+  TokenSecret,
   User
 }
 import com.pennsieve.clients.{
@@ -57,7 +58,6 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.utilities._
 import com.pennsieve.web.SwaggerApp
-import com.pennsieve.dtos.Secret
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
 import com.pennsieve.models.PublishStatus.{ PublishFailed, PublishSucceeded }
@@ -248,6 +248,7 @@ trait ApiSuite
   var externalUser: User = _
   var superAdmin: User = _
   var sandboxUser: User = _
+  var integrationUser: User = _
 
   var pennsieve: Organization = _
   var loggedInOrganization: Organization = _
@@ -261,6 +262,8 @@ trait ApiSuite
 
   var colleagueJwt: String = _
 
+  var integrationJwt: String = _
+
   var externalJwt: String = _
 
   var adminJwt: String = _
@@ -270,7 +273,7 @@ trait ApiSuite
   var loggedInSandboxUserJwt: String = _
 
   var apiToken: Token = _
-  var secret: Secret = _
+  var secret: TokenSecret = _
   var apiJwt: String = _
 
   var dataset: Dataset = _
@@ -326,6 +329,20 @@ trait ApiSuite
     false,
     None
   )
+  val integrationUserDefinition = User(
+    NodeCodes.generateId(NodeCodes.userCode),
+    "test@integration.com",
+    "first",
+    None,
+    "last",
+    None,
+    "cred",
+    "",
+    "http://integration.com",
+    0,
+    false,
+    None
+  )
   val superAdminUser = User(
     NodeCodes.generateId(NodeCodes.userCode),
     "super3@external.com",
@@ -370,6 +387,7 @@ trait ApiSuite
     loggedInUser = userManager.create(me).await.value
     colleagueUser = userManager.create(colleague).await.value
     externalUser = userManager.create(other).await.value
+    integrationUser = userManager.create(integrationUserDefinition).await.value
 
     secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
 
@@ -401,6 +419,10 @@ trait ApiSuite
       .addUser(externalOrganization, externalUser, Delete)
       .await
       .value
+    organizationManager
+      .addUser(loggedInOrganization, integrationUser, Administer)
+      .await
+      .value
 
     loggedInJwt = Authenticator.createUserToken(
       loggedInUser,
@@ -409,6 +431,11 @@ trait ApiSuite
 
     colleagueJwt = Authenticator.createUserToken(
       colleagueUser,
+      loggedInOrganization
+    )(jwtConfig, insecureContainer.db, ec)
+
+    integrationJwt = Authenticator.createUserToken(
+      integrationUser,
       loggedInOrganization
     )(jwtConfig, insecureContainer.db, ec)
 

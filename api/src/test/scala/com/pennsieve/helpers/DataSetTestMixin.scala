@@ -48,7 +48,7 @@ import com.pennsieve.test.helpers.EitherValue._
 import java.io.ByteArrayInputStream
 import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
-import com.pennsieve.models.DBPermission.Delete
+import com.pennsieve.models.DBPermission.{ Administer, Delete }
 
 trait DataSetTestMixin {
   self: ApiSuite =>
@@ -302,10 +302,34 @@ trait DataSetTestMixin {
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
     isPrivate: Boolean = false,
     isDefault: Boolean = false,
+    hasAccess: Boolean = false,
     container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext
   ): (Webhook, Seq[String]) = {
+
+    val integrationUserDefinition = User(
+      NodeCodes.generateId(NodeCodes.userCode),
+      "",
+      "first",
+      None,
+      "last",
+      None,
+      "cred",
+      "",
+      "http://integration.com",
+      0,
+      false,
+      None
+    )
+    val integrationUser =
+      userManager.create(integrationUserDefinition).await.value
+
+    organizationManager
+      .addUser(loggedInOrganization, integrationUser, Administer)
+      .await
+      .value
+
     container.webhookManager
       .create(
         apiUrl = apiUrl,
@@ -315,7 +339,9 @@ trait DataSetTestMixin {
         displayName = displayName,
         isPrivate = isPrivate,
         isDefault = isDefault,
-        targetEvents = targetEvents
+        hasAccess = hasAccess,
+        targetEvents = targetEvents,
+        integrationUser = integrationUser
       )
       .await match {
       case Left(error) => throw error
@@ -346,8 +372,12 @@ trait DataSetTestMixin {
   )(implicit
     ec: ExecutionContext
   ): DatasetIntegration = {
+
+    val integrationUser =
+      container.userManager.get(webhook.integrationUserId).await.right.get
+
     container.datasetManager
-      .enableWebhook(dataset, webhook)
+      .enableWebhook(dataset, webhook, integrationUser)
       .await
       .right
       .get

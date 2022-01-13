@@ -279,10 +279,36 @@ class UserManager(db: Database) {
   ): EitherT[Future, CoreError, User] =
     for {
       exists <- emailExists(user.email)
-      _ <- assert(!exists)(PredicateError("email must be unique"))
+      _ <- assert(!exists || user.email.isEmpty)(
+        PredicateError("email must be unique or empty")
+      )
       createdUser <- db
         .run(UserMapper.returning(UserMapper) += user.copy(color = randomColor))
         .toEitherT
+    } yield createdUser
+
+  /*
+  Creates an integration user. These users:
+  1) Do not have an email address
+  2) Do not have a cognito-ID and are not inlcuded in Cognito User Pool
+  3) Are created with an API Token
+   */
+  def createIntegrationUser(
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    for {
+      _ <- assert("".equals(user.email))(
+        PredicateError("email for integration user must be blank")
+      )
+      _ <- assert(user.cognitoId.isEmpty)(
+        PredicateError("cognito ID for integration user must be blank")
+      )
+      createdUser <- db
+        .run(UserMapper.returning(UserMapper) += user.copy(color = randomColor))
+        .toEitherT
+
     } yield createdUser
 
   def get(

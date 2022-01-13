@@ -60,6 +60,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedDisplayName = "Test Webhook"
     val expectedIsPrivate = false
     val expectedIsDefault = true
+    val expectedHasAccess = true
     val expectedTargetEvents = List("METADATA", "PERMISSIONS")
 
     val result = whManager
@@ -71,7 +72,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        Some(expectedTargetEvents)
+        expectedHasAccess,
+        Some(expectedTargetEvents),
+        integrationUser
       )
       .await
 
@@ -86,6 +89,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(returnedWebhook.description == expectedDescription)
     assert(returnedWebhook.displayName == expectedDisplayName)
     assert(returnedWebhook.secret == expectedSecret)
+    assert(returnedWebhook.integrationUserId == integrationUser.id)
     assert(returnedTargetEvents.equals(expectedTargetEvents))
 
     checkActualWebhooks(whManager, returnedWebhook)
@@ -105,6 +109,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedDisplayName = "Test Webhook"
     val expectedIsPrivate = false
     val expectedIsDefault = true
+    val expectedHasAccess = true
     val expectedTargetEvents = None
 
     val result = whManager
@@ -116,7 +121,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        expectedTargetEvents
+        expectedHasAccess,
+        expectedTargetEvents,
+        integrationUser
       )
       .await
 
@@ -146,6 +153,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedDisplayName = "Test Webhook"
     val expectedIsPrivate = false
     val expectedIsDefault = true
+    val expectedHasAccess = true
     val expectedTargetEvents = Nil
 
     val result = whManager
@@ -157,7 +165,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        Some(expectedTargetEvents)
+        expectedHasAccess,
+        Some(expectedTargetEvents),
+        integrationUser
       )
       .await
 
@@ -187,6 +197,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedDisplayName = "Test Webhook"
     val expectedIsPrivate = false
     val expectedIsDefault = true
+    val expectedHasAccess = true
     val expectedTargetEvents =
       List("METADATA", "PERMISSIONS", "NON-EXISTENT EVENT")
 
@@ -199,7 +210,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        Some(expectedTargetEvents)
+        expectedHasAccess,
+        Some(expectedTargetEvents),
+        integrationUser
       )
       .await
 
@@ -220,6 +233,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedDisplayName = "Test Webhook"
     val expectedIsPrivate = false
     val expectedIsDefault = true
+    val expectedHasAccess = true
     val expectedTargetEvents =
       List("METADATA", "PERMISSIONS")
 
@@ -232,7 +246,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        Some(expectedTargetEvents)
+        expectedHasAccess,
+        Some(expectedTargetEvents),
+        integrationUser
       )
       .await
 
@@ -253,6 +269,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedDisplayName = "Test Webhook" * 100
     val expectedIsPrivate = false
     val expectedIsDefault = true
+    val expectedHasAccess = true
     val expectedTargetEvents =
       List("METADATA", "PERMISSIONS")
 
@@ -265,7 +282,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        Some(expectedTargetEvents)
+        expectedHasAccess,
+        Some(expectedTargetEvents),
+        integrationUser
       )
       .await
 
@@ -286,6 +305,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedDisplayName = "Test Webhook"
     val expectedIsPrivate = false
     val expectedIsDefault = true
+    val expectedHasAccess = true
     val expectedTargetEvents =
       List("METADATA", "PERMISSIONS")
 
@@ -298,7 +318,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        Some(expectedTargetEvents)
+        expectedHasAccess,
+        Some(expectedTargetEvents),
+        integrationUser
       )
       .await
 
@@ -318,6 +340,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedDisplayName = "Test Webhook"
     val expectedIsPrivate = false
     val expectedIsDefault = true
+    val expectedHasAccess = true
     val expectedTargetEvents = List("METADATA", "PERMISSIONS")
 
     val result = whManager
@@ -329,7 +352,9 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedDisplayName,
         expectedIsPrivate,
         expectedIsDefault,
-        Some(expectedTargetEvents)
+        expectedHasAccess,
+        Some(expectedTargetEvents),
+        integrationUser
       )
       .await
 
@@ -577,6 +602,8 @@ class WebhookManagerSpec extends BaseManagerSpec {
       isPrivate = false,
       isDefault = true,
       isDisabled = false,
+      hasAccess = false,
+      integrationUser.id,
       1
     )
 
@@ -705,6 +732,8 @@ class WebhookManagerSpec extends BaseManagerSpec {
       isPrivate = false,
       isDefault = true,
       isDisabled = false,
+      hasAccess = false,
+      integrationUserId = 1,
       webhook.id + 1
     )
     val result = webhookManager().delete(unsavedWebhook).await
