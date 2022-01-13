@@ -48,7 +48,7 @@ import com.pennsieve.test.helpers.EitherValue._
 import java.io.ByteArrayInputStream
 import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
-import com.pennsieve.models.DBPermission.Delete
+import com.pennsieve.models.DBPermission.{ Administer, Delete }
 
 trait DataSetTestMixin {
   self: ApiSuite =>
@@ -303,11 +303,33 @@ trait DataSetTestMixin {
     isPrivate: Boolean = false,
     isDefault: Boolean = false,
     hasAccess: Boolean = false,
-    integrationUser: User = integrationUser,
     container: SecureAPIContainer = secureContainer
   )(implicit
     ec: ExecutionContext
   ): (Webhook, Seq[String]) = {
+
+    val integrationUserDefinition = User(
+      NodeCodes.generateId(NodeCodes.userCode),
+      "",
+      "first",
+      None,
+      "last",
+      None,
+      "cred",
+      "",
+      "http://integration.com",
+      0,
+      false,
+      None
+    )
+    val integrationUser =
+      userManager.create(integrationUserDefinition).await.value
+
+    organizationManager
+      .addUser(loggedInOrganization, integrationUser, Administer)
+      .await
+      .value
+
     container.webhookManager
       .create(
         apiUrl = apiUrl,

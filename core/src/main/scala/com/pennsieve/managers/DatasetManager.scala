@@ -1652,9 +1652,9 @@ class DatasetManager(
 
       role = Role.Manager
 
-      insert2 <- datasetUser ++= whToEnable.map(
-        DatasetUser(dataset.id, _, role.toPermission, Some(role))
-      )
+      datasetUsers = whToEnable
+        .map(DatasetUser(dataset.id, _, role.toPermission, Some(role)))
+      insert2 <- datasetUser ++= datasetUsers
 
     } yield insert2
 

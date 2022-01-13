@@ -587,7 +587,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     webserviceResponse.id should equal(expectedWebhook.id)
     webserviceResponse.createdAt should equal(expectedWebhook.createdAt)
     webserviceResponse.createdBy should equal(expectedWebhook.createdBy)
-    webserviceResponse.tokenSecret.get shouldBe None
+    webserviceResponse.tokenSecret shouldBe None
 
     if (expectedEvents.isEmpty) {
       webserviceResponse.eventTargets shouldBe None
