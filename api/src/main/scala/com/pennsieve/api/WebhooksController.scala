@@ -257,6 +257,11 @@ class WebhooksController(
           .getWithPermissionCheck(webhookId, DBPermission.Administer)
           .coreErrorToActionResult
 
+        deleted <- secureContainer.webhookManager
+          .delete(webhook)
+          .coreErrorToActionResult
+
+        // Remove users associated with Webhook
         integrationMember <- insecureContainer.userManager
           .get(webhook.integrationUserId)
           .coreErrorToActionResult
@@ -272,10 +277,6 @@ class WebhooksController(
 
         _ <- secureContainer.organizationManager
           .removeUser(secureContainer.organization, integrationMember)
-          .coreErrorToActionResult
-
-        deleted <- secureContainer.webhookManager
-          .delete(webhook)
           .coreErrorToActionResult
 
       } yield deleted
