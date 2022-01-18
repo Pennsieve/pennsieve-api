@@ -277,6 +277,7 @@ trait DataSetTestMixin {
       "http://blind.com",
       0,
       false,
+      false,
       None,
       orcidAuthorization = orcidAuthorization
     )
@@ -319,6 +320,7 @@ trait DataSetTestMixin {
       "",
       "http://integration.com",
       0,
+      false,
       false,
       None
     )

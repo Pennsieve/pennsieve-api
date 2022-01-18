@@ -48,6 +48,7 @@ final class UserTable(tag: Tag)
   def url = column[String]("url")
   def authyId = column[Int]("authy_id") // TODO drop column
   def isSuperAdmin = column[Boolean]("is_super_admin")
+  def isIntegrationUser = column[Boolean]("is_integration_user")
   def preferredOrganizationId = column[Option[Int]]("preferred_org_id")
   def status = column[Boolean]("status")
   def orcidAuthorization =
@@ -68,6 +69,7 @@ final class UserTable(tag: Tag)
       url,
       authyId,
       isSuperAdmin,
+      isIntegrationUser,
       preferredOrganizationId,
       status,
       orcidAuthorization,

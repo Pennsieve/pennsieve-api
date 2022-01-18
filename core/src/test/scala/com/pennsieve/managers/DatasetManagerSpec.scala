@@ -137,6 +137,50 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
   }
 
+  "a user" should "be allowed to remove regular users" in {
+
+    val name = "TestDatasetName"
+
+    val dm = datasetManager(testOrganization, superAdmin)
+    val ds = dm.create(name).await.value
+
+    val orgUser = createUser()
+
+    dm.addUserCollaborator(ds, orgUser, Role.Manager).await.value
+
+    val collabs: Collaborators = dm.getCollaborators(ds).await.value
+
+    assert(collabs.users.map(_.nodeId) contains orgUser.nodeId)
+
+    dm.removeCollaborators(ds, Set(orgUser.nodeId)).await
+
+    val collabs2: Collaborators = dm.getCollaborators(ds).await.value
+
+    assert(collabs2.users.map(_.nodeId).isEmpty)
+
+  }
+
+  "a user" should "not be allowed to remove integration users" in {
+
+    val name = "TestDatasetName"
+
+    val dm = datasetManager(testOrganization, superAdmin)
+    val ds = dm.create(name).await.value
+
+    dm.addUserCollaborator(ds, integrationUser, Role.Manager).await.value
+
+    val collabs: Collaborators = dm.getCollaborators(ds).await.value
+
+    assert(collabs.users.map(_.nodeId) contains integrationUser.nodeId)
+
+    dm.removeCollaborators(ds, Set(integrationUser.nodeId)).await
+
+    val collabs2: Collaborators = dm.getCollaborators(ds).await.value
+
+    assert(collabs2.users.map(_.nodeId) contains integrationUser.nodeId)
+
+  }
+
   "a dataset" should "be text searchable by name" in {
     val dm: DatasetManager = datasetManager()
 

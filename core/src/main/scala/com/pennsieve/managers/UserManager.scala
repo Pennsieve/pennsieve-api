@@ -109,6 +109,13 @@ class UserManager(db: Database) {
             .headOption
         )
         .toEitherT
+
+      // Should not be necessary as integraiton users have no email, but
+      // in case empty email returns a user above.
+      _ <- assert(!emailUser.get.isIntegrationUser)(
+        PredicateError("Cannot update Integration User")
+      )
+
       _ <- assert(emailUser.isDefined && emailUser.get.email == user.email)(
         PredicateError("email must be unique")
       )

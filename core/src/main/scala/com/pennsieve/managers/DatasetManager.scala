@@ -607,7 +607,7 @@ class DatasetManager(
         .toEitherT
 
       validIdsToShareWithMap <- db
-        .run(datasetsMapper.validIdTuplesToShareWith.result)
+        .run(datasetsMapper.validIdTuplesToShareWith().result)
         .map(_.toMap.updated(organization.nodeId, organization.id))
         .toEitherT
 
@@ -696,17 +696,19 @@ class DatasetManager(
 
   def removeCollaborators(
     datasets: List[Dataset],
-    collaborators: Set[String]
+    collaborators: Set[String],
+    removeIntegrationUsers: Option[Boolean]
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, List[CollaboratorChanges]] =
     datasets.map { dataset =>
-      removeCollaborators(dataset, collaborators)
+      removeCollaborators(dataset, collaborators, removeIntegrationUsers.get)
     }.sequence
 
   def removeCollaborators(
     dataset: Dataset,
-    collaborators: Set[String]
+    collaborators: Set[String],
+    removeIntegrationUsers: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, CollaboratorChanges] = {
@@ -738,7 +740,11 @@ class DatasetManager(
         .filter { du =>
           du.userId in {
             UserMapper
-              .filter(_.nodeId.inSet(collaboratorsWithoutAdmin))
+              .filter(
+                u =>
+                  u.nodeId
+                    .inSet(collaboratorsWithoutAdmin) && u.isIntegrationUser === removeIntegrationUsers
+              )
               .map(_.id)
           }
         }

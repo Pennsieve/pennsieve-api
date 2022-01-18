@@ -91,7 +91,7 @@ class WebhooksController(
 
         body <- extractOrErrorT[CreateWebhookRequest](parsedBody)
 
-        // All integrations have an associated user, but not all have API Key
+        // All integrations have an associated user
         integrationUser <- secureContainer.userManager
           .createIntegrationUser(
             User(
@@ -99,8 +99,9 @@ class WebhooksController(
               "",
               firstName = "Integration",
               middleInitial = None,
+              isIntegrationUser = true,
               degree = None,
-              lastName = "body.displayName"
+              lastName = "User"
             )
           )
           .coreErrorToActionResult
@@ -110,7 +111,7 @@ class WebhooksController(
           .addUser(
             secureContainer.organization,
             integrationUser,
-            DBPermission.Write
+            DBPermission.Delete
           )
           .coreErrorToActionResult
 
@@ -271,10 +272,25 @@ class WebhooksController(
           .map(_.map(_.dataset).toList)
           .coreErrorToActionResult()
 
-        _ <- secureContainer.datasetManager
-          .removeCollaborators(userDatasets, Set(integrationMember.nodeId))
+        integrationUserToken <- secureContainer.tokenManager
+          .get(integrationMember, secureContainer.organization)
           .coreErrorToActionResult()
 
+        // Remove Integration API Key/Secret
+        _ <- secureContainer.tokenManager
+          .delete(integrationUserToken.head, cognitoClient = cognitoClient)
+          .coreErrorToActionResult()
+
+        // Remove Integration User from Datasets
+        _ <- secureContainer.datasetManager
+          .removeCollaborators(
+            userDatasets,
+            Set(integrationMember.nodeId),
+            removeIntegrationUsers = Some(true)
+          )
+          .coreErrorToActionResult()
+
+        // Remove Integration User from Organization
         _ <- secureContainer.organizationManager
           .removeUser(secureContainer.organization, integrationMember)
           .coreErrorToActionResult

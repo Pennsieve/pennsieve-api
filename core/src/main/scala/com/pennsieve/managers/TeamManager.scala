@@ -22,6 +22,7 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers
+import com.pennsieve.core.utilities.FutureEitherHelpers.assert
 
 import scala.concurrent.{ ExecutionContext, Future }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
@@ -250,6 +251,11 @@ case class TeamManager(secureOrganizationManager: SecureOrganizationManager) {
 
     for {
       _ <- get(team.id, DBPermission.Administer)
+
+      _ <- assert(!user.isIntegrationUser)(
+        PredicateError("Cannot add Integration User to a Team")
+      )
+
       _ <- db.run(teamUser += teamUserMapping).toEitherT
     } yield teamUserMapping
   }

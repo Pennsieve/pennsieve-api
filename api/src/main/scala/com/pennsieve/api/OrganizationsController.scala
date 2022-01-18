@@ -893,6 +893,11 @@ class OrganizationsController(
         member <- insecureContainer.userManager
           .getByNodeId(memberId)
           .coreErrorToActionResult
+
+        _ <- checkOrErrorT(!member.isIntegrationUser)(
+          InvalidAction("Integration user cannot be deleted."): CoreError
+        ).coreErrorToActionResult
+
         ownersAndAdmins <- secureContainer.organizationManager
           .getOwnersAndAdministrators(organization)(executor)
           .coreErrorToActionResult
@@ -905,7 +910,7 @@ class OrganizationsController(
           .map(_.map(_.dataset).toList)
           .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
-          .removeCollaborators(userDatasets, Set(member.nodeId))
+          .removeCollaborators(userDatasets, Set(member.nodeId), Some(false))
           .coreErrorToActionResult()
         storageManager = StorageManager.create(secureContainer, organization)
         storageMap <- storageManager
@@ -962,6 +967,10 @@ class OrganizationsController(
         user <- insecureContainer.userManager
           .getByNodeId(userId)
           .coreErrorToActionResult
+
+        _ <- checkOrErrorT(!user.isIntegrationUser)(
+          InvalidAction("Integration user cannot be updated."): CoreError
+        ).coreErrorToActionResult
 
         preferredOrganizationId <- insecureContainer.userManager
           .getPreferredOrganizationId(
@@ -1672,4 +1681,5 @@ class OrganizationsController(
         InvalidAction("Demo user cannot share datasets."): CoreError
       ).coreErrorToActionResult
     } yield ()
+
 }

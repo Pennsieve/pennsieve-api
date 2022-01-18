@@ -37,6 +37,7 @@ import com.pennsieve.models.{
   Package,
   PackageState,
   PackageType,
+  Role,
   Team,
   User,
   Webhook
@@ -101,8 +102,11 @@ trait ManagerSpec
       createDataset(testOrganization, name = "super admin's test dataset")
 
     integrationUser = createUser(
-      email = "integrationAdmin@example.com",
-      permission = DBPermission.Administer
+      email = "",
+      permission = DBPermission.Administer,
+      isIntegrationUser = true,
+      firstName = "Integration",
+      lastName = "User"
     )
 
     super.beforeEach()
@@ -301,7 +305,9 @@ trait ManagerSpec
       email = email,
       isSuperAdmin = true,
       organization = None,
-      datasets = Nil
+      datasets = Nil,
+      firstName = "SUPER",
+      lastName = "ADMIN"
     )
 
   def createUser(
@@ -309,19 +315,23 @@ trait ManagerSpec
     isSuperAdmin: Boolean = false,
     organization: Option[Organization] = Some(testOrganization),
     datasets: List[Dataset] = List(testDataset),
-    permission: DBPermission = DBPermission.Delete
+    permission: DBPermission = DBPermission.Delete,
+    isIntegrationUser: Boolean = false,
+    firstName: String = "Test",
+    lastName: String = "User"
   ): User = {
     val unsavedUser = User(
       nodeId = NodeCodes.generateId(NodeCodes.userCode),
       email = email,
-      firstName = "SUPER",
+      firstName = firstName,
       middleInitial = None,
-      lastName = "ADMIN",
+      lastName = lastName,
       degree = None,
       credential = "",
       color = "",
       url = "",
       isSuperAdmin = isSuperAdmin,
+      isIntegrationUser = isIntegrationUser,
       cognitoId = Some(CognitoId.UserPoolId.randomId())
     )
 
@@ -339,7 +349,7 @@ trait ManagerSpec
 
       datasets.foreach { dataset =>
         datasetManager(organization.get, superAdmin)
-          .addCollaborators(dataset, Set(user.nodeId))
+          .addUserCollaborator(dataset, user, Role.Editor)
           .await
           .value
       }

@@ -299,6 +299,7 @@ trait ApiSuite
     "http://test.com",
     0,
     false,
+    false,
     None
   )
   val colleague = User(
@@ -312,6 +313,7 @@ trait ApiSuite
     "",
     "http://test.com",
     0,
+    false,
     false,
     None
   )
@@ -327,6 +329,7 @@ trait ApiSuite
     "http://other.com",
     0,
     false,
+    false,
     None
   )
   val integrationUserDefinition = User(
@@ -341,6 +344,7 @@ trait ApiSuite
     "http://integration.com",
     0,
     false,
+    true,
     None
   )
   val superAdminUser = User(
@@ -355,6 +359,7 @@ trait ApiSuite
     "http://other.com",
     0,
     true,
+    false,
     None,
     id = 4
   )
@@ -527,6 +532,7 @@ trait ApiSuite
       "",
       "http://test.com",
       0,
+      false,
       false,
       Some(sandboxOrganization.id)
     )
