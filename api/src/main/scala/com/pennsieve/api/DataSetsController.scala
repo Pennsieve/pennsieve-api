@@ -1483,7 +1483,7 @@ class DataSetsController(
         unShareIds <- extractOrErrorT[Set[String]](parsedBody)
 
         results <- secureContainer.datasetManager
-          .removeCollaborators(dataset, unShareIds)
+          .removeCollaborators(dataset, unShareIds, false)
           .orForbidden
 
         // TODO: logEvent

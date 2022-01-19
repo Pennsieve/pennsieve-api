@@ -58,7 +58,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val collabs: Collaborators = dm2.getCollaborators(ds).await.value
     val colaboratorIds = collabs.users.map(_.nodeId).toSet + owner.nodeId
 
-    dm2.removeCollaborators(ds, colaboratorIds).await
+    dm2.removeCollaborators(ds, colaboratorIds, false).await
 
     //The owner of a dataset should never be removed
     assert(dm.getOwner(ds).await.isRight)
@@ -152,7 +152,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     assert(collabs.users.map(_.nodeId) contains orgUser.nodeId)
 
-    dm.removeCollaborators(ds, Set(orgUser.nodeId)).await
+    dm.removeCollaborators(ds, Set(orgUser.nodeId), false).await
 
     val collabs2: Collaborators = dm.getCollaborators(ds).await.value
 
@@ -173,7 +173,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     assert(collabs.users.map(_.nodeId) contains integrationUser.nodeId)
 
-    dm.removeCollaborators(ds, Set(integrationUser.nodeId)).await
+    dm.removeCollaborators(ds, Set(integrationUser.nodeId), false).await
 
     val collabs2: Collaborators = dm.getCollaborators(ds).await.value
 

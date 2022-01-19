@@ -697,18 +697,18 @@ class DatasetManager(
   def removeCollaborators(
     datasets: List[Dataset],
     collaborators: Set[String],
-    removeIntegrationUsers: Option[Boolean]
+    removeIntegrationUsers: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, List[CollaboratorChanges]] =
     datasets.map { dataset =>
-      removeCollaborators(dataset, collaborators, removeIntegrationUsers.get)
+      removeCollaborators(dataset, collaborators, removeIntegrationUsers)
     }.sequence
 
   def removeCollaborators(
     dataset: Dataset,
     collaborators: Set[String],
-    removeIntegrationUsers: Boolean = false
+    removeIntegrationUsers: Boolean
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, CollaboratorChanges] = {

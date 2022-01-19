@@ -21,6 +21,7 @@ import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.domain.CoreError
 import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO }
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
@@ -276,17 +277,33 @@ class WebhooksController(
           .get(integrationMember, secureContainer.organization)
           .coreErrorToActionResult()
 
+        token = integrationUserToken.headOption
+
+        _ <- token match {
+          case Some(token) =>
+            secureContainer.tokenManager
+              .delete(token, cognitoClient = cognitoClient)
+              .coreErrorToActionResult()
+          case None =>
+            EitherT
+              .rightT[Future, CoreError](())
+              .coreErrorToActionResult()
+        }
+
+//        _ <- if userToken {
+//          _ <- secureContainer.tokenManager
+//            .delete(userToken.get, cognitoClient = cognitoClient)
+//            .coreErrorToActionResult()
+//        }
+
         // Remove Integration API Key/Secret
-        _ <- secureContainer.tokenManager
-          .delete(integrationUserToken.head, cognitoClient = cognitoClient)
-          .coreErrorToActionResult()
 
         // Remove Integration User from Datasets
         _ <- secureContainer.datasetManager
           .removeCollaborators(
             userDatasets,
             Set(integrationMember.nodeId),
-            removeIntegrationUsers = Some(true)
+            removeIntegrationUsers = true
           )
           .coreErrorToActionResult()
 
