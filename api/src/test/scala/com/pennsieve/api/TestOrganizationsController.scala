@@ -501,7 +501,9 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
-    secureDataSetManager.addUserCollaborator(newDataset, user, Role.Editor)
+    secureDataSetManager
+      .addUserCollaborator(newDataset, user, Role.Editor)
+      .await
 
     assert(
       secureDataSetManager.find(user, Role.Viewer).await.right.value.size == 1
