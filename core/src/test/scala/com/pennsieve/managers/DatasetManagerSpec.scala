@@ -58,7 +58,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val collabs: Collaborators = dm2.getCollaborators(ds).await.value
     val colaboratorIds = collabs.users.map(_.nodeId).toSet + owner.nodeId
 
-    dm2.removeCollaborators(ds, colaboratorIds).await
+    dm2.removeCollaborators(ds, colaboratorIds, false).await
 
     //The owner of a dataset should never be removed
     assert(dm.getOwner(ds).await.isRight)
@@ -134,6 +134,50 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val count = dm.sourceFileCount(dataset).await.right.get
 
     assert(count == 2L)
+
+  }
+
+  "a user" should "be allowed to remove regular users" in {
+
+    val name = "TestDatasetName"
+
+    val dm = datasetManager(testOrganization, superAdmin)
+    val ds = dm.create(name).await.value
+
+    val orgUser = createUser()
+
+    dm.addUserCollaborator(ds, orgUser, Role.Manager).await.value
+
+    val collabs: Collaborators = dm.getCollaborators(ds).await.value
+
+    assert(collabs.users.map(_.nodeId) contains orgUser.nodeId)
+
+    dm.removeCollaborators(ds, Set(orgUser.nodeId), false).await
+
+    val collabs2: Collaborators = dm.getCollaborators(ds).await.value
+
+    assert(collabs2.users.map(_.nodeId).isEmpty)
+
+  }
+
+  "a user" should "not be allowed to remove integration users" in {
+
+    val name = "TestDatasetName"
+
+    val dm = datasetManager(testOrganization, superAdmin)
+    val ds = dm.create(name).await.value
+
+    dm.addUserCollaborator(ds, integrationUser, Role.Manager).await.value
+
+    val collabs: Collaborators = dm.getCollaborators(ds).await.value
+
+    assert(collabs.users.map(_.nodeId) contains integrationUser.nodeId)
+
+    dm.removeCollaborators(ds, Set(integrationUser.nodeId), false).await
+
+    val collabs2: Collaborators = dm.getCollaborators(ds).await.value
+
+    assert(collabs2.users.map(_.nodeId) contains integrationUser.nodeId)
 
   }
 

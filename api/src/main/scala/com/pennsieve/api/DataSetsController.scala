@@ -1481,8 +1481,9 @@ class DataSetsController(
           .coreErrorToActionResult
 
         unShareIds <- extractOrErrorT[Set[String]](parsedBody)
+
         results <- secureContainer.datasetManager
-          .removeCollaborators(dataset, unShareIds)
+          .removeCollaborators(dataset, unShareIds, false)
           .orForbidden
 
         // TODO: logEvent
@@ -1903,6 +1904,10 @@ class DataSetsController(
           .getByNodeId(userDto.id)
           .orNotFound
 
+        _ <- checkOrErrorT(!user.isIntegrationUser)(
+          InvalidAction("Cannot manually add integration users to a dataset"): CoreError
+        ).coreErrorToActionResult
+
         oldRole <- secureContainer.datasetManager
           .addUserCollaborator(dataset, user, userDto.role)
           .coreErrorToActionResult
@@ -1952,6 +1957,13 @@ class DataSetsController(
           user <- secureContainer.userManager
             .getByNodeId(userDto.id)
             .orNotFound
+
+          _ <- checkOrErrorT(!user.isIntegrationUser)(
+            InvalidAction(
+              "Cannot manually remove integration users from dataset."
+            ): CoreError
+          ).coreErrorToActionResult
+
           oldRole <- secureContainer.datasetManager
             .deleteUserCollaborator(dataset, user)
             .orForbidden

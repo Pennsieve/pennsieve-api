@@ -321,14 +321,15 @@ class DatasetsMapper(val organization: Organization)
           .map(_._2.nodeId)
       }
 
-  def validIdTuplesToShareWith
-    : Query[(Rep[String], Rep[Int]), (String, Int), Seq] =
+  def validIdTuplesToShareWith(
+    includeIntegrationUsers: Boolean = false
+  ): Query[(Rep[String], Rep[Int]), (String, Int), Seq] =
     OrganizationUserMapper
       .join(UserMapper)
       .on(_.userId === _.id)
       .filter {
-        case (organizationUser, _) =>
-          organizationUser.organizationId === organization.id
+        case (organizationUser, user) =>
+          organizationUser.organizationId === organization.id && user.isIntegrationUser === includeIntegrationUsers
       }
       .map {
         case (_, usersTable) =>

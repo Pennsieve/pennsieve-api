@@ -33,6 +33,7 @@ final case class User(
   url: String = "",
   authyId: Int = 0,
   isSuperAdmin: Boolean = false,
+  isIntegrationUser: Boolean = false,
   preferredOrganizationId: Option[Int] = None,
   status: Boolean = true,
   orcidAuthorization: Option[OrcidAuthorization] = None,

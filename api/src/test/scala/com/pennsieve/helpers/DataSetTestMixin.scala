@@ -17,6 +17,7 @@
 package com.pennsieve.helpers
 
 import com.pennsieve.api.ApiSuite
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.models.{
   Collection,
   DataUseAgreement,
@@ -51,6 +52,7 @@ import com.pennsieve.helpers.APIContainers.SecureAPIContainer
 import com.pennsieve.models.DBPermission.{ Administer, Delete }
 
 trait DataSetTestMixin {
+
   self: ApiSuite =>
 
   def createDataSet(
@@ -277,6 +279,7 @@ trait DataSetTestMixin {
       "http://blind.com",
       0,
       false,
+      false,
       None,
       orcidAuthorization = orcidAuthorization
     )
@@ -308,6 +311,7 @@ trait DataSetTestMixin {
     ec: ExecutionContext
   ): (Webhook, Seq[String]) = {
 
+    val mockCognito = new MockCognito()
     val integrationUserDefinition = User(
       NodeCodes.generateId(NodeCodes.userCode),
       "",
@@ -320,6 +324,7 @@ trait DataSetTestMixin {
       "http://integration.com",
       0,
       false,
+      true,
       None
     )
     val integrationUser =
@@ -329,6 +334,14 @@ trait DataSetTestMixin {
       .addUser(loggedInOrganization, integrationUser, Administer)
       .await
       .value
+
+    container.tokenManager
+      .create(
+        name = "Integration-user",
+        user = integrationUser,
+        organization = secureContainer.organization,
+        cognitoClient = mockCognito
+      )
 
     container.webhookManager
       .create(
@@ -347,6 +360,7 @@ trait DataSetTestMixin {
       case Left(error) => throw error
       case Right(value) => value
     }
+
   }
 
   def addUserCollaborator(

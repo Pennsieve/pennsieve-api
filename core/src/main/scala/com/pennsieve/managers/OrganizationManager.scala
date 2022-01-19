@@ -602,6 +602,7 @@ class SecureOrganizationManager(val db: Database, val actor: User)
           .map(_.teamId)
           .result
           .map(_.toList)
+
         _ <- TeamsMapper.deleteUser(teamIds, user.id)
         _ <- OrganizationsMapper.deleteUser(organization.id, user.id)
       } yield ()).transactionally)

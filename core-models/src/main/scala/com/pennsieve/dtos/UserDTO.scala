@@ -35,6 +35,7 @@ case class UserDTO(
   url: String,
   authyId: Int,
   isSuperAdmin: Boolean,
+  isIntegrationUser: Boolean,
   createdAt: ZonedDateTime,
   updatedAt: ZonedDateTime,
   preferredOrganization: Option[String],

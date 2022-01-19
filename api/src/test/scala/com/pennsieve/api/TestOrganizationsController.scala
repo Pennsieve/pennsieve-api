@@ -81,6 +81,20 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     mockCognito.reset
   }
 
+  def makeIntegrationUser(): User =
+    User(
+      nodeId = NodeCodes.generateId(NodeCodes.userCode),
+      email = "",
+      firstName = "Integration",
+      middleInitial = Some("I"),
+      lastName = "User",
+      degree = None,
+      credential = "cred",
+      isIntegrationUser = true,
+      color = "color",
+      url = "https://user.com"
+    )
+
   def makeUser(email: String): User =
     User(
       nodeId = NodeCodes.generateId(NodeCodes.userCode),
@@ -487,7 +501,10 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
-    secureDataSetManager.addCollaborators(newDataset, Set(user.nodeId)).await
+    secureDataSetManager
+      .addUserCollaborator(newDataset, user, Role.Editor)
+      .await
+
     assert(
       secureDataSetManager.find(user, Role.Viewer).await.right.value.size == 1
     )
@@ -507,6 +524,35 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       assert(
         secureDataSetManager.find(user, Role.Viewer).await.right.value.isEmpty
       )
+    }
+  }
+
+  test("Cannot remove an integration member") {
+
+    val user = userManager
+      .create(makeIntegrationUser())
+      .await
+      .right
+      .value
+
+    organizationManager.addUser(loggedInOrganization, user, Delete).await
+
+    val newDataset = secureDataSetManager
+      .create("Test", Some("Test Dataset"))
+      .await
+      .value
+
+    delete(
+      s"/${loggedInOrganization.nodeId}/members/${user.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+
+      organizationManager
+        .getUsers(loggedInOrganization)
+        .await
+        .right
+        .value should contain(user)
     }
   }
 
@@ -540,6 +586,24 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         .await
         .value
       status should equal(200)
+    }
+  }
+
+  test("Cannot update an organization's integration member's permission") {
+    val createReq =
+      write(UpdateMemberRequest(None, None, None, None, None, Some(Administer)))
+
+    putJson(
+      s"/${loggedInOrganization.nodeId}/members/${integrationUser.nodeId}",
+      createReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      // make sure user has permission
+      new SecureOrganizationManager(secureContainer.db, integrationUser)
+        .hasPermission(loggedInOrganization, Administer)
+        .await
+        .value
+      status should equal(403)
     }
   }
 

@@ -893,6 +893,11 @@ class OrganizationsController(
         member <- insecureContainer.userManager
           .getByNodeId(memberId)
           .coreErrorToActionResult
+
+        _ <- checkOrErrorT(!member.isIntegrationUser)(
+          InvalidAction("Cannot remove integration user"): CoreError
+        ).coreErrorToActionResult
+
         ownersAndAdmins <- secureContainer.organizationManager
           .getOwnersAndAdministrators(organization)(executor)
           .coreErrorToActionResult
@@ -962,6 +967,10 @@ class OrganizationsController(
         user <- insecureContainer.userManager
           .getByNodeId(userId)
           .coreErrorToActionResult
+
+        _ <- checkOrErrorT(!user.isIntegrationUser)(
+          InvalidAction("Integration User cannot be updated."): CoreError
+        ).coreErrorToActionResult
 
         preferredOrganizationId <- insecureContainer.userManager
           .getPreferredOrganizationId(
