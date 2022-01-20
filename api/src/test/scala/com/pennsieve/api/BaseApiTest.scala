@@ -215,10 +215,7 @@ trait ApiSuite
 
     migrateCoreSchema(insecureContainer.postgresDatabase)
 
-    // Interestingly this must be "5" as the sandbox organization in some
-    // pass throughs gets created twice; once on the migration and once again
-    // within the beforeEach of this loop. TODO on figuring out a better approach.
-    1 to 5 foreach { orgId =>
+    1 to 2 foreach { orgId =>
       insecureContainer.db.run(createSchema(orgId.toString)).await
       migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
     }
@@ -250,9 +247,9 @@ trait ApiSuite
   var sandboxUser: User = _
   var integrationUser: User = _
 
-  var pennsieve: Organization = _
+//  var pennsieve: Organization = _
   var loggedInOrganization: Organization = _
-  var loggedInOrganizationNoFeatures: Organization = _
+//  var loggedInOrganizationNoFeatures: Organization = _
   var externalOrganization: Organization = _
   var sandboxOrganization: Organization = _
 
@@ -370,7 +367,7 @@ trait ApiSuite
     insecureContainer.db.run(clearDB).await
     insecureContainer.db.run(clearOrganizationSchema(1)).await
     insecureContainer.db.run(clearOrganizationSchema(2)).await
-    insecureContainer.db.run(clearOrganizationSchema(3)).await
+//    insecureContainer.db.run(clearOrganizationSchema(3)).await
   }
 
   override def beforeEach(): Unit = {
@@ -385,9 +382,9 @@ trait ApiSuite
 
     loggedInOrganization =
       createOrganization("Test Organization", features = Set())
-    loggedInOrganizationNoFeatures = createOrganization("Test Organization")
+//    loggedInOrganizationNoFeatures = createOrganization("Test Organization")
     externalOrganization = createOrganization("External Organization")
-    pennsieve = createOrganization("Pennsieve", "pennsieve")
+//    pennsieve = createOrganization("Pennsieve", "pennsieve")
 
     loggedInUser = userManager.create(me).await.value
     colleagueUser = userManager.create(colleague).await.value
@@ -505,21 +502,30 @@ trait ApiSuite
       .right
       .value
 
+
+    // create test sandbox organization.
+    // We don't use the one created in migration as this is sometimes not available immediately
+    sandboxOrganization = createOrganization(
+      "__sandbox__test",
+      "__sandbox__test",
+      features = Set(Feature.SandboxOrgFeature)
+    )
+
     // This will check to see if an organization of sandbox already exists, and if so, uses that
     // otherwise generates an org w/ the feature flag
-    sandboxOrganization = organizationManager
-      .getBySlug("__sandbox__")
-      .value
-      .await match {
-      case Right(org) => org
-      case _ => {
-        createOrganization(
-          "__sandbox__",
-          "__sandbox__",
-          features = Set(Feature.SandboxOrgFeature)
-        )
-      }
-    }
+//    sandboxOrganization = organizationManager
+//      .getBySlug("__sandbox__")
+//      .value
+//      .await match {
+//      case Right(org) => org
+//      case _ => {
+//        createOrganization(
+//          "__sandbox__",
+//          "__sandbox__",
+//          features = Set(Feature.SandboxOrgFeature)
+//        )
+//      }
+//    }
 
     val sandboxUserDefinition = User(
       NodeCodes.generateId(NodeCodes.userCode),

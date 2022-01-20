@@ -111,7 +111,12 @@ class APITokenControllerSpecs extends BaseApiTest {
 
   test("should not get user's API tokens from another organization") {
     val (pennsieveToken, secret) = tokenManager
-      .create("pennsieve api token", loggedInUser, pennsieve, mockCognito)
+      .create(
+        "pennsieve api token",
+        loggedInUser,
+        externalOrganization,
+        mockCognito
+      )
       .await
       .right
       .value
