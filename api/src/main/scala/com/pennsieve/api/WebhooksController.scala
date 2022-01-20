@@ -279,9 +279,11 @@ class WebhooksController(
 
         token = integrationUserToken.headOption
 
+        // Remove Integration API Key/Secret
         _ <- token match {
           case Some(token) =>
-            secureContainer.tokenManager
+            // Use insecure container as the actor is not the owner of the token
+            insecureContainer.tokenManager
               .delete(token, cognitoClient = cognitoClient)
               .coreErrorToActionResult()
           case None =>
@@ -289,14 +291,6 @@ class WebhooksController(
               .rightT[Future, CoreError](())
               .coreErrorToActionResult()
         }
-
-//        _ <- if userToken {
-//          _ <- secureContainer.tokenManager
-//            .delete(userToken.get, cognitoClient = cognitoClient)
-//            .coreErrorToActionResult()
-//        }
-
-        // Remove Integration API Key/Secret
 
         // Remove Integration User from Datasets
         _ <- secureContainer.datasetManager

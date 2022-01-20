@@ -335,13 +335,15 @@ trait DataSetTestMixin {
       .await
       .value
 
-    container.tokenManager
+    insecureContainer.tokenManager
       .create(
         name = "Integration-user",
         user = integrationUser,
         organization = secureContainer.organization,
         cognitoClient = mockCognito
       )
+      .await
+      .value
 
     container.webhookManager
       .create(
