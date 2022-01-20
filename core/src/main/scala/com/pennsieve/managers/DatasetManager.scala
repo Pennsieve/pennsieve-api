@@ -1607,7 +1607,9 @@ class DatasetManager(
         )
         .toEitherT
 
-      _ <- addUserCollaborator(dataset, integrationUser, Role.Editor)
+      webhookRole = if (webhook.hasAccess) Role.Manager else Role.Viewer
+
+      _ <- addUserCollaborator(dataset, integrationUser, webhookRole)
 
     } yield integration
   }
