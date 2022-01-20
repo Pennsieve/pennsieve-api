@@ -98,6 +98,14 @@ class TokenManager(db: Database) {
     db.run(TokensMapper.getByCognitoId(cognitoId))
       .whenNone[CoreError](NotFound(s"Token by Cognito ID ($cognitoId)"))
 
+  def getByUserId(
+    userId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Token] =
+    db.run(TokensMapper.getByUser(userId))
+      .whenNone[CoreError](NotFound(s"Token by User ID ($userId)"))
+
   def update(
     token: Token
   )(implicit
@@ -201,4 +209,5 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
       result <- super.delete(token, cognitoClient)
     } yield result
   }
+
 }

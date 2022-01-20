@@ -219,6 +219,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       status should equal(201)
       parsedBody.extract[WebhookDTO].imageUrl shouldBe None
     }
+
   }
 
   test("can't create a webhook without a secret key") {
@@ -246,6 +247,15 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     val webhookSubscription = createWebhook()
     val webhook = webhookSubscription._1
 
+    // check User and IntegrationToken are created
+    val integrationUser =
+      organizationManager.getUsers(loggedInOrganization).await.right.get
+    assert((integrationUser.map(_.id) contains webhook.integrationUserId))
+
+    val integrationToken =
+      tokenManager.getByUserId(webhook.integrationUserId).await.right.get
+    assert((integrationToken.userId == webhook.integrationUserId))
+
     delete(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
       val resp = parsedBody.extract[Int]
@@ -255,6 +265,15 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       status shouldBe (404)
       body should include(s"Webhook (${webhook.id}) not found")
     }
+
+    // Check User and IntegrationToken are removed
+    val noOrgUser =
+      organizationManager.getUsers(loggedInOrganization).await.right.get
+    assert(!(noOrgUser.map(_.id) contains webhook.integrationUserId))
+
+    val noUserToken =
+      tokenManager.getByUserId(webhook.integrationUserId).await
+    assert(noUserToken.isLeft)
 
   }
 

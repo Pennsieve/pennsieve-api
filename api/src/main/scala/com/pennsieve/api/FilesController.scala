@@ -671,7 +671,7 @@ class FilesController(
     : OperationBuilder = (apiOperation[PreviewPackageResponse](
     "getPackagePreviews"
   )
-    summary "returns packages that will be created from a given list of files"
+    summary "DEPRECATED: returns packages that will be created from a given list of files"
     parameters (
       queryParam[Boolean]("append")
         .description("if true, we append the items. if false, we replace"),
