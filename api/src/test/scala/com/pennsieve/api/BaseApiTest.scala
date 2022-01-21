@@ -218,7 +218,7 @@ trait ApiSuite
     // Interestingly this must be "5" as the sandbox organization in some
     // pass throughs gets created twice; once on the migration and once again
     // within the beforeEach of this loop. TODO on figuring out a better approach.
-    1 to 5 foreach { orgId =>
+    1 to 4 foreach { orgId =>
       insecureContainer.db.run(createSchema(orgId.toString)).await
       migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
     }
@@ -371,6 +371,7 @@ trait ApiSuite
     insecureContainer.db.run(clearOrganizationSchema(1)).await
     insecureContainer.db.run(clearOrganizationSchema(2)).await
     insecureContainer.db.run(clearOrganizationSchema(3)).await
+    insecureContainer.db.run(clearOrganizationSchema(4)).await
   }
 
   override def beforeEach(): Unit = {
@@ -383,11 +384,11 @@ trait ApiSuite
     organizationManager =
       new TestableSecureOrganizationManager(superAdmin, insecureContainer.db)
 
+    // Create 3 organizations
     loggedInOrganization =
       createOrganization("Test Organization", features = Set())
     loggedInOrganizationNoFeatures = createOrganization("Test Organization")
     externalOrganization = createOrganization("External Organization")
-    pennsieve = createOrganization("Pennsieve", "pennsieve")
 
     loggedInUser = userManager.create(me).await.value
     colleagueUser = userManager.create(colleague).await.value

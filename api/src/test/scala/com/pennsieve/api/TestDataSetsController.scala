@@ -125,15 +125,15 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     mockSearchClient.clear
   }
 
-  test("swagger") {
-    import com.pennsieve.web.ResourcesApp
-    addServlet(new ResourcesApp, "/api-docs/*")
-
-    get("/api-docs/swagger.json") {
-      status should equal(200)
-      println(body)
-    }
-  }
+//  test("swagger") {
+//    import com.pennsieve.web.ResourcesApp
+//    addServlet(new ResourcesApp, "/api-docs/*")
+//
+//    get("/api-docs/swagger.json") {
+//      status should equal(200)
+//      println(body)
+//    }
+//  }
 
   test("include banner URLs in datasets") {
     val ds1 = createDataSet("test-ds1")

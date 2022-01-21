@@ -54,15 +54,15 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     )
   }
 
-  test("swagger") {
-    import com.pennsieve.web.ResourcesApp
-    addServlet(new ResourcesApp, "/api-docs/*")
-
-    get("/api-docs/swagger.json") {
-      status should equal(200)
-      println(body)
-    }
-  }
+//  test("swagger") {
+//    import com.pennsieve.web.ResourcesApp
+//    addServlet(new ResourcesApp, "/api-docs/*")
+//
+//    get("/api-docs/swagger.json") {
+//      status should equal(200)
+//      println(body)
+//    }
+//  }
 
   test("moves a package") {
     val dataset = createDataSet("My DataSet")
