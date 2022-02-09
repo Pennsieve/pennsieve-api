@@ -17,62 +17,45 @@
 package com.pennsieve.api
 
 import java.net.URL
-import java.time.{ LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime }
+import java.time.{LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime}
 import akka.Done
-import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
+import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
-import com.pennsieve.aws.email.{ Email, SesMessageResult }
+import com.pennsieve.aws.email.{Email, SesMessageResult}
 import com.pennsieve.aws.queue.SQSClient
-import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
+import com.pennsieve.clients.{DatasetAssetClient, ModelServiceClient}
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.core.utilities.{ checkOrErrorT, JwtAuthenticator }
-import com.pennsieve.discover.client.definitions.{
-  DatasetPublishStatus,
-  PublicDatasetDTO
-}
+import com.pennsieve.core.utilities.{JwtAuthenticator, checkOrErrorT}
+import com.pennsieve.discover.client.definitions.{DatasetPublishStatus, PublicDatasetDTO}
 import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.discover.client.search.SearchClient
-import com.pennsieve.doi.client.definitions.{
-  CreateDraftDoiRequest,
-  CreatorDTO
-}
+import com.pennsieve.doi.client.definitions.{CreateDraftDoiRequest, CreatorDTO}
 import com.pennsieve.doi.client.doi._
 import com.pennsieve.doi.models._
 import com.pennsieve.domain
-import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
-import com.pennsieve.domain.{ CoreError, _ }
+import com.pennsieve.domain.StorageAggregation.{sdatasets, spackages}
+import com.pennsieve.domain.{CoreError, _}
 import com.pennsieve.dtos.Builders._
 import com.pennsieve.dtos._
-import com.pennsieve.helpers.APIContainers.{
-  InsecureAPIContainer,
-  SecureAPIContainer,
-  SecureContainerBuilderType
-}
+import com.pennsieve.helpers.APIContainers.{InsecureAPIContainer, SecureAPIContainer, SecureContainerBuilderType}
 import com.pennsieve.helpers.Param
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherThrowableErrorConverter.implicits._
-import com.pennsieve.managers.{
-  ChangelogManager,
-  CollaboratorChanges,
-  DatasetManager
-}
+import com.pennsieve.managers.{ChangelogManager, CollaboratorChanges, DatasetManager}
 import com.pennsieve.models._
-import com.pennsieve.notifications.{
-  DiscoverPublishNotification,
-  MessageType,
-  NotificationMessage
-}
+import com.pennsieve.notifications.{DiscoverPublishNotification, MessageType, NotificationMessage}
 import com.pennsieve.web.Settings
+import com.typesafe.scalalogging.Logger
 import io.circe.syntax._
 
-import javax.servlet.http.{ HttpServletRequest, HttpServletResponse }
+import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import mouse.all._
 import net.ceedubs.ficus.Ficus._
 import org.apache.commons.codec.digest.DigestUtils
@@ -81,17 +64,13 @@ import org.apache.http.HttpHeaders
 import org.json4s.JValue
 import org.json4s.JsonAST.JNothing
 import org.scalatra._
-import org.scalatra.servlet.{
-  FileUploadSupport,
-  MultipartConfig,
-  SizeConstraintExceededException
-}
+import org.scalatra.servlet.{FileUploadSupport, MultipartConfig, SizeConstraintExceededException}
 import org.scalatra.swagger.Swagger
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder
 
-import scala.collection.{ immutable, mutable }
+import scala.collection.{immutable, mutable}
 import scala.concurrent.duration._
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util._
 
 case class CreateDataSetRequest(
@@ -295,6 +274,7 @@ class DataSetsController(
     with FileUploadSupport {
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
+  override protected implicit val logger: Logger = logger
 
   override val swaggerTag = "DataSets"
 
@@ -630,6 +610,8 @@ class DataSetsController(
 
   val DatasetsDefaultLimit: Int = 25
   val DatasetsDefaultOffset: Int = 0
+
+  logger = new ContextLogger
 
   get(
     "/paginated",

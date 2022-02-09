@@ -39,6 +39,7 @@ import com.pennsieve.domain.{
 import enumeratum.{ CirceEnum, Enum, EnumEntry }
 import org.scalatra._
 import com.pennsieve.web.Settings
+import com.typesafe.scalalogging.{ LazyLogging, Logger }
 
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
@@ -218,15 +219,18 @@ object EitherTErrorHandler {
 
       def coreErrorToActionResult(
       )(implicit
-        ec: ExecutionContext
+        ec: ExecutionContext,
+        logger: Logger
       ): EitherT[Future, ActionResult, A] = {
         item.leftMap {
-          case missingDataUserAgreement: MissingDataUseAgreement.type =>
+          case missingDataUserAgreement: MissingDataUseAgreement.type => {
+            logger.info("message")
             ErrorResponse(
               ErrorResponseType.BadRequest,
               missingDataUserAgreement,
               false
             ).toActionResult()
+          }
           case error: OperationNoLongerSupported.type =>
             ErrorResponse(ErrorResponseType.Forbidden, error, false)
               .toActionResult()

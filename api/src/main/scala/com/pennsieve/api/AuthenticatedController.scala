@@ -17,44 +17,25 @@
 package com.pennsieve.api
 
 import java.time.ZonedDateTime
-
 import cats.data._
 import cats.implicits._
-import com.pennsieve.api.AuthenticatedController.{
-  getOrganizationId,
-  getOrganizationIntId
-}
-import com.pennsieve.audit.middleware.{ AuditLogger, TraceId }
+import com.pennsieve.api.AuthenticatedController.{getOrganizationId, getOrganizationIntId}
+import com.pennsieve.audit.middleware.{AuditLogger, TraceId}
 import com.pennsieve.auth.middleware.Jwt.Claim
-import com.pennsieve.auth.middleware.{
-  EncryptionKeyId,
-  Jwt,
-  OrganizationId,
-  OrganizationNodeId,
-  ServiceClaim,
-  UserClaim,
-  Validator
-}
-import com.pennsieve.core.utilities.{ FutureEitherHelpers, JwtAuthenticator }
+import com.pennsieve.auth.middleware.{EncryptionKeyId, Jwt, OrganizationId, OrganizationNodeId, ServiceClaim, UserClaim, Validator}
+import com.pennsieve.core.utilities.{FutureEitherHelpers, JwtAuthenticator}
 import com.pennsieve.db._
-import com.pennsieve.domain.{ CoreError, InvalidJWT, MissingTraceId }
-import com.pennsieve.helpers.APIContainers.{
-  InsecureAPIContainer,
-  SecureAPIContainer,
-  SecureContainerBuilderType
-}
+import com.pennsieve.domain.{CoreError, InvalidJWT, MissingTraceId}
+import com.pennsieve.helpers.APIContainers.{InsecureAPIContainer, SecureAPIContainer, SecureContainerBuilderType}
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.helpers.{
-  ErrorLoggingSupport,
-  ModelSerializers,
-  ParamsSupport
-}
+import com.pennsieve.helpers.{ErrorLoggingSupport, ModelSerializers, ParamsSupport}
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.web.Settings
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import enumeratum.Json4s
+
 import javax.servlet.http.HttpServletRequest
 import org.json4s._
 import org.scalatra._
@@ -62,7 +43,7 @@ import org.scalatra.json.JacksonJsonSupport
 import org.scalatra.servlet.ServletBase
 import org.scalatra.swagger.Swagger
 import shapeless.syntax.inject._
-import slick.dbio.{ DBIOAction, Effect, NoStream }
+import slick.dbio.{DBIOAction, Effect, NoStream}
 import slick.sql.FixedSqlStreamingAction
 
 import scala.concurrent._
@@ -130,6 +111,7 @@ trait AuthenticatedController
   implicit val swagger: Swagger
 
   implicit val ec: ExecutionContext = executor
+  override implicit val logger: Logger = logger
 
   protected implicit def jsonFormats: Formats =
     DefaultFormats ++ ModelSerializers.serializers

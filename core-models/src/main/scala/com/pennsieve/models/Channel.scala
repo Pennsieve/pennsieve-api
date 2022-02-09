@@ -22,7 +22,7 @@ import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 import io.circe.java8.time._
 
-final case class Channel(
+final case class  Channel(
   nodeId: String,
   packageId: Int,
   name: String,
