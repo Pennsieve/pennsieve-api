@@ -53,7 +53,7 @@ import com.pennsieve.helpers.{
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.web.Settings
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{ LazyLogging, Logger }
 import enumeratum.Json4s
 import javax.servlet.http.HttpServletRequest
 import org.json4s._
@@ -130,6 +130,7 @@ trait AuthenticatedController
   implicit val swagger: Swagger
 
   implicit val ec: ExecutionContext = executor
+  override implicit lazy val logger: Logger = logger
 
   protected implicit def jsonFormats: Formats =
     DefaultFormats ++ ModelSerializers.serializers
