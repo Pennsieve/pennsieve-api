@@ -37,6 +37,7 @@ import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 
 import scala.concurrent.{ ExecutionContext, Future }
+import com.typesafe.scalalogging.{ LazyLogging, Logger }
 
 class HealthController(
   insecureContainer: InsecureAPIContainer,
@@ -45,9 +46,11 @@ class HealthController(
   override val swagger: Swagger
 ) extends ScalatraServlet
     with PennsieveSwaggerSupport
-    with FutureSupport {
+    with FutureSupport
+    with LazyLogging {
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
+  override implicit lazy val logger: Logger = Logger("com.pennsieve")
 
   protected val applicationDescription: String = "Core API"
 
