@@ -50,7 +50,7 @@ class HealthController(
     with LazyLogging {
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
-  override protected implicit lazy val logger: Logger = logger
+  override implicit lazy val logger: Logger = Logger("com.pennsieve")
 
   protected val applicationDescription: String = "Core API"
 

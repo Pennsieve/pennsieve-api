@@ -130,7 +130,7 @@ trait AuthenticatedController
   implicit val swagger: Swagger
 
   implicit val ec: ExecutionContext = executor
-  override implicit lazy val logger: Logger = logger
+  override implicit lazy val logger: Logger = Logger("com.pennsieve")
 
   protected implicit def jsonFormats: Formats =
     DefaultFormats ++ ModelSerializers.serializers

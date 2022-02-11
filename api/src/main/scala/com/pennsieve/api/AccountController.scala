@@ -86,7 +86,7 @@ class AccountController(
   override val swaggerTag = "Account"
 
   protected implicit def executor: ExecutionContext = asyncExecutor
-  override protected implicit lazy val logger: Logger = logger
+  override implicit lazy val logger: Logger = Logger("com.pennsieve")
 
   protected implicit val jsonFormats
     : Formats = DefaultFormats ++ ModelSerializers.serializers
