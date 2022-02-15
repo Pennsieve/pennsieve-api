@@ -44,6 +44,8 @@ final class OrganizationsTable(tag: Tag)
   def customTermsOfServiceVersion =
     column[Option[ZonedDateTime]]("custom_terms_of_service_version")
   def storageBucket = column[Option[String]]("storage_bucket")
+  def publishBucket = column[Option[String]]("publish_bucket")
+  def embargoBucket = column[Option[String]]("embargo_bucket")
 
   def * =
     (
@@ -54,6 +56,8 @@ final class OrganizationsTable(tag: Tag)
       encryptionKeyId,
       customTermsOfServiceVersion,
       storageBucket,
+      publishBucket,
+      embargoBucket,
       createdAt,
       updatedAt,
       id
