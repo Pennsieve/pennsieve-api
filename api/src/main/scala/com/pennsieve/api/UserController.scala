@@ -40,6 +40,7 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
+import com.typesafe.scalalogging.{ LazyLogging, Logger }
 
 case class UpdateUserRequest(
   firstName: Option[String],
@@ -81,6 +82,7 @@ class UserController(
   override val swaggerTag = "User"
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
+  override implicit lazy val logger: Logger = Logger("UserController")
 
   implicit class JValueExtended(value: JValue) {
     def hasField(childString: String): Boolean =
@@ -157,6 +159,7 @@ class UserController(
     apiOperation[Option[UserDTO]]("getCurrentUser") summary "Returns the current user"
 
   get("/", operation(getUserOperation)) {
+    logger.info(s"get() / request: ${request}")
     new AsyncResult {
       val result: EitherT[Future, ActionResult, UserDTO] = for {
         secureContainer <- getSecureContainer

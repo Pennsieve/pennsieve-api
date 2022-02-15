@@ -130,7 +130,7 @@ trait AuthenticatedController
   implicit val swagger: Swagger
 
   implicit val ec: ExecutionContext = executor
-  override implicit lazy val logger: Logger = Logger("com.pennsieve")
+  override implicit lazy val logger: Logger = Logger("AuthenticatedController")
 
   protected implicit def jsonFormats: Formats =
     DefaultFormats ++ ModelSerializers.serializers
@@ -142,6 +142,8 @@ trait AuthenticatedController
   protected val applicationDescription: String = "Core API"
 
   before() {
+    logger.info(s"before() begin")
+    logger.info(s"before() request: ${request}")
     contentType = formats("json")
     AuthenticatedController.getBearerToken(request) match {
       case Right(bearerToken) =>
@@ -151,10 +153,17 @@ trait AuthenticatedController
           .filter(_.isValid)
           .orUnauthorized("Invalid authorization claim.")
           .recover {
-            case error => halt(error.status, error.body)
+            case error =>
+              logger.error(
+                s"before() Right error: ${error.toString} bearerToken: ${bearerToken}"
+              )
+              halt(error.status, error.body)
           }
-      case Left(error) => halt(error.status, error.body)
+      case Left(error) =>
+        logger.error(s"before() Left error: ${error.toString}")
+        halt(error.status, error.body)
     }
+    logger.info(s"before() end")
   }
 
   /**
