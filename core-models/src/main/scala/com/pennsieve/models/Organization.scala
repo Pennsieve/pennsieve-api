@@ -36,6 +36,8 @@ final case class Organization(
    * only used by SPARC.
    */
   storageBucket: Option[String] = None,
+  publishBucket: Option[String] = None,
+  embargoBucket: Option[String] = None,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   updatedAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0
