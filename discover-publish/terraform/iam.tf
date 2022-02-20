@@ -104,6 +104,11 @@ data "aws_iam_policy_document" "ecs_task_iam_policy_document" {
       "${data.terraform_remote_state.platform_infrastructure.outputs.dataset_assets_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn}/*",
+
     ]
   }
 
@@ -119,6 +124,11 @@ data "aws_iam_policy_document" "ecs_task_iam_policy_document" {
       "${data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.discover_s3_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.discover_s3_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn}/*",
+
     ]
   }
 
@@ -130,6 +140,9 @@ data "aws_iam_policy_document" "ecs_task_iam_policy_document" {
     resources = [
       data.terraform_remote_state.platform_infrastructure.outputs.discover_publish_bucket_arn,
       data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn,
+
     ]
   }
 
@@ -143,6 +156,11 @@ data "aws_iam_policy_document" "ecs_task_iam_policy_document" {
       "${data.terraform_remote_state.platform_infrastructure.outputs.discover_publish_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn}/*",
+
     ]
   }
 
