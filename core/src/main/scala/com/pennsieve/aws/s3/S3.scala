@@ -244,6 +244,7 @@ class S3(val client: AmazonS3) extends S3Trait {
     // Adapted from https://stackoverflow.com/questions/42442259/delete-a-folder-and-its-content-aws-s3-java
     val listRequest: ListObjectsRequest = new ListObjectsRequest()
       .withBucketName(bucket)
+      .withRequesterPays(true)
       .withPrefix(if (keyPrefix.endsWith("/")) {
         keyPrefix
       } else {
@@ -271,6 +272,7 @@ class S3(val client: AmazonS3) extends S3Trait {
 
     val listRequest: ListObjectsRequest = new ListObjectsRequest()
       .withBucketName(bucket)
+      .withRequesterPays(true)
       .withPrefix(if (prefix.endsWith("/")) {
         prefix
       } else {
@@ -293,16 +295,16 @@ class S3(val client: AmazonS3) extends S3Trait {
       }
     }
 
-    Either.catchNonFatal { iter(client.listObjects(listRequest), List.empty) }
+    Either.catchNonFatal { iter(client.listObjects(listRequest.withRequesterPays(true)), List.empty) }
   }
 
   def copyObject(
     request: CopyObjectRequest
   ): Either[Throwable, CopyObjectResult] =
-    Either.catchNonFatal { client.copyObject(request) }
+    Either.catchNonFatal { client.copyObject(request.withRequesterPays(true)) }
 
   def copyPart(request: CopyPartRequest): Either[Throwable, CopyPartResult] =
-    Either.catchNonFatal { client.copyPart(request) }
+    Either.catchNonFatal { client.copyPart(request.withRequesterPays(true)) }
 
   def putObject(
     bucket: String,
@@ -329,7 +331,7 @@ class S3(val client: AmazonS3) extends S3Trait {
   def putObject(
     putRequest: PutObjectRequest
   ): Either[Throwable, PutObjectResult] =
-    Either.catchNonFatal { client.putObject(putRequest) }
+    Either.catchNonFatal { client.putObject(putRequest.withRequesterPays(true)) }
 
   def createBucket(bucket: String): Either[Throwable, Bucket] =
     Either.catchNonFatal { client.createBucket(bucket) }
@@ -340,18 +342,18 @@ class S3(val client: AmazonS3) extends S3Trait {
   def initiateMultipartUpload(
     request: InitiateMultipartUploadRequest
   ): Either[Throwable, InitiateMultipartUploadResult] =
-    Either.catchNonFatal { client.initiateMultipartUpload(request) }
+    Either.catchNonFatal { client.initiateMultipartUpload(request.withRequesterPays(true)) }
 
   def completeMultipartUpload(
     request: CompleteMultipartUploadRequest
   ): Either[Throwable, CompleteMultipartUploadResult] =
-    Either.catchNonFatal { client.completeMultipartUpload(request) }
+    Either.catchNonFatal { client.completeMultipartUpload(request.withRequesterPays(true)) }
 
   def generatePresignedUrl(
     request: GeneratePresignedUrlRequest
   ): Either[Throwable, URL] =
     Either.catchNonFatal {
-      client.generatePresignedUrl(request)
+      client.generatePresignedUrl(request
     }
 
   def headBucket(bucket: String): Either[Throwable, HeadBucketResult] =

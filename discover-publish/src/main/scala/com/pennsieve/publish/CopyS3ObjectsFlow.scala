@@ -71,6 +71,7 @@ object CopyS3ObjectsFlow extends LazyLogging {
         chunkingParallelism = container.s3CopyChunkParallelism,
         s3Headers = S3Headers().
           withCustomHeaders(Map("x-amz-request-payer" -> "requester"))
+
       )
       .mapMaterializedValue(_.map(_ => copyAction))
       .run()
