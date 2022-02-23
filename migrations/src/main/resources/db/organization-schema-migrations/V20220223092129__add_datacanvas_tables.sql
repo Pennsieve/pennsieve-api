@@ -4,6 +4,7 @@ CREATE TABLE datacanvases (
     description VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    node_id VARCHAR(255) UNIQUE NOT NULL,
     permission_bit INTEGER NOT NULL DEFAULT 0,
     role VARCHAR(50),
     status_id INTEGER NOT NULL references dataset_status(id) ON DELETE RESTRICT
