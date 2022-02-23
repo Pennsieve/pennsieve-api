@@ -2,8 +2,8 @@ CREATE TABLE datacanvases (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description VARCHAR(255),
-	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     permission_bit INTEGER NOT NULL DEFAULT 0,
     role VARCHAR(50),
     status_id INTEGER NOT NULL references dataset_status(id) ON DELETE RESTRICT
