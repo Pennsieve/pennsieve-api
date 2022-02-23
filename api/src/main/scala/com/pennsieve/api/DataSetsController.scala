@@ -3547,10 +3547,10 @@ class DataSetsController(
             .get(grantPreviewAccessRequest.userId)
             .coreErrorToActionResult
 
-        /*  _ <- secureContainer.datasetManager
+          /*  _ <- secureContainer.datasetManager
             .canShareWithUser(user)
             .coreErrorToActionResult
-        */
+           */
           _ <- secureContainer.datasetPreviewManager
             .grantAccess(dataset, user)
             .coreErrorToActionResult
