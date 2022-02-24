@@ -27,10 +27,12 @@ import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityPr
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserRequest,
   AdminDeleteUserRequest,
+  AdminDisableProviderForUserRequest,
   AdminSetUserPasswordRequest,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
+  ProviderUserIdentifierType,
   UserType
 }
 
@@ -67,6 +69,14 @@ trait CognitoClient {
 
   def deleteClientToken(
     token: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def unlinkExternalUser(
+    providerName: String,
+    attributeName: String,
+    attributeValue: String
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
@@ -237,6 +247,39 @@ class Cognito(
         Future.successful(())
 
     } yield cognitoId
+  }
+
+  /**
+    * Unlink an external Identity Provider (Idp) account from a Cognito user
+    *
+    * @param providerName
+    * @param attributeName
+    * @param attributeValue
+    */
+  def unlinkExternalUser(
+    providerName: String,
+    attributeName: String,
+    attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDisableProviderForUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .user(
+        ProviderUserIdentifierType
+          .builder()
+          .providerName(providerName)
+          .providerAttributeName(attributeName)
+          .providerAttributeValue(attributeValue)
+          .build()
+      )
+      .build()
+
+    client
+      .adminDisableProviderForUser(request)
+      .toScala
+      .map(_ => ())
   }
 
   /**
