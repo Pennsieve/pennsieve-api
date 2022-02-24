@@ -123,6 +123,7 @@ data "aws_iam_policy_document" "cognito_iam_policy_document" {
     actions = [
       "cognito-idp:AdminCreateUser",
       "cognito-idp:AdminDisableProviderForUser",
+      "cognito-idp:AdminDeleteUser",
     ]
 
     resources = [
