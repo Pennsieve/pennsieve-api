@@ -17,10 +17,9 @@
 package com.pennsieve.api
 
 import java.time.LocalDateTime
-
 import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.clients.MockCustomTermsOfServiceClient
-
 import com.pennsieve.db.CustomTermsOfService
 import com.pennsieve.dtos.{
   CustomTermsOfServiceDTO,
@@ -67,6 +66,9 @@ class TestUsersController extends BaseApiTest {
   val mockCustomToSClient: MockCustomTermsOfServiceClient =
     new MockCustomTermsOfServiceClient()
 
+  val mockCognito: MockCognito =
+    new MockCognito()
+
   override def afterStart(): Unit = {
     super.afterStart()
 
@@ -76,7 +78,8 @@ class TestUsersController extends BaseApiTest {
         secureContainerBuilder,
         auditLogger,
         system.dispatcher,
-        orcidClient
+        orcidClient,
+        mockCognito
       ),
       "/*"
     )

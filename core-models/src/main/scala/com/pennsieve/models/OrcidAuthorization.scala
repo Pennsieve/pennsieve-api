@@ -37,3 +37,10 @@ object OrcidAuthorization {
   implicit val snakyEncoder: Encoder[OrcidAuthorization] = deriveEncoder
   implicit val snakyDecoder: Decoder[OrcidAuthorization] = deriveDecoder
 }
+
+final object OrcidIdentityProvider {
+  def name = "ORCID"
+  def attributeName = "UserId"
+
+  def username(orcidId: String) = s"orcid_${orcidId}"
+}

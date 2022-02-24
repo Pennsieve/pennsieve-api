@@ -19,6 +19,7 @@ package com.pennsieve.api
 import cats.data._
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
+import com.pennsieve.aws.cognito.CognitoClient
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.domain.StorageAggregation.susers
@@ -32,7 +33,7 @@ import com.pennsieve.helpers.ResultHandlers.{ HandleResult, OkResult }
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.managers.StorageServiceClientTrait
-import com.pennsieve.models.{ DateVersion, Degree, User }
+import com.pennsieve.models.{ DateVersion, Degree, OrcidIdentityProvider, User }
 import com.pennsieve.web.Settings
 import org.json4s.JValue
 import org.json4s.JsonAST.JNothing
@@ -72,7 +73,8 @@ class UserController(
   val secureContainerBuilder: SecureContainerBuilderType,
   auditLogger: Auditor,
   asyncExecutor: ExecutionContext,
-  orcidClient: OrcidClient
+  orcidClient: OrcidClient,
+  cognitoClient: CognitoClient
 )(implicit
   val swagger: Swagger
 ) extends ScalatraServlet
@@ -321,6 +323,22 @@ class UserController(
         else
           Left(BadRequest(Error("ORCID id is not configured.")))
             .toEitherT[Future]
+
+        orcidId = loggedInUser.orcidAuthorization.get.orcid
+
+        _ <- cognitoClient
+          .unlinkExternalUser(
+            OrcidIdentityProvider.name,
+            OrcidIdentityProvider.attributeName,
+            orcidId
+          )
+          .toEitherT
+          .coreErrorToActionResult
+
+        _ <- cognitoClient
+          .deleteUser(OrcidIdentityProvider.username(orcidId))
+          .toEitherT
+          .coreErrorToActionResult
 
         updatedUser = loggedInUser.copy(orcidAuthorization = None)
         _ <- secureContainer.userManager.update(updatedUser).orError
