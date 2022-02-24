@@ -80,6 +80,12 @@ trait CognitoClient {
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
+
+  def deleteUser(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
 }
 
 object Cognito {
@@ -278,6 +284,30 @@ class Cognito(
 
     client
       .adminDisableProviderForUser(request)
+      .toScala
+      .map(_ => ())
+  }
+
+  /**
+    * Delete a user from the Cognito User Pool
+    *
+    * @param username
+    * @param ec
+    * @return
+    */
+  def deleteUser(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDeleteUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .build()
+
+    client
+      .adminDeleteUser(request)
       .toScala
       .map(_ => ())
   }

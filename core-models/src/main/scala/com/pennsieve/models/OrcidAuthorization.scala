@@ -41,4 +41,6 @@ object OrcidAuthorization {
 final object OrcidIdentityProvider {
   def name = "ORCID"
   def attributeName = "UserId"
+
+  def username(orcidId: String) = s"orcid_${orcidId}"
 }

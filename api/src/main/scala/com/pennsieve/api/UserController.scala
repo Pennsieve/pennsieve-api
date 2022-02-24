@@ -324,12 +324,19 @@ class UserController(
           Left(BadRequest(Error("ORCID id is not configured.")))
             .toEitherT[Future]
 
+        orcidId = loggedInUser.orcidAuthorization.get.orcid
+
         _ <- cognitoClient
           .unlinkExternalUser(
             OrcidIdentityProvider.name,
             OrcidIdentityProvider.attributeName,
-            loggedInUser.orcidAuthorization.get.orcid
+            orcidId
           )
+          .toEitherT
+          .coreErrorToActionResult
+
+        _ <- cognitoClient
+          .deleteUser(OrcidIdentityProvider.username(orcidId))
           .toEitherT
           .coreErrorToActionResult
 
