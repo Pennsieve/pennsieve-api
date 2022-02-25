@@ -45,5 +45,5 @@ final object OrcidIdentityProvider {
     "Cognito_Subject" // used when disabling provider for user
   def customAttributeName = "custom:orcid"
 
-  def username(orcidId: String) = s"orcid_${orcidId}"
+  def cognitoUsername(orcidId: String) = s"orcid_${orcidId.toLowerCase()}"
 }
