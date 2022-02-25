@@ -344,7 +344,7 @@ class UserController(
           .coreErrorToActionResult
 
         _ <- cognitoClient
-          .deleteUser(OrcidIdentityProvider.username(orcidId))
+          .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
           .toEitherT
           .coreErrorToActionResult
 
