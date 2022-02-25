@@ -337,7 +337,7 @@ class UserController(
         _ <- cognitoClient
           .unlinkExternalUser(
             OrcidIdentityProvider.name,
-            OrcidIdentityProvider.attributeName,
+            OrcidIdentityProvider.attributeNameForUnlink,
             orcidId
           )
           .toEitherT
