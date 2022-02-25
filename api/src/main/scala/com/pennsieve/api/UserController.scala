@@ -327,9 +327,17 @@ class UserController(
         orcidId = loggedInUser.orcidAuthorization.get.orcid
 
         _ <- cognitoClient
+          .deleteUserAttributes(
+            loggedInUser.email,
+            List(OrcidIdentityProvider.customAttributeName)
+          )
+          .toEitherT
+          .coreErrorToActionResult
+
+        _ <- cognitoClient
           .unlinkExternalUser(
             OrcidIdentityProvider.name,
-            OrcidIdentityProvider.attributeName,
+            OrcidIdentityProvider.attributeNameForUnlink,
             orcidId
           )
           .toEitherT

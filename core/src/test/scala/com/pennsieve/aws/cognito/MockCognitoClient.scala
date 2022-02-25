@@ -46,6 +46,9 @@ class MockCognito() extends CognitoClient {
   val deletedUsers: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
+  val deletedUserAttributes: mutable.ArrayBuffer[(String, List[String])] =
+    mutable.ArrayBuffer.empty
+
   def inviteUser(
     email: Email,
     suppressEmail: Boolean = false,
@@ -108,6 +111,16 @@ class MockCognito() extends CognitoClient {
     Future.successful(Unit)
   }
 
+  def deleteUserAttributes(
+    username: String,
+    attributeNames: List[String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    deletedUserAttributes.append((username, attributeNames))
+    Future.successful(Unit)
+  }
+
   def reset(): Unit = {
     sentDeletes.clear()
     sentInvites.clear()
@@ -116,5 +129,6 @@ class MockCognito() extends CognitoClient {
     sentOrganizationUpdates.clear()
     unlinkedExternalUsers.clear()
     deletedUsers.clear()
+    deletedUserAttributes.clear()
   }
 }

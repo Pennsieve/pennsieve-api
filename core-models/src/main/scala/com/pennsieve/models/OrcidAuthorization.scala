@@ -40,7 +40,10 @@ object OrcidAuthorization {
 
 final object OrcidIdentityProvider {
   def name = "ORCID"
-  def attributeName = "UserId"
+  def attributeName = "userId"
+  def attributeNameForUnlink =
+    "Cognito_Subject" // used when disabling provider for user
+  def customAttributeName = "custom:orcid"
 
   def username(orcidId: String) = s"orcid_${orcidId}"
 }

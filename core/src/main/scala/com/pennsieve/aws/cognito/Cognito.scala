@@ -26,6 +26,7 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderAsyncClient
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserRequest,
+  AdminDeleteUserAttributesRequest,
   AdminDeleteUserRequest,
   AdminDisableProviderForUserRequest,
   AdminSetUserPasswordRequest,
@@ -83,6 +84,13 @@ trait CognitoClient {
 
   def deleteUser(
     username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def deleteUserAttributes(
+    username: String,
+    attributeNames: List[String]
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
@@ -308,6 +316,33 @@ class Cognito(
 
     client
       .adminDeleteUser(request)
+      .toScala
+      .map(_ => ())
+  }
+
+  /**
+    * Deletes an attribute from a Cognito user
+    *
+    * @param username
+    * @param attributeName
+    * @param ec
+    * @return
+    */
+  def deleteUserAttributes(
+    username: String,
+    attributeNames: List[String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDeleteUserAttributesRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .userAttributeNames(attributeNames.asJava)
+      .build()
+
+    client
+      .adminDeleteUserAttributes(request)
       .toScala
       .map(_ => ())
   }
