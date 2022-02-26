@@ -314,7 +314,7 @@ object Publish extends StrictLogging {
             banner.s3Key,
             container.s3Bucket,
             bannerKey
-          )
+          ).withRequesterPays(true)
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
@@ -382,7 +382,7 @@ object Publish extends StrictLogging {
             readme.s3Key,
             container.s3Bucket,
             readmeKey
-          )
+          ).withRequesterPays(true)
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)

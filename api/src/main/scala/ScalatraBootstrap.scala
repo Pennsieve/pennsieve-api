@@ -281,7 +281,8 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.secureContainerBuilder,
         bootstrapHelper.auditLogger,
         ec,
-        bootstrapHelper.orcidClient
+        bootstrapHelper.orcidClient,
+        bootstrapHelper.cognitoClient
       )
       context mount (userController, "/user/*", "user")
 

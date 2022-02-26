@@ -19,6 +19,7 @@ package com.pennsieve.publish
 import akka.NotUsed
 import akka.pattern.retry
 import akka.actor.ActorSystem
+import akka.stream.alpakka.s3.{MetaHeaders, S3Headers}
 import akka.stream.scaladsl.Flow
 import akka.stream.alpakka.s3.scaladsl._
 import cats.data._
@@ -26,9 +27,9 @@ import cats.implicits._
 import com.pennsieve.publish.models.CopyAction
 import com.typesafe.scalalogging.LazyLogging
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.util.{ Failure, Success }
+import scala.util.{Failure, Success}
 
 /**
   * Copy objects in S3 from one bucket to another
@@ -67,7 +68,9 @@ object CopyS3ObjectsFlow extends LazyLogging {
         targetBucket = copyAction.toBucket,
         targetKey = copyAction.copyToKey,
         chunkSize = container.s3CopyChunkSize,
-        chunkingParallelism = container.s3CopyChunkParallelism
+        chunkingParallelism = container.s3CopyChunkParallelism,
+        s3Headers = S3Headers().
+          withCustomHeaders(Map("x-amz-request-payer" -> "requester"))
       )
       .mapMaterializedValue(_.map(_ => copyAction))
       .run()

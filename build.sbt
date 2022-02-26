@@ -72,11 +72,11 @@ lazy val postgresVersion = "42.1.4"
 lazy val scalatraVersion = "2.6.5"
 lazy val scalatestVersion = "3.0.3"
 lazy val slickVersion = "3.3.3"
-lazy val testContainersVersion = "0.38.8"
+lazy val testContainersVersion = "0.40.1"
 lazy val utilitiesVersion = "3-cd7539b"
 lazy val jobSchedulingServiceClientVersion = "3-1a58954"
 lazy val serviceUtilitiesVersion = "7-3a0e351"
-lazy val discoverServiceClientVersion = "6-c26717e"
+lazy val discoverServiceClientVersion = "30-57dcbc2"
 lazy val doiServiceClientVersion = "3-9436155"
 lazy val timeseriesCoreVersion = "4-d8f62a4"
 lazy val commonsIoVersion = "2.6"
@@ -137,7 +137,7 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-Ypartial-unification"
   ),
-  test in assembly := {},
+  assembly / test := {},
   libraryDependencies ++= Seq(
     "org.slf4j" % "slf4j-api" % "1.7.25",
     "org.slf4j" % "jul-to-slf4j" % "1.7.25",
@@ -192,12 +192,12 @@ lazy val coreApiSharedSettings = Seq(
 lazy val apiSettings = Seq(
   name := "pennsieve-api",
   containerPort := 5000,
-  javaOptions in Jetty ++= Seq(
+  Jetty / javaOptions ++= Seq(
     "-Xdebug",
     "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8000"
   ),
-  buildOptions in docker := BuildOptions(cache = false),
-  dockerfile in docker := {
+  docker / buildOptions := BuildOptions(cache = false),
+  docker / dockerfile := {
     val warFile: File = sbt.Keys.`package`.value
     new SecureDockerfile("pennsieve/tomcat-cloudwrap:8-jre-alpine-0.5.9") {
       copy(warFile, "webapps/ROOT.war", chown = "pennsieve:pennsieve")
@@ -217,7 +217,7 @@ lazy val apiSettings = Seq(
       cmd("--service", "api", "exec", "catalina.sh", "run")
     }
   },
-  imageNames in docker := Seq(
+  docker / imageNames := Seq(
     ImageName(s"pennsieve/api:latest"),
     ImageName(
       s"pennsieve/api:${sys.props.getOrElse("docker-version", version.value)}"
@@ -255,8 +255,8 @@ lazy val apiSettings = Seq(
 lazy val coreSettings = Seq(
   name := "pennsieve-core",
   publishTo := publishToNexus.value,
-  publishArtifact in Test := true,
-  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
+  Test / publishArtifact := true,
+  Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
   publishMavenStyle := true,
   scalacOptions ++= Seq("-language:higherKinds"),
   libraryDependencies ++= Seq(
@@ -317,7 +317,7 @@ lazy val jobsSettings = Seq(
     "org.scalatest" %% "scalatest" % scalatestVersion % Test
   ),
   excludeDependencies ++= unwantedDependencies,
-  dockerfile in docker := {
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
@@ -325,17 +325,17 @@ lazy val jobsSettings = Seq(
       cmd("--service", "jobs", "exec", "java", "-jar", artifactTargetPath)
     }
   },
-  imageNames in docker := Seq(
+  docker /imageNames := Seq(
     ImageName("pennsieve/jobs:latest"),
     ImageName(
       s"pennsieve/jobs:${sys.props.getOrElse("docker-version", version.value)}"
     )
   ),
-  assemblyExcludedJars in assembly := {
-    val cp = (fullClasspath in assembly).value
+  assembly / assemblyExcludedJars := {
+    val cp = (assembly / fullClasspath).value
     cp filter { _.data.getName == "groovy-2.4.11.jar" }
   },
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val adminSettings = Seq(
@@ -355,7 +355,7 @@ lazy val adminSettings = Seq(
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
   ),
   excludeDependencies ++= unwantedDependencies,
-  dockerfile in docker := {
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
@@ -363,8 +363,8 @@ lazy val adminSettings = Seq(
       cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
     }
   },
-  imageNames in docker := Seq(ImageName("pennsieve/admin:latest")),
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  docker / imageNames := Seq(ImageName("pennsieve/admin:latest")),
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val authorizationServiceSettings = Seq(
@@ -383,7 +383,7 @@ lazy val authorizationServiceSettings = Seq(
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test
   ),
   excludeDependencies ++= unwantedDependencies,
-  dockerfile in docker := {
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
@@ -409,16 +409,16 @@ lazy val authorizationServiceSettings = Seq(
       )
     }
   },
-  imageNames in docker := Seq(
+  docker / imageNames := Seq(
     ImageName("pennsieve/authorization-service:latest")
   ),
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val bfAkkaHttpSettings = Seq(
   name := "bf-akka-http",
   publishTo := publishToNexus.value,
-  publishArtifact in Test := true,
+  Test / publishArtifact := true,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
     "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.14.0",
@@ -443,7 +443,7 @@ lazy val migrationsSettings = Seq(
     "org.flywaydb" % "flyway-core" % flywayVersion,
     "org.postgresql" % "postgresql" % postgresVersion
   ),
-  dockerfile in docker := {
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
@@ -453,15 +453,15 @@ lazy val migrationsSettings = Seq(
       cmd("--service", "migrations", "exec", "java", "-jar", artifactTargetPath)
     }
   },
-  imageNames in docker := Seq(ImageName("pennsieve/migrations:latest")),
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  docker / imageNames := Seq(ImageName("pennsieve/migrations:latest")),
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val unusedOrganizationMigrationSettings = Seq(
   name := "unused-organization-migration",
   libraryDependencies ++= Seq(),
   excludeDependencies ++= unwantedDependencies,
-  dockerfile in docker := {
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
@@ -469,18 +469,18 @@ lazy val unusedOrganizationMigrationSettings = Seq(
       cmd("--service", "migrations", "exec", "java", "-jar", artifactTargetPath)
     }
   },
-  imageNames in docker := Seq(
+  docker / imageNames := Seq(
     ImageName("pennsieve/unused-organization-migration:latest")
   ),
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val inviteCognitoUserSettings = Seq(
   name := "invite-cognito-user",
   libraryDependencies ++= Seq(),
   excludeDependencies ++= unwantedDependencies,
-      fork in run := true,
-  dockerfile in docker := {
+      run / fork := true,
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
@@ -488,10 +488,10 @@ lazy val inviteCognitoUserSettings = Seq(
       cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
     }
   },
-  imageNames in docker := Seq(
+  docker / imageNames := Seq(
     ImageName("pennsieve/invite-cognito-user:latest")
   ),
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 
@@ -502,7 +502,7 @@ lazy val etlDataCLISettings = Seq(
     "io.circe" %% "circe-java8" % circeVersion
   ),
   excludeDependencies ++= unwantedDependencies,
-  dockerfile in docker := {
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val script: File = new File("etl-data-cli/etl-data.sh")
     val artifactTargetPath = s"/app/${artifact.name}"
@@ -522,8 +522,8 @@ lazy val etlDataCLISettings = Seq(
       entryPoint("")
     }
   },
-  imageNames in docker := Seq(ImageName("pennsieve/etl-data-cli:latest")),
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  docker / imageNames := Seq(ImageName("pennsieve/etl-data-cli:latest")),
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val uploadsConsumerSettings = Seq(
@@ -534,7 +534,7 @@ lazy val uploadsConsumerSettings = Seq(
     "com.dimafeng" %% "testcontainers-scala" % testContainersVersion % Test
   ),
   excludeDependencies ++= unwantedDependencies,
-  dockerfile in docker := {
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile("pennsieve/openjdk:8-alpine3.9") {
@@ -542,8 +542,8 @@ lazy val uploadsConsumerSettings = Seq(
       cmd("java", "-jar", artifactTargetPath)
     }
   },
-  imageNames in docker := Seq(ImageName("pennsieve/uploads-consumer:latest")),
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  docker / imageNames := Seq(ImageName("pennsieve/uploads-consumer:latest")),
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val bfAkkaSettings = Seq(
@@ -618,7 +618,7 @@ lazy val discoverPublishSettings = Seq(
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test
   ),
   excludeDependencies ++= unwantedDependencies,
-  dockerfile in docker := {
+  docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile("pennsieve/openjdk:8-alpine3.9") {
@@ -626,15 +626,15 @@ lazy val discoverPublishSettings = Seq(
       cmd("java", "-jar", artifactTargetPath)
     }
   },
-  imageNames in docker := Seq(ImageName("pennsieve/discover-publish:latest")),
-  assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+  docker / imageNames := Seq(ImageName("pennsieve/discover-publish:latest")),
+  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val organizationStorageMigrationSettings =
   Seq(
     name := "organization-storage-migration",
     excludeDependencies ++= unwantedDependencies,
-    dockerfile in docker := {
+    docker / dockerfile := {
       val artifact: File = assembly.value
       val artifactTargetPath = s"/app/${artifact.name}"
       new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
@@ -642,10 +642,10 @@ lazy val organizationStorageMigrationSettings =
         cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
       }
     },
-    imageNames in docker := Seq(
+    docker / imageNames := Seq(
       ImageName("pennsieve/organization-storage-migration:latest")
     ),
-    assemblyMergeStrategy in assembly := defaultMergeStrategy.value
+    assembly / assemblyMergeStrategy := defaultMergeStrategy.value
   )
 
 // Generates Scala template strings from raw HTML files.
