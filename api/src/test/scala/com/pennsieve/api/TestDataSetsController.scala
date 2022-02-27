@@ -9120,7 +9120,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .logEvent(
         dataset,
         ChangelogEventDetail.CreatePackage(233, None, None, None),
-        ZonedDateTime.now().minusDays(2).minusHours(1)
+        ZonedDateTime.now().minusDays(2).minusMinutes(1)
       )
       .await
       .right
