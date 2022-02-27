@@ -348,7 +348,7 @@ class DeleteJob(
         InvalidChildDeleteResult(child.nodeId)
       }
 
-  val allFilesQuery = new TableQuery(new AllFilesView(_))
+//  val allFilesQuery = new TableQuery(new AllFilesView(_))
 
   def deletePackageFiles(
     filesTable: FilesMapper
@@ -361,20 +361,20 @@ class DeleteJob(
       .mapConcat(identity)
       // if any files exist with the same s3 bucket/path do nothing
       // else delete s3 assets
-      .mapAsync(1) { file =>
-        val query = allFilesQuery
-          .filter(t => t.s3bucket === file.s3Bucket && t.s3key === file.s3Key)
-          .filter(
-            t =>
-              t.id =!= file.id && t.packageId =!= file.packageId && t.organizationId =!= filesTable.organization.id
-          )
-          .exists
-        db.run(query.result)
-          .map(keyExists => (keyExists, file))
-      }
-      .filterNot(_._1)
+//      .mapAsync(1) { file =>
+//        val query = allFilesQuery
+//          .filter(t => t.s3bucket === file.s3Bucket && t.s3key === file.s3Key)
+//          .filter(
+//            t =>
+//              t.id =!= file.id && t.packageId =!= file.packageId && t.organizationId =!= filesTable.organization.id
+//          )
+//          .exists
+//        db.run(query.result)
+//          .map(keyExists => (keyExists, file))
+//      }
+//      .filterNot(_._1)
       .flatMapConcat {
-        case (_, file: File) =>
+        case (file: File) =>
           Source.single(file).via(deleteFileS3Assets)
       }
 
