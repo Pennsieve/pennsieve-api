@@ -300,7 +300,10 @@ trait ApiSuite
     0,
     false,
     false,
-    None
+    None,
+    true,
+    None,
+    Some(CognitoId.UserPoolId(UUID.randomUUID()))
   )
   val colleague = User(
     NodeCodes.generateId(NodeCodes.userCode),
@@ -315,7 +318,10 @@ trait ApiSuite
     0,
     false,
     false,
-    None
+    None,
+    true,
+    None,
+    Some(CognitoId.UserPoolId(UUID.randomUUID()))
   )
   val other = User(
     NodeCodes.generateId(NodeCodes.userCode),
@@ -330,7 +336,10 @@ trait ApiSuite
     0,
     false,
     false,
-    None
+    None,
+    true,
+    None,
+    Some(CognitoId.UserPoolId(UUID.randomUUID()))
   )
   val integrationUserDefinition = User(
     NodeCodes.generateId(NodeCodes.userCode),

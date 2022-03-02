@@ -197,6 +197,38 @@ class TestUsersController extends BaseApiTest {
     }
   }
 
+  test("update user email") {
+    val updatedEmail = "updated@email.com"
+    val beforeUser =
+      insecureContainer.userManager.get(loggedInUser.id).await.right.value
+    val updateReq = write(
+      UpdateUserRequest(
+        firstName = Some(beforeUser.firstName),
+        middleInitial = beforeUser.middleInitial,
+        lastName = Some(beforeUser.lastName),
+        degree = Some(beforeUser.degree.get.entryName),
+        credential = Some(beforeUser.credential),
+        organization = Some(loggedInOrganization.nodeId),
+        url = Some(beforeUser.url),
+        email = Some(updatedEmail),
+        color = Some(beforeUser.color)
+      )
+    )
+
+    putJson(
+      "/email",
+      updateReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      body should include(updatedEmail)
+
+      val updatedUser =
+        insecureContainer.userManager.get(loggedInUser.id).await.right.value
+      assert(updatedUser.email == updatedEmail)
+    }
+  }
+
   test("put user info: degree null") {
     val updateReq =
       s"""{"firstName":"newfirstname",
