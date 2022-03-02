@@ -123,6 +123,45 @@ class TestUsersController extends BaseApiTest {
     }
   }
 
+  test("get user by my email when authenticated") {
+    get(
+      s"/email/${me.email}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      body should include(loggedInUser.firstName)
+      body should include(loggedInUser.lastName)
+      body should include(loggedInUser.email)
+    }
+  }
+
+  test("get user by colleague email when authenticated") {
+    get(
+      s"/email/${colleague.email}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      body should include(colleague.firstName)
+      body should include(colleague.lastName)
+      body should include(colleague.email)
+    }
+  }
+
+  test("return unauthorized when requesting user info by email with no token") {
+    get(s"/email/${me.email}") {
+      status should equal(401)
+      body should include("Unauthorized.")
+    }
+  }
+
+  test(
+    "return unauthorized when requesting user info by email with a bad token"
+  ) {
+    get(s"/email/${me.email}", headers = authorizationHeader("badtoken")) {
+      status should equal(401)
+    }
+  }
+
   test("put user info") {
     val updateReq = write(
       UpdateUserRequest(

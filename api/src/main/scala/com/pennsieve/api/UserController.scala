@@ -155,6 +155,46 @@ class UserController(
     }
   }
 
+  val getUserByEmailServiceOperation =
+    (
+      apiOperation[Option[UserDTO]]("getUserByEmail")
+        summary "gets a user by email address"
+        parameter pathParam[String]("email").required
+          .description("email of the user requested")
+  )
+
+  get("/email/:email", operation(getUserByEmailServiceOperation)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, UserDTO] = for {
+        secureContainer <- getSecureContainer
+        loggedInUser = secureContainer.user
+
+        traceId <- getTraceId(request)
+        email <- paramT[String]("email")
+        user <- {
+          insecureContainer.userManager
+            .getByEmail(email)
+            .coreErrorToActionResult()
+        }
+
+        storageManager = secureContainer.storageManager
+
+        dto <- createUserDTO(user, storageManager)
+
+        _ <- auditLogger
+          .message()
+          .append("user-node-id", user.nodeId)
+          .append("user-id", user.id)
+          .log(traceId)
+          .toEitherT
+          .coreErrorToActionResult
+
+      } yield dto
+
+      val is = result.value.map(OkResult)
+    }
+  }
+
   val getUserOperation =
     apiOperation[Option[UserDTO]]("getCurrentUser") summary "Returns the current user"
 
