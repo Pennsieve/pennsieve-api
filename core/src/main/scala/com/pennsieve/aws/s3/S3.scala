@@ -353,7 +353,7 @@ class S3(val client: AmazonS3) extends S3Trait {
     request: GeneratePresignedUrlRequest
   ): Either[Throwable, URL] =
     Either.catchNonFatal {
-      client.generatePresignedUrl(request
+      client.generatePresignedUrl(request)
     }
 
   def headBucket(bucket: String): Either[Throwable, HeadBucketResult] =
