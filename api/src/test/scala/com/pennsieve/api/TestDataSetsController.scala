@@ -5897,7 +5897,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("cannot grant preview access to users in different organization") {
+  test("can grant preview access to users in different organization") {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
@@ -5906,7 +5906,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       write(GrantPreviewAccessRequest(externalUser.id)),
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status shouldBe 404
+      status shouldBe 200
     }
   }
 
@@ -9120,7 +9120,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .logEvent(
         dataset,
         ChangelogEventDetail.CreatePackage(233, None, None, None),
-        ZonedDateTime.now().minusDays(2).minusHours(1)
+        ZonedDateTime.now().minusDays(2).minusMinutes(1)
       )
       .await
       .right

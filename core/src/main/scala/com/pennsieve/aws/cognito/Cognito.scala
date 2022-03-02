@@ -26,11 +26,14 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderAsyncClient
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserRequest,
+  AdminDeleteUserAttributesRequest,
   AdminDeleteUserRequest,
+  AdminDisableProviderForUserRequest,
   AdminSetUserPasswordRequest,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
+  ProviderUserIdentifierType,
   UserType
 }
 
@@ -67,6 +70,27 @@ trait CognitoClient {
 
   def deleteClientToken(
     token: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def unlinkExternalUser(
+    providerName: String,
+    attributeName: String,
+    attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def deleteUser(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def deleteUserAttributes(
+    username: String,
+    attributeNames: List[String]
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
@@ -237,6 +261,90 @@ class Cognito(
         Future.successful(())
 
     } yield cognitoId
+  }
+
+  /**
+    * Unlink an external Identity Provider (Idp) account from a Cognito user
+    *
+    * @param providerName
+    * @param attributeName
+    * @param attributeValue
+    */
+  def unlinkExternalUser(
+    providerName: String,
+    attributeName: String,
+    attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDisableProviderForUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .user(
+        ProviderUserIdentifierType
+          .builder()
+          .providerName(providerName)
+          .providerAttributeName(attributeName)
+          .providerAttributeValue(attributeValue)
+          .build()
+      )
+      .build()
+
+    client
+      .adminDisableProviderForUser(request)
+      .toScala
+      .map(_ => ())
+  }
+
+  /**
+    * Delete a user from the Cognito User Pool
+    *
+    * @param username
+    * @param ec
+    * @return
+    */
+  def deleteUser(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDeleteUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .build()
+
+    client
+      .adminDeleteUser(request)
+      .toScala
+      .map(_ => ())
+  }
+
+  /**
+    * Deletes an attribute from a Cognito user
+    *
+    * @param username
+    * @param attributeName
+    * @param ec
+    * @return
+    */
+  def deleteUserAttributes(
+    username: String,
+    attributeNames: List[String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDeleteUserAttributesRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .userAttributeNames(attributeNames.asJava)
+      .build()
+
+    client
+      .adminDeleteUserAttributes(request)
+      .toScala
+      .map(_ => ())
   }
 
   /**

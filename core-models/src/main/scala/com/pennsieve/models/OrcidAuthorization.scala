@@ -37,3 +37,13 @@ object OrcidAuthorization {
   implicit val snakyEncoder: Encoder[OrcidAuthorization] = deriveEncoder
   implicit val snakyDecoder: Decoder[OrcidAuthorization] = deriveDecoder
 }
+
+final object OrcidIdentityProvider {
+  def name = "ORCID"
+  def attributeName = "userId"
+  def attributeNameForUnlink =
+    "Cognito_Subject" // used when disabling provider for user
+  def customAttributeName = "custom:orcid"
+
+  def cognitoUsername(orcidId: String) = s"orcid_${orcidId.toLowerCase()}"
+}
