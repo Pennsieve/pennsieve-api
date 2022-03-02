@@ -33,7 +33,13 @@ import com.pennsieve.helpers.ResultHandlers.{ HandleResult, OkResult }
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.managers.StorageServiceClientTrait
-import com.pennsieve.models.{ DateVersion, Degree, OrcidIdentityProvider, User }
+import com.pennsieve.models.{
+  CognitoId,
+  DateVersion,
+  Degree,
+  OrcidIdentityProvider,
+  User
+}
 import com.pennsieve.web.Settings
 import org.json4s.JValue
 import org.json4s.JsonAST.JNothing
@@ -53,6 +59,8 @@ case class UpdateUserRequest(
   email: Option[String],
   color: Option[String]
 )
+
+case class UserMergeRequest(oldUserToken: String, newUserToken: String)
 
 case class UpdatePennsieveTermsOfServiceRequest(version: String)
 
@@ -358,6 +366,87 @@ class UserController(
           .message()
           .append("user-node-id", loggedInUser.nodeId)
           .append("user-id", loggedInUser.id)
+          .log(traceId)
+          .toEitherT
+          .coreErrorToActionResult
+
+      } yield dto
+
+      val is = result.value.map(OkResult)
+    }
+  }
+
+  val mergeUsersOperation = (apiOperation[UserDTO]("merge user accounts") summary "merge user accounts"
+    parameter bodyParam[UserMergeRequest]("newUserToken").required)
+
+  put("/merge", operation(mergeUsersOperation)) {
+    new AsyncResult {
+      val userMergeRequest = parsedBody.extract[UserMergeRequest]
+
+      val result: EitherT[Future, ActionResult, UserDTO] = for {
+        traceId <- getTraceId(request)
+        secureContainer <- getSecureContainer
+        user1 = secureContainer.user
+
+        secureContainer2 <- getSecureContainer(userMergeRequest.newUserToken)
+        user2 = secureContainer2.user
+
+        realEmail = user1.email
+        realCognitoId = user2.cognitoId
+        fakeEmail = s"MERGED+${realEmail}"
+        fakeCognitoId = Some(
+          CognitoId.UserPoolId(
+            java.util.UUID
+              .fromString("00000000-0000-0000-0000-000000000000")
+          )
+        )
+
+        // update Cognito User 1 email <- fakeEmail
+        _ <- cognitoClient
+          .updateUserAttribute(user1.cognitoId.get.toString, "email", fakeEmail)
+          .toEitherT
+          .coreErrorToActionResult
+
+        // update Pennsieve User 2 email <- fakeEmail
+        _ <- insecureContainer.userManager
+          .updateEmail(user2, fakeEmail)
+          .orError
+
+        // update Pennsieve User 2 cognito_id <- fakeCognitoId
+        _ <- insecureContainer.userManager
+          .updateCognitoId(user2, fakeCognitoId)
+          .orError
+
+        // update Cognito User 2 email <- realEmail
+        _ <- cognitoClient
+          .updateUserAttribute(user2.cognitoId.get.toString, "email", realEmail)
+          .toEitherT
+          .coreErrorToActionResult
+
+        // update Pennsieve User 1 cognito_id <- realCognitoId
+        mergedUser <- insecureContainer.userManager
+          .updateCognitoId(user1, realCognitoId)
+          .orError
+
+        storageServiceClient = secureContainer.storageManager
+        storageMap <- storageServiceClient
+          .getStorage(susers, List(user1.id))
+          .orError
+        storage = storageMap.get(user1.id).flatten
+
+        dto <- Builders
+          .userDTO(mergedUser, storage)(
+            insecureContainer.organizationManager,
+            insecureContainer.pennsieveTermsOfServiceManager,
+            insecureContainer.customTermsOfServiceManager,
+            executor
+          )
+          .orError
+
+        _ <- auditLogger
+          .message()
+          .append("user-node-id", user1.nodeId)
+          .append("user-id", user2.id)
           .log(traceId)
           .toEitherT
           .coreErrorToActionResult
