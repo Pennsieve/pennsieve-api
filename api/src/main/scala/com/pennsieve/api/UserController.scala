@@ -309,6 +309,65 @@ class UserController(
     }
   }
 
+  val updateUserEmailOperation = (apiOperation[Option[UserDTO]](
+    "updateUserEmail"
+  )
+    summary "update an existing user's email address"
+    parameter bodyParam[UpdateUserRequest]("user").required)
+
+  put("/email", operation(updateUserEmailOperation)) {
+    new AsyncResult {
+      val userToSave = parsedBody.extract[UpdateUserRequest]
+
+      val result: EitherT[Future, ActionResult, UserDTO] = for {
+        secureContainer <- getSecureContainer
+        traceId <- getTraceId(request)
+        loggedInUser = secureContainer.user
+
+        // first update Pennsieve User
+        updatedEmail = userToSave.email.getOrElse(loggedInUser.email)
+
+        storageServiceClient = secureContainer.storageManager
+        newUser <- insecureContainer.userManager
+          .updateEmail(loggedInUser, updatedEmail)
+          .orError
+        storageMap <- storageServiceClient
+          .getStorage(susers, List(newUser.id))
+          .orError
+        storage = storageMap.get(newUser.id).flatten
+        dto <- Builders
+          .userDTO(newUser, storage)(
+            insecureContainer.organizationManager,
+            insecureContainer.pennsieveTermsOfServiceManager,
+            insecureContainer.customTermsOfServiceManager,
+            executor
+          )
+          .orError
+
+        // then update Cognito User
+        _ <- cognitoClient
+          .updateUserAttribute(
+            loggedInUser.cognitoId.get.toString,
+            "email",
+            newUser.email
+          )
+          .toEitherT
+          .coreErrorToActionResult
+
+        _ <- auditLogger
+          .message()
+          .append("user-node-id", loggedInUser.nodeId)
+          .append("user-id", loggedInUser.id)
+          .log(traceId)
+          .toEitherT
+          .coreErrorToActionResult
+
+      } yield dto
+
+      val is = result.value.map(OkResult)
+    }
+  }
+
   val createORCIDOperation = (apiOperation[OrcidDTO]("createORCID") summary "associate an ORCID with a user using the orcid authorization code"
     parameter bodyParam[ORCIDRequest]("orcid").required)
 
