@@ -30,6 +30,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDeleteUserRequest,
   AdminDisableProviderForUserRequest,
   AdminSetUserPasswordRequest,
+  AdminUpdateUserAttributesRequest,
   AttributeType,
   DeliveryMediumType,
   MessageActionType,
@@ -91,6 +92,14 @@ trait CognitoClient {
   def deleteUserAttributes(
     username: String,
     attributeNames: List[String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def updateUserAttribute(
+    username: String,
+    attributeName: String,
+    attributeValue: String
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
@@ -366,6 +375,34 @@ class Cognito(
           Future.failed(NotFound("Could not parse Cognito ID from response"))
       }
     } yield cognitoId
+  }
+
+  def updateUserAttribute(
+    username: String,
+    attributeName: String,
+    attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminUpdateUserAttributesRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .userAttributes(
+        AttributeType
+          .builder()
+          .name(attributeName)
+          .value(attributeValue)
+          .build()
+      )
+      .build()
+
+    client
+      .adminUpdateUserAttributes(request)
+      .toScala
+      .map(_ => ())
+
+    Future.successful(Unit)
   }
 
   /**

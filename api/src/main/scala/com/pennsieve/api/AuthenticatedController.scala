@@ -182,6 +182,18 @@ trait AuthenticatedController
       }
     } yield claim
 
+  private def getJwtClaim(token: String): Either[ActionResult, Jwt.Claim] =
+    for {
+      claim <- Jwt
+        .parseClaim(Jwt.Token(token))
+        .leftMap[ActionResult](_ => Unauthorized(InvalidJWT(token).getMessage))
+      _ <- if (claim.isValid) {
+        Right(())
+      } else {
+        Left(Unauthorized(Error("Invalid authorization.")))
+      }
+    } yield claim
+
   /**
     * Validate if the given request has access to the specified organization.
     *
@@ -271,6 +283,43 @@ trait AuthenticatedController
   ): EitherT[Future, ActionResult, SecureAPIContainer] = {
     for {
       claim <- getJwtClaim(request).toEitherT[Future]
+
+      secureContainer <- {
+        claim.content match {
+          // case: User
+          //   Attempt to extract out a (user, organization) and use that to build a secure container:
+          case _: UserClaim =>
+            for {
+              context <- {
+                JwtAuthenticator
+                  .userContext(insecureContainer, claim)
+                  .coreErrorToActionResult()
+              }
+            } yield secureContainerBuilder(context.user, context.organization)
+
+          // case: Service
+          //   Check for the existence of an `X-ORGANIZATION-(INT)-ID` header that defines the organizational context
+          //   the service claim will operate on.
+          case _: ServiceClaim =>
+            for {
+              organization <- {
+                getOrganizationFromHeader(claim)(request)
+              }
+
+              _ <- validateJwt(request, organization.id).toEitherT[Future]
+
+            } yield secureContainerBuilder(User.serviceUser, organization)
+        }
+      }
+
+    } yield secureContainer
+  }
+
+  def getSecureContainer(
+    token: String
+  ): EitherT[Future, ActionResult, SecureAPIContainer] = {
+    for {
+      claim <- getJwtClaim(token).toEitherT[Future]
 
       secureContainer <- {
         claim.content match {
