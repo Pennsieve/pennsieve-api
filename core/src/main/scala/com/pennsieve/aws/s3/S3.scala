@@ -333,6 +333,7 @@ class S3(val client: AmazonS3) extends S3Trait {
   ): Either[Throwable, PutObjectResult] =
     Either.catchNonFatal { client.putObject(putRequest.withRequesterPays(true)) }
 
+
   def createBucket(bucket: String): Either[Throwable, Bucket] =
     Either.catchNonFatal { client.createBucket(bucket) }
 
