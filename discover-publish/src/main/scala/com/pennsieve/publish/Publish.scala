@@ -18,32 +18,27 @@ package com.pennsieve.publish
 
 import java.time.LocalDate
 import java.util.UUID
-
 import akka.actor.ActorSystem
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.Sink
 import cats.data._
 import cats.implicits._
-import com.amazonaws.services.s3.model.CopyObjectRequest
+import com.amazonaws.services.s3.model.{CopyObjectRequest, ObjectMetadata, PutObjectRequest}
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.domain.{
-  CoreError,
-  ExceptionError,
-  PredicateError,
-  ServiceError,
-  ThrowableError
-}
+import com.pennsieve.domain.{CoreError, ExceptionError, PredicateError, ServiceError, ThrowableError}
 import com.pennsieve.models._
 import com.pennsieve.publish.models._
 import com.pennsieve.publish.utils.joinKeys
 import com.typesafe.scalalogging.StrictLogging
 import io.circe._
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.parser._
 import io.circe.syntax._
 
-import scala.concurrent.{ ExecutionContext, Future }
+import java.io.ByteArrayInputStream
+import java.nio.charset.{Charset, StandardCharsets}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 
 object Publish extends StrictLogging {
@@ -102,11 +97,11 @@ object Publish extends StrictLogging {
     * - README file
     */
   def publishAssets(
-    container: PublishContainer
-  )(implicit
-    executionContext: ExecutionContext,
-    system: ActorSystem
-  ): EitherT[Future, CoreError, Unit] =
+                     container: PublishContainer
+                   )(implicit
+                     executionContext: ExecutionContext,
+                     system: ActorSystem
+                   ): EitherT[Future, CoreError, Unit] =
     for {
       packagesResult <- PackagesExport
         .exportPackageSources(container)
@@ -142,11 +137,11 @@ object Publish extends StrictLogging {
     * have to reload the Postgres snapshot just to write these files.
     */
   def finalizeDataset(
-    container: PublishContainer
-  )(implicit
-    executionContext: ExecutionContext,
-    system: ActorSystem
-  ): EitherT[Future, CoreError, Unit] =
+                       container: PublishContainer
+                     )(implicit
+                       executionContext: ExecutionContext,
+                       system: ActorSystem
+                     ): EitherT[Future, CoreError, Unit] =
     for {
       assets <- downloadFromS3[PublishAssetResult](
         container,
@@ -199,12 +194,12 @@ object Publish extends StrictLogging {
     * Write a JSON file to the publish bucket.
     */
   def writeJson(
-    container: PublishContainer,
-    s3Key: String,
-    json: Json
-  )(implicit
-    executionContext: ExecutionContext
-  ): EitherT[Future, CoreError, Unit] =
+                 container: PublishContainer,
+                 s3Key: String,
+                 json: Json
+               )(implicit
+                 executionContext: ExecutionContext
+               ): EitherT[Future, CoreError, Unit] =
     EitherT
       .fromEither[Future](
         container.s3
@@ -217,22 +212,21 @@ object Publish extends StrictLogging {
     * Perform a blocking, single-part download from S3.
     */
   private def downloadFromS3[T: Decoder](
-    container: PublishContainer,
-    key: String
-  )(implicit
-    executionContext: ExecutionContext,
-    system: ActorSystem
-  ): EitherT[Future, CoreError, T] = {
+                                          container: PublishContainer,
+                                          key: String
+                                        )(implicit
+                                          executionContext: ExecutionContext,
+                                          system: ActorSystem
+                                        ): EitherT[Future, CoreError, T] = {
     EitherT
       .fromEither[Future](
         container.s3
           .getObject(container.s3Bucket, key)
-          .flatMap { obj =>
-            {
-              Either.catchNonFatal(
-                Source.fromInputStream(obj.getObjectContent).mkString
-              )
-            }
+          .flatMap { obj => {
+            Either.catchNonFatal(
+              Source.fromInputStream(obj.getObjectContent).mkString
+            )
+          }
           }
           .flatMap { s =>
             decode[T](s)
@@ -245,17 +239,22 @@ object Publish extends StrictLogging {
     * Perform a blocking, single-part upload to S3.
     */
   private def uploadToS3(
-    container: PublishContainer,
-    key: String,
-    payload: Json
-  )(implicit
-    executionContext: ExecutionContext,
-    system: ActorSystem
-  ): EitherT[Future, CoreError, Unit] = {
+                          container: PublishContainer,
+                          key: String,
+                          payload: Json
+                        )(implicit
+                          executionContext: ExecutionContext,
+                          system: ActorSystem
+                        ): EitherT[Future, CoreError, Unit] = {
     EitherT
       .fromEither[Future](
         container.s3
-          .putObject(container.s3Bucket, key, dropNullPrinter(payload))
+          .putObject(
+            new PutObjectRequest(
+              container.s3Bucket,
+              key,
+              new ByteArrayInputStream(dropNullPrinter(payload).getBytes(StandardCharsets.UTF_8)),
+              new ObjectMetadata()))
           .leftMap(ThrowableError)
           .map(_ => ())
       )
@@ -273,11 +272,11 @@ object Publish extends StrictLogging {
     * the requester-pays publish bucket.
     */
   def copyBanner(
-    container: PublishContainer
-  )(implicit
-    executionContext: ExecutionContext,
-    system: ActorSystem
-  ): EitherT[Future, CoreError, (String, FileManifest)] = {
+                  container: PublishContainer
+                )(implicit
+                  executionContext: ExecutionContext,
+                  system: ActorSystem
+                ): EitherT[Future, CoreError, (String, FileManifest)] = {
     for {
       banner <- container.datasetAssetsManager
         .getBanner(container.dataset)
@@ -343,11 +342,11 @@ object Publish extends StrictLogging {
     * the requester-pays publish bucket.
     */
   def copyReadme(
-    container: PublishContainer
-  )(implicit
-    executionContext: ExecutionContext,
-    system: ActorSystem
-  ): EitherT[Future, CoreError, (String, FileManifest)] = {
+                  container: PublishContainer
+                )(implicit
+                  executionContext: ExecutionContext,
+                  system: ActorSystem
+                ): EitherT[Future, CoreError, (String, FileManifest)] = {
 
     val readmeKey = joinKeys(container.s3Key, README_FILENAME)
 
@@ -410,12 +409,12 @@ object Publish extends StrictLogging {
     * Write published metadata JSON file.
     */
   def writeMetadata(
-    container: PublishContainer,
-    manifests: List[FileManifest]
-  )(implicit
-    executionContext: ExecutionContext,
-    system: ActorSystem
-  ): EitherT[Future, CoreError, Unit] = {
+                     container: PublishContainer,
+                     manifests: List[FileManifest]
+                   )(implicit
+                     executionContext: ExecutionContext,
+                     system: ActorSystem
+                   ): EitherT[Future, CoreError, Unit] = {
 
     // Self-describing metadata file to include in the file manifest.
     // This presents a chicken and egg problem since we need to know the
@@ -423,7 +422,7 @@ object Publish extends StrictLogging {
     // to be encoded in the JSON file before we can compute the size.
     // Set size to 0 for now, and revise it later.
     val metadataManifest =
-      FileManifest(METADATA_FILENAME, METADATA_FILENAME, 0, FileType.Json)
+    FileManifest(METADATA_FILENAME, METADATA_FILENAME, 0, FileType.Json)
 
     val unsizedMetadata = DatasetMetadataV4_0(
       pennsieveDatasetId = container.publishedDatasetId,
@@ -479,6 +478,7 @@ object Publish extends StrictLogging {
     else
       guess
   }
+
   private def strlen(x: Int): Int = x.toString.length
 
   /**
@@ -486,11 +486,11 @@ object Publish extends StrictLogging {
     * under the publish key.
     */
   def computeTotalSize(
-    container: PublishContainer
-  )(implicit
-    executionContext: ExecutionContext,
-    system: ActorSystem
-  ): EitherT[Future, CoreError, Long] =
+                        container: PublishContainer
+                      )(implicit
+                        executionContext: ExecutionContext,
+                        system: ActorSystem
+                      ): EitherT[Future, CoreError, Long] =
     S3.listBucket(container.s3Bucket, Some(container.s3Key))
       .map(_.size)
       .runWith(Sink.fold(0: Long)(_ + _))
@@ -501,10 +501,10 @@ object Publish extends StrictLogging {
     * about in order to display correct information.
     */
   case class TempPublishResults(
-    readmeKey: String,
-    bannerKey: String,
-    totalSize: Long
-  )
+                                 readmeKey: String,
+                                 bannerKey: String,
+                                 totalSize: Long
+                               )
 
   object TempPublishResults {
     implicit val encoder: Encoder[TempPublishResults] =
