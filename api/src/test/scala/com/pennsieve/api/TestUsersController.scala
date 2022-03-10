@@ -147,6 +147,15 @@ class TestUsersController extends BaseApiTest {
     }
   }
 
+  test("get user by email returns 404 when email is not associated with a user") {
+    get(
+      s"/email/unknown@nowhere.none",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
+    }
+  }
+
   test("return unauthorized when requesting user info by email with no token") {
     get(s"/email/${me.email}") {
       status should equal(401)

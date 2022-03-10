@@ -60,7 +60,7 @@ case class UpdateUserRequest(
   color: Option[String]
 )
 
-case class UserMergeRequest(oldUserToken: String, newUserToken: String)
+case class UserMergeRequest(email: String, cognitoId: String)
 
 case class UpdatePennsieveTermsOfServiceRequest(version: String)
 
@@ -68,6 +68,9 @@ case class ORCIDRequest(authorizationCode: String)
 
 // `version` expected to be a date in the same format as DateVersion:
 case class AcceptCustomTermsOfServiceRequest(version: String)
+
+case class UserVerificationException(message: String)
+    extends java.lang.Exception
 
 /*
  * Note this controller relies on an insecure
@@ -379,7 +382,7 @@ class UserController(
   val mergeUsersOperation = (apiOperation[UserDTO]("merge user accounts") summary "merge user accounts"
     parameter bodyParam[UserMergeRequest]("newUserToken").required)
 
-  put("/merge", operation(mergeUsersOperation)) {
+  put("/merge/:userId", operation(mergeUsersOperation)) {
     new AsyncResult {
       val userMergeRequest = parsedBody.extract[UserMergeRequest]
 
@@ -388,8 +391,12 @@ class UserController(
         secureContainer <- getSecureContainer
         user1 = secureContainer.user
 
-        secureContainer2 <- getSecureContainer(userMergeRequest.newUserToken)
-        user2 = secureContainer2.user
+        userId <- paramT[Int]("userId")
+        user2 <- {
+          insecureContainer.userManager
+            .get(userId)
+            .coreErrorToActionResult()
+        }
 
         realEmail = user1.email
         realCognitoId = user2.cognitoId
@@ -400,6 +407,15 @@ class UserController(
               .fromString("00000000-0000-0000-0000-000000000000")
           )
         )
+
+        // verify parameters
+        _ <- Future {
+          (user1.email == userMergeRequest.email && user2.cognitoId.get.toString == userMergeRequest.cognitoId) match {
+            case true => true
+            case false =>
+              throw UserVerificationException("User Verification Failed")
+          }
+        }.toEitherT.coreErrorToActionResult
 
         // update Cognito User 1 email <- fakeEmail
         _ <- cognitoClient
