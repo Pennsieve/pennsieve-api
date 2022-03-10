@@ -295,7 +295,9 @@ class S3(val client: AmazonS3) extends S3Trait {
       }
     }
 
-    Either.catchNonFatal { iter(client.listObjects(listRequest.withRequesterPays(true)), List.empty) }
+    Either.catchNonFatal {
+      iter(client.listObjects(listRequest.withRequesterPays(true)), List.empty)
+    }
   }
 
   def copyObject(
@@ -331,8 +333,9 @@ class S3(val client: AmazonS3) extends S3Trait {
   def putObject(
     putRequest: PutObjectRequest
   ): Either[Throwable, PutObjectResult] =
-    Either.catchNonFatal { client.putObject(putRequest.withRequesterPays(true)) }
-
+    Either.catchNonFatal {
+      client.putObject(putRequest.withRequesterPays(true))
+    }
 
   def createBucket(bucket: String): Either[Throwable, Bucket] =
     Either.catchNonFatal { client.createBucket(bucket) }
@@ -343,12 +346,16 @@ class S3(val client: AmazonS3) extends S3Trait {
   def initiateMultipartUpload(
     request: InitiateMultipartUploadRequest
   ): Either[Throwable, InitiateMultipartUploadResult] =
-    Either.catchNonFatal { client.initiateMultipartUpload(request.withRequesterPays(true)) }
+    Either.catchNonFatal {
+      client.initiateMultipartUpload(request.withRequesterPays(true))
+    }
 
   def completeMultipartUpload(
     request: CompleteMultipartUploadRequest
   ): Either[Throwable, CompleteMultipartUploadResult] =
-    Either.catchNonFatal { client.completeMultipartUpload(request.withRequesterPays(true)) }
+    Either.catchNonFatal {
+      client.completeMultipartUpload(request.withRequesterPays(true))
+    }
 
   def generatePresignedUrl(
     request: GeneratePresignedUrlRequest
