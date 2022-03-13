@@ -69,9 +69,6 @@ case class ORCIDRequest(authorizationCode: String)
 // `version` expected to be a date in the same format as DateVersion:
 case class AcceptCustomTermsOfServiceRequest(version: String)
 
-case class UserVerificationException(message: String)
-    extends java.lang.Exception
-
 /*
  * Note this controller relies on an insecure
  * userManager for all update operations because
@@ -409,17 +406,35 @@ class UserController(
         )
 
         // verify parameters
-        _ <- Future {
-          (user1.email == userMergeRequest.email && user2.cognitoId.get.toString == userMergeRequest.cognitoId) match {
-            case true => true
-            case false =>
-              throw UserVerificationException("User Verification Failed")
-          }
-        }.toEitherT.coreErrorToActionResult
+        _ <- {
+          FutureEitherHelpers.assert(
+            user1.email == userMergeRequest.email && user2.cognitoId.get.toString == userMergeRequest.cognitoId
+          )(BadRequest("Request verification failed"))
+        }
 
-        // update Cognito User 1 email <- fakeEmail
-        _ <- cognitoClient
-          .updateUserAttribute(user1.cognitoId.get.toString, "email", fakeEmail)
+//        // update Cognito User 1 email <- fakeEmail
+//        _ <- cognitoClient
+//          .updateUserAttribute(user1.cognitoId.get.toString, "email", fakeEmail)
+//          .toEitherT
+//          .coreErrorToActionResult
+//
+//        // update Cognito User 2 email <- realEmail
+//        _ <- cognitoClient
+//          .updateUserAttribute(user2.cognitoId.get.toString, "email", realEmail)
+//          .toEitherT
+//          .coreErrorToActionResult
+
+        // update Cognito User 1 email <- fakeEmail, and then
+        // update Cognito User 2 email <- realEmail
+        _ <- cognitoClient.updateUserAttribute(user1.cognitoId.get.toString,"email", fakeEmail)
+          .flatMap(
+            _ =>
+              cognitoClient.updateUserAttribute(
+                user2.cognitoId.get.toString,
+                "email",
+                realEmail
+              )
+          )
           .toEitherT
           .coreErrorToActionResult
 
@@ -432,12 +447,6 @@ class UserController(
         _ <- insecureContainer.userManager
           .updateCognitoId(user2, fakeCognitoId)
           .orError
-
-        // update Cognito User 2 email <- realEmail
-        _ <- cognitoClient
-          .updateUserAttribute(user2.cognitoId.get.toString, "email", realEmail)
-          .toEitherT
-          .coreErrorToActionResult
 
         // update Pennsieve User 1 cognito_id <- realCognitoId
         mergedUser <- insecureContainer.userManager

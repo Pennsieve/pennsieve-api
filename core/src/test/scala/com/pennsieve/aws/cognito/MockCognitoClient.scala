@@ -130,9 +130,9 @@ class MockCognito() extends CognitoClient {
     attributeValue: String
   )(implicit
     ec: ExecutionContext
-  ): Future[Unit] = {
+  ): Future[Boolean] = {
     updatedUserAttributes.append((username, (attributeName, attributeValue)))
-    Future.successful(Unit)
+    Future.successful(true)
   }
 
   def reset(): Unit = {
