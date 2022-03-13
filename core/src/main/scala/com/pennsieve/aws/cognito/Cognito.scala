@@ -18,7 +18,7 @@ package com.pennsieve.aws.cognito
 
 import cats.implicits._
 import com.pennsieve.aws.email.Email
-import com.pennsieve.domain.{ NotFound, PredicateError }
+import com.pennsieve.domain.{ Error, NotFound, PredicateError }
 import com.pennsieve.models.TokenSecret
 import com.pennsieve.models.{ CognitoId, Organization }
 import com.typesafe.config.Config
@@ -32,6 +32,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminSetUserPasswordRequest,
   AdminUpdateUserAttributesRequest,
   AttributeType,
+  CognitoIdentityProviderResponse,
   DeliveryMediumType,
   MessageActionType,
   ProviderUserIdentifierType,
@@ -42,6 +43,7 @@ import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.compat.java8.OptionConverters._
 
 trait CognitoClient {
 
@@ -102,7 +104,7 @@ trait CognitoClient {
     attributeValue: String
   )(implicit
     ec: ExecutionContext
-  ): Future[Unit]
+  ): Future[Boolean]
 }
 
 object Cognito {
@@ -383,7 +385,7 @@ class Cognito(
     attributeValue: String
   )(implicit
     ec: ExecutionContext
-  ): Future[Unit] = {
+  ): Future[Boolean] = {
     val request = AdminUpdateUserAttributesRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
@@ -397,12 +399,16 @@ class Cognito(
       )
       .build()
 
-    client
-      .adminUpdateUserAttributes(request)
-      .toScala
-      .map(_ => ())
+    for {
+      cognitoResponse <- client
+        .adminUpdateUserAttributes(request)
+        .toScala
 
-    Future.successful(Unit)
+      response <- cognitoResponse.sdkHttpResponse().statusCode() match {
+        case 200 => Future.successful(true)
+        case 400 => Future.failed(Error(extractErrorResponse(cognitoResponse)))
+      }
+    } yield response
   }
 
   /**
@@ -415,4 +421,12 @@ class Cognito(
       .find(_.name() == "sub")
       .map(_.value())
       .flatMap(s => Either.catchNonFatal(UUID.fromString(s)).toOption)
+
+  private def extractErrorResponse(
+    cognitoResponse: CognitoIdentityProviderResponse
+  ): String =
+    cognitoResponse.sdkHttpResponse().statusText().asScala match {
+      case Some(message) => message
+      case None => "An error occurred"
+    }
 }
