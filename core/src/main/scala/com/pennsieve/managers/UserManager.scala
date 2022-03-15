@@ -145,6 +145,24 @@ class UserManager(db: Database) {
       updatedUser <- get(user.id)
     } yield updatedUser
 
+  def updateCognitoId(
+    user: User,
+    newCognitoId: Option[CognitoId.UserPoolId]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    for {
+      _ <- db
+        .run(
+          UserMapper
+            .filter(_.id === user.id)
+            .map(_.cognitoId)
+            .update(newCognitoId)
+        )
+        .toEitherT
+      updatedUser <- get(user.id)
+    } yield updatedUser
+
   def getPreferredOrganizationId(
     organizationNodeId: Option[String],
     defaultId: Option[Int]

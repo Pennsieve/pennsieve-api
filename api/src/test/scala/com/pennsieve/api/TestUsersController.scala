@@ -123,6 +123,54 @@ class TestUsersController extends BaseApiTest {
     }
   }
 
+  test("get user by my email when authenticated") {
+    get(
+      s"/email/${me.email}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      body should include(loggedInUser.firstName)
+      body should include(loggedInUser.lastName)
+      body should include(loggedInUser.email)
+    }
+  }
+
+  test("get user by colleague email when authenticated") {
+    get(
+      s"/email/${colleague.email}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      body should include(colleague.firstName)
+      body should include(colleague.lastName)
+      body should include(colleague.email)
+    }
+  }
+
+  test("get user by email returns 404 when email is not associated with a user") {
+    get(
+      s"/email/unknown@nowhere.none",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
+    }
+  }
+
+  test("return unauthorized when requesting user info by email with no token") {
+    get(s"/email/${me.email}") {
+      status should equal(401)
+      body should include("Unauthorized.")
+    }
+  }
+
+  test(
+    "return unauthorized when requesting user info by email with a bad token"
+  ) {
+    get(s"/email/${me.email}", headers = authorizationHeader("badtoken")) {
+      status should equal(401)
+    }
+  }
+
   test("put user info") {
     val updateReq = write(
       UpdateUserRequest(
@@ -155,6 +203,38 @@ class TestUsersController extends BaseApiTest {
       assert(updatedUser.middleInitial == Some("M"))
       assert(updatedUser.degree == Some(Degree.BS))
       assert(updatedUser.preferredOrganizationId.get == loggedInOrganization.id)
+    }
+  }
+
+  test("update user email") {
+    val updatedEmail = "updated@email.com"
+    val beforeUser =
+      insecureContainer.userManager.get(loggedInUser.id).await.right.value
+    val updateReq = write(
+      UpdateUserRequest(
+        firstName = Some(beforeUser.firstName),
+        middleInitial = beforeUser.middleInitial,
+        lastName = Some(beforeUser.lastName),
+        degree = Some(beforeUser.degree.get.entryName),
+        credential = Some(beforeUser.credential),
+        organization = Some(loggedInOrganization.nodeId),
+        url = Some(beforeUser.url),
+        email = Some(updatedEmail),
+        color = Some(beforeUser.color)
+      )
+    )
+
+    putJson(
+      "/email",
+      updateReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      body should include(updatedEmail)
+
+      val updatedUser =
+        insecureContainer.userManager.get(loggedInUser.id).await.right.value
+      assert(updatedUser.email == updatedEmail)
     }
   }
 
