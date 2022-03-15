@@ -28,6 +28,7 @@ import com.amazonaws.services.s3.model.{
   CopyPartRequest,
   CopyPartResult,
   GeneratePresignedUrlRequest,
+  GetObjectMetadataRequest,
   HeadBucketRequest,
   HeadBucketResult,
   InitiateMultipartUploadRequest,
@@ -41,20 +42,26 @@ import com.amazonaws.services.s3.model.{
   S3Object,
   S3ObjectSummary
 }
+
 import java.io.{ File, InputStream }
 import java.net.URL
-
 import collection.JavaConverters._
 import scala.annotation.tailrec
 
 trait S3Trait {
   def getObject(s3URI: AmazonS3URI): Either[Throwable, S3Object]
+
   def getObject(bucket: String, key: String): Either[Throwable, S3Object]
+
   def getObjectMetadata(s3URI: AmazonS3URI): Either[Throwable, ObjectMetadata]
 
   def getObjectMetadata(
     bucket: String,
     key: String
+  ): Either[Throwable, ObjectMetadata]
+
+  def getObjectMetadata(
+    request: GetObjectMetadataRequest
   ): Either[Throwable, ObjectMetadata]
 
   def deleteObject(bucket: String, key: String): Either[Throwable, Unit]
@@ -130,7 +137,8 @@ trait S3Trait {
     destinationKey: String,
     acl: Option[CannedAccessControlList] = None,
     multipartChunkSize: Long = OneGigabyte,
-    multipartCopyLimit: Long = FiveGigabytes // Use multipart copy for objects larger than this
+    multipartCopyLimit: Long = FiveGigabytes, // Use multipart copy for objects larger than this
+    isRequesterPays: Boolean = false
   ): Either[Throwable, Either[
     CopyObjectResult,
     CompleteMultipartUploadResult
@@ -140,78 +148,83 @@ trait S3Trait {
     require(multipartChunkSize >= FiveMegabytes, "S3 min part size is 5 Mb")
     require(multipartChunkSize <= FiveGigabytes, "S3 max part size is 5 Gb")
 
-    getObjectMetadata(sourceBucket, sourceKey).flatMap { metadata =>
-      val length: Long = metadata.getContentLength
+    getObjectMetadata(
+      new GetObjectMetadataRequest(sourceBucket, sourceKey)
+        .withRequesterPays(isRequesterPays)
+    ).flatMap { metadata =>
+        val length: Long = metadata.getContentLength
 
-      // asset is smaller than 5 GB, use simple copy object request
-      if (length < multipartCopyLimit) {
-        val request: CopyObjectRequest =
-          acl.foldLeft(
-            new CopyObjectRequest(
-              sourceBucket,
-              sourceKey,
-              destinationBucket,
-              destinationKey
-            )
-          )(_.withCannedAccessControlList(_))
-
-        copyObject(request).map(_.asLeft)
-
-        // asset is larger than 5 GB, use multipart copy request
-      } else {
-        for {
-          uploadId <- initiateMultipartUpload(
+        // asset is smaller than 5 GB, use simple copy object request
+        if (length < multipartCopyLimit) {
+          val request: CopyObjectRequest =
             acl.foldLeft(
-              new InitiateMultipartUploadRequest(
+              new CopyObjectRequest(
+                sourceBucket,
+                sourceKey,
                 destinationBucket,
                 destinationKey
-              ).withObjectMetadata(metadata)
-            )(_.withCannedACL(_))
-          ).map(_.getUploadId())
+              ).withRequesterPays(isRequesterPays)
+            )(_.withCannedAccessControlList(_))
 
-          // Compute number of multipart chunks
-          parts = if ((length % multipartChunkSize) > 0)
-            (length / multipartChunkSize) + 1
-          else
-            length / multipartChunkSize
+          copyObject(request).map(_.asLeft)
 
-          partETags <- (1 to parts.intValue)
-            .map { part =>
-              val firstByte: Long = (part - 1) * multipartChunkSize
+          // asset is larger than 5 GB, use multipart copy request
+        } else {
+          for {
+            uploadId <- initiateMultipartUpload(
+              acl.foldLeft(
+                new InitiateMultipartUploadRequest(
+                  destinationBucket,
+                  destinationKey
+                ).withObjectMetadata(metadata)
+                  .withRequesterPays(isRequesterPays)
+              )(_.withCannedACL(_))
+            ).map(_.getUploadId())
 
-              // The last part might be smaller than partSize, so check to make sure
-              // that lastByte isn't beyond the end of the object.
-              val lastByte: Long = Math
-                .min(firstByte + multipartChunkSize - 1, length - 1) // zero-indexed bytes
+            // Compute number of multipart chunks
+            parts = if ((length % multipartChunkSize) > 0)
+              (length / multipartChunkSize) + 1
+            else
+              length / multipartChunkSize
 
-              copyPart(
-                new CopyPartRequest()
-                  .withSourceBucketName(sourceBucket)
-                  .withSourceKey(sourceKey)
-                  .withDestinationBucketName(destinationBucket)
-                  .withDestinationKey(destinationKey)
-                  .withUploadId(uploadId)
-                  .withFirstByte(firstByte)
-                  .withLastByte(lastByte)
-                  .withPartNumber(part)
-              ).map { result =>
-                new PartETag(result.getPartNumber, result.getETag)
+            partETags <- (1 to parts.intValue)
+              .map { part =>
+                val firstByte: Long = (part - 1) * multipartChunkSize
+
+                // The last part might be smaller than partSize, so check to make sure
+                // that lastByte isn't beyond the end of the object.
+                val lastByte: Long = Math
+                  .min(firstByte + multipartChunkSize - 1, length - 1) // zero-indexed bytes
+
+                copyPart(
+                  new CopyPartRequest()
+                    .withSourceBucketName(sourceBucket)
+                    .withSourceKey(sourceKey)
+                    .withDestinationBucketName(destinationBucket)
+                    .withDestinationKey(destinationKey)
+                    .withUploadId(uploadId)
+                    .withFirstByte(firstByte)
+                    .withLastByte(lastByte)
+                    .withPartNumber(part)
+                    .withRequesterPays(isRequesterPays)
+                ).map { result =>
+                  new PartETag(result.getPartNumber, result.getETag)
+                }
               }
-            }
-            .toList
-            .sequence
+              .toList
+              .sequence
 
-          complete <- completeMultipartUpload(
-            new CompleteMultipartUploadRequest(
-              destinationBucket,
-              destinationKey,
-              uploadId,
-              partETags.asJava
+            complete <- completeMultipartUpload(
+              new CompleteMultipartUploadRequest(
+                destinationBucket,
+                destinationKey,
+                uploadId,
+                partETags.asJava
+              ).withRequesterPays(isRequesterPays)
             )
-          )
-        } yield complete.asRight
+          } yield complete.asRight
+        }
       }
-    }
   }
 }
 
@@ -221,7 +234,9 @@ class S3(val client: AmazonS3) extends S3Trait {
     Either.catchNonFatal(client.getObject(s3URI.getBucket, s3URI.getKey))
 
   def getObject(bucket: String, key: String): Either[Throwable, S3Object] =
-    Either.catchNonFatal { client.getObject(bucket, key) }
+    Either.catchNonFatal {
+      client.getObject(bucket, key)
+    }
 
   def getObjectMetadata(s3URI: AmazonS3URI): Either[Throwable, ObjectMetadata] =
     Either.catchNonFatal {
@@ -232,10 +247,21 @@ class S3(val client: AmazonS3) extends S3Trait {
     bucket: String,
     key: String
   ): Either[Throwable, ObjectMetadata] =
-    Either.catchNonFatal { client.getObjectMetadata(bucket, key) }
+    Either.catchNonFatal {
+      client.getObjectMetadata(bucket, key)
+    }
+
+  def getObjectMetadata(
+    request: GetObjectMetadataRequest
+  ): Either[Throwable, ObjectMetadata] =
+    Either.catchNonFatal {
+      client.getObjectMetadata(request)
+    }
 
   def deleteObject(bucket: String, key: String): Either[Throwable, Unit] =
-    Either.catchNonFatal { client.deleteObject(bucket, key) }
+    Either.catchNonFatal {
+      client.deleteObject(bucket, key)
+    }
 
   def deleteObjectsByPrefix(
     bucket: String,
@@ -303,17 +329,23 @@ class S3(val client: AmazonS3) extends S3Trait {
   def copyObject(
     request: CopyObjectRequest
   ): Either[Throwable, CopyObjectResult] =
-    Either.catchNonFatal { client.copyObject(request.withRequesterPays(true)) }
+    Either.catchNonFatal {
+      client.copyObject(request.withRequesterPays(true))
+    }
 
   def copyPart(request: CopyPartRequest): Either[Throwable, CopyPartResult] =
-    Either.catchNonFatal { client.copyPart(request.withRequesterPays(true)) }
+    Either.catchNonFatal {
+      client.copyPart(request.withRequesterPays(true))
+    }
 
   def putObject(
     bucket: String,
     key: String,
     file: File
   ): Either[Throwable, PutObjectResult] =
-    Either.catchNonFatal { client.putObject(bucket, key, file) }
+    Either.catchNonFatal {
+      client.putObject(bucket, key, file)
+    }
 
   def putObject(
     bucket: String,
@@ -321,14 +353,18 @@ class S3(val client: AmazonS3) extends S3Trait {
     input: InputStream,
     metadata: ObjectMetadata
   ): Either[Throwable, PutObjectResult] =
-    Either.catchNonFatal { client.putObject(bucket, key, input, metadata) }
+    Either.catchNonFatal {
+      client.putObject(bucket, key, input, metadata)
+    }
 
   def putObject(
     bucket: String,
     key: String,
     content: String
   ): Either[Throwable, PutObjectResult] =
-    Either.catchNonFatal { client.putObject(bucket, key, content) }
+    Either.catchNonFatal {
+      client.putObject(bucket, key, content)
+    }
 
   def putObject(
     putRequest: PutObjectRequest
@@ -338,10 +374,14 @@ class S3(val client: AmazonS3) extends S3Trait {
     }
 
   def createBucket(bucket: String): Either[Throwable, Bucket] =
-    Either.catchNonFatal { client.createBucket(bucket) }
+    Either.catchNonFatal {
+      client.createBucket(bucket)
+    }
 
   def deleteBucket(bucket: String): Either[Throwable, Unit] =
-    Either.catchNonFatal { client.deleteBucket(bucket) }
+    Either.catchNonFatal {
+      client.deleteBucket(bucket)
+    }
 
   def initiateMultipartUpload(
     request: InitiateMultipartUploadRequest
