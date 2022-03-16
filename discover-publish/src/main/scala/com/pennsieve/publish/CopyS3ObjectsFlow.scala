@@ -47,7 +47,7 @@ object CopyS3ObjectsFlow extends LazyLogging {
     Flow[CopyAction]
       .mapAsyncUnordered(container.s3CopyFileParallelism)(
         copyAction =>
-          retry(() => copyFile(copyAction), attempts = 5, delay = 5.second)
+          retry(() => multipartCopy(copyAction), attempts = 5, delay = 5.second)
       )
   }
 
@@ -75,14 +75,7 @@ object CopyS3ObjectsFlow extends LazyLogging {
       .mapMaterializedValue(_.map(_ => copyAction))
       .run()
 
-    futureResult.onComplete {
-      case Success(_) =>
-        logger.info(
-          s"Done copying ${fromUrl(copyAction)} to ${toUrl(copyAction)}"
-        )
-      case Failure(e) => logger.error(e.getMessage, e)
-    }
-
+    logFutureResult(futureResult)
     futureResult
   }
 
@@ -91,4 +84,44 @@ object CopyS3ObjectsFlow extends LazyLogging {
 
   def toUrl(copyAction: CopyAction): String =
     s"s3://${copyAction.toBucket}/${copyAction.copyToKey}"
+
+  val fiveMegabytes: Long = 5 * 1024 * 1024
+
+  def multipartCopy(
+    copyAction: CopyAction
+  )(implicit
+    container: PublishContainer,
+    ec: ExecutionContext,
+    system: ActorSystem
+  ) = {
+    val multipartCopyFuture = Future {
+      container.s3
+        .multipartCopy(
+          copyAction.file.s3Bucket,
+          copyAction.file.s3Key,
+          copyAction.toBucket,
+          copyAction.copyToKey,
+          multipartChunkSize = fiveMegabytes,
+          multipartCopyLimit = fiveMegabytes,
+          isRequesterPays = true
+        )
+        .fold(throw _, _ => copyAction)
+    }
+    logFutureResult(multipartCopyFuture)
+
+    multipartCopyFuture
+
+  }
+
+  private def logFutureResult(
+    future: Future[CopyAction]
+  )(implicit
+    ec: ExecutionContext
+  ): Unit = {
+    future.onComplete {
+      case Success(action) =>
+        logger.info(s"Done copying ${fromUrl(action)} to ${toUrl(action)}")
+      case Failure(e) => logger.error(e.getMessage, e)
+    }
+  }
 }
