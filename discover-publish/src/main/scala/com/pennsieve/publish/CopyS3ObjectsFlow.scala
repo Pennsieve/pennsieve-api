@@ -47,7 +47,7 @@ object CopyS3ObjectsFlow extends LazyLogging {
     Flow[CopyAction]
       .mapAsyncUnordered(container.s3CopyFileParallelism)(
         copyAction =>
-          retry(() => multipartCopy(copyAction), attempts = 5, delay = 5.second)
+          retry(() => copyFile(copyAction), attempts = 5, delay = 5.second)
       )
   }
 
