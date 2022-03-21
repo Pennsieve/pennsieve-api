@@ -180,6 +180,7 @@ case class CreateDataUseAgreementRequest(
 
 case class UpdateDataUseAgreementRequest(
   name: Option[String] = None,
+  body: Option[String] = None,
   description: Option[String] = None,
   isDefault: Option[Boolean] = None
 )
@@ -1616,6 +1617,7 @@ class OrganizationsController(
             .update(
               agreementId,
               name = body.name,
+              body = body.body,
               description = body.description,
               isDefault = body.isDefault
             )
