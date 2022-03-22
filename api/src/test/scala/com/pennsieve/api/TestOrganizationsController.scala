@@ -1412,6 +1412,35 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("update data use agreement body") {
+
+    val agreement = secureContainer.dataUseAgreementManager
+      .create("New data use agreement", "Lots of legal text")
+      .await
+      .right
+      .value
+
+    putJson(
+      s"/${loggedInOrganization.nodeId}/data-use-agreements/${agreement.id}",
+      write(UpdateDataUseAgreementRequest(body = Some("Updated legal text"))),
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(204)
+    }
+
+    get(
+      s"/${loggedInOrganization.nodeId}/data-use-agreements",
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(200)
+      parsedBody
+        .extract[List[DataUseAgreementDTO]]
+        .map(a => (a.name, a.body)) shouldBe List(
+        ("New data use agreement", "Updated legal text")
+      )
+    }
+  }
+
   test("demo user cannot update data use agreement") {
 
     val agreement = sandboxUserContainer.dataUseAgreementManager
