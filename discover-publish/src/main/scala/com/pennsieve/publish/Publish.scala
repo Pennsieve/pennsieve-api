@@ -56,6 +56,8 @@ object Publish extends StrictLogging {
 
   val README_FILENAME: String = "readme.md"
 
+  val CHANGELOG_FILENAME: String = "changelog.md"
+
   val BANNER_FILENAME: String = "banner.jpg"
 
   val METADATA_FILENAME: String = "manifest.json"
@@ -119,6 +121,9 @@ object Publish extends StrictLogging {
       readmeResult <- copyReadme(container)
       (readmeKey, readmeFileManifest) = readmeResult
 
+      changelogResult <- copyChangelog(container)
+      (changelogKey, changelogFilemanifest) = changelogresult
+
       assets = PublishAssetResult(
         externalIdToPackagePath = externalIdToPackagePath,
         packageManifests = packageFileManifests,
@@ -126,6 +131,8 @@ object Publish extends StrictLogging {
         bannerManifest = bannerFileManifest,
         readmeKey = readmeKey,
         readmeManifest = readmeFileManifest
+        changelogKey = changelogKey,
+        changelogManifest = changelogFileManifest
       )
 
       _ <- uploadToS3(container, publishedAssetsKey(container), assets.asJson)
@@ -162,7 +169,7 @@ object Publish extends StrictLogging {
 
       _ <- writeMetadata(
         container,
-        assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: graph.manifests ++ assets.packageManifests
+        assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: assets.changelofManifest :: graph.manifests ++ assets.packageManifests
           .map(_.manifest)
       )
 
@@ -175,6 +182,7 @@ object Publish extends StrictLogging {
         outputKey(container),
         TempPublishResults(
           readmeKey = assets.readmeKey,
+          changelogKey = assets.changelogKey,
           bannerKey = assets.bannerKey,
           totalSize = totalSize
         ).asJson
@@ -358,6 +366,74 @@ object Publish extends StrictLogging {
           EitherT.fromOption[Future](
             _,
             PredicateError("Dataset does not have a readme"): CoreError
+          )
+        )
+
+      // Copy to public asset bucket
+      _ <- container.s3
+        .copyObject(
+          new CopyObjectRequest(
+            readme.s3Bucket,
+            readme.s3Key,
+            container.s3AssetBucket,
+            joinKeys(container.s3AssetKeyPrefix, readmeKey)
+          )
+        )
+        .toEitherT[Future]
+        .leftMap[CoreError](ThrowableError)
+
+      // Copy to published dataset bucket
+      _ <- container.s3
+        .copyObject(
+          new CopyObjectRequest(
+            readme.s3Bucket,
+            readme.s3Key,
+            container.s3Bucket,
+            readmeKey
+          )
+        )
+        .toEitherT[Future]
+        .leftMap[CoreError](ThrowableError)
+
+      // Get size of file for manifest
+      readmeSize <- container.s3
+        .getObjectMetadata(readme.s3Bucket, readme.s3Key)
+        .map(_.getContentLength())
+        .toEitherT[Future]
+        .leftMap[CoreError](ThrowableError)
+
+    } yield
+      (
+        readmeKey,
+        FileManifest(
+          README_FILENAME,
+          README_FILENAME,
+          readmeSize,
+          FileType.Markdown
+        )
+      )
+  }
+
+  /**
+    * Copy the dataset's Markdown changelog to the public assets bucket, and
+    * the requester-pays publish bucket.
+    */
+  def copyChangelog(
+    container: PublishContainer
+  )(implicit
+    executionContext: ExecutionContext,
+    system: ActorSystem
+  ): EitherT[Future, CoreError, (String, FileManifest)] = {
+
+    val changelogKey = joinKeys(container.s3Key, CHANGELOG_FILENAME)
+
+    for {
+      changelog <- container.datasetAssetsManager
+        .getChangelog(container.dataset)
+        .flatMap(
+          EitherT.fromOption[Future](
+            _,
+            PredicateError("Dataset does not have a chnagelog"): CoreError
           )
         )
 

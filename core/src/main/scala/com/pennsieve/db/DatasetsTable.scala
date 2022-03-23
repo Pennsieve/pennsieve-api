@@ -59,6 +59,8 @@ final class DatasetsTable(schema: String, tag: Tag)
   def tags = column[List[String]]("tags")
   def bannerId = column[Option[UUID]]("banner_id")
   def readmeId = column[Option[UUID]]("readme_id")
+  //do these need to be added in a particular order?
+  def changelogId = column[Option[UUID]]("changelogId")
   def dataUseAgreementId = column[Option[Int]]("data_use_agreement_id")
 
   def * =
@@ -79,6 +81,7 @@ final class DatasetsTable(schema: String, tag: Tag)
       tags,
       bannerId,
       readmeId,
+      changelogId,
       dataUseAgreementId,
       etag,
       id
@@ -273,6 +276,7 @@ class DatasetsMapper(val organization: Organization)
       !(dataset.tags === List.empty[String]) &&
       dataset.license.isDefined &&
       dataset.readmeId.isDefined &&
+      //dataset.changelogId.isDefined &&
       dataset.bannerId.isDefined &&
       // Dataset has at least one contributor
       datasetContributorMapper
