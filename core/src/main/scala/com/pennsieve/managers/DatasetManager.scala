@@ -226,7 +226,7 @@ class DatasetManager(
     tags: List[String] = List.empty,
     bannerId: Option[UUID] = None,
     readmeId: Option[UUID] = None,
-    //changelogId: Option[UUID] = None,
+    changelogId: Option[UUID] = None,
     dataUseAgreement: Option[DataUseAgreement] = None
   )(implicit
     ec: ExecutionContext
@@ -272,7 +272,7 @@ class DatasetManager(
           tags = tags,
           bannerId = bannerId,
           readmeId = readmeId,
-          //changelogId = changelogId,
+          changelogId = changelogId,
           dataUseAgreementId = dataUseAgreement.map(_.id)
         )
 

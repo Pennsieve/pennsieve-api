@@ -59,7 +59,6 @@ final class DatasetsTable(schema: String, tag: Tag)
   def tags = column[List[String]]("tags")
   def bannerId = column[Option[UUID]]("banner_id")
   def readmeId = column[Option[UUID]]("readme_id")
-  //do these need to be added in a particular order?
   def changelogId = column[Option[UUID]]("changelogId")
   def dataUseAgreementId = column[Option[Int]]("data_use_agreement_id")
 
