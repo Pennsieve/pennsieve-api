@@ -102,6 +102,7 @@ object Publish extends StrictLogging {
     * - package sources
     * - banner image
     * - README file
+    * - Changelog file if applicable
     */
   def publishAssets(
     container: PublishContainer
@@ -121,6 +122,7 @@ object Publish extends StrictLogging {
       readmeResult <- copyReadme(container)
       (readmeKey, readmeFileManifest) = readmeResult
 
+      //see where these functions are defined
       changelogResult <- copyChangelog(container)
       (changelogKey, changelogFilemanifest) = changelogresult
 
@@ -169,7 +171,7 @@ object Publish extends StrictLogging {
 
       _ <- writeMetadata(
         container,
-        assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: assets.changelofManifest :: graph.manifests ++ assets.packageManifests
+        assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: assets.changelogManifest :: graph.manifests ++ assets.packageManifests
           .map(_.manifest)
       )
 
@@ -433,7 +435,7 @@ object Publish extends StrictLogging {
         .flatMap(
           EitherT.fromOption[Future](
             _,
-            PredicateError("Dataset does not have a chnagelog"): CoreError
+            PredicateError("Dataset does not have a changelog"): CoreError
           )
         )
 
@@ -441,10 +443,10 @@ object Publish extends StrictLogging {
       _ <- container.s3
         .copyObject(
           new CopyObjectRequest(
-            readme.s3Bucket,
-            readme.s3Key,
+            changelog.s3Bucket,
+            changelog.s3Key,
             container.s3AssetBucket,
-            joinKeys(container.s3AssetKeyPrefix, readmeKey)
+            joinKeys(container.s3AssetKeyPrefix, changelogKey)
           )
         )
         .toEitherT[Future]
@@ -454,29 +456,29 @@ object Publish extends StrictLogging {
       _ <- container.s3
         .copyObject(
           new CopyObjectRequest(
-            readme.s3Bucket,
-            readme.s3Key,
+            changelog.s3Bucket,
+            changelog.s3Key,
             container.s3Bucket,
-            readmeKey
+            changelogKey
           )
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
 
       // Get size of file for manifest
-      readmeSize <- container.s3
-        .getObjectMetadata(readme.s3Bucket, readme.s3Key)
+      changelogSize <- container.s3
+        .getObjectMetadata(changelog.s3Bucket, changelog.s3Key)
         .map(_.getContentLength())
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
 
     } yield
       (
-        readmeKey,
+        changelogKey,
         FileManifest(
-          README_FILENAME,
-          README_FILENAME,
-          readmeSize,
+          CHANGELOG_FILENAME,
+          CHANGELOG_FILENAME,
+          changelogSize,
           FileType.Markdown
         )
       )
@@ -578,6 +580,7 @@ object Publish extends StrictLogging {
     */
   case class TempPublishResults(
     readmeKey: String,
+    changelogKey: String,
     bannerKey: String,
     totalSize: Long
   )
