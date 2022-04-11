@@ -262,26 +262,26 @@ class DatasetAssetsManager(
       .toEitherT
 
   /**
-   * Create or update the Changelog of a dataset.
-   *
-   * In order to do this transactionally, this method is passed an
-   * `uploadAsset` function which is responsible for storing the contents of
-   * the Changrlog in S3.  This function is lifted into a DBIO so that a failure
-   * during storage rolls back the creation of the `DatasetAsset` database row.
-   *
-   * @param dataset the Dataset to update
-   * @param bucket if the changelog does not exist, store it in this bucket
-   * @param filename if the changelog does not exist, use this as its filename
-   * @param uploadAsset function that stores the changelog in S3
-   */
+    * Create or update the Changelog of a dataset.
+    *
+    * In order to do this transactionally, this method is passed an
+    * `uploadAsset` function which is responsible for storing the contents of
+    * the Changrlog in S3.  This function is lifted into a DBIO so that a failure
+    * during storage rolls back the creation of the `DatasetAsset` database row.
+    *
+    * @param dataset the Dataset to update
+    * @param bucket if the changelog does not exist, store it in this bucket
+    * @param filename if the changelog does not exist, use this as its filename
+    * @param uploadAsset function that stores the changelog in S3
+    */
   def createOrUpdateChangelog[T](
-                               dataset: Dataset,
-                               bucket: String,
-                               filename: String,
-                               uploadAsset: DatasetAsset => Either[Throwable, T]
-                             )(implicit
-                               ec: ExecutionContext
-                             ): EitherT[Future, CoreError, DatasetAsset] = {
+    dataset: Dataset,
+    bucket: String,
+    filename: String,
+    uploadAsset: DatasetAsset => Either[Throwable, T]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetAsset] = {
     val query = for {
 
       // Get latest changelog
@@ -311,7 +311,9 @@ class DatasetAssetsManager(
       }
 
       // Upload the changelog
-      _ <- DBIO.from(uploadAsset(changelog).fold(Future.failed, Future.successful))
+      _ <- DBIO.from(
+        uploadAsset(changelog).fold(Future.failed, Future.successful)
+      )
 
     } yield changelog
 
@@ -319,18 +321,18 @@ class DatasetAssetsManager(
   }
 
   def getChangelog(
-                 dataset: Dataset
-               )(implicit
-                 ec: ExecutionContext
-               ): EitherT[Future, CoreError, Option[DatasetAsset]] =
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[DatasetAsset]] =
     db.run(
-      datasetsMapper
-        .filter(_.id === dataset.id)
-        .join(datasetAssetsMapper)
-        .on(_.changelogId === _.id)
-        .map(_._2)
-        .result
-        .headOption
-    )
+        datasetsMapper
+          .filter(_.id === dataset.id)
+          .join(datasetAssetsMapper)
+          .on(_.changelogId === _.id)
+          .map(_._2)
+          .result
+          .headOption
+      )
       .toEitherT
 }

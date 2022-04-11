@@ -904,4 +904,18 @@ object ChangelogEventDetail {
       deriveDecoder[CancelRevision]
   }
 
+  case class UpdateChangelog(
+    oldChangelog: Option[String],
+    newChangelog: Option[String]
+  ) extends ChangelogEventDetail {
+    val eventType = UPDATE_CHANGELOG
+  }
+
+  object UpdateChangelog {
+    implicit val encoder: Encoder[UpdateChangelog] =
+      deriveEncoder[UpdateChangelog]
+    implicit val decoder: Decoder[UpdateChangelog] =
+      deriveDecoder[UpdateChangelog]
+  }
+
 }

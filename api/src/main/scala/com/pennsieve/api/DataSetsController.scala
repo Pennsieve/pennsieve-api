@@ -3552,10 +3552,10 @@ class DataSetsController(
             .get(grantPreviewAccessRequest.userId)
             .coreErrorToActionResult
 
-        /*  _ <- secureContainer.datasetManager
+          /*  _ <- secureContainer.datasetManager
             .canShareWithUser(user)
             .coreErrorToActionResult
-        */
+           */
           _ <- secureContainer.datasetPreviewManager
             .grantAccess(dataset, user)
             .coreErrorToActionResult
@@ -4105,7 +4105,7 @@ class DataSetsController(
       parameters (pathParam[String]("id").required.description("dataset id"),
       bodyParam[DatasetChangelogDTO]("body").required
         .description("update dataset changelog"))
-    )
+  )
 
   put("/:id/changelog", operation(updateChangelog)) {
     new AsyncResult {
@@ -4146,7 +4146,7 @@ class DataSetsController(
         body <- extractOrErrorT[DatasetChangelogDTO](parsedBody)
 
         _ <- secureContainer.datasetAssetsManager
-          .createOrUpdateChnagelog(
+          .createOrUpdateChangelog(
             dataset,
             datasetAssetClient.bucket,
             "changelog.md",
@@ -4195,7 +4195,7 @@ class DataSetsController(
     apiOperation[Unit]("getChangelog")
       summary "get the changelog description for a dataset"
       parameters (pathParam[String]("id").required.description("dataset id"))
-    )
+  )
   get("/:id/changelog", operation(getChangelog)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetChangelogDTO] = for {
@@ -4230,8 +4230,6 @@ class DataSetsController(
       val is = result.value.map(OkResult)
     }
   }
-
-
 
   val getStatusLog: OperationBuilder = (
     apiOperation[PaginatedStatusLogEntries]("getStatusLog")
@@ -4520,7 +4518,7 @@ class DataSetsController(
     }
   }
 
-  val getChangelog = (apiOperation[ChangelogPage]("getChangelog")
+  val getChangelogPage = (apiOperation[ChangelogPage]("getChangelog")
     summary ("get dataset changelog")
     parameter pathParam[String]("id").description("data set id")
     parameter queryParam[Int]("limit").optional
@@ -4536,7 +4534,7 @@ class DataSetsController(
     parameter queryParam[Int]("userId").optional
       .description("filter events by user"))
 
-  get("/:id/changelog/timeline", operation(getChangelog)) {
+  get("/:id/changelog/timeline", operation(getChangelogPage)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ChangelogPage] =
         for {

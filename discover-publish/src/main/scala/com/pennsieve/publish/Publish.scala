@@ -124,7 +124,7 @@ object Publish extends StrictLogging {
 
       //see where these functions are defined
       changelogResult <- copyChangelog(container)
-      (changelogKey, changelogFilemanifest) = changelogresult
+      (changelogKey, changelogFileManifest) = changelogResult
 
       assets = PublishAssetResult(
         externalIdToPackagePath = externalIdToPackagePath,
@@ -132,7 +132,7 @@ object Publish extends StrictLogging {
         bannerKey = bannerKey,
         bannerManifest = bannerFileManifest,
         readmeKey = readmeKey,
-        readmeManifest = readmeFileManifest
+        readmeManifest = readmeFileManifest,
         changelogKey = changelogKey,
         changelogManifest = changelogFileManifest
       )
@@ -171,7 +171,7 @@ object Publish extends StrictLogging {
 
       _ <- writeMetadata(
         container,
-        assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: assets.changelogManifest :: graph.manifests ++ assets.packageManifests
+        assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: assets.changelogManifest.manifest :: graph.manifests ++ assets.packageManifests
           .map(_.manifest)
       )
 

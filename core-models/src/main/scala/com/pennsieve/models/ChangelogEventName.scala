@@ -205,4 +205,7 @@ object ChangelogEventName
   case object CANCEL_REVISION extends ChangelogEventName {
     val category = PUBLISHING
   }
+  case object UPDATE_CHANGELOG extends ChangelogEventName {
+    val category = PUBLISHING
+  }
 }

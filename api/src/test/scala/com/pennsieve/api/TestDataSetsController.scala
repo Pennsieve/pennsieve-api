@@ -8694,10 +8694,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   test("upload a changelog for an existing dataset") {
 
-      val dataset = createDataSet("My Dataset")
-  /*
-  * Will change the dataset status to published, so changelog can be created (VERIFY IF NECESSARY BEFORE RUNNING)
-  * /
+    val dataset = createDataSet("My Dataset")
+    /*
+     * Will change the dataset status to published, so changelog can be created (VERIFY IF NECESSARY BEFORE RUNNING)
+     * /
       secureContainer.datasetPublicationStatusManager
         .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
         .await
@@ -8737,10 +8737,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         .right
         .value
         .publicationStatus shouldBe PublicationStatus.Failed
-    */
+     */
 
     val changelog = "#Markdown content\nChnagelog here!"
-    val request = write(DatasetReadmeDTO(changelog = changelog))
+    val request = write(DatasetChangelogDTO(changelog = changelog))
 
     putJson(
       s"/${dataset.nodeId}/changelog",
@@ -8812,7 +8812,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       val (content, metadata) = mockDatasetAssetClient
         .assets(changelogAsset.id)
 
-      content.stripLineEnd shouldBe readme
+      content.stripLineEnd shouldBe changelog
       metadata.getContentType() shouldBe "text/plain"
     }
   }
@@ -8820,7 +8820,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   //TEST: get a dataset changelog
 
   test("get a dataset readme") {
-   // val dataset = USE ABOVE PROCESS FOR CREATING DATASET WITH CHANGELOG
+    // val dataset = USE ABOVE PROCESS FOR CREATING DATASET WITH CHANGELOG
 
     val content = "#Markdown content\nChangelog here!"
     val request = write(DatasetChangelogDTO(changelog = content))
