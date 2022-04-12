@@ -8819,7 +8819,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   //TEST: get a dataset changelog
 
-  test("get a dataset readme") {
+  test("get a dataset changelog") {
     // val dataset = USE ABOVE PROCESS FOR CREATING DATASET WITH CHANGELOG
 
     val content = "#Markdown content\nChangelog here!"

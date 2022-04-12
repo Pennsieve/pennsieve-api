@@ -59,7 +59,7 @@ final class DatasetsTable(schema: String, tag: Tag)
   def tags = column[List[String]]("tags")
   def bannerId = column[Option[UUID]]("banner_id")
   def readmeId = column[Option[UUID]]("readme_id")
-  def changelogId = column[Option[UUID]]("changelogId")
+  def changelogId = column[Option[UUID]]("changelog_id")
   def dataUseAgreementId = column[Option[Int]]("data_use_agreement_id")
 
   def * =
