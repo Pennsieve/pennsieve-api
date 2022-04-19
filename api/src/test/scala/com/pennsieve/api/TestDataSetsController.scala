@@ -8690,62 +8690,17 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  //TEST: set a dataset changelog
+  //TEST: changelog
 
-  test("upload a changelog for an existing dataset") {
-
-    val dataset = createDataSet("My Dataset")
-    /*
-     * Will change the dataset status to published, so changelog can be created (VERIFY IF NECESSARY BEFORE RUNNING)
-     * /
-      secureContainer.datasetPublicationStatusManager
-        .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
-        .await
-        .right
-        .value
-
-      val request = write(
-        PublishCompleteRequest(
-          None,
-          1,
-          None,
-          PublishStatus.PublishFailed,
-          success = false,
-          error = Some("Publish failed")
-        )
-      )
-
-      putJson(
-        s"/${dataset.id}/publication/complete",
-        request,
-        headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
-      ) {
-        status shouldBe 200
-      }
-
-      val publicationStatusId = secureDataSetManager
-        .get(dataset.id)
-        .await
-        .right
-        .value
-        .publicationStatusId
-        .get
-
-      secureContainer.datasetPublicationStatusManager
-        .get(publicationStatusId)
-        .await
-        .right
-        .value
-        .publicationStatus shouldBe PublicationStatus.Failed
-     */
-
-    val changelog = "#Markdown content\nChnagelog here!"
-    val request = write(DatasetChangelogDTO(changelog = changelog))
+  test("changelog: add a changelog to an a dataset") {
+    val dataset = createDataSet("Dataset with Changelog 1")
+    val changeLogContent = "# Markdown content\nChangelog here!"
+    val request = write(DatasetChangelogDTO(changelog = changeLogContent))
 
     putJson(
       s"/${dataset.nodeId}/changelog",
       request,
-      authorizationHeader(loggedInJwt) ++ traceIdHeader()
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status shouldBe 200
 
@@ -8770,21 +8725,20 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       val (content, metadata) = mockDatasetAssetClient
         .assets(changelogAsset.id)
 
-      content.stripLineEnd shouldBe changelog
+      content.stripLineEnd shouldBe changeLogContent
       metadata.getContentType() shouldBe "text/plain"
-      metadata.getContentLength() shouldBe 30
+      metadata.getContentLength() shouldBe 34
     }
   }
 
-  //TEST: update a dataset changelog
+  test("changelog: update changelog on a dataset") {
+    val dataset = createDataSet("Dataset with Changelog 2")
+    val changeLogContent = "# Markdown content\nChangelog here!"
+    addChangelog(dataset, changeLogContent)
 
-  test("update existing dataset changelog") {
-
-    // Start with an existing changelog
-    //val dataset = USE ABOVE PROCESS FOR CREATING DATASET WITH CHANGELOG
-
-    val changelog = "#Markdown content\nChangelog here!"
-    val request = write(DatasetChangelogDTO(changelog = changelog))
+    val changeLogContentUpdate =
+      "# Markdown content\nChangelog here!\nAnd also here!"
+    val request = write(DatasetChangelogDTO(changelog = changeLogContentUpdate))
 
     putJson(
       s"/${dataset.nodeId}/changelog",
@@ -8812,26 +8766,18 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       val (content, metadata) = mockDatasetAssetClient
         .assets(changelogAsset.id)
 
-      content.stripLineEnd shouldBe changelog
+      content.stripLineEnd shouldBe changeLogContentUpdate
       metadata.getContentType() shouldBe "text/plain"
+      metadata.getContentLength() shouldBe 49
     }
   }
 
   //TEST: get a dataset changelog
 
-  test("get a dataset changelog") {
-    // val dataset = USE ABOVE PROCESS FOR CREATING DATASET WITH CHANGELOG
-
-    val content = "#Markdown content\nChangelog here!"
-    val request = write(DatasetChangelogDTO(changelog = content))
-
-    putJson(
-      s"/${dataset.nodeId}/changelog",
-      request,
-      authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status shouldBe 200
-    }
+  test("changelog: get changelog for a dataset") {
+    val dataset = createDataSet("Dataset with Changelog 3")
+    val changeLogContent = "#Markdown content\nChangelog here!"
+    addChangelog(dataset, changeLogContent)
 
     get(
       s"/${dataset.nodeId}/changelog",
@@ -8839,7 +8785,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 200
       val changelog = parsedBody.extract[DatasetChangelogDTO]
-      changelog.changelog shouldBe content
+      changelog.changelog shouldBe changeLogContent
 
       val changelogAsset = secureContainer.datasetAssetsManager
         .getChangelog(dataset)
