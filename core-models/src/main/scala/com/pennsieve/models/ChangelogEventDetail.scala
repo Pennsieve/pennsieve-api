@@ -91,6 +91,7 @@ object ChangelogEventDetail {
       case d: RejectRevision => d.asJson
       case d: CancelRevision => d.asJson
       case d: CustomEvent => d.asJson
+      case d: UpdateChangelog => d.asJson
     }
 
   def decoder[A <: ChangelogEventDetail](
@@ -148,6 +149,7 @@ object ChangelogEventDetail {
       case REJECT_REVISION => RejectRevision.decoder.widen
       case CANCEL_REVISION => CancelRevision.decoder.widen
       case CUSTOM_EVENT => CustomEvent.decoder.widen
+      case UPDATE_CHANGELOG => UpdateChangelog.decoder.widen
     }
 
   def fromPublicationStatus(
