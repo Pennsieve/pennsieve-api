@@ -28,7 +28,6 @@ import com.pennsieve.models.{
 import com.pennsieve.notifications.MessageType._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
-import io.circe.java8.time._
 
 sealed trait NotificationMessage {
   val users: List[Int]

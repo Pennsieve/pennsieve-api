@@ -25,7 +25,6 @@ import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax._
 import io.circe.{ Decoder, Encoder }
 import io.circe.shapes._
-import io.circe.java8.time._
 import shapeless.{ :+:, CNil }
 
 import java.util.{ Date, UUID }

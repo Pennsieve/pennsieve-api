@@ -49,7 +49,7 @@ package object Utilities {
   def getFullExtension(fileName: String): Option[String] = {
     //returns the first extension from the map that the file name ends with
     //otherwise try using the apache get extension to get one, if no extension is found, returns None
-    val regex = "^\\." r
+    val regex = "^\\.".r
     val maybeExtension = getPennsieveExtension(fileName).trim
     maybeExtension match {
       case "" =>

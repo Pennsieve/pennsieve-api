@@ -51,14 +51,12 @@ final case class SimpleFileContent(
 )
 
 object FileContent {
-  import io.circe.java8.time._
 
   implicit val encoder: Encoder[FileContent] = deriveEncoder[FileContent]
   implicit val decoder: Decoder[FileContent] = deriveDecoder[FileContent]
 }
 
 object SimpleFileContent {
-  import io.circe.java8.time._
 
   implicit val encoder: Encoder[SimpleFileContent] =
     deriveEncoder[SimpleFileContent]
