@@ -152,79 +152,79 @@ trait S3Trait {
       new GetObjectMetadataRequest(sourceBucket, sourceKey)
         .withRequesterPays(isRequesterPays)
     ).flatMap { metadata =>
-        val length: Long = metadata.getContentLength
+      val length: Long = metadata.getContentLength
 
-        // asset is smaller than 5 GB, use simple copy object request
-        if (length < multipartCopyLimit) {
-          val request: CopyObjectRequest =
+      // asset is smaller than 5 GB, use simple copy object request
+      if (length < multipartCopyLimit) {
+        val request: CopyObjectRequest =
+          acl.foldLeft(
+            new CopyObjectRequest(
+              sourceBucket,
+              sourceKey,
+              destinationBucket,
+              destinationKey
+            ).withRequesterPays(isRequesterPays)
+          )(_.withCannedAccessControlList(_))
+
+        copyObject(request).map(_.asLeft)
+
+        // asset is larger than 5 GB, use multipart copy request
+      } else {
+        for {
+          uploadId <- initiateMultipartUpload(
             acl.foldLeft(
-              new CopyObjectRequest(
-                sourceBucket,
-                sourceKey,
+              new InitiateMultipartUploadRequest(
                 destinationBucket,
                 destinationKey
-              ).withRequesterPays(isRequesterPays)
-            )(_.withCannedAccessControlList(_))
+              ).withObjectMetadata(metadata)
+                .withRequesterPays(isRequesterPays)
+            )(_.withCannedACL(_))
+          ).map(_.getUploadId())
 
-          copyObject(request).map(_.asLeft)
+          // Compute number of multipart chunks
+          parts = if ((length % multipartChunkSize) > 0)
+            (length / multipartChunkSize) + 1
+          else
+            length / multipartChunkSize
 
-          // asset is larger than 5 GB, use multipart copy request
-        } else {
-          for {
-            uploadId <- initiateMultipartUpload(
-              acl.foldLeft(
-                new InitiateMultipartUploadRequest(
-                  destinationBucket,
-                  destinationKey
-                ).withObjectMetadata(metadata)
+          partETags <- (1 to parts.intValue)
+            .map { part =>
+              val firstByte: Long = (part - 1) * multipartChunkSize
+
+              // The last part might be smaller than partSize, so check to make sure
+              // that lastByte isn't beyond the end of the object.
+              val lastByte: Long = Math
+                .min(firstByte + multipartChunkSize - 1, length - 1) // zero-indexed bytes
+
+              copyPart(
+                new CopyPartRequest()
+                  .withSourceBucketName(sourceBucket)
+                  .withSourceKey(sourceKey)
+                  .withDestinationBucketName(destinationBucket)
+                  .withDestinationKey(destinationKey)
+                  .withUploadId(uploadId)
+                  .withFirstByte(firstByte)
+                  .withLastByte(lastByte)
+                  .withPartNumber(part)
                   .withRequesterPays(isRequesterPays)
-              )(_.withCannedACL(_))
-            ).map(_.getUploadId())
-
-            // Compute number of multipart chunks
-            parts = if ((length % multipartChunkSize) > 0)
-              (length / multipartChunkSize) + 1
-            else
-              length / multipartChunkSize
-
-            partETags <- (1 to parts.intValue)
-              .map { part =>
-                val firstByte: Long = (part - 1) * multipartChunkSize
-
-                // The last part might be smaller than partSize, so check to make sure
-                // that lastByte isn't beyond the end of the object.
-                val lastByte: Long = Math
-                  .min(firstByte + multipartChunkSize - 1, length - 1) // zero-indexed bytes
-
-                copyPart(
-                  new CopyPartRequest()
-                    .withSourceBucketName(sourceBucket)
-                    .withSourceKey(sourceKey)
-                    .withDestinationBucketName(destinationBucket)
-                    .withDestinationKey(destinationKey)
-                    .withUploadId(uploadId)
-                    .withFirstByte(firstByte)
-                    .withLastByte(lastByte)
-                    .withPartNumber(part)
-                    .withRequesterPays(isRequesterPays)
-                ).map { result =>
-                  new PartETag(result.getPartNumber, result.getETag)
-                }
+              ).map { result =>
+                new PartETag(result.getPartNumber, result.getETag)
               }
-              .toList
-              .sequence
+            }
+            .toList
+            .sequence
 
-            complete <- completeMultipartUpload(
-              new CompleteMultipartUploadRequest(
-                destinationBucket,
-                destinationKey,
-                uploadId,
-                partETags.asJava
-              ).withRequesterPays(isRequesterPays)
-            )
-          } yield complete.asRight
-        }
+          complete <- completeMultipartUpload(
+            new CompleteMultipartUploadRequest(
+              destinationBucket,
+              destinationKey,
+              uploadId,
+              partETags.asJava
+            ).withRequesterPays(isRequesterPays)
+          )
+        } yield complete.asRight
       }
+    }
   }
 }
 
