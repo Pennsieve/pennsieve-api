@@ -62,7 +62,7 @@ lazy val akkaHttpVersion = "10.1.11"
 
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
-lazy val auditMiddlewareVersion = "1.0.1"
+lazy val auditMiddlewareVersion = "1.0.2"
 lazy val authMiddlewareVersion = "5.1.1"
 
 lazy val awsVersion = "1.11.931"
