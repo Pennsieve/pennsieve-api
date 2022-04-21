@@ -1,7 +1,6 @@
 ThisBuild / resolvers ++= Seq(
   "pennsieve-maven-proxy" at "https://nexus.pennsieve.cc/repository/maven-public",
   Resolver.url("pennsieve-ivy-proxy", url("https://nexus.pennsieve.cc/repository/ivy-public/"))( Patterns("[organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]") ),
-  Resolver.bintrayIvyRepo("rallyhealth", "sbt-plugins")
 )
 
 ThisBuild / credentials += Credentials(
