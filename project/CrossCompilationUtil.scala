@@ -28,19 +28,4 @@ object CrossCompilationUtil {
     scalaVersionMatch(scalaVersion, Seq(moduleIdFor212), Nil)
   }
 
-  def getScalacOptions(scalaVersion: String): Seq[String] = {
-    val common = Seq(
-      "-encoding",
-      "utf-8",
-      "-deprecation",
-      "-explaintypes",
-      "-feature",
-      "-language:implicitConversions",
-      "-language:postfixOps"
-    )
-
-    val only212 = Seq("-Ypartial-unification", "-Ywarn-infer-any")
-    scalaVersionMatch(scalaVersion, common ++ only212, common)
-
-  }
 }
