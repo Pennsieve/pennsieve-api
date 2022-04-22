@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 
-package com.pennsieve.models
+package com.pennsieve.models.utilities
 
-import org.scalatest.{ Matchers, WordSpecLike }
-import io.circe.parser.decode
+import com.pennsieve.models.{
+  File,
+  FileObjectType,
+  FileProcessingState,
+  FileType,
+  Utilities
+}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
-class TestUtilities extends WordSpecLike with Matchers {
+class TestUtilities extends AnyWordSpecLike with Matchers {
 
   "safeS3Key" should {
     "remove bad characters" in {

@@ -426,7 +426,8 @@ class UserController(
 
         // update Cognito User 1 email <- fakeEmail, and then
         // update Cognito User 2 email <- realEmail
-        _ <- cognitoClient.updateUserAttribute(user1.cognitoId.get.toString,"email", fakeEmail)
+        _ <- cognitoClient
+          .updateUserAttribute(user1.cognitoId.get.toString, "email", fakeEmail)
           .flatMap(
             _ =>
               cognitoClient.updateUserAttribute(

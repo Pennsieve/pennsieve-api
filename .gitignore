@@ -22,6 +22,7 @@ project/metals.sbt
 .worksheet
 .idea/
 out/
+jenkins-pipeline/
 
 ## Redis ##
 *.rdb

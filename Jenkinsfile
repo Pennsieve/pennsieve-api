@@ -28,7 +28,7 @@ timestamps {
 
             stage('Build') {
                 withCredentials([pennsieveNexusCreds]) {
-                    sh "${sbt} clean compile pushRemoteCache"
+                    sh "${sbt} clean +compile +pushRemoteCache"
                 }
                 stash name: "${remoteCache}", includes: "${remoteCache}/**/*"
             }
@@ -38,7 +38,7 @@ timestamps {
                     unstash name: "${remoteCache}"
                     withCredentials([pennsieveNexusCreds]) {
                         try {
-                            sh "${sbt} clean pullRemoteCache test"
+                            sh "${sbt} clean +pullRemoteCache +test"
                         } finally {
                             junit '**/target/test-reports/*.xml'
                         }
@@ -174,7 +174,7 @@ def generatePublishJarStep(String jar, String sbt, creds, String remoteCache) {
 
             withCredentials([creds]) {
                 retry(3) {
-                    sh "${sbt} clean pullRemoteCache ${jar}/publish"
+                    sh "${sbt} clean +pullRemoteCache +${jar}/publish"
                 }
             }
         }

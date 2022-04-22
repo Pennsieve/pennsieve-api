@@ -24,8 +24,6 @@ import com.pennsieve.models._
 
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.java8.time._
-import java.net.URL
 
 case class DataSetDTO(
   content: WrappedDataset,

@@ -65,7 +65,6 @@ case class PackageContent(
   * DEPRECATED: use PackageContent for new endpoints
   */
 object WrappedPackage {
-  import io.circe.java8.time._
 
   implicit val encoder: Encoder[WrappedPackage] = deriveEncoder[WrappedPackage]
   implicit val decoder: Decoder[WrappedPackage] = deriveDecoder[WrappedPackage]
@@ -90,7 +89,6 @@ object WrappedPackage {
 }
 
 object PackageContent {
-  import io.circe.java8.time._
 
   implicit val encoder: Encoder[PackageContent] = deriveEncoder[PackageContent]
   implicit val decoder: Decoder[PackageContent] = deriveDecoder[PackageContent]

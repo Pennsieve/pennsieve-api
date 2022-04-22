@@ -28,7 +28,6 @@ import com.pennsieve.models.{
 }
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.java8.time._
 
 case class WrappedDataset(
   id: String,
