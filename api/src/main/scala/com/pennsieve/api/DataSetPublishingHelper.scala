@@ -888,6 +888,8 @@ case object DataSetPublishingHelper extends LazyLogging {
         ownerOrcid = ownerOrcid,
         organizationNodeId = organization.nodeId,
         organizationName = organization.name,
+        publishBucket = organization.publishBucket,
+        embargoBucket = organization.embargoBucket,
         datasetNodeId = dataset.nodeId,
         collections = Some(
           collections.map(_.into[InternalCollection].transform).toIndexedSeq

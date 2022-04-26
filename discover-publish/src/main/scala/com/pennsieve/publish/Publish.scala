@@ -18,13 +18,16 @@ package com.pennsieve.publish
 
 import java.time.LocalDate
 import java.util.UUID
-
 import akka.actor.ActorSystem
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.Sink
 import cats.data._
 import cats.implicits._
-import com.amazonaws.services.s3.model.CopyObjectRequest
+import com.amazonaws.services.s3.model.{
+  CopyObjectRequest,
+  ObjectMetadata,
+  PutObjectRequest
+}
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.domain.{
@@ -43,6 +46,8 @@ import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.parser._
 import io.circe.syntax._
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.{ Charset, StandardCharsets }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.io.Source
 
@@ -179,7 +184,7 @@ object Publish extends StrictLogging {
 
       _ = logger.info(s"Writing temporary file: $OUTPUT_FILENAME")
 
-      _ <- writeJson(
+      _ <- uploadToS3(
         container,
         outputKey(container),
         TempPublishResults(
@@ -204,24 +209,6 @@ object Publish extends StrictLogging {
         .toEitherT[Future]
         .leftMap[CoreError](t => ExceptionError(new Exception(t)))
     } yield ()
-
-  /**
-    * Write a JSON file to the publish bucket.
-    */
-  def writeJson(
-    container: PublishContainer,
-    s3Key: String,
-    json: Json
-  )(implicit
-    executionContext: ExecutionContext
-  ): EitherT[Future, CoreError, Unit] =
-    EitherT
-      .fromEither[Future](
-        container.s3
-          .putObject(container.s3Bucket, s3Key, dropNullPrinter(json))
-          .leftMap(ThrowableError)
-          .map(_ => ())
-      )
 
   /**
     * Perform a blocking, single-part download from S3.
@@ -262,10 +249,25 @@ object Publish extends StrictLogging {
     executionContext: ExecutionContext,
     system: ActorSystem
   ): EitherT[Future, CoreError, Unit] = {
+
+    val payloadBytes = dropNullPrinter(payload)
+      .getBytes(StandardCharsets.UTF_8)
+    val payloadInputStream: ByteArrayInputStream = new ByteArrayInputStream(
+      payloadBytes
+    )
+    val metadata = new ObjectMetadata()
+    metadata.setContentLength(payloadBytes.length)
     EitherT
       .fromEither[Future](
         container.s3
-          .putObject(container.s3Bucket, key, dropNullPrinter(payload))
+          .putObject(
+            new PutObjectRequest(
+              container.s3Bucket,
+              key,
+              payloadInputStream,
+              metadata
+            )
+          )
           .leftMap(ThrowableError)
           .map(_ => ())
       )
@@ -324,7 +326,7 @@ object Publish extends StrictLogging {
             banner.s3Key,
             container.s3Bucket,
             bannerKey
-          )
+          ).withRequesterPays(true)
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
@@ -392,7 +394,7 @@ object Publish extends StrictLogging {
             readme.s3Key,
             container.s3Bucket,
             readmeKey
-          )
+          ).withRequesterPays(true)
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
@@ -538,7 +540,7 @@ object Publish extends StrictLogging {
       files = (metadataManifest.copy(size = metadataSize) :: manifests).sorted
     )
 
-    writeJson(
+    uploadToS3(
       container,
       joinKeys(container.s3Key, METADATA_FILENAME),
       metadata.asJson
@@ -557,6 +559,7 @@ object Publish extends StrictLogging {
     else
       guess
   }
+
   private def strlen(x: Int): Int = x.toString.length
 
   /**

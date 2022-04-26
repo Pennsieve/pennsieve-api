@@ -17,12 +17,14 @@
 package com.pennsieve.models.deserialization
 
 import com.pennsieve.models.{ ExternalId, FileManifest, FileType }
-import org.scalatest.{ Matchers, WordSpecLike }
 import io.circe.parser.decode
 import io.circe.syntax._
 import io.circe._
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.EitherValues._
 
-class ExternalIdSpec extends WordSpecLike with Matchers {
+class ExternalIdSpec extends AnyWordSpecLike with Matchers {
 
   "An external ID should be serialized" in {
     ExternalId(Left(1234)).asJson shouldBe Json.fromInt(1234)
@@ -32,10 +34,10 @@ class ExternalIdSpec extends WordSpecLike with Matchers {
   }
 
   "An external ID should be deserialized from string and integer JSON" in {
-    decode[ExternalId](""""N:package:1234"""").right.get shouldBe ExternalId(
+    decode[ExternalId](""""N:package:1234"""").value shouldBe ExternalId(
       Right("N:package:1234")
     )
-    decode[ExternalId]("""1234""").right.get shouldBe ExternalId(Left(1234))
+    decode[ExternalId]("""1234""").value shouldBe ExternalId(Left(1234))
   }
 
   "An external ID should fail to deserialized from non-string and non-integer values" in {
@@ -69,7 +71,7 @@ class ExternalIdSpec extends WordSpecLike with Matchers {
       "size" : 15010,
       "fileType" : "DICOM",
       "sourcePackageId" : "N:package:1"
-    }""").right.get shouldBe FileManifest(
+    }""").value shouldBe FileManifest(
       "brain.dcm",
       "packages/brain.dcm",
       15010,
@@ -84,7 +86,7 @@ class ExternalIdSpec extends WordSpecLike with Matchers {
       "size" : 15010,
       "fileType" : "DICOM",
       "sourcePackageId" : "N:package:1"
-    }""").right.get shouldBe FileManifest(
+    }""").value shouldBe FileManifest(
       "testName",
       "packages/brain.dcm",
       15010,

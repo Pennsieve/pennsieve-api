@@ -21,7 +21,6 @@ import enumeratum.EnumEntry._
 import java.time.ZonedDateTime
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.java8.time._
 
 import scala.collection.immutable
 

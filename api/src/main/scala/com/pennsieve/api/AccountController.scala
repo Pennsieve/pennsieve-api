@@ -42,6 +42,7 @@ import org.scalatra._
 import org.scalatra.json.JacksonJsonSupport
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder
 import org.scalatra.swagger._
+import com.typesafe.scalalogging.{ LazyLogging, Logger }
 
 import javax.servlet.http.HttpServletRequest
 import scala.concurrent.{ ExecutionContext, Future }
@@ -79,11 +80,13 @@ class AccountController(
     with JacksonJsonSupport
     with ParamsSupport
     with PennsieveSwaggerSupport
-    with FutureSupport {
+    with FutureSupport
+    with LazyLogging {
 
   override val swaggerTag = "Account"
 
   protected implicit def executor: ExecutionContext = asyncExecutor
+  override implicit lazy val logger: Logger = Logger("com.pennsieve")
 
   protected implicit val jsonFormats
     : Formats = DefaultFormats ++ ModelSerializers.serializers

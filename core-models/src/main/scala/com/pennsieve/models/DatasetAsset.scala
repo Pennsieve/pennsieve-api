@@ -21,7 +21,6 @@ import java.util.UUID
 
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.java8.time._
 
 final case class DatasetAsset(
   name: String,

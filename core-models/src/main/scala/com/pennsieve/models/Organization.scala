@@ -19,7 +19,6 @@ package com.pennsieve.models
 import java.time.ZonedDateTime
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.java8.time._
 
 case class OrganizationNodeId(val value: String) extends AnyVal
 
@@ -36,6 +35,8 @@ final case class Organization(
    * only used by SPARC.
    */
   storageBucket: Option[String] = None,
+  publishBucket: Option[String] = None,
+  embargoBucket: Option[String] = None,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   updatedAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0

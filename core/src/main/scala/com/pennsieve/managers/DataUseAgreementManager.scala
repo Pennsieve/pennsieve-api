@@ -100,6 +100,7 @@ class DataUseAgreementManager(
   def update(
     agreementId: Int,
     name: Option[String],
+    body: Option[String],
     description: Option[String],
     isDefault: Option[Boolean]
   )(implicit
@@ -111,10 +112,11 @@ class DataUseAgreementManager(
 
       _ <- dataUseAgreementMapper
         .filter(_.id === agreementId)
-        .map(a => (a.name, a.description))
+        .map(a => (a.name, a.body, a.description))
         .update(
           (
             name.getOrElse(agreement.name),
+            body.getOrElse(agreement.body),
             description.getOrElse(agreement.description)
           )
         ): DBIO[Int]

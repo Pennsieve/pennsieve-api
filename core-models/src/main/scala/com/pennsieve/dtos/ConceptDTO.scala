@@ -23,7 +23,6 @@ import com.pennsieve.concepts.types._
 import com.pennsieve.models.NodeId
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.java8.time._
 import io.circe.shapes._
 
 case class ConceptDTO(

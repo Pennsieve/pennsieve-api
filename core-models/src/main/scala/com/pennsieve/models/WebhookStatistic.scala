@@ -19,7 +19,6 @@ package com.pennsieve.models
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import java.time.ZonedDateTime
-import io.circe.java8.time._
 
 final case class WebhookStatistic(
   webhookId: Int,

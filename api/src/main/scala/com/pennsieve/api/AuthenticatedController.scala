@@ -53,7 +53,7 @@ import com.pennsieve.helpers.{
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.web.Settings
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{ LazyLogging, Logger }
 import enumeratum.Json4s
 import javax.servlet.http.HttpServletRequest
 import org.json4s._
@@ -130,6 +130,7 @@ trait AuthenticatedController
   implicit val swagger: Swagger
 
   implicit val ec: ExecutionContext = executor
+  override implicit lazy val logger: Logger = Logger("com.pennsieve")
 
   protected implicit def jsonFormats: Formats =
     DefaultFormats ++ ModelSerializers.serializers
@@ -174,6 +175,18 @@ trait AuthenticatedController
         .leftMap[ActionResult](
           _ => Unauthorized(InvalidJWT(bearerToken).getMessage)
         )
+      _ <- if (claim.isValid) {
+        Right(())
+      } else {
+        Left(Unauthorized(Error("Invalid authorization.")))
+      }
+    } yield claim
+
+  private def getJwtClaim(token: String): Either[ActionResult, Jwt.Claim] =
+    for {
+      claim <- Jwt
+        .parseClaim(Jwt.Token(token))
+        .leftMap[ActionResult](_ => Unauthorized(InvalidJWT(token).getMessage))
       _ <- if (claim.isValid) {
         Right(())
       } else {
@@ -270,6 +283,43 @@ trait AuthenticatedController
   ): EitherT[Future, ActionResult, SecureAPIContainer] = {
     for {
       claim <- getJwtClaim(request).toEitherT[Future]
+
+      secureContainer <- {
+        claim.content match {
+          // case: User
+          //   Attempt to extract out a (user, organization) and use that to build a secure container:
+          case _: UserClaim =>
+            for {
+              context <- {
+                JwtAuthenticator
+                  .userContext(insecureContainer, claim)
+                  .coreErrorToActionResult()
+              }
+            } yield secureContainerBuilder(context.user, context.organization)
+
+          // case: Service
+          //   Check for the existence of an `X-ORGANIZATION-(INT)-ID` header that defines the organizational context
+          //   the service claim will operate on.
+          case _: ServiceClaim =>
+            for {
+              organization <- {
+                getOrganizationFromHeader(claim)(request)
+              }
+
+              _ <- validateJwt(request, organization.id).toEitherT[Future]
+
+            } yield secureContainerBuilder(User.serviceUser, organization)
+        }
+      }
+
+    } yield secureContainer
+  }
+
+  def getSecureContainer(
+    token: String
+  ): EitherT[Future, ActionResult, SecureAPIContainer] = {
+    for {
+      claim <- getJwtClaim(token).toEitherT[Future]
 
       secureContainer <- {
         claim.content match {

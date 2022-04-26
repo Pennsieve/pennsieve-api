@@ -38,7 +38,6 @@ case class WrappedChannel(
 )
 
 object WrappedChannel {
-  import io.circe.java8.time._
 
   implicit val encoder: Encoder[WrappedChannel] = deriveEncoder[WrappedChannel]
   implicit val decoder: Decoder[WrappedChannel] = deriveDecoder[WrappedChannel]

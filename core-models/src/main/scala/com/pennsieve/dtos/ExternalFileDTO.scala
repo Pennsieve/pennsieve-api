@@ -29,7 +29,6 @@ final case class ExternalFileDTO(
 )
 
 object ExternalFileDTO {
-  import io.circe.java8.time._
 
   implicit val encoder: Encoder[ExternalFileDTO] =
     deriveEncoder[ExternalFileDTO]

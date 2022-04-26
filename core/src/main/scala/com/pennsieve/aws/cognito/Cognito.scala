@@ -18,7 +18,7 @@ package com.pennsieve.aws.cognito
 
 import cats.implicits._
 import com.pennsieve.aws.email.Email
-import com.pennsieve.domain.{ NotFound, PredicateError }
+import com.pennsieve.domain.{ Error, NotFound, PredicateError }
 import com.pennsieve.models.TokenSecret
 import com.pennsieve.models.{ CognitoId, Organization }
 import com.typesafe.config.Config
@@ -26,11 +26,16 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderAsyncClient
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminCreateUserRequest,
+  AdminDeleteUserAttributesRequest,
   AdminDeleteUserRequest,
+  AdminDisableProviderForUserRequest,
   AdminSetUserPasswordRequest,
+  AdminUpdateUserAttributesRequest,
   AttributeType,
+  CognitoIdentityProviderResponse,
   DeliveryMediumType,
   MessageActionType,
+  ProviderUserIdentifierType,
   UserType
 }
 
@@ -38,6 +43,7 @@ import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.compat.java8.OptionConverters._
 
 trait CognitoClient {
 
@@ -70,6 +76,35 @@ trait CognitoClient {
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
+
+  def unlinkExternalUser(
+    providerName: String,
+    attributeName: String,
+    attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def deleteUser(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def deleteUserAttributes(
+    username: String,
+    attributeNames: List[String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
+  def updateUserAttribute(
+    username: String,
+    attributeName: String,
+    attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
 }
 
 object Cognito {
@@ -240,6 +275,90 @@ class Cognito(
   }
 
   /**
+    * Unlink an external Identity Provider (Idp) account from a Cognito user
+    *
+    * @param providerName
+    * @param attributeName
+    * @param attributeValue
+    */
+  def unlinkExternalUser(
+    providerName: String,
+    attributeName: String,
+    attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDisableProviderForUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .user(
+        ProviderUserIdentifierType
+          .builder()
+          .providerName(providerName)
+          .providerAttributeName(attributeName)
+          .providerAttributeValue(attributeValue)
+          .build()
+      )
+      .build()
+
+    client
+      .adminDisableProviderForUser(request)
+      .toScala
+      .map(_ => ())
+  }
+
+  /**
+    * Delete a user from the Cognito User Pool
+    *
+    * @param username
+    * @param ec
+    * @return
+    */
+  def deleteUser(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDeleteUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .build()
+
+    client
+      .adminDeleteUser(request)
+      .toScala
+      .map(_ => ())
+  }
+
+  /**
+    * Deletes an attribute from a Cognito user
+    *
+    * @param username
+    * @param attributeName
+    * @param ec
+    * @return
+    */
+  def deleteUserAttributes(
+    username: String,
+    attributeNames: List[String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDeleteUserAttributesRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .userAttributeNames(attributeNames.asJava)
+      .build()
+
+    client
+      .adminDeleteUserAttributes(request)
+      .toScala
+      .map(_ => ())
+  }
+
+  /**
     * Create Cognito user and parse Cognito ID from response.
     */
   private def adminCreateUser(
@@ -260,6 +379,38 @@ class Cognito(
     } yield cognitoId
   }
 
+  def updateUserAttribute(
+    username: String,
+    attributeName: String,
+    attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    val request = AdminUpdateUserAttributesRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .userAttributes(
+        AttributeType
+          .builder()
+          .name(attributeName)
+          .value(attributeValue)
+          .build()
+      )
+      .build()
+
+    for {
+      cognitoResponse <- client
+        .adminUpdateUserAttributes(request)
+        .toScala
+
+      response <- cognitoResponse.sdkHttpResponse().statusCode() match {
+        case 200 => Future.successful(true)
+        case 400 => Future.failed(Error(extractErrorResponse(cognitoResponse)))
+      }
+    } yield response
+  }
+
   /**
     * Parse Cognito ID from the "sub" user attribute
     */
@@ -270,4 +421,12 @@ class Cognito(
       .find(_.name() == "sub")
       .map(_.value())
       .flatMap(s => Either.catchNonFatal(UUID.fromString(s)).toOption)
+
+  private def extractErrorResponse(
+    cognitoResponse: CognitoIdentityProviderResponse
+  ): String =
+    cognitoResponse.sdkHttpResponse().statusText().asScala match {
+      case Some(message) => message
+      case None => "An error occurred"
+    }
 }

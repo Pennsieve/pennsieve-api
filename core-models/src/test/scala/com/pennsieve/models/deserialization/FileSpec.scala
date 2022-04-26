@@ -18,11 +18,11 @@ package com.pennsieve.models.deserialization
 
 import com.pennsieve.models.File
 import com.pennsieve.models.FileType
-
-import org.scalatest.{ Matchers, WordSpecLike }
 import io.circe.parser.decode
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
-class FileSpec extends WordSpecLike with Matchers {
+class FileSpec extends AnyWordSpecLike with Matchers {
 
   "A file object from the database should be deserialized" in {
     val fileDbJson =

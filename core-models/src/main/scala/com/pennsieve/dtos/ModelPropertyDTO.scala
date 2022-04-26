@@ -86,7 +86,7 @@ object ModelPropertyDTO {
           value.as[String].map(stringToAnyForType(_, dataType))
 
         case value if value.isNumber =>
-          dataType toUpperCase match {
+          dataType.toUpperCase match {
             case "INTEGER" => value.as[Int]
 
             case "DOUBLE" => value.as[Double]
@@ -97,11 +97,16 @@ object ModelPropertyDTO {
                 c.history
               ).asLeft[Any]
           }
+        case unexpectedValue =>
+          DecodingFailure(
+            s"Could not deserialize unexpected value type: $unexpectedValue for $dataType",
+            c.history
+          ).asLeft[DecodingFailure]
       }
 
   def stringToAnyForType(value: String, dataType: String): Any =
     try {
-      dataType toUpperCase match {
+      dataType.toUpperCase match {
         case "INTEGER" => value.toInt
         case "DOUBLE" => value.toDouble
         case _ => value
@@ -112,7 +117,7 @@ object ModelPropertyDTO {
 
   def display(value: String, dataType: String): String =
     try {
-      dataType toUpperCase match {
+      dataType.toUpperCase match {
         case "INTEGER" | "DOUBLE" => value
         case "DATE" =>
           DateTimeFormatter
