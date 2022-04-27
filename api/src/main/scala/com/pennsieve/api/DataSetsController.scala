@@ -155,6 +155,8 @@ case class PublishCompleteRequest(
 )
 
 case class DatasetReadmeDTO(readme: String)
+//changelog Data transfer object
+case class DatasetChangelogDTO(changelog: String)
 
 case class SwitchOwnerRequest(id: String)
 
@@ -362,7 +364,7 @@ class DataSetsController(
     sqsClient
       .send(NotificationsQueueUrl, notification.asJson.noSpaces)
       .map(_ => Done)
-
+  //FIRST INSTANCE OF SETETAGHEADER
   private def setETagHeader(
     etag: ETag
   )(implicit
@@ -943,7 +945,10 @@ class DataSetsController(
           .authorizeDataset(
             Set(
               DatasetPermission.EditDatasetName,
+              //FIRST INSTANCE OF EITDATASETDESCRIPTION
               DatasetPermission.EditDatasetDescription,
+              //return to this
+              DatasetPermission.EditDatasetChangelog,
               DatasetPermission.EditDatasetAutomaticallyProcessingPackages,
               DatasetPermission.EditContributors
             )
@@ -4092,6 +4097,140 @@ class DataSetsController(
     }
   }
 
+  //changelog API endpoints
+
+  val updateChangelog: OperationBuilder = (
+    apiOperation[Unit]("putChangelog")
+      summary "update the dataset Changelog description"
+      parameters (pathParam[String]("id").required.description("dataset id"),
+      bodyParam[DatasetChangelogDTO]("body").required
+        .description("update dataset changelog"))
+  )
+
+  put("/:id/changelog", operation(updateChangelog)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Unit] = for {
+        datasetId <- paramT[String]("id")
+
+        secureContainer <- getSecureContainer
+
+        dataset <- secureContainer.datasetManager
+          .getByNodeId(datasetId)
+          .coreErrorToActionResult
+
+        _ <- secureContainer
+          .authorizeDataset(
+            Set(
+              DatasetPermission.ShowSettingsPage,
+              DatasetPermission.EditDatasetChangelog
+            )
+          )(dataset)
+          .coreErrorToActionResult
+
+        _ <- secureContainer.datasetManager
+          .assertNotLocked(dataset)
+          .coreErrorToActionResult
+
+        oldChangelogAsset <- secureContainer.datasetAssetsManager
+          .getChangelog(dataset)
+          .coreErrorToActionResult
+
+        _ <- checkIfMatchTimestamp("changelog", oldChangelogAsset.map(_.etag))
+
+        oldChangelog <- oldChangelogAsset
+          .traverse(datasetAssetClient.downloadAsset(_))
+          .leftMap[CoreError](e => ExceptionError(new Exception(e)))
+          .toEitherT[Future]
+          .coreErrorToActionResult
+
+        body <- extractOrErrorT[DatasetChangelogDTO](parsedBody)
+
+        _ <- secureContainer.datasetAssetsManager
+          .createOrUpdateChangelog(
+            dataset,
+            datasetAssetClient.bucket,
+            "changelog.md",
+            asset =>
+              datasetAssetClient.uploadAsset(
+                asset,
+                body.changelog.getBytes("utf-8").length,
+                Some("text/plain"),
+                IOUtils.toInputStream(body.changelog, "utf-8")
+              )
+          )
+          .coreErrorToActionResult
+
+        _ <- secureContainer.changelogManager
+          .logEvent(
+            dataset,
+            ChangelogEventDetail.UpdateChangelog(
+              oldChangelog = oldChangelog,
+              newChangelog = Some(body.changelog)
+            )
+          )
+          .coreErrorToActionResult
+
+        _ <- secureContainer.datasetManager
+          .touchUpdatedAtTimestamp(dataset)
+          .coreErrorToActionResult
+
+        updatedDataset <- secureContainer.datasetManager
+          .getByNodeId(datasetId)
+          .coreErrorToActionResult
+
+        // Refresh to get new ETag timestamp
+        updatedChangelog <- secureContainer.datasetAssetsManager
+          .getChangelog(updatedDataset)
+          .coreErrorToActionResult
+
+        _ <- setETagHeader(updatedChangelog.map(_.etag))
+
+      } yield ()
+
+      val is = result.value.map(OkResult)
+    }
+  }
+
+  val getChangelog: OperationBuilder = (
+    apiOperation[Unit]("getChangelog")
+      summary "get the changelog description for a dataset"
+      parameters (pathParam[String]("id").required.description("dataset id"))
+  )
+  get("/:id/changelog", operation(getChangelog)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, DatasetChangelogDTO] = for {
+        datasetId <- paramT[String]("id")
+
+        secureContainer <- getSecureContainer
+
+        dataset <- secureContainer.datasetManager
+          .getByNodeId(datasetId)
+          .coreErrorToActionResult
+
+        _ <- secureContainer
+          .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
+          .coreErrorToActionResult
+
+        changelogAsset <- secureContainer.datasetAssetsManager
+          .getChangelog(dataset)
+          .coreErrorToActionResult
+
+        // If the changelog has not been created, return the empty string
+        changelog <- changelogAsset
+          .map(datasetAssetClient.downloadAsset(_))
+          .getOrElse(Right(""))
+          .leftMap[CoreError](e => ExceptionError(new Exception(e)))
+          .toEitherT[Future]
+          .coreErrorToActionResult
+
+        _ <- setETagHeader(changelogAsset.map(_.etag))
+
+      } yield DatasetChangelogDTO(changelog)
+
+      val is = result.value.map(OkResult)
+    }
+  }
+
   val getStatusLog: OperationBuilder = (
     apiOperation[PaginatedStatusLogEntries]("getStatusLog")
       summary "get the log of the status changes for the data set"
@@ -4379,7 +4518,7 @@ class DataSetsController(
     }
   }
 
-  val getChangelog = (apiOperation[ChangelogPage]("getChangelog")
+  val getChangelogPage = (apiOperation[ChangelogPage]("getChangelog")
     summary ("get dataset changelog")
     parameter pathParam[String]("id").description("data set id")
     parameter queryParam[Int]("limit").optional
@@ -4395,7 +4534,7 @@ class DataSetsController(
     parameter queryParam[Int]("userId").optional
       .description("filter events by user"))
 
-  get("/:id/changelog/timeline", operation(getChangelog)) {
+  get("/:id/changelog/timeline", operation(getChangelogPage)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ChangelogPage] =
         for {

@@ -48,7 +48,9 @@ case class PublishAssetResult(
   bannerKey: String,
   bannerManifest: FileManifestIDWrapper,
   readmeKey: String,
-  readmeManifest: FileManifestIDWrapper
+  readmeManifest: FileManifestIDWrapper,
+  changelogKey: String,
+  changelogManifest: FileManifestIDWrapper
 )
 
 object PublishAssetResult {
@@ -64,7 +66,9 @@ object PublishAssetResult {
     bannerKey: String,
     bannerManifest: FileManifest,
     readmeKey: String,
-    readmeManifest: FileManifest
+    readmeManifest: FileManifest,
+    changelogKey: String,
+    changelogManifest: FileManifest
   ): PublishAssetResult =
     new PublishAssetResult(
       externalIdToPackagePath = externalIdToPackagePath,
@@ -72,7 +76,9 @@ object PublishAssetResult {
       bannerKey = bannerKey,
       bannerManifest = FileManifestIDWrapper(bannerManifest),
       readmeKey = readmeKey,
-      readmeManifest = FileManifestIDWrapper(readmeManifest)
+      readmeManifest = FileManifestIDWrapper(readmeManifest),
+      changelogKey = changelogKey,
+      changelogManifest = FileManifestIDWrapper(changelogManifest)
     )
 }
 

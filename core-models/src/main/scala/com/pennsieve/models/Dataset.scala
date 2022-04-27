@@ -55,6 +55,7 @@ final case class Dataset(
   tags: List[String] = List.empty,
   bannerId: Option[UUID] = None,
   readmeId: Option[UUID] = None,
+  changelogId: Option[UUID] = None,
   dataUseAgreementId: Option[Int] = None,
   etag: ETag = ETag.touch,
   id: Int = 0

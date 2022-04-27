@@ -674,6 +674,7 @@ class TestPublish
       ).right.get
       tempResults.readmeKey shouldBe testKey + Publish.README_FILENAME
       tempResults.bannerKey shouldBe testKey + Publish.BANNER_FILENAME
+      tempResults.changelogKey shouldBe testKey + Publish.CHANGELOG_FILENAME
       tempResults.totalSize > 0 shouldBe true
 
       // should export package and graph files to publish bucket
@@ -690,6 +691,9 @@ class TestPublish
       val readmeMarkdown =
         downloadFile(publishBucket, testKey + s"/${Publish.README_FILENAME}")
       readmeMarkdown shouldBe "readme-data"
+      val changelogMarkdown =
+        downloadFile(publishBucket, testKey + s"/${Publish.CHANGELOG_FILENAME}")
+      changelogMarkdown shouldBe "changelog-data"
 
       // should write assets to public discover bucket
       downloadFile(
@@ -721,6 +725,12 @@ class TestPublish
           collections = Some(List(collection)),
           relatedPublications = Some(List(externalPublication)),
           files = List(
+            FileManifest(
+              Publish.CHANGELOG_FILENAME,
+              Publish.CHANGELOG_FILENAME,
+              changelogMarkdown.length,
+              FileType.Markdown
+            ),
             FileManifest(
               Publish.BANNER_FILENAME,
               Publish.BANNER_FILENAME,
@@ -840,6 +850,7 @@ class TestPublish
       ).right.get
       tempResults.readmeKey shouldBe testKey + Publish.README_FILENAME
       tempResults.bannerKey shouldBe testKey + Publish.BANNER_FILENAME
+      tempResults.changelogKey shouldBe testKey + Publish.CHANGELOG_FILENAME
       tempResults.totalSize > 0 shouldBe true
 
       // should export package and graph files to publish bucket
@@ -856,6 +867,9 @@ class TestPublish
       val readmeMarkdown =
         downloadFile(embargoBucket, testKey + s"/${Publish.README_FILENAME}")
       readmeMarkdown shouldBe "readme-data"
+      val changelogMarkdown =
+        downloadFile(embargoBucket, testKey + s"/${Publish.CHANGELOG_FILENAME}")
+      changelogMarkdown shouldBe "changelog-data"
 
       // should write assets to public discover bucket
       downloadFile(
@@ -887,6 +901,12 @@ class TestPublish
           collections = Some(List(collection)),
           relatedPublications = Some(List(externalPublication)),
           files = List(
+            FileManifest(
+              Publish.CHANGELOG_FILENAME,
+              Publish.CHANGELOG_FILENAME,
+              changelogMarkdown.length,
+              FileType.Markdown
+            ),
             FileManifest(
               Publish.BANNER_FILENAME,
               Publish.BANNER_FILENAME,
@@ -1024,6 +1044,7 @@ class TestPublish
       decode[DatasetMetadata](metadata).map(_.files.map(_.path)) shouldBe Right(
         List(
           Publish.BANNER_FILENAME,
+          Publish.CHANGELOG_FILENAME,
           "files/pkg2/file2.dcm",
           Publish.METADATA_FILENAME,
           "files/pkg1.txt",
@@ -1620,9 +1641,19 @@ class TestPublish
         name = Publish.README_FILENAME,
         content = "readme-data"
       )
+    val changelog =
+      createAsset(
+        dataset,
+        name = Publish.CHANGELOG_FILENAME,
+        content = "changelog-data"
+      )
 
     val updatedDataset =
-      dataset.copy(bannerId = Some(banner.id), readmeId = Some(readme.id))
+      dataset.copy(
+        bannerId = Some(banner.id),
+        readmeId = Some(readme.id),
+        changelogId = Some(changelog.id)
+      )
 
     databaseContainer.db
       .run(

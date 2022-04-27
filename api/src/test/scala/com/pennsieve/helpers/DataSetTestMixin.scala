@@ -213,6 +213,34 @@ trait DataSetTestMixin {
       .value
   }
 
+  def addChangelog(
+    dataset: Dataset,
+    changelogText: String,
+    container: SecureAPIContainer = secureContainer
+  )(implicit
+    ec: ExecutionContext,
+    datasetAssetClient: DatasetAssetClient
+  ) = {
+    val changelog =
+      createAsset(dataset, name = "changelog.md", container = container)
+    val changelogData = changelogText
+    datasetAssetClient
+      .uploadAsset(
+        changelog,
+        changelogData.getBytes.length,
+        None,
+        new ByteArrayInputStream(changelogData.getBytes)
+      )
+      .right
+      .get
+
+    container.datasetManager
+      .update(dataset.copy(changelogId = Some(changelog.id)))
+      .await
+      .right
+      .value
+  }
+
   def createContributor(
     firstName: String,
     lastName: String,

@@ -8356,6 +8356,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       dto.banner.get.toString should include("?presigned=true")
     }
   }
+//beginning of readme tests:
 
   test("upload dataset readme") {
     val dataset = createDataSet("My Dataset")
@@ -8686,6 +8687,115 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       dto.ignoreFiles.length shouldBe 0
       dto.ignoreFiles shouldBe Seq()
       dto.datasetId shouldBe dataset.id
+    }
+  }
+
+  //TEST: changelog
+
+  test("changelog: add a changelog to an a dataset") {
+    val dataset = createDataSet("Dataset with Changelog 1")
+    val changeLogContent = "# Markdown content\nChangelog here!"
+    val request = write(DatasetChangelogDTO(changelog = changeLogContent))
+
+    putJson(
+      s"/${dataset.nodeId}/changelog",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+
+      val changelogAsset = secureContainer.datasetAssetsManager
+        .getChangelog(dataset)
+        .value
+        .await
+        .right
+        .get
+        .get
+
+      response.getHeader(HttpHeaders.ETAG) shouldBe changelogAsset.etag.asHeader
+
+      val expectedKey =
+        s"${loggedInOrganization.id}/${dataset.id}/${changelogAsset.id}/changelog.md"
+
+      changelogAsset.name shouldBe "changelog.md"
+      changelogAsset.s3Bucket shouldBe mockDatasetAssetClient.bucket
+      changelogAsset.s3Key shouldBe expectedKey
+      changelogAsset.datasetId shouldBe dataset.id
+
+      val (content, metadata) = mockDatasetAssetClient
+        .assets(changelogAsset.id)
+
+      content.stripLineEnd shouldBe changeLogContent
+      metadata.getContentType() shouldBe "text/plain"
+      metadata.getContentLength() shouldBe 34
+    }
+  }
+
+  test("changelog: update changelog on a dataset") {
+    val dataset = createDataSet("Dataset with Changelog 2")
+    val changeLogContent = "# Markdown content\nChangelog here!"
+    addChangelog(dataset, changeLogContent)
+
+    val changeLogContentUpdate =
+      "# Markdown content\nChangelog here!\nAnd also here!"
+    val request = write(DatasetChangelogDTO(changelog = changeLogContentUpdate))
+
+    putJson(
+      s"/${dataset.nodeId}/changelog",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+
+      val changelogAsset = secureContainer.datasetAssetsManager
+        .getChangelog(dataset)
+        .value
+        .await
+        .right
+        .get
+        .get
+
+      val expectedKey =
+        s"${loggedInOrganization.id}/${dataset.id}/${changelogAsset.id}/changelog.md"
+
+      changelogAsset.name shouldBe "changelog.md"
+      changelogAsset.s3Bucket shouldBe mockDatasetAssetClient.bucket
+      changelogAsset.s3Key shouldBe expectedKey
+      changelogAsset.datasetId shouldBe dataset.id
+
+      val (content, metadata) = mockDatasetAssetClient
+        .assets(changelogAsset.id)
+
+      content.stripLineEnd shouldBe changeLogContentUpdate
+      metadata.getContentType() shouldBe "text/plain"
+      metadata.getContentLength() shouldBe 49
+    }
+  }
+
+  //TEST: get a dataset changelog
+
+  test("changelog: get changelog for a dataset") {
+    val dataset = createDataSet("Dataset with Changelog 3")
+    val changeLogContent = "#Markdown content\nChangelog here!"
+    addChangelog(dataset, changeLogContent)
+
+    get(
+      s"/${dataset.nodeId}/changelog",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+      val changelog = parsedBody.extract[DatasetChangelogDTO]
+      changelog.changelog shouldBe changeLogContent
+
+      val changelogAsset = secureContainer.datasetAssetsManager
+        .getChangelog(dataset)
+        .value
+        .await
+        .right
+        .get
+        .get
+
+      response.getHeader(HttpHeaders.ETAG) shouldBe changelogAsset.etag.asHeader
     }
   }
 

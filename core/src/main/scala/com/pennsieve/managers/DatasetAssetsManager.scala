@@ -260,4 +260,79 @@ class DatasetAssetsManager(
           .headOption
       )
       .toEitherT
+
+  /**
+    * Create or update the Changelog of a dataset.
+    *
+    * In order to do this transactionally, this method is passed an
+    * `uploadAsset` function which is responsible for storing the contents of
+    * the Changrlog in S3.  This function is lifted into a DBIO so that a failure
+    * during storage rolls back the creation of the `DatasetAsset` database row.
+    *
+    * @param dataset the Dataset to update
+    * @param bucket if the changelog does not exist, store it in this bucket
+    * @param filename if the changelog does not exist, use this as its filename
+    * @param uploadAsset function that stores the changelog in S3
+    */
+  def createOrUpdateChangelog[T](
+    dataset: Dataset,
+    bucket: String,
+    filename: String,
+    uploadAsset: DatasetAsset => Either[Throwable, T]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetAsset] = {
+    val query = for {
+
+      // Get latest changelog
+      datasetAndAsset <- datasetsMapper
+        .get(dataset.id)
+        .filter(_.state =!= (DatasetState.DELETING: DatasetState))
+        .joinLeft(datasetAssetsMapper)
+        .on(_.changelogId === _.id)
+        .result
+        .headOption
+        .flatMap {
+          case None =>
+            DBIO.failed(SqlError(s"No dataset with id ${dataset.id} exists"))
+          case Some(dataset) => DBIO.successful(dataset)
+        }
+
+      // Get or create the dataset asset
+      changelog <- datasetAndAsset match {
+        case (_, Some(changelog)) => updateQuery(changelog)
+        case (_, None) =>
+          for {
+            created <- createQuery(filename, dataset, bucket)
+            _ <- datasetsMapper
+              .filter(_.id === dataset.id)
+              .update(dataset.copy(changelogId = Some(created.id)))
+          } yield created
+      }
+
+      // Upload the changelog
+      _ <- DBIO.from(
+        uploadAsset(changelog).fold(Future.failed, Future.successful)
+      )
+
+    } yield changelog
+
+    db.run(query.transactionally).toEitherT
+  }
+
+  def getChangelog(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[DatasetAsset]] =
+    db.run(
+        datasetsMapper
+          .filter(_.id === dataset.id)
+          .join(datasetAssetsMapper)
+          .on(_.changelogId === _.id)
+          .map(_._2)
+          .result
+          .headOption
+      )
+      .toEitherT
 }

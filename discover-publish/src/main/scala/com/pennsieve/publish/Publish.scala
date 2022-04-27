@@ -61,6 +61,8 @@ object Publish extends StrictLogging {
 
   val README_FILENAME: String = "readme.md"
 
+  val CHANGELOG_FILENAME: String = "changelog.md"
+
   val BANNER_FILENAME: String = "banner.jpg"
 
   val METADATA_FILENAME: String = "manifest.json"
@@ -105,6 +107,7 @@ object Publish extends StrictLogging {
     * - package sources
     * - banner image
     * - README file
+    * - Changelog file if applicable
     */
   def publishAssets(
     container: PublishContainer
@@ -124,13 +127,19 @@ object Publish extends StrictLogging {
       readmeResult <- copyReadme(container)
       (readmeKey, readmeFileManifest) = readmeResult
 
+      //see where these functions are defined
+      changelogResult <- copyChangelog(container)
+      (changelogKey, changelogFileManifest) = changelogResult
+
       assets = PublishAssetResult(
         externalIdToPackagePath = externalIdToPackagePath,
         packageManifests = packageFileManifests,
         bannerKey = bannerKey,
         bannerManifest = bannerFileManifest,
         readmeKey = readmeKey,
-        readmeManifest = readmeFileManifest
+        readmeManifest = readmeFileManifest,
+        changelogKey = changelogKey,
+        changelogManifest = changelogFileManifest
       )
 
       _ <- uploadToS3(container, publishedAssetsKey(container), assets.asJson)
@@ -167,7 +176,7 @@ object Publish extends StrictLogging {
 
       _ <- writeMetadata(
         container,
-        assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: graph.manifests ++ assets.packageManifests
+        assets.bannerManifest.manifest :: assets.readmeManifest.manifest :: assets.changelogManifest.manifest :: graph.manifests ++ assets.packageManifests
           .map(_.manifest)
       )
 
@@ -180,6 +189,7 @@ object Publish extends StrictLogging {
         outputKey(container),
         TempPublishResults(
           readmeKey = assets.readmeKey,
+          changelogKey = assets.changelogKey,
           bannerKey = assets.bannerKey,
           totalSize = totalSize
         ).asJson
@@ -409,6 +419,74 @@ object Publish extends StrictLogging {
   }
 
   /**
+    * Copy the dataset's Markdown changelog to the public assets bucket, and
+    * the requester-pays publish bucket.
+    */
+  def copyChangelog(
+    container: PublishContainer
+  )(implicit
+    executionContext: ExecutionContext,
+    system: ActorSystem
+  ): EitherT[Future, CoreError, (String, FileManifest)] = {
+
+    val changelogKey = joinKeys(container.s3Key, CHANGELOG_FILENAME)
+
+    for {
+      changelog <- container.datasetAssetsManager
+        .getChangelog(container.dataset)
+        .flatMap(
+          EitherT.fromOption[Future](
+            _,
+            PredicateError("Dataset does not have a changelog"): CoreError
+          )
+        )
+
+      // Copy to public asset bucket
+      _ <- container.s3
+        .copyObject(
+          new CopyObjectRequest(
+            changelog.s3Bucket,
+            changelog.s3Key,
+            container.s3AssetBucket,
+            joinKeys(container.s3AssetKeyPrefix, changelogKey)
+          )
+        )
+        .toEitherT[Future]
+        .leftMap[CoreError](ThrowableError)
+
+      // Copy to published dataset bucket
+      _ <- container.s3
+        .copyObject(
+          new CopyObjectRequest(
+            changelog.s3Bucket,
+            changelog.s3Key,
+            container.s3Bucket,
+            changelogKey
+          )
+        )
+        .toEitherT[Future]
+        .leftMap[CoreError](ThrowableError)
+
+      // Get size of file for manifest
+      changelogSize <- container.s3
+        .getObjectMetadata(changelog.s3Bucket, changelog.s3Key)
+        .map(_.getContentLength())
+        .toEitherT[Future]
+        .leftMap[CoreError](ThrowableError)
+
+    } yield
+      (
+        changelogKey,
+        FileManifest(
+          CHANGELOG_FILENAME,
+          CHANGELOG_FILENAME,
+          changelogSize,
+          FileType.Markdown
+        )
+      )
+  }
+
+  /**
     * Write published metadata JSON file.
     */
   def writeMetadata(
@@ -505,6 +583,7 @@ object Publish extends StrictLogging {
     */
   case class TempPublishResults(
     readmeKey: String,
+    changelogKey: String,
     bannerKey: String,
     totalSize: Long
   )
