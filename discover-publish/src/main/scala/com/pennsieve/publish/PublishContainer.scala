@@ -138,7 +138,8 @@ object PublishContainer {
       )
 
     val insecureContainer = InsecureDBContainer(config, organization)
-    val datasetAssetClient = new S3DatasetAssetClient(s3, s3Bucket)
+    val datasetAssetClient =
+      new S3DatasetAssetClient(s3, config.as[String]("s3.asset-bucket"))
 
     for {
       dataset <- insecureContainer.db.run(
