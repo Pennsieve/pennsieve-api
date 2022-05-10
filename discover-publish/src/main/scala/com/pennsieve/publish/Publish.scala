@@ -37,6 +37,7 @@ import com.pennsieve.domain.{
   ServiceError,
   ThrowableError
 }
+import com.pennsieve.managers.DatasetAssetsManager
 import com.pennsieve.models._
 import com.pennsieve.publish.models._
 import com.pennsieve.publish.utils.joinKeys
@@ -45,6 +46,7 @@ import io.circe._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.parser._
 import io.circe.syntax._
+import org.apache.commons.io.IOUtils
 
 import java.io.ByteArrayInputStream
 import java.nio.charset.{ Charset, StandardCharsets }
@@ -433,12 +435,22 @@ object Publish extends StrictLogging {
 
     for {
       changelog <- container.datasetAssetsManager
-        .getChangelog(container.dataset)
-        .flatMap(
-          EitherT.fromOption[Future](
-            _,
-            PredicateError("Dataset does not have a changelog"): CoreError
-          )
+        .getOrCreateChangelog(
+          container.dataset,
+          container.s3Bucket,
+          DatasetAssetsManager.defaultChangelogFileName,
+          asset =>
+            container.datasetAssetClient.uploadAsset(
+              asset,
+              DatasetAssetsManager.defaultChangelogText
+                .getBytes("utf-8")
+                .length,
+              Some("text/plain"),
+              IOUtils.toInputStream(
+                DatasetAssetsManager.defaultChangelogText,
+                "utf-8"
+              )
+            )
         )
 
       // Copy to public asset bucket

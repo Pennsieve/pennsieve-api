@@ -77,6 +77,14 @@ class DatasetAssetsManager(
       .map(_.toList)
       .toEitherT
 
+  def getQuery(
+    asset: DatasetAsset
+  )(implicit
+    ec: ExecutionContext
+  ): DBIO[DatasetAsset] = {
+    datasetAssetsMapper.getDatasetAsset(asset.id)
+  }
+
   def deleteDatasetAsset(
     asset: DatasetAsset
   )(implicit
@@ -320,6 +328,51 @@ class DatasetAssetsManager(
         uploadAsset(changelog).fold(Future.failed, Future.successful)
       )
 
+    } yield changelog
+
+    db.run(query.transactionally).toEitherT
+  }
+
+  def getOrCreateChangelog[T](
+    dataset: Dataset,
+    bucket: String,
+    filename: String,
+    uploadAsset: DatasetAsset => Either[Throwable, T]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetAsset] = {
+    val query = for {
+
+      // Get latest changelog
+      datasetAndAsset <- datasetsMapper
+        .get(dataset.id)
+        .filter(_.state =!= (DatasetState.DELETING: DatasetState))
+        .joinLeft(datasetAssetsMapper)
+        .on(_.changelogId === _.id)
+        .result
+        .headOption
+        .flatMap {
+          case None =>
+            DBIO.failed(SqlError(s"No dataset with id ${dataset.id} exists"))
+          case Some(dataset) => DBIO.successful(dataset)
+        }
+
+      // Get or create the dataset asset
+      changelog <- datasetAndAsset match {
+        case (_, Some(changelog)) => getQuery(changelog)
+        case (_, None) =>
+          for {
+            created <- createQuery(filename, dataset, bucket)
+            _ <- datasetsMapper
+              .filter(_.id === dataset.id)
+              .update(dataset.copy(changelogId = Some(created.id)))
+
+            // Create the new changelog
+            _ <- DBIO.from(
+              uploadAsset(created).fold(Future.failed, Future.successful)
+            )
+          } yield created
+      }
     } yield changelog
 
     db.run(query.transactionally).toEitherT

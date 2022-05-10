@@ -17,6 +17,7 @@
 package com.pennsieve.publish
 
 import com.pennsieve.aws.s3.S3
+import com.pennsieve.clients.{ DatasetAssetClient, S3DatasetAssetClient }
 import com.pennsieve.core.utilities.{
   DatabaseContainer,
   DatasetManagerContainer,
@@ -67,7 +68,8 @@ case class PublishContainer(
   datasetRole: Option[Role],
   contributors: List[PublishedContributor],
   collections: List[PublishedCollection],
-  externalPublications: List[PublishedExternalPublication]
+  externalPublications: List[PublishedExternalPublication],
+  datasetAssetClient: DatasetAssetClient
 ) extends Container
     with OrganizationContainer
     with PackagesMapperContainer
@@ -136,6 +138,7 @@ object PublishContainer {
       )
 
     val insecureContainer = InsecureDBContainer(config, organization)
+    val datasetAssetClient = new S3DatasetAssetClient(s3, s3Bucket)
 
     for {
       dataset <- insecureContainer.db.run(
@@ -175,7 +178,8 @@ object PublishContainer {
         datasetRole = Some(Role.Owner),
         contributors = publishedContributors,
         collections = publishedCollections,
-        externalPublications = publishedExternalPublications
+        externalPublications = publishedExternalPublications,
+        datasetAssetClient = datasetAssetClient
       )
   }
 }
