@@ -31,6 +31,11 @@ import com.pennsieve.domain.{ CoreError, ExceptionError, NotFound, SqlError }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
+object DatasetAssetsManager {
+  def defaultChangelogFileName = "changelog.md"
+  def defaultChangelogText = "initial dataset creation"
+}
+
 class DatasetAssetsManager(
   val db: Database,
   val datasetsMapper: DatasetsMapper

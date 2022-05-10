@@ -61,6 +61,7 @@ import com.pennsieve.helpers.either.EitherThrowableErrorConverter.implicits._
 import com.pennsieve.managers.{
   ChangelogManager,
   CollaboratorChanges,
+  DatasetAssetsManager,
   DatasetManager
 }
 import com.pennsieve.models._
@@ -880,6 +881,22 @@ class DataSetsController(
             newDataset,
             includedWebhookIds,
             excludedWebhookIds
+          )
+          .coreErrorToActionResult
+
+        changelog = DatasetAssetsManager.defaultChangelogText
+        _ <- secureContainer.datasetAssetsManager
+          .createOrUpdateChangelog(
+            newDataset,
+            datasetAssetClient.bucket,
+            DatasetAssetsManager.defaultChangelogFileName,
+            asset =>
+              datasetAssetClient.uploadAsset(
+                asset,
+                changelog.getBytes("utf-8").length,
+                Some("text/plain"),
+                IOUtils.toInputStream(changelog, "utf-8")
+              )
           )
           .coreErrorToActionResult
 
