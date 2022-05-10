@@ -30,6 +30,7 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.auth.{ AWSStaticCredentialsProvider, BasicAWSCredentials }
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.model.{ Bucket, S3ObjectSummary }
+import com.pennsieve.clients.{ DatasetAssetClient, S3DatasetAssetClient }
 import com.pennsieve.aws.s3.S3
 import com.pennsieve.core.utilities._
 import com.pennsieve.domain.{ CoreError, ServiceError }
@@ -139,6 +140,7 @@ class TestPublish
   var databaseContainer: InsecureDatabaseContainer = _
   implicit var publishContainer: PublishContainer = _
   var embargoContainer: PublishContainer = _
+  var datasetAssetClient: DatasetAssetClient = _
 
   /**
     * Run prior to publishAssets to clean ${container.s3Bucket}/${container.s3Key}` of existing objects before
@@ -193,6 +195,8 @@ class TestPublish
   override def beforeEach(): Unit = {
     super.beforeEach()
 
+    datasetAssetClient = new S3DatasetAssetClient(s3, assetBucket)
+
     s3.createBucket(publishBucket).isRight shouldBe true
     s3.createBucket(embargoBucket).isRight shouldBe true
     s3.createBucket(assetBucket).isRight shouldBe true
@@ -222,7 +226,8 @@ class TestPublish
         datasetRole = Some(Role.Owner),
         contributors = List(contributor),
         collections = List(collection),
-        externalPublications = List(externalPublication)
+        externalPublications = List(externalPublication),
+        datasetAssetClient = datasetAssetClient
       )
     }
 
@@ -247,7 +252,8 @@ class TestPublish
         datasetRole = Some(Role.Owner),
         contributors = List(contributor),
         collections = List(collection),
-        externalPublications = List(externalPublication)
+        externalPublications = List(externalPublication),
+        datasetAssetClient = datasetAssetClient
       )
     }
 
