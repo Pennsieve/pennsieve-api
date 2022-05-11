@@ -17,7 +17,6 @@
 package com.pennsieve.api
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
 import akka.Done
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
@@ -57,7 +56,8 @@ import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureAPIContainer
 }
-import com.pennsieve.managers.DatasetManager
+import com.pennsieve.helpers.either.EitherTErrorHandler.implicits.EitherTCoreErrorHandler
+import com.pennsieve.managers.{ DatasetAssetsManager, DatasetManager }
 import com.pennsieve.models.PublicationStatus.Requested
 import com.pennsieve.models.PublicationType.Revision
 import com.pennsieve.models._
@@ -69,6 +69,8 @@ import com.pennsieve.notifications.{
 import com.pennsieve.web.Settings
 import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
+import org.apache.commons.io.IOUtils
+
 import javax.servlet.http.HttpServletRequest
 import org.scalatra.{ ActionResult, InternalServerError }
 
@@ -563,7 +565,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     secureContainer: SecureAPIContainer,
     datasetId: String,
     requestedStatus: PublicationStatus,
-    requestedType: PublicationType
+    requestedType: PublicationType,
+    datasetAssetClient: DatasetAssetClient
   )(implicit
     request: HttpServletRequest,
     ec: ExecutionContext,
@@ -586,6 +589,33 @@ case object DataSetPublishingHelper extends LazyLogging {
     for {
       dataset <- secureContainer.datasetManager
         .getByNodeId(datasetId)
+
+      changelogAsset <- secureContainer.datasetAssetsManager
+        .getChangelog(dataset)
+
+      _ = changelogAsset match {
+        case Some(_) =>
+        case None =>
+          secureContainer.datasetAssetsManager
+            .createOrUpdateChangelog(
+              dataset,
+              datasetAssetClient.bucket,
+              DatasetAssetsManager.defaultChangelogFileName,
+              asset =>
+                datasetAssetClient.uploadAsset(
+                  asset,
+                  DatasetAssetsManager.defaultChangelogText
+                    .getBytes("utf-8")
+                    .length,
+                  Some("text/plain"),
+                  IOUtils.toInputStream(
+                    DatasetAssetsManager.defaultChangelogText,
+                    "utf-8"
+                  )
+                )
+            )
+            .coreErrorToActionResult
+      }
 
       _ <- secureContainer
         .authorizeDataset(

@@ -2812,7 +2812,8 @@ class DataSetsController(
               secureContainer,
               datasetId,
               PublicationStatus.Requested,
-              publicationType
+              publicationType,
+              datasetAssetClient
             )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
@@ -2904,7 +2905,8 @@ class DataSetsController(
               secureContainer,
               datasetId,
               PublicationStatus.Cancelled,
-              publicationType
+              publicationType,
+              datasetAssetClient
             )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
@@ -2955,7 +2957,8 @@ class DataSetsController(
               secureContainer,
               datasetId,
               PublicationStatus.Rejected,
-              publicationType
+              publicationType,
+              datasetAssetClient
             )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
@@ -3026,7 +3029,8 @@ class DataSetsController(
               secureContainer,
               datasetId,
               PublicationStatus.Accepted,
-              publicationType
+              publicationType,
+              datasetAssetClient
             )(request, ec, system, jwtConfig)
             .coreErrorToActionResult
 
