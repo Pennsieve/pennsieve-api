@@ -185,7 +185,6 @@ lazy val coreApiSharedSettings = Seq(
     "Local Maven Repository" at "file://" + Path.userHome.absolutePath + "/.m2/repository",
     Resolver.sonatypeRepo("snapshots"),
     Resolver.sonatypeRepo("releases"),
-    Resolver.jcenterRepo,
     "The New Motion Repository" at "https://nexus.thenewmotion.com/content/repositories/releases-public"
   ),
   libraryDependencies ++= Seq(
