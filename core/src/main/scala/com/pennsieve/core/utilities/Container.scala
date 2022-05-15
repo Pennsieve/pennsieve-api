@@ -32,6 +32,7 @@ import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.db.{
   CollectionMapper,
   ContributorMapper,
+  DataCanvasMapper,
   DatasetIntegrationsMapper,
   DatasetPublicationStatusMapper,
   DatasetTeamMapper,
@@ -45,7 +46,14 @@ import com.pennsieve.db.{
 }
 import com.pennsieve.domain.{ CoreError, DatasetRolePermissionError, NotFound }
 import com.pennsieve.managers._
-import com.pennsieve.models.{ Dataset, Organization, Package, Role, User }
+import com.pennsieve.models.{
+  DataCanvas,
+  Dataset,
+  Organization,
+  Package,
+  Role,
+  User
+}
 import com.pennsieve.service.utilities.ContextLogger
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
@@ -183,7 +191,8 @@ trait SecureCoreContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
     with WebhookManagerContainer
-    with DatasetAssetsContainer {
+    with DatasetAssetsContainer
+    with DataCanvasManagerContainer {
   self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
@@ -323,6 +332,20 @@ trait DatasetManagerContainer
     new DatasetManager(db, user, datasetsMapper)
 }
 
+trait DataCanvasContainer {
+  val datacanvas: DataCanvas
+}
+
+trait DataCanvasManagerContainer
+    extends DataCanvasMapperContainer
+    with DatabaseContainer
+    with RequestContextContainer {
+  self: Container =>
+
+  lazy val dataCanvasManager: DataCanvasManager =
+    new DataCanvasManager(db, user, dataCanvasMapper)
+}
+
 trait DatasetPreviewManagerContainer
     extends DatasetMapperContainer
     with DatabaseContainer
@@ -337,6 +360,14 @@ trait DatasetMapperContainer {
   self: OrganizationContainer =>
 
   lazy val datasetsMapper: DatasetsMapper = new DatasetsMapper(
+    self.organization
+  )
+}
+
+trait DataCanvasMapperContainer {
+  self: OrganizationContainer =>
+
+  lazy val dataCanvasMapper: DataCanvasMapper = new DataCanvasMapper(
     self.organization
   )
 }

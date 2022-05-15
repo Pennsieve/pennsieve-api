@@ -18,7 +18,6 @@ package com.pennsieve.dtos
 
 import java.net.URL
 import java.util.UUID
-
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.actor.ActorSystem
 import cats.data.EitherT
@@ -39,6 +38,7 @@ import com.pennsieve.models.{
   Collection,
   Contributor,
   DBPermission,
+  DataCanvas,
   Dataset,
   DatasetAsset,
   DatasetContributor,
@@ -766,5 +766,29 @@ object Builders {
       subscription <- organizationManager.getSubscription(organization.id)
       featureFlags <- organizationManager.getActiveFeatureFlags(organization.id)
     } yield organizationDTO(organization, subscription, featureFlags, storage)
+  }
+
+  def dataCanvasDTO[DIContainer <: DataCanvasManagerContainer](
+    datacanvas: DataCanvas
+  )(implicit
+    executionContext: ExecutionContext,
+    secureContainer: DIContainer,
+    system: ActorSystem,
+    jwtConfig: Jwt.Config
+  ): EitherT[Future, CoreError, DataCanvasDTO] = {
+    for {
+      locked <- secureContainer.dataCanvasManager.isLocked(datacanvas)
+    } yield
+      DataCanvasDTO(
+        id = datacanvas.id,
+        name = datacanvas.name,
+        description = datacanvas.description,
+        createdAt = datacanvas.createdAt,
+        updatedAt = datacanvas.updatedAt,
+        nodeId = datacanvas.nodeId,
+        permissionBit = datacanvas.permissionBit,
+        role = datacanvas.role,
+        statusId = datacanvas.statusId
+      )
   }
 }
