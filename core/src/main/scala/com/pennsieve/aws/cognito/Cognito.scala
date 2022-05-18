@@ -29,6 +29,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDeleteUserAttributesRequest,
   AdminDeleteUserRequest,
   AdminDisableProviderForUserRequest,
+  AdminDisableUserRequest,
   AdminSetUserPasswordRequest,
   AdminUpdateUserAttributesRequest,
   AttributeType,
@@ -91,6 +92,12 @@ trait CognitoClient {
     ec: ExecutionContext
   ): Future[Unit]
 
+  def disableUser(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit]
+
   def deleteUserAttributes(
     username: String,
     attributeNames: List[String]
@@ -102,6 +109,13 @@ trait CognitoClient {
     username: String,
     attributeName: String,
     attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
+
+  def setUserPassword(
+    username: String,
+    password: String
   )(implicit
     ec: ExecutionContext
   ): Future[Boolean]
@@ -331,6 +345,24 @@ class Cognito(
       .map(_ => ())
   }
 
+  def disableUser(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] = {
+    val request = AdminDisableUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .build()
+
+    client
+      .adminDisableUser(request)
+      .toScala
+      .map(_ => ())
+
+  }
+
   /**
     * Deletes an attribute from a Cognito user
     *
@@ -409,6 +441,30 @@ class Cognito(
         case 400 => Future.failed(Error(extractErrorResponse(cognitoResponse)))
       }
     } yield response
+  }
+
+  def setUserPassword(
+    username: String,
+    password: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    val request = AdminSetUserPasswordRequest
+      .builder()
+      .userPoolId(cognitoConfig.tokenPool.id)
+      .username(username)
+      .password(password)
+      .permanent(true)
+      .build()
+
+    for {
+      response <- client.adminSetUserPassword(request).toScala
+
+      result <- response.sdkHttpResponse().statusCode() match {
+        case 200 => Future.successful(true)
+        case _ => Future.failed(Error(extractErrorResponse(response)))
+      }
+    } yield result
   }
 
   /**

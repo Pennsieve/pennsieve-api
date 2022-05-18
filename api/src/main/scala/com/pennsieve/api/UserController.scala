@@ -60,7 +60,7 @@ case class UpdateUserRequest(
   color: Option[String]
 )
 
-case class UserMergeRequest(email: String, cognitoId: String)
+case class UserMergeRequest(email: String, cognitoId: String, password: String)
 
 case class UpdatePennsieveTermsOfServiceRequest(version: String)
 
@@ -412,17 +412,9 @@ class UserController(
           )(BadRequest("Request verification failed"))
         }
 
-//        // update Cognito User 1 email <- fakeEmail
-//        _ <- cognitoClient
-//          .updateUserAttribute(user1.cognitoId.get.toString, "email", fakeEmail)
-//          .toEitherT
-//          .coreErrorToActionResult
-//
-//        // update Cognito User 2 email <- realEmail
-//        _ <- cognitoClient
-//          .updateUserAttribute(user2.cognitoId.get.toString, "email", realEmail)
-//          .toEitherT
-//          .coreErrorToActionResult
+        // Cognito does not allow two users to have the same email address, so we must execute these
+        // two operations sequentially. Performing the flatMap() ensures the a Future completes before
+        // a subsequent Future is started. In this sequence we perform five Cognito operations consecutively.
 
         // update Cognito User 1 email <- fakeEmail, and then
         // update Cognito User 2 email <- realEmail
@@ -430,11 +422,33 @@ class UserController(
           .updateUserAttribute(user1.cognitoId.get.toString, "email", fakeEmail)
           .flatMap(
             _ =>
-              cognitoClient.updateUserAttribute(
-                user2.cognitoId.get.toString,
-                "email",
-                realEmail
-              )
+              cognitoClient
+                .updateUserAttribute(
+                  user2.cognitoId.get.toString,
+                  "email",
+                  realEmail
+                )
+                .flatMap(
+                  _ =>
+                    cognitoClient
+                      .updateUserAttribute(
+                        user2.cognitoId.get.toString,
+                        "email_verified",
+                        true.toString
+                      )
+                      .flatMap(
+                        _ =>
+                          cognitoClient
+                            .disableUser(user1.cognitoId.get.toString)
+                            .flatMap(
+                              _ =>
+                                cognitoClient.setUserPassword(
+                                  user1.cognitoId.get.toString,
+                                  userMergeRequest.password
+                                )
+                            )
+                      )
+                )
           )
           .toEitherT
           .coreErrorToActionResult
