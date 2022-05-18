@@ -120,7 +120,7 @@ class MockCognito() extends CognitoClient {
     Future.successful(Unit)
   }
 
-` def disableUser(
+  def disableUser(
     username: String
   )(implicit
     ec: ExecutionContext
