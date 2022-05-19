@@ -418,6 +418,9 @@ class UserController(
 
         // update Cognito User 1 email <- fakeEmail, and then
         // update Cognito User 2 email <- realEmail
+        // update Cognito User 2 email verified <- true
+        // disable Cognito User 1 (so user cannot login with this identity)
+        // set password on Cognito User 2 (propagate password from old user to new user)
         _ <- cognitoClient
           .updateUserAttribute(user1.cognitoId.get.toString, "email", fakeEmail)
           .flatMap(
@@ -443,7 +446,7 @@ class UserController(
                             .flatMap(
                               _ =>
                                 cognitoClient.setUserPassword(
-                                  user1.cognitoId.get.toString,
+                                  user2.cognitoId.get.toString,
                                   userMergeRequest.password
                                 )
                             )
