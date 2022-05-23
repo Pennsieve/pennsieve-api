@@ -126,6 +126,7 @@ data "aws_iam_policy_document" "cognito_iam_policy_document" {
       "cognito-idp:AdminDisableProviderForUser",
       "cognito-idp:AdminDeleteUser",
       "cognito-idp:AdminDeleteUserAttributes",
+      "cognito-idp:AdminSetUserPassword",
     ]
 
     resources = [
