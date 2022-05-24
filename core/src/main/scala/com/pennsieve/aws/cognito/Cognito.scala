@@ -451,7 +451,7 @@ class Cognito(
   ): Future[Boolean] = {
     val request = AdminSetUserPasswordRequest
       .builder()
-      .userPoolId(cognitoConfig.tokenPool.id)
+      .userPoolId(cognitoConfig.userPool.id)
       .username(username)
       .password(password)
       .permanent(true)
