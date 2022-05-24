@@ -30,11 +30,13 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDeleteUserRequest,
   AdminDisableProviderForUserRequest,
   AdminDisableUserRequest,
+  AdminInitiateAuthRequest,
   AdminSetUserPasswordRequest,
   AdminUpdateUserAttributesRequest,
   AttributeType,
   CognitoIdentityProviderResponse,
   DeliveryMediumType,
+  InitiateAuthRequest,
   MessageActionType,
   ProviderUserIdentifierType,
   UserType
@@ -109,6 +111,13 @@ trait CognitoClient {
     username: String,
     attributeName: String,
     attributeValue: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
+
+  def authenticateUser(
+    username: String,
+    password: String
   )(implicit
     ec: ExecutionContext
   ): Future[Boolean]
@@ -441,6 +450,30 @@ class Cognito(
         case 400 => Future.failed(Error(extractErrorResponse(cognitoResponse)))
       }
     } yield response
+  }
+
+  def authenticateUser(
+    username: String,
+    password: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    val request = InitiateAuthRequest
+      .builder()
+      .clientId(cognitoConfig.userPool.appClientId)
+      .authFlow("USER_PASSWORD_AUTH")
+      .authParameters(
+        Map("USERNAME" -> username, "PASSWORD" -> password).asJava
+      )
+      .build
+
+    for {
+      response <- client.initiateAuth(request).toScala
+      result <- response.sdkHttpResponse().statusCode() match {
+        case 200 => Future.successful(true)
+        case _ => Future.failed(Error(extractErrorResponse(response)))
+      }
+    } yield result
   }
 
   def setUserPassword(
