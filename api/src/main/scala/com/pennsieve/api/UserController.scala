@@ -60,7 +60,11 @@ case class UpdateUserRequest(
   color: Option[String]
 )
 
-case class UserMergeRequest(email: String, cognitoId: String, password: String)
+case class UserMergeRequest(
+  email: String,
+  cognitoId: String,
+  password: Option[String]
+)
 
 case class UpdatePennsieveTermsOfServiceRequest(version: String)
 
@@ -412,6 +416,16 @@ class UserController(
           )(BadRequest("Request verification failed"))
         }
 
+        // if a password was provided, ensure it authenticates for user 1
+        _ <- userMergeRequest.password match {
+          case Some(password) =>
+            cognitoClient
+              .authenticateUser(user1.cognitoId.get.toString, password)
+              .toEitherT
+              .coreErrorToActionResult
+          case None => Future.successful(true).toEitherT.coreErrorToActionResult
+        }
+
         // Cognito does not allow two users to have the same email address, so we must execute these
         // two operations sequentially. Performing the flatMap() ensures the a Future completes before
         // a subsequent Future is started. In this sequence we perform five Cognito operations consecutively.
@@ -445,10 +459,14 @@ class UserController(
                             .disableUser(user1.cognitoId.get.toString)
                             .flatMap(
                               _ =>
-                                cognitoClient.setUserPassword(
-                                  user2.cognitoId.get.toString,
-                                  userMergeRequest.password
-                                )
+                                userMergeRequest.password match {
+                                  case Some(password) =>
+                                    cognitoClient.setUserPassword(
+                                      user2.cognitoId.get.toString,
+                                      password
+                                    )
+                                  case None => Future.successful(true)
+                                }
                             )
                       )
                 )

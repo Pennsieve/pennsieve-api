@@ -55,6 +55,9 @@ class MockCognito() extends CognitoClient {
   val disabledUsers: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
+  val authenticatedUsers: mutable.ArrayBuffer[String] =
+    mutable.ArrayBuffer.empty
+
   val userPasswordSets: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
@@ -150,6 +153,16 @@ class MockCognito() extends CognitoClient {
     Future.successful(true)
   }
 
+  def authenticateUser(
+    username: String,
+    password: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    authenticatedUsers.append(username)
+    Future.successful(true)
+  }
+
   def setUserPassword(
     username: String,
     password: String
@@ -171,6 +184,7 @@ class MockCognito() extends CognitoClient {
     deletedUserAttributes.clear()
     updatedUserAttributes.clear()
     disabledUsers.clear()
+    authenticatedUsers.clear()
     userPasswordSets.clear()
   }
 }
