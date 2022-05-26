@@ -29,7 +29,7 @@ case class DataCanvasDTO(
   updatedAt: ZonedDateTime,
   nodeId: String,
   permissionBit: Int,
-  role: String,
+  role: Option[String],
   statusId: Int
 )
 

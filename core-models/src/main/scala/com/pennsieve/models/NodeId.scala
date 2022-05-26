@@ -63,6 +63,7 @@ object NodeCodes {
   val collectionCode = "collection"
   val dataSetCode = "dataset"
   val channelCode = "channel"
+  val dataCanvasCode = "canvas"
 
   val packageCodes = Set(packageCode, collectionCode, dataSetCode)
 

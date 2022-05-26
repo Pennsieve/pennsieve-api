@@ -19,13 +19,13 @@ package com.pennsieve.models
 import java.time.ZonedDateTime
 
 final case class DataCanvas(
-  id: Int,
+  id: Int = 0,
   name: String,
   description: String,
-  createdAt: ZonedDateTime,
-  updatedAt: ZonedDateTime,
+  createdAt: ZonedDateTime = ZonedDateTime.now(),
+  updatedAt: ZonedDateTime = ZonedDateTime.now(),
   nodeId: String,
-  permissionBit: Int,
-  role: String,
-  statusId: Int
+  permissionBit: Int = 0,
+  role: Option[String] = None,
+  statusId: Int = 0
 )

@@ -16,14 +16,17 @@
 
 package com.pennsieve.managers
 
-import cats.data.EitherT
+import cats.data._
+import cats.implicits._
+import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
 import com.pennsieve.db.DataCanvasMapper
-import com.pennsieve.domain.{ CoreError, NotFound }
-import com.pennsieve.models.{ DataCanvas, User }
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
+import com.pennsieve.models.{ DataCanvas, NodeCodes, User }
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 
 import scala.concurrent.{ ExecutionContext, Future }
+import slick.dbio.DBIO
 
 object DataCanvasManager {}
 
@@ -41,6 +44,50 @@ class DataCanvasManager(
   ): EitherT[Future, CoreError, Boolean] =
     db.run(datacanvasMapper.isLocked(dataCanvas, actor)).toEitherT
 
+  def create(
+    name: String,
+    description: String,
+    role: Option[String] = None,
+    statusId: Option[Int] = None,
+    permissionBit: Option[Int] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvas] = {
+    val nodeId = NodeCodes.generateId(NodeCodes.dataCanvasCode)
+
+    for {
+      _ <- FutureEitherHelpers.assert(name.trim.nonEmpty)(
+        PredicateError("data-canvas name must not be empty")
+      )
+
+      nameExists <- nameExists(name.trim).toEitherT
+      _ <- FutureEitherHelpers.assert(!nameExists)(
+        PredicateError("data-canvas name must be unique")
+      )
+
+      _ <- checkOrErrorT(name.trim.length < 256)(
+        PredicateError("dataset name must be less than 255 characters")
+      )
+
+      createdDataCanvas = for {
+        dataCanvas <- (datacanvasMapper returning datacanvasMapper) += DataCanvas(
+          nodeId = nodeId,
+          name = name,
+          description = description,
+          role = role,
+          statusId = statusId.getOrElse(0),
+          permissionBit = permissionBit.getOrElse(0)
+        )
+      } yield dataCanvas
+
+      dataCanvas <- db.run(createdDataCanvas.transactionally).toEitherT
+
+      // TODO: link datacanvas_user
+
+    } yield dataCanvas
+
+  }
+
   def getById(
     id: Int
   )(implicit
@@ -53,4 +100,8 @@ class DataCanvasManager(
           .headOption
       )
       .whenNone(NotFound(id.toString))
+
+  def nameExists(name: String): Future[Boolean] =
+    db.run(datacanvasMapper.nameExists(name))
+
 }

@@ -31,7 +31,7 @@ final class DataCanvasTable(schema: String, tag: Tag)
   def description: Rep[String] = column[String]("description")
   def nodeId: Rep[String] = column[String]("node_id")
   def permissionBit: Rep[Int] = column[Int]("permission_bit")
-  def role: Rep[String] = column[String]("role")
+  def role: Rep[Option[String]] = column[Option[String]]("role")
   def statusId: Rep[Int] = column[Int]("status_id")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
   def updatedAt = column[ZonedDateTime]("updated_at", O.AutoInc)
@@ -72,4 +72,10 @@ class DataCanvasMapper(val organization: Organization)
 
   def getById(id: Int): Query[DataCanvasTable, DataCanvas, Seq] =
     this.filter(_.id === id)
+
+  def nameExists(name: String): DBIO[Boolean] =
+    this
+      .filter(_.name === name)
+      .exists
+      .result
 }
