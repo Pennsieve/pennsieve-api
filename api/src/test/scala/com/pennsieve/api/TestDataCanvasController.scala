@@ -36,9 +36,8 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
   }
 
   test("get an existing data-canvas should return a 200") {
-    // create data-canvas
-    // what is the id of the created data-canvas?
-    val id = 0
+    val canvas = createDataCanvas("test canvas", "this is a test")
+    val id = canvas.id
 
     get(s"/${id}") {
       status should equal(200)

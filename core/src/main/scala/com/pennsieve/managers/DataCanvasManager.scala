@@ -21,7 +21,7 @@ import cats.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
 import com.pennsieve.db.DataCanvasMapper
 import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
-import com.pennsieve.models.{ DataCanvas, NodeCodes, User }
+import com.pennsieve.models.{ DataCanvas, NodeCodes, Organization, User }
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 
@@ -36,6 +36,11 @@ class DataCanvasManager(
   val datacanvasMapper: DataCanvasMapper
 ) {
   import DataCanvasManager._
+
+  val organization: Organization = datacanvasMapper.organization
+
+  val datasetStatusManager: DatasetStatusManager =
+    new DatasetStatusManager(db, organization)
 
   def isLocked(
     dataCanvas: DataCanvas
@@ -70,12 +75,16 @@ class DataCanvasManager(
       )
 
       createdDataCanvas = for {
+        dataCanvasStatus <- statusId
+          .map(datasetStatusManager.getById(_))
+          .getOrElse(datasetStatusManager.getDefaultStatus)
+
         dataCanvas <- (datacanvasMapper returning datacanvasMapper) += DataCanvas(
           nodeId = nodeId,
           name = name,
           description = description,
           role = role,
-          statusId = statusId.getOrElse(0),
+          statusId = dataCanvasStatus.id,
           permissionBit = permissionBit.getOrElse(0)
         )
       } yield dataCanvas
