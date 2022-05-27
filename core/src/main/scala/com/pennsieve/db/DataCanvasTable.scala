@@ -70,6 +70,8 @@ class DataCanvasMapper(val organization: Organization)
       .headOption
       .map(_.getOrElse(false))
 
+  def getAll(): Query[DataCanvasTable, DataCanvas, Seq] = this
+
   def getById(id: Int): Query[DataCanvasTable, DataCanvas, Seq] =
     this.filter(_.id === id)
 

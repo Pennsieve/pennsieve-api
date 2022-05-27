@@ -97,6 +97,12 @@ class DataCanvasManager(
 
   }
 
+  def getAll(
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DataCanvas]] =
+    db.run(datacanvasMapper.result).toEitherT
+
   def getById(
     id: Int
   )(implicit

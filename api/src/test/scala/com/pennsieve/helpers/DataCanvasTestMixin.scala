@@ -36,4 +36,11 @@ trait DataCanvasTestMixin {
       case Right(value) => value
     }
 
+  def getAll(container: SecureAPIContainer = secureContainer): Seq[DataCanvas] =
+    container.dataCanvasManager
+      .getAll()
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
 }

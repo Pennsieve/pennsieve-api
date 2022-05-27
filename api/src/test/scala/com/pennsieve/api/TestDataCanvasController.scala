@@ -16,12 +16,19 @@
 
 package com.pennsieve.api
 
+import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import com.pennsieve.helpers.DataCanvasTestMixin
+
+import scala.concurrent.Future
 
 class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
 
   override def afterStart(): Unit = {
     super.afterStart()
+
+    implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
+      Future.successful(HttpResponse())
+    }
 
     addServlet(
       new DataCanvasController(
@@ -30,26 +37,45 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
         system,
         system.dispatcher
       ),
-      "/"
+      "/*"
     )
 
   }
 
-  test("get an existing data-canvas should return a 200") {
-    val canvas = createDataCanvas("test canvas", "this is a test")
-    val id = canvas.id
+  override def afterEach(): Unit = {
+    super.afterEach()
+  }
 
-    get(s"/${id}") {
+  test("get requires authentication") {
+    val canvas = createDataCanvas(
+      "test: get requires authentication",
+      "test: get requires authentication"
+    )
+    get(s"/${canvas.id}") {
+      status should equal(401)
+    }
+  }
+
+  test("get an existing data-canvas") {
+    val canvas = createDataCanvas(
+      "test: get an existing data-canvas",
+      "test: get an existing data-canvas"
+    )
+    get(
+      s"/${canvas.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
       status should equal(200)
     }
   }
 
-  test("get an non-existant data-canvas should return a 404") {
-    // create data-canvas
-    // what is the id of the created data-canvas?
+  test("get a non-existant data-canvas should return a 404") {
     val id = 314159
 
-    get(s"/${id}") {
+    get(
+      s"/${id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
       status should equal(404)
     }
   }
