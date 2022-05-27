@@ -19,15 +19,15 @@ package com.pennsieve.api
 import akka.actor.ActorSystem
 import cats.implicits._
 import cats.data.EitherT
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
 import com.pennsieve.dtos.Builders.dataCanvasDTO
 import com.pennsieve.dtos.DataCanvasDTO
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.pennsieve.helpers.ResultHandlers.OkResult
+import com.pennsieve.helpers.ResultHandlers.{ CreatedResult, OkResult }
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-
 import org.json4s.{ JNothing, JValue }
 import org.scalatra.{ ActionResult, AsyncResult, ScalatraServlet }
 import org.scalatra.swagger.Swagger
@@ -89,4 +89,57 @@ class DataCanvasController(
     }
   }
 
+  /**
+    * Create a DataCanvas
+    */
+  post(
+    "/",
+    operation(
+      apiOperation[DataCanvasDTO]("createDataCanvas")
+        summary "creates a data-canvas"
+        parameters (
+          bodyParam[CreateDataCanvasRequest]("body")
+            .description("name and properties of new data-canvas")
+          )
+    )
+  ) {
+    new AsyncResult() {
+      val result: EitherT[Future, ActionResult, DataCanvasDTO] = for {
+        secureContainer <- getSecureContainer
+        body <- extractOrErrorT[CreateDataCanvasRequest](parsedBody)
+
+        status <- body.status match {
+          case Some(name) =>
+            secureContainer.db
+              .run(secureContainer.datasetStatusManager.getByName(name))
+              .toEitherT
+              .coreErrorToActionResult
+          case None => // Use the default status
+            secureContainer.db
+              .run(secureContainer.datasetStatusManager.getDefaultStatus)
+              .toEitherT
+              .coreErrorToActionResult
+        }
+
+        newDataCanvas <- secureContainer.dataCanvasManager
+          .create(body.name, body.description, statusId = Some(status.id))
+          .coreErrorToActionResult
+
+        dto <- dataCanvasDTO(newDataCanvas)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).orError
+      } yield dto
+
+      override val is = result.value.map(CreatedResult)
+    }
+  }
 }
+
+case class CreateDataCanvasRequest(
+  name: String,
+  description: String,
+  status: Option[String] = None
+)

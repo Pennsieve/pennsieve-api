@@ -21,6 +21,8 @@ import com.pennsieve.helpers.DataCanvasTestMixin
 
 import scala.concurrent.Future
 
+import org.json4s.jackson.Serialization.{ read, write }
+
 class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
 
   override def afterStart(): Unit = {
@@ -79,4 +81,33 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
       status should equal(404)
     }
   }
+
+  test("create a new data-canvas") {
+    val createDataCanvasRequest = write(
+      CreateDataCanvasRequest(
+        name = "test: create a new data-canvas",
+        description = "test: create a new data-canvas"
+      )
+    )
+    postJson(
+      "/",
+      createDataCanvasRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
+  }
+
+  test("create requires authentication") {
+    val createDataCanvasRequest = write(
+      CreateDataCanvasRequest(
+        name = "test: create requires authentication",
+        description = "test: create requires authentication"
+      )
+    )
+    postJson("/", createDataCanvasRequest) {
+      status should equal(401)
+    }
+  }
+
 }
