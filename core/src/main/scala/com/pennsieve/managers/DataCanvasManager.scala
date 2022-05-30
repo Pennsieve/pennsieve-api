@@ -20,15 +20,28 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
 import com.pennsieve.db.DataCanvasMapper
-import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
+import com.pennsieve.domain.{
+  CoreError,
+  NotFound,
+  PredicateError,
+  ServiceError,
+  SqlError
+}
 import com.pennsieve.models.{ DataCanvas, NodeCodes, Organization, User }
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.{
+  FutureEitherT,
+  _
+}
+import com.pennsieve.messages.BackgroundJob
+import org.postgresql.util.PSQLException
 
 import scala.concurrent.{ ExecutionContext, Future }
 import slick.dbio.DBIO
 
-object DataCanvasManager {}
+object DataCanvasManager {
+  val maxNameLength = 256
+}
 
 class DataCanvasManager(
   val db: Database,
@@ -70,8 +83,10 @@ class DataCanvasManager(
         PredicateError("data-canvas name must be unique")
       )
 
-      _ <- checkOrErrorT(name.trim.length < 256)(
-        PredicateError("dataset name must be less than 255 characters")
+      _ <- checkOrErrorT(name.trim.length < maxNameLength)(
+        PredicateError(
+          s"dataset name must be less than ${maxNameLength} characters"
+        )
       )
 
       createdDataCanvas = for {
@@ -115,6 +130,77 @@ class DataCanvasManager(
           .headOption
       )
       .whenNone(NotFound(id.toString))
+
+  def update(
+    dataCanvas: DataCanvas,
+    checkforDuplicateNames: Boolean = true
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvas] = {
+    for {
+      _ <- FutureEitherHelpers.assert(dataCanvas.name.trim.nonEmpty)(
+        PredicateError("data-canvas name must not be empty")
+      )
+
+      currentDataCanvas <- db
+        .run(
+          datacanvasMapper
+            .filter(_.name === dataCanvas.name)
+            .result
+            .headOption
+        )
+        .map(_.getOrElse(dataCanvas))
+        .toEitherT
+
+      _ <- FutureEitherHelpers.assert(
+        (currentDataCanvas.id == dataCanvas.id) || !checkforDuplicateNames
+      )(ServiceError(s"name is already taken: ${dataCanvas.name}"))
+
+      query = for {
+        _ <- datacanvasMapper
+          .filter(_.id === dataCanvas.id)
+          .update(dataCanvas)
+      } yield ()
+
+      _ <- db
+        .run(query.transactionally)
+        .toEitherT[CoreError] {
+          case e: PSQLException
+              if (e.getMessage() == "ERROR: value too long for type character varying(255)") =>
+            PredicateError(
+              s"data-canvas name must be less than ${maxNameLength} characters"
+            ): CoreError
+        }
+
+      updatedDataCanvas <- getById(dataCanvas.id)
+
+    } yield updatedDataCanvas
+  }
+
+  def delete(
+    dataCanvas: DataCanvas
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] = {
+    for {
+      _ <- FutureEitherHelpers.assert(dataCanvas.name.trim.nonEmpty)(
+        PredicateError("dataset name must not be empty")
+      )
+      query = for {
+        _ <- datacanvasMapper
+          .filter(_.id === dataCanvas.id)
+          .delete
+      } yield ()
+
+      _ <- db
+        .run(query.transactionally)
+        .toEitherT[CoreError] {
+          case e: PSQLException =>
+            SqlError(e.getMessage()): CoreError
+        }
+
+    } yield true
+  }
 
   def nameExists(name: String): Future[Boolean] =
     db.run(datacanvasMapper.nameExists(name))

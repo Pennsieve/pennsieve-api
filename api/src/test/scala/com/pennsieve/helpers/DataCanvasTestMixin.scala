@@ -20,13 +20,20 @@ import com.pennsieve.api.ApiSuite
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
 import com.pennsieve.models.DataCanvas
 
+import scala.util.Random
+
 trait DataCanvasTestMixin {
 
   self: ApiSuite =>
 
+  val bogusCanvasId = 314159
+
+  def randomString(length: Int = 32): String =
+    Random.alphanumeric.take(length).mkString
+
   def createDataCanvas(
-    name: String,
-    description: String,
+    name: String = randomString(32),
+    description: String = randomString(64),
     container: SecureAPIContainer = secureContainer
   ): DataCanvas =
     container.dataCanvasManager

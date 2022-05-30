@@ -20,8 +20,14 @@ import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import com.pennsieve.helpers.DataCanvasTestMixin
 
 import scala.concurrent.Future
-
 import org.json4s.jackson.Serialization.{ read, write }
+
+import scala.util.Random
+
+// TODO: add the following tests
+//   1. create with empty name
+//   2. create with duplicate name
+//   3. update with empty name
 
 class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
 
@@ -48,6 +54,9 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
     super.afterEach()
   }
 
+  /**
+    * GET tests (read)
+    */
   test("get requires authentication") {
     val canvas = createDataCanvas(
       "test: get requires authentication",
@@ -72,16 +81,17 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
   }
 
   test("get a non-existant data-canvas should return a 404") {
-    val id = 314159
-
     get(
-      s"/${id}",
+      s"/${bogusCanvasId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
     }
   }
 
+  /**
+    * POST tests (create)
+    */
   test("create a new data-canvas") {
     val createDataCanvasRequest = write(
       CreateDataCanvasRequest(
@@ -110,4 +120,127 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
     }
   }
 
+  test("create does not permit name > 255 chars") {
+    val createDataCanvasRequest = write(
+      CreateDataCanvasRequest(
+        name = randomString(256),
+        description = "test: create a new data-canvas"
+      )
+    )
+    postJson(
+      "/",
+      createDataCanvasRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(400)
+    }
+  }
+
+  /**
+    * PUT tests (update)
+    */
+  test("update requires authentication (401)") {
+    val canvas = createDataCanvas(
+      "test: update requires authentication",
+      "test: update requires authentication"
+    )
+    val updateDataCanvasRequest = write(
+      UpdateDataCanvasRequest(
+        name = "test: update requires authentication UPDATED",
+        description = "test: update requires authentication UPDATED"
+      )
+    )
+
+    putJson(s"/${canvas.id}", updateDataCanvasRequest) {
+      status should equal(401)
+    }
+  }
+
+  test("update an existing data-canvas") {
+    val canvas = createDataCanvas(
+      "test: update an existing data-canvas",
+      "test: update an existing data-canvas"
+    )
+    val updateDataCanvasRequest = write(
+      UpdateDataCanvasRequest(
+        name = "test: update an existing data-canvas UPDATED",
+        description = "test: update an existing data-canvas UPDATED"
+      )
+    )
+
+    putJson(
+      s"/${canvas.id}",
+      updateDataCanvasRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
+  }
+
+  test("update a non-existent data-canvas should fail") {
+    val updateDataCanvasRequest = write(
+      UpdateDataCanvasRequest(
+        name = randomString(),
+        description = "test: update an existing data-canvas UPDATED"
+      )
+    )
+
+    putJson(
+      s"/${bogusCanvasId}",
+      updateDataCanvasRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
+    }
+  }
+
+  test("update does not permit name > 255 chars") {
+    val canvas = createDataCanvas(
+      "test: update an existing data-canvas",
+      "test: update an existing data-canvas"
+    )
+    val updateDataCanvasRequest = write(
+      UpdateDataCanvasRequest(
+        name = randomString(256),
+        description = "test: update an existing data-canvas UPDATED"
+      )
+    )
+
+    putJson(
+      s"/${canvas.id}",
+      updateDataCanvasRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(400)
+    }
+  }
+
+  /**
+    * DELETE tests
+    */
+  test("delete requires authentication") {
+    val canvas = createDataCanvas()
+    delete(s"/${canvas.id}") {
+      status should equal(401)
+    }
+  }
+
+  test("delete an existing data-canvas") {
+    val canvas = createDataCanvas()
+    delete(
+      s"/${canvas.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+  }
+
+  test("delete a non-existent data-canvas should fail") {
+    delete(
+      s"/${bogusCanvasId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
+    }
+  }
 }

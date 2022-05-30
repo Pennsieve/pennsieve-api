@@ -16,6 +16,7 @@
 
 package com.pennsieve.api
 
+import akka.Done
 import akka.actor.ActorSystem
 import cats.implicits._
 import cats.data.EitherT
@@ -33,6 +34,24 @@ import org.scalatra.{ ActionResult, AsyncResult, ScalatraServlet }
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
+
+// TODO:
+//   1. do we need to deal with locking of data-canvases?
+//   2. check authorization (see: secureContainer.authorizeDataset)
+//   2. we should emit ChangeLog events
+//   3. extract and utilize traceIds
+
+case class CreateDataCanvasRequest(
+  name: String,
+  description: String,
+  status: Option[String] = None
+)
+
+case class UpdateDataCanvasRequest(
+  name: String,
+  description: String,
+  status: Option[String] = None
+)
 
 class DataCanvasController(
   val insecureContainer: InsecureAPIContainer,
@@ -103,7 +122,7 @@ class DataCanvasController(
           )
     )
   ) {
-    new AsyncResult() {
+    new AsyncResult {
       val result: EitherT[Future, ActionResult, DataCanvasDTO] = for {
         secureContainer <- getSecureContainer
         body <- extractOrErrorT[CreateDataCanvasRequest](parsedBody)
@@ -125,6 +144,8 @@ class DataCanvasController(
           .create(body.name, body.description, statusId = Some(status.id))
           .coreErrorToActionResult
 
+        // TODO: changelog event: Created DataCanvas
+
         dto <- dataCanvasDTO(newDataCanvas)(
           asyncExecutor,
           secureContainer,
@@ -136,10 +157,96 @@ class DataCanvasController(
       override val is = result.value.map(CreatedResult)
     }
   }
-}
 
-case class CreateDataCanvasRequest(
-  name: String,
-  description: String,
-  status: Option[String] = None
-)
+  /**
+    * Update a DataCanvas
+    */
+  put(
+    "/:id",
+    operation(
+      apiOperation[DataCanvasDTO]("updateDataCanvas")
+        summary "update a data-canvas"
+        parameters (
+          pathParam[Int]("id").description("data-canvas id"),
+          bodyParam[UpdateDataCanvasRequest]("body")
+            .description("name and properties of new data-canvas")
+      )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, DataCanvasDTO] = for {
+        id <- paramT[Int]("id")
+        secureContainer <- getSecureContainer
+        body <- extractOrErrorT[UpdateDataCanvasRequest](parsedBody)
+
+        dataCanvas <- secureContainer.dataCanvasManager
+          .getById(id)
+          .orNotFound
+
+        oldStatus <- secureContainer.datasetStatusManager
+          .get(dataCanvas.statusId)
+          .coreErrorToActionResult
+
+        newStatus <- body.status match {
+          case Some(name) => {
+            secureContainer.db
+              .run(secureContainer.datasetStatusManager.getByName(name))
+              .toEitherT
+              .coreErrorToActionResult
+          }
+          case None => // Keep existing status
+            EitherT.rightT[Future, ActionResult](oldStatus)
+        }
+
+        updatedDataCanvas <- secureContainer.dataCanvasManager
+          .update(
+            dataCanvas.copy(
+              name = body.name,
+              description = body.description,
+              statusId = newStatus.id
+            )
+          )
+          .orBadRequest
+
+        // TODO: changelog event: Updated DataCanvas
+
+        dto <- dataCanvasDTO(updatedDataCanvas)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).orError
+      } yield dto
+
+      override val is = result.value.map(CreatedResult)
+    }
+  }
+
+  delete(
+    "/:id",
+    operation(
+      apiOperation[Done]("deleteDataCanvas")
+        summary "delete a data-canvas"
+        parameters (
+          pathParam[Int]("id").description("data-canvas id")
+        )
+    )
+  ) {
+    new AsyncResult() {
+      val result: EitherT[Future, ActionResult, Done] = for {
+        id <- paramT[Int]("id")
+        secureContainer <- getSecureContainer
+
+        dataCanvas <- secureContainer.dataCanvasManager
+          .getById(id)
+          .orNotFound()
+
+        _ <- secureContainer.dataCanvasManager
+          .delete(dataCanvas)
+          .orForbidden
+
+      } yield Done
+      override val is = result.value.map(OkResult)
+    }
+  }
+}
