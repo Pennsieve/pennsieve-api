@@ -358,7 +358,7 @@ trait AllDataCanvasesViewManagerContainer
     with RequestContextContainer {
   self: Container =>
 
-  lazy val allDataCanvasesManager: AllDataCanvasesViewManager =
+  lazy val allDataCanvasesViewManager: AllDataCanvasesViewManager =
     new AllDataCanvasesViewManager(db, user, allDataCanvasesViewMapper)
 }
 

@@ -34,10 +34,11 @@ trait DataCanvasTestMixin {
   def createDataCanvas(
     name: String = randomString(32),
     description: String = randomString(64),
+    isPublic: Boolean = false,
     container: SecureAPIContainer = secureContainer
   ): DataCanvas =
     container.dataCanvasManager
-      .create(name, description)
+      .create(name, description, isPublic = Some(isPublic))
       .await match {
       case Left(error) => throw error
       case Right(value) => value

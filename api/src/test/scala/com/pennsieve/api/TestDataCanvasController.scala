@@ -315,4 +315,55 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
       status should equal(404)
     }
   }
+
+  /**
+    * Public All DataCanvases View
+    */
+  test("public get data-canvases requires authentication") {
+    // create data-canvas with isPublic = true
+    val canvas = createDataCanvas(isPublic = true)
+    // invoke API without authorization
+    get(s"/get/${canvas.nodeId}") {
+      status should equal(401)
+    }
+  }
+
+  test("public get a publicly available data-canvas when authenticated") {
+    // create data-canvas with isPublic = true
+    val canvas = createDataCanvas(isPublic = true)
+    // invoke API with authorization
+    get(
+      s"/get/${canvas.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+  }
+
+  test("public get fails because data-canvas is not publicly available") {
+    // create data-canvas with isPublic = false (the default case)
+    val canvas = createDataCanvas(isPublic = false)
+    // invoke API with authorization
+    get(
+      s"/get/${canvas.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(401)
+    }
+  }
+
+  test(
+    "public get a publicly available data-canvas from a different organization"
+  ) {
+    // create data-canvas with isPublic = true, in one organization
+    val canvas = createDataCanvas(isPublic = true)
+    // invoke API with authorization for a user in a different organization
+    get(
+      s"/get/${canvas.nodeId}",
+      headers = authorizationHeader(externalJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+  }
+
 }

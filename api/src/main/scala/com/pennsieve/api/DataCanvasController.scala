@@ -20,7 +20,9 @@ import akka.Done
 import akka.actor.ActorSystem
 import cats.implicits._
 import cats.data.EitherT
+import com.pennsieve.core.utilities.checkOrErrorT
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
+import com.pennsieve.domain.{ CoreError, PredicateError, UnauthorizedError }
 import com.pennsieve.dtos.Builders.dataCanvasDTO
 import com.pennsieve.dtos.DataCanvasDTO
 import com.pennsieve.helpers.APIContainers.{
@@ -106,6 +108,45 @@ class DataCanvasController(
         datacanvas <- secureContainer.dataCanvasManager
           .getById(datacanvasId)
           .coreErrorToActionResult
+
+        dto <- dataCanvasDTO(datacanvas)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).coreErrorToActionResult
+
+      } yield dto
+
+      override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  get(
+    "/get/:nodeId",
+    operation(
+      apiOperation[DataCanvasDTO]("getPublicDataCanvas")
+        summary "gets a public data-canvas regardless of organization"
+        parameters (
+          pathParam[String]("nodeId").description("the data-canvas node id")
+        )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, DataCanvasDTO] = for {
+        nodeId <- paramT[String]("nodeId")
+        secureContainer <- getSecureContainer
+
+        response <- secureContainer.allDataCanvasesViewManager
+          .get(nodeId)
+          .coreErrorToActionResult
+
+        organizationId = response._1
+        datacanvas = response._2
+
+        _ <- checkOrErrorT[CoreError](datacanvas.isPublic)(
+          UnauthorizedError("data-canvas is not publicly available")
+        ).coreErrorToActionResult
 
         dto <- dataCanvasDTO(datacanvas)(
           asyncExecutor,
