@@ -74,7 +74,7 @@ trait TestDatabase extends AwaitableImplicits {
     )
 
     runner.migrateOrganizationSchema(organizationId)
-    runner.refreshUnionView
+    runner.refreshUnionViews
   }
 
   // Used to clear the tables in the test postgres database
