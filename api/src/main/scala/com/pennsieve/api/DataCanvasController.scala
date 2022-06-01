@@ -53,6 +53,12 @@ case class UpdateDataCanvasRequest(
   status: Option[String] = None
 )
 
+case class AttachPackageRequest(
+  datasetId: Int,
+  packageId: Int,
+  organizationId: Option[Int]
+)
+
 class DataCanvasController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
@@ -72,6 +78,10 @@ class DataCanvasController(
     def hasField(childString: String): Boolean =
       (value \ childString) != JNothing
   }
+
+  //
+  // DataCanvas operations
+  //
 
   /**
     * GET a DataCanvas by its internal numeric identifier (`id`)
@@ -249,4 +259,66 @@ class DataCanvasController(
       override val is = result.value.map(OkResult)
     }
   }
+
+  //
+  // Package operations
+  //
+
+  /**
+    * add a Package to a DataCanvas
+    */
+  post(
+    "/:id/package",
+    operation(
+      apiOperation[Done]("addPackageToDataCanvas")
+        summary "add a package to a data-canvas"
+        parameters (
+          pathParam[Int]("id").description("data-canvas id"),
+          bodyParam[AttachPackageRequest]("body")
+            .description("package to attach to data-canvas")
+      )
+    )
+  ) {
+    new AsyncResult {
+      val result = for {
+        id <- paramT[Int]("id")
+        body <- extractOrErrorT[AttachPackageRequest](parsedBody)
+        secureContainer <- getSecureContainer
+
+        dataCanvas <- secureContainer.dataCanvasManager
+          .getById(id)
+          .orNotFound()
+
+        dataset <- secureContainer.datasetManager
+          .get(body.datasetId)
+          .orNotFound()
+
+        pkg <- secureContainer.packageManager
+          .get(body.packageId)
+          .orNotFound()
+
+        dataCanvasPackage <- secureContainer.dataCanvasManager
+          .attachPackage(dataCanvas.id, dataset.id, pkg.id)
+          .orBadRequest
+
+      } yield dataCanvasPackage
+      override val is = result.value.map(OkResult)
+    }
+  }
+
+  /**
+    * remove a Package from a DataCanvas
+    */
+//  delete("/:id/package/:pkgId")
+
+  /**
+    * get a list of all Packages attached to a DataCanvas
+    */
+//  get("/:id/packages")
+
+  /**
+    * get a Package attached to a DataCanvas
+    */
+//  get("/:id/package/:pkgId")
+
 }

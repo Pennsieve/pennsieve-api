@@ -19,7 +19,7 @@ package com.pennsieve.managers
 import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
-import com.pennsieve.db.DataCanvasMapper
+import com.pennsieve.db.{ DataCanvasMapper, DataCanvasPackageMapper }
 import com.pennsieve.domain.{
   CoreError,
   NotFound,
@@ -27,7 +27,13 @@ import com.pennsieve.domain.{
   ServiceError,
   SqlError
 }
-import com.pennsieve.models.{ DataCanvas, NodeCodes, Organization, User }
+import com.pennsieve.models.{
+  DataCanvas,
+  DataCanvasPackage,
+  NodeCodes,
+  Organization,
+  User
+}
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.{
   FutureEitherT,
@@ -51,6 +57,8 @@ class DataCanvasManager(
   import DataCanvasManager._
 
   val organization: Organization = datacanvasMapper.organization
+
+  val dataCanvasPackageMapper = new DataCanvasPackageMapper(organization)
 
   val datasetStatusManager: DatasetStatusManager =
     new DatasetStatusManager(db, organization)
@@ -200,6 +208,33 @@ class DataCanvasManager(
         }
 
     } yield true
+  }
+
+  def attachPackage(
+    dataCanvasId: Int,
+    datasetId: Int,
+    packageId: Int,
+    organizationId: Int = organization.id
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvasPackage] = {
+    for {
+      _ <- getById(dataCanvasId)
+
+      attachedDataCanvasPackage = for {
+        dataCanvasPackage <- (dataCanvasPackageMapper returning dataCanvasPackageMapper) += DataCanvasPackage(
+          dataCanvasId = dataCanvasId,
+          datasetId = datasetId,
+          packageId = packageId,
+          organizationId = organizationId
+        )
+      } yield dataCanvasPackage
+
+      dataCanvasPackage <- db
+        .run(attachedDataCanvasPackage.transactionally)
+        .toEitherT
+
+    } yield dataCanvasPackage
   }
 
   def nameExists(name: String): Future[Boolean] =
