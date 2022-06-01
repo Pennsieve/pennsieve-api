@@ -35,6 +35,7 @@ final class DataCanvasTable(schema: String, tag: Tag)
   def statusId: Rep[Int] = column[Int]("status_id")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
   def updatedAt = column[ZonedDateTime]("updated_at", O.AutoInc)
+  def isPublic: Rep[Boolean] = column[Boolean]("is_public")
 
   def * =
     (
@@ -46,7 +47,8 @@ final class DataCanvasTable(schema: String, tag: Tag)
       nodeId,
       permissionBit,
       role,
-      statusId
+      statusId,
+      isPublic
     ).mapTo[DataCanvas]
 }
 

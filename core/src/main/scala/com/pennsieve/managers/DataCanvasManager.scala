@@ -73,6 +73,7 @@ class DataCanvasManager(
   def create(
     name: String,
     description: String,
+    isPublic: Option[Boolean] = None,
     role: Option[String] = None,
     statusId: Option[Int] = None,
     permissionBit: Option[Int] = None
@@ -108,7 +109,8 @@ class DataCanvasManager(
           description = description,
           role = role,
           statusId = dataCanvasStatus.id,
-          permissionBit = permissionBit.getOrElse(0)
+          permissionBit = permissionBit.getOrElse(0),
+          isPublic = isPublic.getOrElse(false)
         )
       } yield dataCanvas
 

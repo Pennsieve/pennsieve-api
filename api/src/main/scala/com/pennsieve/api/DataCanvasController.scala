@@ -44,12 +44,14 @@ import scala.concurrent.{ ExecutionContext, Future }
 case class CreateDataCanvasRequest(
   name: String,
   description: String,
+  isPublic: Option[Boolean] = None,
   status: Option[String] = None
 )
 
 case class UpdateDataCanvasRequest(
   name: String,
   description: String,
+  isPublic: Option[Boolean] = None,
   status: Option[String] = None
 )
 
@@ -151,7 +153,12 @@ class DataCanvasController(
         }
 
         newDataCanvas <- secureContainer.dataCanvasManager
-          .create(body.name, body.description, statusId = Some(status.id))
+          .create(
+            body.name,
+            body.description,
+            isPublic = body.isPublic,
+            statusId = Some(status.id)
+          )
           .coreErrorToActionResult
 
         // TODO: changelog event: Created DataCanvas
@@ -213,7 +220,8 @@ class DataCanvasController(
             dataCanvas.copy(
               name = body.name,
               description = body.description,
-              statusId = newStatus.id
+              statusId = newStatus.id,
+              isPublic = body.isPublic.getOrElse(false)
             )
           )
           .orBadRequest

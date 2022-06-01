@@ -30,7 +30,8 @@ case class DataCanvasDTO(
   nodeId: String,
   permissionBit: Int,
   role: Option[String],
-  statusId: Int
+  statusId: Int,
+  isPublic: Boolean
 )
 
 object DataCanvasDTO {

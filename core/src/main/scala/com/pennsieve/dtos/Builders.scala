@@ -788,7 +788,8 @@ object Builders {
         nodeId = datacanvas.nodeId,
         permissionBit = datacanvas.permissionBit,
         role = datacanvas.role,
-        statusId = datacanvas.statusId
+        statusId = datacanvas.statusId,
+        isPublic = datacanvas.isPublic
       )
   }
 }

@@ -17,6 +17,7 @@
 package com.pennsieve.api
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import com.pennsieve.dtos.DataCanvasDTO
 import com.pennsieve.helpers.DataCanvasTestMixin
 
 import scala.concurrent.Future
@@ -136,6 +137,49 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
     }
   }
 
+  test("create by default data-canvas is not public") {
+    val createDataCanvasRequest = write(
+      CreateDataCanvasRequest(
+        name = randomString(64),
+        description = "test: create a new data-canvas"
+      )
+    )
+    postJson(
+      "/",
+      createDataCanvasRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+
+      val result: DataCanvasDTO = parsedBody
+        .extract[DataCanvasDTO]
+
+      result.isPublic shouldBe false
+    }
+  }
+
+  test("create a public data-canvas") {
+    val createDataCanvasRequest = write(
+      CreateDataCanvasRequest(
+        name = randomString(64),
+        description = "test: create a new data-canvas",
+        isPublic = Some(true)
+      )
+    )
+    postJson(
+      "/",
+      createDataCanvasRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+
+      val result: DataCanvasDTO = parsedBody
+        .extract[DataCanvasDTO]
+
+      result.isPublic shouldBe true
+    }
+  }
+
   /**
     * PUT tests (update)
     */
@@ -212,6 +256,34 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(400)
+    }
+  }
+
+  test("update a data-canvas to be publicly visible") {
+    // first create a data-canvas which will not be publicly visible
+    val canvas = createDataCanvas()
+    canvas.isPublic shouldBe false
+
+    // update the data-canvas to make it publicly visible
+    val updateDataCanvasRequest = write(
+      UpdateDataCanvasRequest(
+        name = "test: update an existing data-canvas UPDATED",
+        description = "test: update an existing data-canvas UPDATED",
+        isPublic = Some(true)
+      )
+    )
+
+    putJson(
+      s"/${canvas.id}",
+      updateDataCanvasRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+
+      val result: DataCanvasDTO = parsedBody
+        .extract[DataCanvasDTO]
+
+      result.isPublic shouldBe true
     }
   }
 

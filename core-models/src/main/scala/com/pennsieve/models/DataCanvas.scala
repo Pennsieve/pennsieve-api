@@ -27,5 +27,6 @@ final case class DataCanvas(
   nodeId: String,
   permissionBit: Int = 0,
   role: Option[String] = None,
-  statusId: Int = 0
+  statusId: Int = 0,
+  isPublic: Boolean = false
 )
