@@ -30,3 +30,25 @@ final case class DataCanvas(
   statusId: Int = 0,
   isPublic: Boolean = false
 )
+
+object DataCanvas {
+  val tupled = (this.apply _).tupled
+}
+
+final case class DataCanvasEx(
+  id: Int = 0,
+  name: String,
+  description: String,
+  createdAt: ZonedDateTime = ZonedDateTime.now(),
+  updatedAt: ZonedDateTime = ZonedDateTime.now(),
+  nodeId: String,
+  permissionBit: Int = 0,
+  role: Option[String] = None,
+  statusId: Int = 0,
+  isPublic: Boolean = false,
+  organizationId: Int
+)
+
+object DataCanvasEx {
+  val tupled = (this.apply _).tupled
+}

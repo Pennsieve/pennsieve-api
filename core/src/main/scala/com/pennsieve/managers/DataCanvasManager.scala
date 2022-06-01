@@ -19,7 +19,11 @@ package com.pennsieve.managers
 import cats.data._
 import cats.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
-import com.pennsieve.db.{ DataCanvasMapper, DataCanvasPackageMapper }
+import com.pennsieve.db.{
+  AllDataCanvasesViewMapper,
+  DataCanvasMapper,
+  DataCanvasPackageMapper
+}
 import com.pennsieve.domain.{
   CoreError,
   NotFound,
@@ -242,4 +246,27 @@ class DataCanvasManager(
   def nameExists(name: String): Future[Boolean] =
     db.run(datacanvasMapper.nameExists(name))
 
+}
+
+object AllDataCanvasesViewManager
+
+class AllDataCanvasesViewManager(
+  val db: Database,
+  val actor: User,
+  val allDataCanvasesViewMapper: AllDataCanvasesViewMapper
+) {
+  import AllDataCanvasesViewManager._
+
+  def get(
+    nodeId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (Int, DataCanvas)] =
+    db.run(
+        allDataCanvasesViewMapper
+          .filter(_.nodeId === nodeId)
+          .result
+          .headOption
+      )
+      .whenNone(NotFound(nodeId))
 }

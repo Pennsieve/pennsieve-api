@@ -30,6 +30,7 @@ import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.aws.email.Email
 import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.db.{
+  AllDataCanvasesViewMapper,
   CollectionMapper,
   ContributorMapper,
   DataCanvasMapper,
@@ -192,7 +193,8 @@ trait SecureCoreContainer
     with ExternalPublicationContainer
     with WebhookManagerContainer
     with DatasetAssetsContainer
-    with DataCanvasManagerContainer {
+    with DataCanvasManagerContainer
+    with AllDataCanvasesViewManagerContainer {
   self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
@@ -346,6 +348,20 @@ trait DataCanvasManagerContainer
     new DataCanvasManager(db, user, dataCanvasMapper)
 }
 
+trait AllDataCanvasesViewContainer {
+  val datacanvas: (Int, DataCanvas)
+}
+
+trait AllDataCanvasesViewManagerContainer
+    extends AllDataCanvasesViewMapperContainer
+    with DatabaseContainer
+    with RequestContextContainer {
+  self: Container =>
+
+  lazy val allDataCanvasesManager: AllDataCanvasesViewManager =
+    new AllDataCanvasesViewManager(db, user, allDataCanvasesViewMapper)
+}
+
 trait DatasetPreviewManagerContainer
     extends DatasetMapperContainer
     with DatabaseContainer
@@ -370,6 +386,13 @@ trait DataCanvasMapperContainer {
   lazy val dataCanvasMapper: DataCanvasMapper = new DataCanvasMapper(
     self.organization
   )
+}
+
+trait AllDataCanvasesViewMapperContainer {
+  self: Container =>
+
+  lazy val allDataCanvasesViewMapper: AllDataCanvasesViewMapper =
+    new AllDataCanvasesViewMapper()
 }
 
 trait ContributorManagerContainer

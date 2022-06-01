@@ -23,8 +23,11 @@ import slick.lifted.{ PrimaryKey, TableQuery, Tag }
 import java.time.ZonedDateTime
 import scala.concurrent.ExecutionContext
 
-final class DataCanvasTable(schema: String, tag: Tag)
-    extends Table[DataCanvas](tag, Some(schema), "datacanvases") {
+abstract class AbstractDataCanvasTable[T](
+  schema: String,
+  tag: Tag,
+  tableName: String
+) extends Table[T](tag, Some(schema), tableName) {
 
   def id: Rep[Int] = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def name: Rep[String] = column[String]("name")
@@ -37,7 +40,7 @@ final class DataCanvasTable(schema: String, tag: Tag)
   def updatedAt = column[ZonedDateTime]("updated_at", O.AutoInc)
   def isPublic: Rep[Boolean] = column[Boolean]("is_public")
 
-  def * =
+  val dataCanvasesSelect =
     (
       id,
       name,
@@ -49,7 +52,29 @@ final class DataCanvasTable(schema: String, tag: Tag)
       role,
       statusId,
       isPublic
-    ).mapTo[DataCanvas]
+    )
+}
+
+final class DataCanvasTable(schema: String, tag: Tag)
+    extends AbstractDataCanvasTable[DataCanvas](schema, tag, "datacanvases") {
+  def * = dataCanvasesSelect.mapTo[DataCanvas]
+}
+
+final class AllDataCanvasesView(tag: Tag)
+    extends AbstractDataCanvasTable[(Int, DataCanvas)](
+      "pennsieve",
+      tag,
+      "all_datacanvases"
+    ) {
+  def organizationId: Rep[Int] = column[Int]("organization_id")
+
+  def * =
+    (organizationId, dataCanvasesSelect) <> ({
+      case (organizationId, values) =>
+        (organizationId, DataCanvas.tupled(values))
+    }, { _: (Int, DataCanvas) =>
+      None
+    })
 }
 
 class DataCanvasMapper(val organization: Organization)
@@ -82,4 +107,9 @@ class DataCanvasMapper(val organization: Organization)
       .filter(_.name === name)
       .exists
       .result
+}
+
+class AllDataCanvasesViewMapper extends TableQuery(new AllDataCanvasesView(_)) {
+  def get(nodeId: String): Query[AllDataCanvasesView, (Int, DataCanvas), Seq] =
+    this.filter(_.nodeId === nodeId)
 }
