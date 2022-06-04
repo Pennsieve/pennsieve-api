@@ -18,7 +18,7 @@ package com.pennsieve.api
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import com.pennsieve.dtos.DataCanvasDTO
-import com.pennsieve.helpers.DataCanvasTestMixin
+import com.pennsieve.helpers.{ DataCanvasTestMixin, DataSetTestMixin }
 
 import scala.concurrent.Future
 import org.json4s.jackson.Serialization.{ read, write }
@@ -30,7 +30,10 @@ import scala.util.Random
 //   2. create with duplicate name
 //   3. update with empty name
 
-class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
+class TestDataCanvasController
+    extends BaseApiTest
+    with DataCanvasTestMixin
+    with DataSetTestMixin {
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -361,6 +364,170 @@ class TestDataCanvasController extends BaseApiTest with DataCanvasTestMixin {
     get(
       s"/get/${canvas.nodeId}",
       headers = authorizationHeader(externalJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+  }
+
+  /**
+    * Package tests
+    */
+  test("package attach requires authentication") {
+    val dataset = createDataSet("a test dataset")
+    val pkg = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val attachPackageRequest = write(
+      AttachPackageRequest(
+        datasetId = dataset.id,
+        packageId = pkg.id,
+        organizationId = Some(loggedInOrganization.id)
+      )
+    )
+
+    postJson(s"/${canvas.id}/package", attachPackageRequest) {
+      status should equal(401)
+    }
+  }
+
+  test("package attach to data-canvas - no organization specified") {
+    val dataset = createDataSet("a test dataset")
+    val pkg = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val attachPackageRequest = write(
+      AttachPackageRequest(datasetId = dataset.id, packageId = pkg.id, None)
+    )
+
+    postJson(
+      s"/${canvas.id}/package",
+      attachPackageRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+  }
+
+  test("package attach to data-canvas - organization specified") {
+    val dataset = createDataSet("a test dataset")
+    val pkg = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val attachPackageRequest = write(
+      AttachPackageRequest(
+        datasetId = dataset.id,
+        packageId = pkg.id,
+        organizationId = Some(loggedInOrganization.id)
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/package",
+      attachPackageRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+  }
+
+  test("package get for a data-canvas requires authentication") {
+    val dataset = createDataSet("a test dataset")
+    val pkg = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val attachPackageRequest = write(
+      AttachPackageRequest(
+        datasetId = dataset.id,
+        packageId = pkg.id,
+        organizationId = Some(loggedInOrganization.id)
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/package",
+      attachPackageRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    get(s"/${canvas.id}/package/${pkg.id}") {
+      status should equal(401)
+    }
+  }
+
+  test("package get for a data-canvas") {
+    val dataset = createDataSet("a test dataset")
+    val pkg = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val attachPackageRequest = write(
+      AttachPackageRequest(
+        datasetId = dataset.id,
+        packageId = pkg.id,
+        organizationId = Some(loggedInOrganization.id)
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/package",
+      attachPackageRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    get(
+      s"/${canvas.id}/package/${pkg.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+  }
+
+  test("package detach requires authentication") {
+    val dataset = createDataSet("a test dataset")
+    val pkg = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val attachPackageRequest = write(
+      AttachPackageRequest(
+        datasetId = dataset.id,
+        packageId = pkg.id,
+        organizationId = Some(loggedInOrganization.id)
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/package",
+      attachPackageRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    delete(s"/${canvas.id}/package/${pkg.id}") {
+      status should equal(401)
+    }
+  }
+
+  test("package detach from data-canvas") {
+    val dataset = createDataSet("a test dataset")
+    val pkg = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val attachPackageRequest = write(
+      AttachPackageRequest(
+        datasetId = dataset.id,
+        packageId = pkg.id,
+        organizationId = Some(loggedInOrganization.id)
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/package",
+      attachPackageRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    delete(
+      s"/${canvas.id}/package/${pkg.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
     }

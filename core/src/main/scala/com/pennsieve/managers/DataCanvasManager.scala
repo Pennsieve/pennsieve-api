@@ -243,6 +243,52 @@ class DataCanvasManager(
     } yield dataCanvasPackage
   }
 
+  def getPackage(
+    dataCanvasId: Int,
+    packageId: Int,
+    datasetId: Option[Int] = None,
+    organizationId: Option[Int] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvasPackage] = {
+    db.run(
+        dataCanvasPackageMapper
+          .filter(_.dataCanvasId === dataCanvasId)
+          .filter(_.packageId === packageId)
+          .result
+          .headOption
+      )
+      .whenNone(NotFound(s"dataCanvas: ${dataCanvasId} package: ${packageId}"))
+  }
+
+  def removePackage(
+    dataCanvasPackage: DataCanvasPackage
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] = {
+    for {
+      _ <- FutureEitherHelpers.assert(dataCanvasPackage.dataCanvasId > 0)(
+        PredicateError("data-canvas id must be greater than zero")
+      )
+
+      query = for {
+        _ <- dataCanvasPackageMapper
+          .filter(_.dataCanvasId === dataCanvasPackage.dataCanvasId)
+          .filter(_.datasetId === dataCanvasPackage.datasetId)
+          .filter(_.organizationId === dataCanvasPackage.organizationId)
+          .filter(_.packageId === dataCanvasPackage.packageId)
+          .delete
+      } yield ()
+
+      _ <- db
+        .run(query.transactionally)
+        .toEitherT[CoreError] {
+          case e: PSQLException =>
+            SqlError(e.getMessage()): CoreError
+        }
+    } yield true
+  }
+
   def nameExists(name: String): Future[Boolean] =
     db.run(datacanvasMapper.nameExists(name))
 

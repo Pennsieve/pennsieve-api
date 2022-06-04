@@ -16,25 +16,48 @@
 
 package com.pennsieve.db
 
-import com.pennsieve.models.{ DataCanvasPackage, Organization }
+import com.pennsieve.models.{ DataCanvasPackage, Organization, User }
 import com.pennsieve.traits.PostgresProfile.api._
 import slick.lifted.Tag
+
+import scala.concurrent.ExecutionContext
 
 final class DataCanvasPackageTable(schema: String, tag: Tag)
     extends Table[DataCanvasPackage](tag, Some(schema), "datacanvas_package") {
 
   def dataCanvasId: Rep[Int] = column[Int]("datacanvas_id")
-  def organizatiodId: Rep[Int] = column[Int]("organization_id")
+  def organizationId: Rep[Int] = column[Int]("organization_id")
   def packageId: Rep[Int] = column[Int]("package_id")
   def datasetId: Rep[Int] = column[Int]("dataset_id")
 
   def * =
-    (dataCanvasId, organizatiodId, packageId, datasetId)
+    (dataCanvasId, organizationId, packageId, datasetId)
       .mapTo[DataCanvasPackage]
 }
 
 class DataCanvasPackageMapper(val organization: Organization)
     extends TableQuery(new DataCanvasPackageTable(organization.schemaId, _)) {
+
+  def isLocked(
+    dataCanvasPackage: DataCanvasPackage,
+    user: User
+  )(implicit
+    executionContext: ExecutionContext
+  ): DBIO[Boolean] =
+    this
+      .get(
+        dataCanvasPackage.dataCanvasId,
+        dataCanvasPackage.datasetId,
+        dataCanvasPackage.packageId
+      )
+      .map {
+        case _ =>
+          true
+      }
+      .take(1)
+      .result
+      .headOption
+      .map(_.getOrElse(false))
 
   def get(
     dataCanvasId: Int,
