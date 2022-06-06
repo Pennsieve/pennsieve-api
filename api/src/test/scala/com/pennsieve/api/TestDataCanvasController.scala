@@ -619,4 +619,88 @@ class TestDataCanvasController
       result.length should equal(2)
     }
   }
+
+  test("list of packages - remove a list of packages from a data-canvas") {
+    val dataset = createDataSet("a test dataset")
+    val pkg1 = createPackage(dataset, "a test package 1")
+    val pkg2 = createPackage(dataset, "a test package 2")
+    val pkg3 = createPackage(dataset, "a test package 3")
+    val canvas = createDataCanvas()
+    val attachPackagesRequest = write(
+      List(
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg1.id,
+          organizationId = Some(loggedInOrganization.id)
+        ),
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg2.id,
+          organizationId = Some(loggedInOrganization.id)
+        ),
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg3.id,
+          organizationId = Some(loggedInOrganization.id)
+        )
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/packages",
+      attachPackagesRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    get(
+      s"/${canvas.id}/packages",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val result: List[com.pennsieve.models.Package] = parsedBody
+        .extract[List[com.pennsieve.models.Package]]
+
+      result.length should equal(3)
+    }
+
+    val detachPackagesRequest = write(
+      List(
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg1.id,
+          organizationId = Some(loggedInOrganization.id)
+        ),
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg2.id,
+          organizationId = Some(loggedInOrganization.id)
+        )
+      )
+    )
+
+    deleteJson(
+      s"/${canvas.id}/packages",
+      detachPackagesRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    get(
+      s"/${canvas.id}/packages",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val result: List[com.pennsieve.models.Package] = parsedBody
+        .extract[List[com.pennsieve.models.Package]]
+
+      result.length should equal(1)
+    }
+
+  }
+
 }

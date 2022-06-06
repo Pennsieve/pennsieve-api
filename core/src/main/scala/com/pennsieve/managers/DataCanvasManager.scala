@@ -265,7 +265,7 @@ class DataCanvasManager(
       .whenNone(NotFound(s"dataCanvas: ${dataCanvasId} package: ${packageId}"))
   }
 
-  def removePackage(
+  def detachPackage(
     dataCanvasPackage: DataCanvasPackage
   )(implicit
     ec: ExecutionContext

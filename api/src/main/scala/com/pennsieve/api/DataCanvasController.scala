@@ -392,7 +392,7 @@ class DataCanvasController(
           .orNotFound()
 
         _ <- secureContainer.dataCanvasManager
-          .removePackage(dataCanvasPackage)
+          .detachPackage(dataCanvasPackage)
           .orForbidden
 
       } yield Done
@@ -528,5 +528,43 @@ class DataCanvasController(
   /**
     * remove a list of packages from a DataCanvas
     */
-  //  delete("/:id/packages")
+  delete(
+    "/:id/packages",
+    operation(
+      apiOperation[Done]("detachPackagesFromDataCanvas")
+        summary "remove a list of packages from a data-canvas"
+        parameters (
+          pathParam[Int]("id").description("data-canvas id"),
+          bodyParam[List[AttachPackageRequest]]("body")
+            .description("packages to detach from data-canvas")
+      )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Done] = for {
+        id <- paramT[Int]("id")
+        packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
+        secureContainer <- getSecureContainer
+
+        _ <- secureContainer.dataCanvasManager
+          .getById(id)
+          .coreErrorToActionResult
+
+        _ = packages.map { p =>
+          for {
+            dataCanvasPackage <- secureContainer.dataCanvasManager
+              .getPackage(id, p.packageId)
+              .orNotFound()
+
+            dataCanvasPackage <- secureContainer.dataCanvasManager
+              .detachPackage(dataCanvasPackage)
+              .orBadRequest
+
+          } yield dataCanvasPackage
+        }
+      } yield Done
+      override val is = result.value.map(OkResult)
+    }
+  }
+
 }
