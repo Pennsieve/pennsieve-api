@@ -533,4 +533,90 @@ class TestDataCanvasController
     }
   }
 
+  /**
+    * List of Packages operations
+    */
+  test("list of packages - attach to a data-canvas") {
+    val dataset = createDataSet("a test dataset")
+    val pkg1 = createPackage(dataset, "a test package 1")
+    val pkg2 = createPackage(dataset, "a test package 2")
+    val canvas = createDataCanvas()
+    val attachPackagesRequest = write(
+      List(
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg1.id,
+          organizationId = Some(loggedInOrganization.id)
+        ),
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg2.id,
+          organizationId = Some(loggedInOrganization.id)
+        )
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/packages",
+      attachPackagesRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    get(
+      s"/${canvas.id}/package/${pkg1.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    get(
+      s"/${canvas.id}/package/${pkg2.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+  }
+
+  test("list of packages - get all packages attached to a data-canvas") {
+    val dataset = createDataSet("a test dataset")
+    val pkg1 = createPackage(dataset, "a test package 1")
+    val pkg2 = createPackage(dataset, "a test package 2")
+    val canvas = createDataCanvas()
+    val attachPackagesRequest = write(
+      List(
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg1.id,
+          organizationId = Some(loggedInOrganization.id)
+        ),
+        AttachPackageRequest(
+          datasetId = dataset.id,
+          packageId = pkg2.id,
+          organizationId = Some(loggedInOrganization.id)
+        )
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/packages",
+      attachPackagesRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    get(
+      s"/${canvas.id}/packages",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val result: List[com.pennsieve.models.Package] = parsedBody
+        .extract[List[com.pennsieve.models.Package]]
+
+      result.length should equal(2)
+    }
+  }
 }

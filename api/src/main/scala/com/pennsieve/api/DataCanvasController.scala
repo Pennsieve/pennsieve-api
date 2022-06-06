@@ -20,7 +20,7 @@ import akka.Done
 import akka.actor.ActorSystem
 import cats.implicits._
 import cats.data.EitherT
-import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.core.utilities.{ checkOrError, checkOrErrorT }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
 import com.pennsieve.domain.{ CoreError, PredicateError, UnauthorizedError }
 import com.pennsieve.dtos.Builders.{ dataCanvasDTO, packageDTO }
@@ -31,9 +31,9 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.helpers.ResultHandlers.{ CreatedResult, OkResult }
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.models.DataCanvasPackage
+import com.pennsieve.models.{ DataCanvasPackage, Package }
 import org.json4s.{ JNothing, JValue }
-import org.scalatra.{ ActionResult, AsyncResult, ScalatraServlet }
+import org.scalatra.{ ActionResult, AsyncResult, BadRequest, ScalatraServlet }
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -59,12 +59,6 @@ case class UpdateDataCanvasRequest(
 )
 
 case class AttachPackageRequest(
-  datasetId: Int,
-  packageId: Int,
-  organizationId: Option[Int]
-)
-
-case class AttachMultiplePackagesRequest(
   datasetId: Int,
   packageId: Int,
   organizationId: Option[Int]
@@ -453,10 +447,86 @@ class DataCanvasController(
   /**
     * get a list of all Packages attached to a DataCanvas
     */
-  //  get("/:id/packages")
+  get(
+    "/:id/packages",
+    operation(
+      apiOperation[List[Package]]("getPackagesForDataCanvas")
+        summary "get the packages attached to a data-canvas"
+        parameters (
+          pathParam[Int]("id").description("data-canvas id")
+        )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Seq[Package]] = for {
+        id <- paramT[Int]("id")
+        secureContainer <- getSecureContainer
+
+        _ <- secureContainer.dataCanvasManager
+          .getById(id)
+          .coreErrorToActionResult
+
+        packages <- secureContainer.dataCanvasManager
+          .getPackages(id)
+          .coreErrorToActionResult
+
+      } yield packages
+      override val is = result.value.map(OkResult)
+    }
+  }
 
   /**
     * attach a list of Packages to a DataCanvas
     */
-  //  post("/:id/packages")
+  post(
+    "/:id/packages",
+    operation(
+      apiOperation[Done]("addPackagesToDataCanvas")
+        summary "add multiple packages to a data-canvas"
+        parameters (
+          pathParam[Int]("id").description("data-canvas id"),
+          bodyParam[List[AttachPackageRequest]]("body")
+            .description("packages to attach to data-canvas")
+      )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Done] = for {
+        id <- paramT[Int]("id")
+        packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
+        secureContainer <- getSecureContainer
+
+        dataCanvas <- secureContainer.dataCanvasManager
+          .getById(id)
+          .coreErrorToActionResult
+
+        _ = packages.map { p =>
+          for {
+            dataset <- secureContainer.datasetManager
+              .get(p.datasetId)
+              .coreErrorToActionResult
+
+            organization <- secureContainer.organizationManager
+              .get(p.organizationId.getOrElse(secureContainer.organization.id))
+              .coreErrorToActionResult
+
+            pkg <- secureContainer.packageManager
+              .get(p.packageId)
+              .coreErrorToActionResult
+
+            dataCanvasPackage <- secureContainer.dataCanvasManager
+              .attachPackage(dataCanvas.id, dataset.id, pkg.id, organization.id)
+              .orBadRequest
+
+          } yield dataCanvasPackage
+        }
+      } yield Done
+      override val is = result.value.map(OkResult)
+    }
+  }
+
+  /**
+    * remove a list of packages from a DataCanvas
+    */
+  //  delete("/:id/packages")
 }

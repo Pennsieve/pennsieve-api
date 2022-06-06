@@ -22,7 +22,8 @@ import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
 import com.pennsieve.db.{
   AllDataCanvasesViewMapper,
   DataCanvasMapper,
-  DataCanvasPackageMapper
+  DataCanvasPackageMapper,
+  PackagesMapper
 }
 import com.pennsieve.domain.{
   CoreError,
@@ -36,6 +37,7 @@ import com.pennsieve.models.{
   DataCanvasPackage,
   NodeCodes,
   Organization,
+  Package,
   User
 }
 import com.pennsieve.traits.PostgresProfile.api._
@@ -66,6 +68,8 @@ class DataCanvasManager(
 
   val datasetStatusManager: DatasetStatusManager =
     new DatasetStatusManager(db, organization)
+
+  val packagesMapper: PackagesMapper = new PackagesMapper(organization)
 
   def isLocked(
     dataCanvas: DataCanvas
@@ -287,6 +291,23 @@ class DataCanvasManager(
             SqlError(e.getMessage()): CoreError
         }
     } yield true
+  }
+
+  def getPackages(
+    dataCanvasId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[Package]] = {
+    val query = dataCanvasPackageMapper
+      .filter(_.dataCanvasId === dataCanvasId)
+      .join(packagesMapper)
+      .on(_.packageId === _.id)
+      .map {
+        case (_, pkg) => pkg
+      }
+      .result
+
+    db.run(query).toEitherT
   }
 
   def nameExists(name: String): Future[Boolean] =
