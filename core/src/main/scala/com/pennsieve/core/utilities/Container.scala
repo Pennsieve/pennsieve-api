@@ -30,8 +30,10 @@ import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
 import com.pennsieve.aws.email.Email
 import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.db.{
+  AllDataCanvasesViewMapper,
   CollectionMapper,
   ContributorMapper,
+  DataCanvasMapper,
   DatasetIntegrationsMapper,
   DatasetPublicationStatusMapper,
   DatasetTeamMapper,
@@ -45,7 +47,14 @@ import com.pennsieve.db.{
 }
 import com.pennsieve.domain.{ CoreError, DatasetRolePermissionError, NotFound }
 import com.pennsieve.managers._
-import com.pennsieve.models.{ Dataset, Organization, Package, Role, User }
+import com.pennsieve.models.{
+  DataCanvas,
+  Dataset,
+  Organization,
+  Package,
+  Role,
+  User
+}
 import com.pennsieve.service.utilities.ContextLogger
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
@@ -183,7 +192,9 @@ trait SecureCoreContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
     with WebhookManagerContainer
-    with DatasetAssetsContainer {
+    with DatasetAssetsContainer
+    with DataCanvasManagerContainer
+    with AllDataCanvasesViewManagerContainer {
   self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
@@ -323,6 +334,34 @@ trait DatasetManagerContainer
     new DatasetManager(db, user, datasetsMapper)
 }
 
+trait DataCanvasContainer {
+  val datacanvas: DataCanvas
+}
+
+trait DataCanvasManagerContainer
+    extends DataCanvasMapperContainer
+    with DatabaseContainer
+    with RequestContextContainer {
+  self: Container =>
+
+  lazy val dataCanvasManager: DataCanvasManager =
+    new DataCanvasManager(db, user, dataCanvasMapper)
+}
+
+trait AllDataCanvasesViewContainer {
+  val datacanvas: (Int, DataCanvas)
+}
+
+trait AllDataCanvasesViewManagerContainer
+    extends AllDataCanvasesViewMapperContainer
+    with DatabaseContainer
+    with RequestContextContainer {
+  self: Container =>
+
+  lazy val allDataCanvasesViewManager: AllDataCanvasesViewManager =
+    new AllDataCanvasesViewManager(db, user, allDataCanvasesViewMapper)
+}
+
 trait DatasetPreviewManagerContainer
     extends DatasetMapperContainer
     with DatabaseContainer
@@ -339,6 +378,21 @@ trait DatasetMapperContainer {
   lazy val datasetsMapper: DatasetsMapper = new DatasetsMapper(
     self.organization
   )
+}
+
+trait DataCanvasMapperContainer {
+  self: OrganizationContainer =>
+
+  lazy val dataCanvasMapper: DataCanvasMapper = new DataCanvasMapper(
+    self.organization
+  )
+}
+
+trait AllDataCanvasesViewMapperContainer {
+  self: Container =>
+
+  lazy val allDataCanvasesViewMapper: AllDataCanvasesViewMapper =
+    new AllDataCanvasesViewMapper()
 }
 
 trait ContributorManagerContainer

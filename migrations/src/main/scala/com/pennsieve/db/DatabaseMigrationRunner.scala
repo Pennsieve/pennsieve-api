@@ -160,15 +160,18 @@ class DatabaseMigrationRunner(
       migrateOrganizationSchema(i)
     }
 
-    refreshUnionView
+    refreshUnionViews
   }
 
-  def refreshUnionView = {
-    println("Refreshing union view")
+  def refreshUnionViews =
+    List("files", "datacanvases") map refreshUnionView
+
+  def refreshUnionView(view: String) = {
+    println(s"Refreshing union view: ${view}")
     createFlyway()
       .getDataSource()
       .getConnection()
       .createStatement()
-      .execute("SELECT pennsieve.refresh_union_view('files')")
+      .execute(s"SELECT pennsieve.refresh_union_view('${view}')")
   }
 }
