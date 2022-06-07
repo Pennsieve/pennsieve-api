@@ -428,52 +428,18 @@ class TestDataCanvasController
   }
 
   test("package get for a data-canvas requires authentication") {
-    val dataset = createDataSet("a test dataset")
-    val pkg = createPackage(dataset, "a test package")
-    val canvas = createDataCanvas()
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = pkg.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
+    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
 
-    postJson(
-      s"/${canvas.id}/package",
-      attachPackageRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
-
-    get(s"/${canvas.id}/package/${pkg.id}") {
+    get(s"/${canvas.id}/package/${packages(0).id}") {
       status should equal(401)
     }
   }
 
-  test("package get for a data-canvas") {
-    val dataset = createDataSet("a test dataset")
-    val pkg = createPackage(dataset, "a test package")
-    val canvas = createDataCanvas()
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = pkg.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
-
-    postJson(
-      s"/${canvas.id}/package",
-      attachPackageRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
+  test("package get for a data-canvas with authentication") {
+    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
 
     get(
-      s"/${canvas.id}/package/${pkg.id}",
+      s"/${canvas.id}/package/${packages(0).id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
@@ -481,52 +447,18 @@ class TestDataCanvasController
   }
 
   test("package detach requires authentication") {
-    val dataset = createDataSet("a test dataset")
-    val pkg = createPackage(dataset, "a test package")
-    val canvas = createDataCanvas()
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = pkg.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
+    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
 
-    postJson(
-      s"/${canvas.id}/package",
-      attachPackageRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
-
-    delete(s"/${canvas.id}/package/${pkg.id}") {
+    delete(s"/${canvas.id}/package/${packages(0).id}") {
       status should equal(401)
     }
   }
 
   test("package detach from data-canvas") {
-    val dataset = createDataSet("a test dataset")
-    val pkg = createPackage(dataset, "a test package")
-    val canvas = createDataCanvas()
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = pkg.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
-
-    postJson(
-      s"/${canvas.id}/package",
-      attachPackageRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
+    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
 
     delete(
-      s"/${canvas.id}/package/${pkg.id}",
+      s"/${canvas.id}/package/${packages(0).id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
@@ -537,20 +469,21 @@ class TestDataCanvasController
     * List of Packages operations
     */
   test("list of packages - attach to a data-canvas") {
-    val dataset = createDataSet("a test dataset")
-    val pkg1 = createPackage(dataset, "a test package 1")
-    val pkg2 = createPackage(dataset, "a test package 2")
+    val dataset = createDataSet(randomString())
+    val package1 = createPackage(dataset, randomString())
+    val package2 = createPackage(dataset, randomString())
     val canvas = createDataCanvas()
+
     val attachPackagesRequest = write(
       List(
         AttachPackageRequest(
           datasetId = dataset.id,
-          packageId = pkg1.id,
+          packageId = package1.id,
           organizationId = Some(loggedInOrganization.id)
         ),
         AttachPackageRequest(
           datasetId = dataset.id,
-          packageId = pkg2.id,
+          packageId = package2.id,
           organizationId = Some(loggedInOrganization.id)
         )
       )
@@ -565,14 +498,14 @@ class TestDataCanvasController
     }
 
     get(
-      s"/${canvas.id}/package/${pkg1.id}",
+      s"/${canvas.id}/package/${package1.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
     }
 
     get(
-      s"/${canvas.id}/package/${pkg2.id}",
+      s"/${canvas.id}/package/${package2.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
@@ -580,32 +513,7 @@ class TestDataCanvasController
   }
 
   test("list of packages - get all packages attached to a data-canvas") {
-    val dataset = createDataSet("a test dataset")
-    val pkg1 = createPackage(dataset, "a test package 1")
-    val pkg2 = createPackage(dataset, "a test package 2")
-    val canvas = createDataCanvas()
-    val attachPackagesRequest = write(
-      List(
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = pkg1.id,
-          organizationId = Some(loggedInOrganization.id)
-        ),
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = pkg2.id,
-          organizationId = Some(loggedInOrganization.id)
-        )
-      )
-    )
-
-    postJson(
-      s"/${canvas.id}/packages",
-      attachPackagesRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
+    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 2)
 
     get(
       s"/${canvas.id}/packages",
@@ -621,61 +529,18 @@ class TestDataCanvasController
   }
 
   test("list of packages - remove a list of packages from a data-canvas") {
-    val dataset = createDataSet("a test dataset")
-    val pkg1 = createPackage(dataset, "a test package 1")
-    val pkg2 = createPackage(dataset, "a test package 2")
-    val pkg3 = createPackage(dataset, "a test package 3")
-    val canvas = createDataCanvas()
-    val attachPackagesRequest = write(
-      List(
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = pkg1.id,
-          organizationId = Some(loggedInOrganization.id)
-        ),
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = pkg2.id,
-          organizationId = Some(loggedInOrganization.id)
-        ),
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = pkg3.id,
-          organizationId = Some(loggedInOrganization.id)
-        )
-      )
-    )
-
-    postJson(
-      s"/${canvas.id}/packages",
-      attachPackagesRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
-
-    get(
-      s"/${canvas.id}/packages",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val result: List[com.pennsieve.models.Package] = parsedBody
-        .extract[List[com.pennsieve.models.Package]]
-
-      result.length should equal(3)
-    }
+    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 3)
 
     val detachPackagesRequest = write(
       List(
         AttachPackageRequest(
           datasetId = dataset.id,
-          packageId = pkg1.id,
+          packageId = packages(0).id,
           organizationId = Some(loggedInOrganization.id)
         ),
         AttachPackageRequest(
           datasetId = dataset.id,
-          packageId = pkg2.id,
+          packageId = packages(1).id,
           organizationId = Some(loggedInOrganization.id)
         )
       )
@@ -700,7 +565,6 @@ class TestDataCanvasController
 
       result.length should equal(1)
     }
-
   }
 
 }

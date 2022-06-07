@@ -18,11 +18,11 @@ package com.pennsieve.helpers
 
 import com.pennsieve.api.ApiSuite
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
-import com.pennsieve.models.DataCanvas
+import com.pennsieve.models.{ DataCanvas, Dataset, Organization, Package }
 
 import scala.util.Random
 
-trait DataCanvasTestMixin {
+trait DataCanvasTestMixin extends DataSetTestMixin {
 
   self: ApiSuite =>
 
@@ -30,6 +30,17 @@ trait DataCanvasTestMixin {
 
   def randomString(length: Int = 32): String =
     Random.alphanumeric.take(length).mkString
+
+  def setupCanvas(numberOfPackages: Int = 1) = {
+    val dataset = createDataSet(randomString())
+    val canvas = createDataCanvas()
+    val packages = List.range(1, numberOfPackages + 1).map { i =>
+      val `package` = createPackage(dataset, randomString())
+      attachPackage(canvas, dataset, `package`)
+      `package`
+    }
+    (canvas, dataset, packages)
+  }
 
   def createDataCanvas(
     name: String = randomString(32),
@@ -39,6 +50,20 @@ trait DataCanvasTestMixin {
   ): DataCanvas =
     container.dataCanvasManager
       .create(name, description, isPublic = Some(isPublic))
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
+
+  def attachPackage(
+    canvas: DataCanvas,
+    dataset: Dataset,
+    `package`: Package,
+    organization: Organization = loggedInOrganization,
+    container: SecureAPIContainer = secureContainer
+  ): Unit =
+    container.dataCanvasManager
+      .attachPackage(canvas.id, dataset.id, `package`.id, organization.id)
       .await match {
       case Left(error) => throw error
       case Right(value) => value
