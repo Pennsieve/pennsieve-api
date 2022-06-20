@@ -21,6 +21,7 @@ import cats.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
 import com.pennsieve.db.{
   AllDataCanvasesViewMapper,
+  DataCanvasFolderMapper,
   DataCanvasMapper,
   DataCanvasPackageMapper,
   PackagesMapper
@@ -34,6 +35,7 @@ import com.pennsieve.domain.{
 }
 import com.pennsieve.models.{
   DataCanvas,
+  DataCanvasFolder,
   DataCanvasPackage,
   NodeCodes,
   Organization,
@@ -65,6 +67,7 @@ class DataCanvasManager(
   val organization: Organization = datacanvasMapper.organization
 
   val dataCanvasPackageMapper = new DataCanvasPackageMapper(organization)
+  val dataCanvasFolderMapper = new DataCanvasFolderMapper(organization)
 
   val datasetStatusManager: DatasetStatusManager =
     new DatasetStatusManager(db, organization)
@@ -77,6 +80,13 @@ class DataCanvasManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Boolean] =
     db.run(datacanvasMapper.isLocked(dataCanvas, actor)).toEitherT
+
+  def isFolderLocked(
+    folder: DataCanvasFolder
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] =
+    db.run(dataCanvasFolderMapper.isLocked(folder, actor)).toEitherT
 
   def create(
     name: String,
@@ -308,6 +318,108 @@ class DataCanvasManager(
       .result
 
     db.run(query).toEitherT
+  }
+
+  def getFolder(
+    canvasId: Int,
+    folderId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvasFolder] = {
+    val query = dataCanvasFolderMapper
+      .filter(_.id === folderId)
+      .filter(_.dataCanvasId === canvasId)
+      .result
+      .head
+
+    db.run(query).toEitherT
+  }
+
+  def getRootFolder(
+    canvasId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvasFolder] = {
+    val query = dataCanvasFolderMapper
+      .filter(_.dataCanvasId === canvasId)
+      .filter(_.name === "||ROOT||")
+      .filter(_.parentId === 0)
+      .result
+      .head
+
+    db.run(query).toEitherT
+  }
+
+  def createFolder(
+    name: String,
+    parentId: Int,
+    dataCanvasId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvasFolder] = {
+    val nodeId = NodeCodes.generateId(NodeCodes.folderCode)
+
+    for {
+      _ <- FutureEitherHelpers.assert(name.trim.nonEmpty)(
+        PredicateError("folder name must not be empty")
+      )
+
+      // TODO: check that name does not exist (this could be enforced by a unique index on canvasId, parentId and name)
+
+      _ <- checkOrErrorT(name.trim.length < maxNameLength)(
+        PredicateError(
+          s"folder name must be less than ${maxNameLength} characters"
+        )
+      )
+
+      createdFolder = for {
+        folder <- (dataCanvasFolderMapper returning dataCanvasFolderMapper) += DataCanvasFolder(
+          name = name,
+          nodeId = nodeId,
+          parentId = parentId,
+          dataCanvasId = dataCanvasId
+        )
+      } yield folder
+
+      folder <- db.run(createdFolder.transactionally).toEitherT
+    } yield folder
+  }
+
+  def updateFolder(
+    folder: DataCanvasFolder
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvasFolder] = {
+    for {
+      _ <- FutureEitherHelpers.assert(folder.name.trim.nonEmpty)(
+        PredicateError("folder name must not be empty")
+      )
+
+      _ <- checkOrErrorT(folder.name.trim.length < maxNameLength)(
+        PredicateError(
+          s"folder name must be less than ${maxNameLength} characters"
+        )
+      )
+
+      query = for {
+        _ <- dataCanvasFolderMapper
+          .filter(_.id === folder.id)
+          .update(folder)
+      } yield ()
+
+      _ <- db
+        .run(query.transactionally)
+        .toEitherT[CoreError] {
+          case e: PSQLException
+              if (e.getMessage() == "ERROR: value too long for type character varying(255)") =>
+            PredicateError(
+              s"folder name must be less than ${maxNameLength} characters"
+            ): CoreError
+        }
+
+      updatedFolder <- getFolder(folder.dataCanvasId, folder.id)
+
+    } yield updatedFolder
   }
 
   def nameExists(name: String): Future[Boolean] =

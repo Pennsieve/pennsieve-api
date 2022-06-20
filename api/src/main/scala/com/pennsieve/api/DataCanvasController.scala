@@ -23,8 +23,12 @@ import cats.data.EitherT
 import com.pennsieve.core.utilities.{ checkOrError, checkOrErrorT }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
 import com.pennsieve.domain.{ CoreError, PredicateError, UnauthorizedError }
-import com.pennsieve.dtos.Builders.{ dataCanvasDTO, packageDTO }
-import com.pennsieve.dtos.{ DataCanvasDTO, PackageDTO }
+import com.pennsieve.dtos.Builders.{
+  dataCanvasDTO,
+  dataCanvasFolderDTO,
+  packageDTO
+}
+import com.pennsieve.dtos.{ DataCanvasDTO, DataCanvasFolderDTO, PackageDTO }
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
@@ -63,6 +67,10 @@ case class AttachPackageRequest(
   packageId: Int,
   organizationId: Option[Int]
 )
+
+case class CreateDataCanvasFolder(name: String, parent: Option[Int])
+case class RenameDataCanvasFolder(oldName: String, newName: String)
+case class MoveDataCanvasFolder(oldParent: Int, newParent: Int)
 
 class DataCanvasController(
   val insecureContainer: InsecureAPIContainer,
@@ -307,6 +315,208 @@ class DataCanvasController(
 
       } yield Done
       override val is = result.value.map(OkResult)
+    }
+  }
+
+  //
+  // Folder operations
+  //
+
+  /**
+    * Get a Folder
+    */
+  get(
+    "/:canvasId/folder/:folderId",
+    operation(
+      apiOperation[DataCanvasFolderDTO]("getDataCanvasFolder")
+        summary "get a data-canvas folder"
+        parameters (
+          pathParam[Int]("canvasId").description("data-canvas id"),
+          pathParam[Int]("folderId").description("folder id")
+      )
+    )
+  ) {
+    new AsyncResult() {
+      val result: EitherT[Future, ActionResult, DataCanvasFolderDTO] = for {
+        canvasId <- paramT[Int]("canvasId")
+        folderId <- paramT[Int]("folderId")
+        secureContainer <- getSecureContainer
+
+        canvas <- secureContainer.dataCanvasManager
+          .getById(canvasId)
+          .orNotFound()
+
+        folder <- secureContainer.dataCanvasManager
+          .getFolder(canvas.id, folderId)
+          .orNotFound()
+
+        dto <- dataCanvasFolderDTO(folder)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).coreErrorToActionResult
+
+      } yield dto
+
+      override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  /**
+    * Create a Folder
+    */
+  post(
+    "/:id/folder",
+    operation(
+      apiOperation[DataCanvasFolderDTO]("createDataCanvasFolder")
+        summary "create a data-canvas folder"
+        parameters (
+          pathParam[Int]("canvasId").description("data-canvas id"),
+          bodyParam[CreateDataCanvasFolder]("body")
+            .description("name of folder and parent folder id (optional)")
+      )
+    )
+  ) {
+    new AsyncResult() {
+      val result: EitherT[Future, ActionResult, DataCanvasFolderDTO] = for {
+        canvasId <- paramT[Int]("canvasId")
+        body <- extractOrErrorT[CreateDataCanvasFolder](parsedBody)
+        secureContainer <- getSecureContainer
+
+        canvas <- secureContainer.dataCanvasManager
+          .getById(canvasId)
+          .orNotFound()
+
+        parentFolder <- body.parent match {
+          case Some(parentId) =>
+            secureContainer.dataCanvasManager
+              .getFolder(canvas.id, parentId)
+              .orNotFound()
+          case None =>
+            secureContainer.dataCanvasManager
+              .getRootFolder(canvas.id)
+              .orNotFound()
+        }
+
+        folder <- secureContainer.dataCanvasManager
+          .createFolder(body.name, parentFolder.id, canvas.id)
+          .orBadRequest()
+
+        dto <- dataCanvasFolderDTO(folder)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).coreErrorToActionResult
+
+      } yield dto
+
+      override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  /**
+    * Rename a Folder
+    */
+  put(
+    "/:canvasId/folder/:folderId/rename",
+    operation(
+      apiOperation[DataCanvasFolderDTO]("renameDataCanvasFolder")
+        summary "rename a data-canvas folder"
+        parameters (
+          pathParam[Int]("canvasId").description("data-canvas id"),
+          pathParam[Int]("folderId").description("folder id"),
+          bodyParam[RenameDataCanvasFolder]("body")
+            .description("the folder's current name and new name")
+      )
+    )
+  ) {
+    new AsyncResult() {
+      val result: EitherT[Future, ActionResult, DataCanvasFolderDTO] = for {
+        canvasId <- paramT[Int]("canvasId")
+        folderId <- paramT[Int]("folderId")
+        body <- extractOrErrorT[RenameDataCanvasFolder](parsedBody)
+        secureContainer <- getSecureContainer
+
+        _ <- secureContainer.dataCanvasManager
+          .getById(canvasId)
+          .orNotFound()
+
+        folder <- secureContainer.dataCanvasManager
+          .getFolder(canvasId, folderId)
+          .orNotFound()
+
+        updatedFolder <- secureContainer.dataCanvasManager
+          .updateFolder(folder.copy(name = body.newName))
+          .orBadRequest()
+
+        dto <- dataCanvasFolderDTO(updatedFolder)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).coreErrorToActionResult
+
+      } yield dto
+
+      override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  /**
+    * Move a Folder
+    */
+  put(
+    "/:canvasId/folder/:folderId/move",
+    operation(
+      apiOperation[DataCanvasFolderDTO]("moveDataCanvasFolder")
+        summary "move a data-canvas folder"
+        parameters (
+          pathParam[Int]("canvasId").description("data-canvas id"),
+          pathParam[Int]("folderId").description("folder id"),
+          bodyParam[MoveDataCanvasFolder]("body")
+            .description("the folder's current parent and new parent")
+      )
+    )
+  ) {
+    new AsyncResult() {
+      val result: EitherT[Future, ActionResult, DataCanvasFolderDTO] = for {
+        canvasId <- paramT[Int]("canvasId")
+        folderId <- paramT[Int]("folderId")
+        body <- extractOrErrorT[MoveDataCanvasFolder](parsedBody)
+        secureContainer <- getSecureContainer
+
+        _ <- secureContainer.dataCanvasManager
+          .getById(canvasId)
+          .orNotFound()
+
+        folder <- secureContainer.dataCanvasManager
+          .getFolder(canvasId, folderId)
+          .orNotFound()
+
+        _ <- secureContainer.dataCanvasManager
+          .getFolder(canvasId, body.oldParent)
+          .orNotFound()
+
+        _ <- secureContainer.dataCanvasManager
+          .getFolder(canvasId, body.newParent)
+          .orNotFound()
+
+        updatedFolder <- secureContainer.dataCanvasManager
+          .updateFolder(folder.copy(parentId = body.newParent))
+          .orBadRequest()
+
+        dto <- dataCanvasFolderDTO(updatedFolder)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).coreErrorToActionResult
+
+      } yield dto
+
+      override val is = result.value.map(OkResult(_))
     }
   }
 
