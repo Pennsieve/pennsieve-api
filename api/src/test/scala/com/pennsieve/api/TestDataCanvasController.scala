@@ -372,7 +372,7 @@ class TestDataCanvasController
   /**
     * Package tests
     */
-  test("package attach requires authentication") {
+  ignore("package attach requires authentication") {
     val dataset = createDataSet("a test dataset")
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
@@ -389,7 +389,7 @@ class TestDataCanvasController
     }
   }
 
-  test("package attach to data-canvas - no organization specified") {
+  ignore("package attach to data-canvas - no organization specified") {
     val dataset = createDataSet("a test dataset")
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
@@ -406,7 +406,7 @@ class TestDataCanvasController
     }
   }
 
-  test("package attach to data-canvas - organization specified") {
+  ignore("package attach to data-canvas - organization specified") {
     val dataset = createDataSet("a test dataset")
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
@@ -427,7 +427,7 @@ class TestDataCanvasController
     }
   }
 
-  test("package get for a data-canvas requires authentication") {
+  ignore("package get for a data-canvas requires authentication") {
     val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
 
     get(s"/${canvas.id}/package/${packages(0).id}") {
@@ -435,7 +435,7 @@ class TestDataCanvasController
     }
   }
 
-  test("package get for a data-canvas with authentication") {
+  ignore("package get for a data-canvas with authentication") {
     val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
 
     get(
@@ -446,7 +446,7 @@ class TestDataCanvasController
     }
   }
 
-  test("package detach requires authentication") {
+  ignore("package detach requires authentication") {
     val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
 
     delete(s"/${canvas.id}/package/${packages(0).id}") {
@@ -454,7 +454,7 @@ class TestDataCanvasController
     }
   }
 
-  test("package detach from data-canvas") {
+  ignore("package detach from data-canvas") {
     val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
 
     delete(
@@ -468,7 +468,7 @@ class TestDataCanvasController
   /**
     * List of Packages operations
     */
-  test("list of packages - attach to a data-canvas") {
+  ignore("list of packages - attach to a data-canvas") {
     val dataset = createDataSet(randomString())
     val package1 = createPackage(dataset, randomString())
     val package2 = createPackage(dataset, randomString())
@@ -512,7 +512,7 @@ class TestDataCanvasController
     }
   }
 
-  test("list of packages - get all packages attached to a data-canvas") {
+  ignore("list of packages - get all packages attached to a data-canvas") {
     val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 2)
 
     get(
@@ -528,7 +528,7 @@ class TestDataCanvasController
     }
   }
 
-  test("list of packages - remove a list of packages from a data-canvas") {
+  ignore("list of packages - remove a list of packages from a data-canvas") {
     val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 3)
 
     val detachPackagesRequest = write(
