@@ -212,7 +212,7 @@ class DataCanvasManager(
   ): EitherT[Future, CoreError, Boolean] = {
     for {
       _ <- FutureEitherHelpers.assert(dataCanvas.name.trim.nonEmpty)(
-        PredicateError("dataset name must not be empty")
+        PredicateError("data-canvas name must not be empty")
       )
       query = for {
         _ <- datacanvasMapper
@@ -420,6 +420,31 @@ class DataCanvasManager(
       updatedFolder <- getFolder(folder.dataCanvasId, folder.id)
 
     } yield updatedFolder
+  }
+
+  def deleteFolder(
+    folder: DataCanvasFolder
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] = {
+    for {
+      _ <- FutureEitherHelpers.assert(
+        (folder.name.compareTo("||ROOT||") != 0) && (folder.parentId != 0)
+      )(PredicateError("deleting root folder is not permitted"))
+      query = for {
+        _ <- dataCanvasFolderMapper
+          .filter(_.id === folder.id)
+          .delete
+      } yield ()
+
+      _ <- db
+        .run(query.transactionally)
+        .toEitherT[CoreError] {
+          case e: PSQLException =>
+            SqlError(e.getMessage()): CoreError
+        }
+
+    } yield true
   }
 
   def nameExists(name: String): Future[Boolean] =

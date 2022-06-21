@@ -520,6 +520,43 @@ class DataCanvasController(
     }
   }
 
+  /**
+    * Delete a Folder
+    */
+  delete(
+    "/:canvasId/folder/:folderId",
+    operation(
+      apiOperation[Done]("deleteDataCanvasFolder")
+        summary "delete a data-canvas folder and its sub-folders"
+        parameters (
+          pathParam[Int]("canvasId").description("data-canvas id"),
+          pathParam[Int]("folderId").description("folder id")
+      )
+    )
+  ) {
+    new AsyncResult() {
+      val result: EitherT[Future, ActionResult, Done] = for {
+        canvasId <- paramT[Int]("canvasId")
+        folderId <- paramT[Int]("folderId")
+        secureContainer <- getSecureContainer
+
+        _ <- secureContainer.dataCanvasManager
+          .getById(canvasId)
+          .orNotFound()
+
+        folder <- secureContainer.dataCanvasManager
+          .getFolder(canvasId, folderId)
+          .orNotFound()
+
+        _ <- secureContainer.dataCanvasManager
+          .deleteFolder(folder)
+          .orBadRequest()
+      } yield Done
+
+      override val is = result.value.map(OkResult(_))
+    }
+  }
+
   //
   // Package operations
   //
