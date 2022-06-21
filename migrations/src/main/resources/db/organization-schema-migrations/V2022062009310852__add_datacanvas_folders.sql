@@ -8,7 +8,8 @@ CREATE TABLE datacanvas_folder(
     parent_id INTEGER NOT NULL DEFAULT -1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    node_id VARCHAR(255) UNIQUE NOT NULL
+    node_id VARCHAR(255) UNIQUE NOT NULL,
+    CONSTRAINT FK_MT_Parent FOREIGN KEY (parent_id) REFERENCES datacanvas_folder(id) ON DELETE CASCADE
 );
 
 CREATE TRIGGER datacanvas_folder_updated_at BEFORE UPDATE ON datacanvas_folder FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
