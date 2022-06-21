@@ -367,7 +367,7 @@ class DataCanvasController(
     * Create a Folder
     */
   post(
-    "/:id/folder",
+    "/:canvasId/folder",
     operation(
       apiOperation[DataCanvasFolderDTO]("createDataCanvasFolder")
         summary "create a data-canvas folder"
@@ -400,7 +400,7 @@ class DataCanvasController(
         }
 
         folder <- secureContainer.dataCanvasManager
-          .createFolder(body.name, parentFolder.id, canvas.id)
+          .createFolder(canvas.id, body.name, Some(parentFolder.id))
           .orBadRequest()
 
         dto <- dataCanvasFolderDTO(folder)(
@@ -504,7 +504,7 @@ class DataCanvasController(
           .orNotFound()
 
         updatedFolder <- secureContainer.dataCanvasManager
-          .updateFolder(folder.copy(parentId = body.newParent))
+          .updateFolder(folder.copy(parentId = Some(body.newParent)))
           .orBadRequest()
 
         dto <- dataCanvasFolderDTO(updatedFolder)(
@@ -538,6 +538,7 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, Done] = for {
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
+
         secureContainer <- getSecureContainer
 
         _ <- secureContainer.dataCanvasManager
@@ -551,6 +552,7 @@ class DataCanvasController(
         _ <- secureContainer.dataCanvasManager
           .deleteFolder(folder)
           .orBadRequest()
+
       } yield Done
 
       override val is = result.value.map(OkResult(_))

@@ -134,6 +134,9 @@ class DataCanvasManager(
 
       dataCanvas <- db.run(createdDataCanvas.transactionally).toEitherT
 
+      // create root folder
+      rootFolder <- createFolder(dataCanvas.id, "||ROOT||", None)
+
       // TODO: link datacanvas_user
 
     } yield dataCanvas
@@ -343,7 +346,7 @@ class DataCanvasManager(
     val query = dataCanvasFolderMapper
       .filter(_.dataCanvasId === canvasId)
       .filter(_.name === "||ROOT||")
-      .filter(_.parentId === 0)
+      .filter(_.parentId.isEmpty)
       .result
       .head
 
@@ -351,9 +354,9 @@ class DataCanvasManager(
   }
 
   def createFolder(
+    dataCanvasId: Int,
     name: String,
-    parentId: Int,
-    dataCanvasId: Int
+    parentId: Option[Int]
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, DataCanvasFolder] = {
@@ -429,7 +432,7 @@ class DataCanvasManager(
   ): EitherT[Future, CoreError, Boolean] = {
     for {
       _ <- FutureEitherHelpers.assert(
-        (folder.name.compareTo("||ROOT||") != 0) && (folder.parentId != 0)
+        (folder.name.compareTo("||ROOT||") != 0) && (!folder.parentId.isEmpty)
       )(PredicateError("deleting root folder is not permitted"))
       query = for {
         _ <- dataCanvasFolderMapper

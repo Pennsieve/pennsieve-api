@@ -23,7 +23,7 @@ import java.time.ZonedDateTime
 
 case class DataCanvasFolderDTO(
   id: Int,
-  parentId: Int,
+  parentId: Option[Int],
   dataCanvasId: Int,
   name: String,
   nodeId: String,

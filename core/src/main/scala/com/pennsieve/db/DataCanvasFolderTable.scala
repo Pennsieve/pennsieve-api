@@ -27,7 +27,7 @@ final class DataCanvasFolderTable(schema: String, tag: Tag)
     extends Table[DataCanvasFolder](tag, Some(schema), "datacanvas_folder") {
 
   def id: Rep[Int] = column[Int]("id", O.PrimaryKey, O.AutoInc)
-  def parentId: Rep[Int] = column[Int]("praent_id")
+  def parentId: Rep[Option[Int]] = column[Option[Int]]("parent_id")
   def dataCanvasId: Rep[Int] = column[Int]("datacanvas_id")
   def name: Rep[String] = column[String]("name")
   def nodeId: Rep[String] = column[String]("node_id")
