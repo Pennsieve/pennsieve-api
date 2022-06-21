@@ -39,6 +39,7 @@ import com.pennsieve.models.{
   Contributor,
   DBPermission,
   DataCanvas,
+  DataCanvasFolder,
   Dataset,
   DatasetAsset,
   DatasetContributor,
@@ -790,6 +791,28 @@ object Builders {
         role = datacanvas.role,
         statusId = datacanvas.statusId,
         isPublic = datacanvas.isPublic
+      )
+  }
+
+  def dataCanvasFolderDTO[DIContainer <: DataCanvasManagerContainer](
+    folder: DataCanvasFolder
+  )(implicit
+    executionContext: ExecutionContext,
+    secureContainer: DIContainer,
+    system: ActorSystem,
+    jwtConfig: Jwt.Config
+  ): EitherT[Future, CoreError, DataCanvasFolderDTO] = {
+    for {
+      locked <- secureContainer.dataCanvasManager.isFolderLocked(folder)
+    } yield
+      DataCanvasFolderDTO(
+        id = folder.id,
+        parentId = folder.parentId,
+        dataCanvasId = folder.dataCanvasId,
+        name = folder.name,
+        nodeId = folder.nodeId,
+        createdAt = folder.createdAt,
+        updatedAt = folder.updatedAt
       )
   }
 }

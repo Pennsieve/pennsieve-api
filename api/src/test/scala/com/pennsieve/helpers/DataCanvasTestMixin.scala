@@ -18,7 +18,13 @@ package com.pennsieve.helpers
 
 import com.pennsieve.api.ApiSuite
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
-import com.pennsieve.models.{ DataCanvas, Dataset, Organization, Package }
+import com.pennsieve.models.{
+  DataCanvas,
+  DataCanvasFolder,
+  Dataset,
+  Organization,
+  Package
+}
 
 import scala.util.Random
 
@@ -27,6 +33,7 @@ trait DataCanvasTestMixin extends DataSetTestMixin {
   self: ApiSuite =>
 
   val bogusCanvasId = 314159
+  val bogusFolderId = 271828
 
   def randomString(length: Int = 32): String =
     Random.alphanumeric.take(length).mkString
@@ -50,6 +57,33 @@ trait DataCanvasTestMixin extends DataSetTestMixin {
   ): DataCanvas =
     container.dataCanvasManager
       .create(name, description, isPublic = Some(isPublic))
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
+
+  def createFolder(
+    canvasId: Int,
+    name: String = randomString(),
+    parent: Option[Int] = None,
+    container: SecureAPIContainer = secureContainer
+  ): DataCanvasFolder =
+    container.dataCanvasManager
+      .createFolder(canvasId, name, parent match {
+        case Some(id) => Some(id)
+        case None => Some(getRootFolder(canvasId).id)
+      })
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
+
+  def getRootFolder(
+    canvasId: Int,
+    container: SecureAPIContainer = secureContainer
+  ): DataCanvasFolder =
+    container.dataCanvasManager
+      .getRootFolder(canvasId)
       .await match {
       case Left(error) => throw error
       case Right(value) => value
