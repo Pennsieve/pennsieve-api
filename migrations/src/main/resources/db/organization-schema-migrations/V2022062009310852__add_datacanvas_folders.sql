@@ -5,7 +5,7 @@ CREATE TABLE datacanvas_folder(
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     datacanvas_id INTEGER NOT NULL references datacanvases(id) ON DELETE CASCADE,
-    parent_id INTEGER NOT NULL DEFAULT -1,
+    parent_id INTEGER NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     node_id VARCHAR(255) UNIQUE NOT NULL,
