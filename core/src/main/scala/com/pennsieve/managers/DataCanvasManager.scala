@@ -235,6 +235,7 @@ class DataCanvasManager(
 
   def attachPackage(
     dataCanvasId: Int,
+    folderId: Int,
     datasetId: Int,
     packageId: Int,
     organizationId: Int = organization.id
@@ -246,7 +247,7 @@ class DataCanvasManager(
 
       attachedDataCanvasPackage = for {
         dataCanvasPackage <- (dataCanvasPackageMapper returning dataCanvasPackageMapper) += DataCanvasPackage(
-          dataCanvasId = dataCanvasId,
+          dataCanvasFolderId = folderId,
           datasetId = datasetId,
           packageId = packageId,
           organizationId = organizationId
@@ -261,36 +262,41 @@ class DataCanvasManager(
   }
 
   def getPackage(
-    dataCanvasId: Int,
+    folderId: Int,
     packageId: Int,
     datasetId: Option[Int] = None,
     organizationId: Option[Int] = None
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, DataCanvasPackage] = {
+  ): EitherT[Future, CoreError, Option[DataCanvasPackage]] =
     db.run(
         dataCanvasPackageMapper
-          .filter(_.dataCanvasId === dataCanvasId)
+          .filter(_.dataCanvasFolderId === folderId)
           .filter(_.packageId === packageId)
           .result
           .headOption
       )
-      .whenNone(NotFound(s"dataCanvas: ${dataCanvasId} package: ${packageId}"))
-  }
+      .toEitherT
+
+  def getAllPackages(
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DataCanvasPackage]] =
+    db.run(dataCanvasPackageMapper.result).toEitherT
 
   def detachPackage(
     dataCanvasPackage: DataCanvasPackage
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Boolean] = {
+  ): EitherT[Future, CoreError, Boolean] =
     for {
-      _ <- FutureEitherHelpers.assert(dataCanvasPackage.dataCanvasId > 0)(
-        PredicateError("data-canvas id must be greater than zero")
+      _ <- FutureEitherHelpers.assert(dataCanvasPackage.dataCanvasFolderId > 0)(
+        PredicateError("data-canvas folder id must be greater than zero")
       )
 
       query = for {
         _ <- dataCanvasPackageMapper
-          .filter(_.dataCanvasId === dataCanvasPackage.dataCanvasId)
+          .filter(_.dataCanvasFolderId === dataCanvasPackage.dataCanvasFolderId)
           .filter(_.datasetId === dataCanvasPackage.datasetId)
           .filter(_.organizationId === dataCanvasPackage.organizationId)
           .filter(_.packageId === dataCanvasPackage.packageId)
@@ -304,24 +310,23 @@ class DataCanvasManager(
             SqlError(e.getMessage()): CoreError
         }
     } yield true
-  }
 
-  def getPackages(
-    dataCanvasId: Int
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Seq[Package]] = {
-    val query = dataCanvasPackageMapper
-      .filter(_.dataCanvasId === dataCanvasId)
-      .join(packagesMapper)
-      .on(_.packageId === _.id)
-      .map {
-        case (_, pkg) => pkg
-      }
-      .result
-
-    db.run(query).toEitherT
-  }
+//  def getPackages(
+//    dataCanvasId: Int
+//  )(implicit
+//    ec: ExecutionContext
+//  ): EitherT[Future, CoreError, Seq[Package]] = {
+//    val query = dataCanvasPackageMapper
+//      .filter(_.dataCanvasId === dataCanvasId)
+//      .join(packagesMapper)
+//      .on(_.packageId === _.id)
+//      .map {
+//        case (_, pkg) => pkg
+//      }
+//      .result
+//
+//    db.run(query).toEitherT
+//  }
 
   def getFolder(
     canvasId: Int,
