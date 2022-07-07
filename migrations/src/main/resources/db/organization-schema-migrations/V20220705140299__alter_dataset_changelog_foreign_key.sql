@@ -1,5 +1,5 @@
 ALTER TABLE datasets
-    DROP CONSTRAINT datasets_changelog_id_fkey;
+    DROP CONSTRAINT IF EXISTS datasets_changelog_id_fkey;
 
 ALTER TABLE datasets
     ADD CONSTRAINT datasets_changelog_id_fkey
