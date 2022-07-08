@@ -60,9 +60,11 @@ nexus server.  You don't need to rerun this command as OSX will do it for you in
 across both projects use the regular sbt commands:
 
 ```bash
-sbt compile
-sbt test
+sbt +compile
+sbt +test
 ```
+
+The leading `+` will take care of cross compiling any modules that are configured for more than one version of Scala.
 
 To run just the the core compile or test by themselves use
 
