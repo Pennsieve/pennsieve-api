@@ -33,7 +33,7 @@ import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, JwtAuthenticator }
 import com.pennsieve.discover.client.definitions.{
   DatasetPublishStatus,
-  PublicDatasetDTO
+  PublicDatasetDto
 }
 import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.discover.client.search.SearchClient
@@ -231,7 +231,7 @@ case class PaginatedPublishedDatasets(
 
 case class DatasetAndPublishedDataset(
   dataset: Option[DataSetDTO],
-  publishedDataset: PublicDatasetDTO,
+  publishedDataset: PublicDatasetDto,
   embargoAccess: Option[EmbargoAccess]
 )
 

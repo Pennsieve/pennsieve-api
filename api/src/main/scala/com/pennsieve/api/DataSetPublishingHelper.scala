@@ -38,8 +38,9 @@ import com.pennsieve.discover.client.definitions.{
   InternalContributor,
   InternalExternalPublication,
   ModelCount,
-  PublicDatasetDTO,
+  PublicDatasetDto,
   PublishRequest,
+  ReleaseRequest,
   ReviseRequest
 }
 import com.pennsieve.discover.client.publish.PublishClient
@@ -767,7 +768,7 @@ case object DataSetPublishingHelper extends LazyLogging {
             Some((PublicationType.Release, PublicationStatus.Cancelled))
           ).contains(
             currentState
-              .map(s => (s.publicationType, s.publicationStatus))
+              .map(s => Some((s.publicationType, s.publicationStatus)))
           )
         else true
       )(PredicateError(s"Only embargoed datasets can be released"))
@@ -904,14 +905,14 @@ case object DataSetPublishingHelper extends LazyLogging {
         ownerId = owner.id,
         modelCount = modelCount.map {
           case (k, v) => ModelCount(k, v.toLong)
-        }.toIndexedSeq,
+        }.toVector,
         recordCount = modelCount.values.sum.toLong,
         fileCount = fileCount,
         size = totalDatasetSize.getOrElse(0L),
         license = license,
         contributors =
-          contributors.map(_.into[InternalContributor].transform).toIndexedSeq,
-        tags = dataset.tags.toIndexedSeq,
+          contributors.map(_.into[InternalContributor].transform).toVector,
+        tags = dataset.tags.toVector,
         ownerNodeId = owner.nodeId,
         ownerFirstName = owner.firstName,
         ownerLastName = owner.lastName,
@@ -921,9 +922,8 @@ case object DataSetPublishingHelper extends LazyLogging {
         publishBucket = organization.publishBucket,
         embargoBucket = organization.embargoBucket,
         datasetNodeId = dataset.nodeId,
-        collections = Some(
-          collections.map(_.into[InternalCollection].transform).toIndexedSeq
-        ),
+        collections =
+          Some(collections.map(_.into[InternalCollection].transform).toVector),
         externalPublications = Some(
           externalPublications
             .map(
@@ -933,7 +933,7 @@ case object DataSetPublishingHelper extends LazyLogging {
                   Some(ep.relationshipType)
                 )
             )
-            .toIndexedSeq
+            .toVector
         )
       )
 
@@ -1055,16 +1055,15 @@ case object DataSetPublishingHelper extends LazyLogging {
         license = license,
         contributors = contributors
           .map(_.into[InternalContributor].transform)
-          .toIndexedSeq,
-        tags = dataset.tags.toIndexedSeq,
+          .toVector,
+        tags = dataset.tags.toVector,
         ownerFirstName = owner.firstName,
         ownerLastName = owner.lastName,
         ownerOrcid = ownerOrcid,
         bannerPresignedUrl = bannerPresignedUrl.toString,
         readmePresignedUrl = readmePresignedUrl.toString,
-        collections = Some(
-          collections.map(_.into[InternalCollection].transform).toIndexedSeq
-        ),
+        collections =
+          Some(collections.map(_.into[InternalCollection].transform).toVector),
         externalPublications = Some(
           externalPublications
             .map(
@@ -1074,7 +1073,7 @@ case object DataSetPublishingHelper extends LazyLogging {
                   Some(ep.relationshipType)
                 )
             )
-            .toIndexedSeq
+            .toVector
         )
       )
 
@@ -1205,6 +1204,10 @@ case object DataSetPublishingHelper extends LazyLogging {
         .release(
           organization.id,
           dataset.id,
+          ReleaseRequest(
+            publishBucket = organization.publishBucket
+              .getOrElse("TODO-default-publish-bucket")
+          ),
           getTokenHeaders(organization, dataset)
         )
         .leftSemiflatMap(handleGuardrailError)
