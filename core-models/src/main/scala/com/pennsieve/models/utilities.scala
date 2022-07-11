@@ -18,7 +18,7 @@ package com.pennsieve.models
 
 import org.apache.commons.io.FilenameUtils
 
-package object Utilities {
+object Utilities {
 
   /**
     * isNameValid should check if file/package name is valid.
