@@ -268,13 +268,13 @@ class DataCanvasManager(
     organizationId: Option[Int] = None
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Option[DataCanvasPackage]] =
+  ): EitherT[Future, CoreError, DataCanvasPackage] =
     db.run(
         dataCanvasPackageMapper
           .filter(_.dataCanvasFolderId === folderId)
           .filter(_.packageId === packageId)
           .result
-          .headOption
+          .head
       )
       .toEitherT
 

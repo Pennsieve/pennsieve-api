@@ -33,7 +33,11 @@ import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.pennsieve.helpers.ResultHandlers.{ CreatedResult, OkResult }
+import com.pennsieve.helpers.ResultHandlers.{
+  CreatedResult,
+  NoContentResult,
+  OkResult
+}
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.models.{ DataCanvasPackage, Package }
 import org.json4s.{ JNothing, JValue }
@@ -286,7 +290,7 @@ class DataCanvasController(
         ).orError
       } yield dto
 
-      override val is = result.value.map(CreatedResult)
+      override val is = result.value.map(CreatedResult(_))
     }
   }
 
@@ -314,7 +318,7 @@ class DataCanvasController(
           .orForbidden
 
       } yield Done
-      override val is = result.value.map(OkResult)
+      override val is = result.value.map(NoContentResult)
     }
   }
 
@@ -412,7 +416,7 @@ class DataCanvasController(
 
       } yield dto
 
-      override val is = result.value.map(OkResult(_))
+      override val is = result.value.map(CreatedResult(_))
     }
   }
 
@@ -460,7 +464,7 @@ class DataCanvasController(
 
       } yield dto
 
-      override val is = result.value.map(OkResult(_))
+      override val is = result.value.map(CreatedResult(_))
     }
   }
 
@@ -516,7 +520,7 @@ class DataCanvasController(
 
       } yield dto
 
-      override val is = result.value.map(OkResult(_))
+      override val is = result.value.map(CreatedResult(_))
     }
   }
 
@@ -555,7 +559,7 @@ class DataCanvasController(
 
       } yield Done
 
-      override val is = result.value.map(OkResult(_))
+      override val is = result.value.map(NoContentResult(_))
     }
   }
 
@@ -620,7 +624,7 @@ class DataCanvasController(
         dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer).orError
       } yield dto
 
-      override val is = result.value.map(OkResult)
+      override val is = result.value.map(CreatedResult(_))
     }
   }
 
@@ -658,21 +662,20 @@ class DataCanvasController(
           .getPackage(folder.id, packageId)
           .coreErrorToActionResult()
 
-        _ = println(s"API - dataCanvasPackage: ${dataCanvasPackage}")
-
 //        _ <- secureContainer.dataCanvasManager
 //          .detachPackage(dataCanvasPackage)
 //          .orForbidden
 
       } yield Done
 
-      override val is = result.value.map(OkResult)
+      override val is = result.value.map(NoContentResult)
     }
   }
 
   /**
     * attach a list of Packages to a DataCanvas
     */
+  // TODO: return a list of PackageDTO
   post(
     "/:canvasId/folder/:folderId/packages",
     operation(
@@ -693,9 +696,13 @@ class DataCanvasController(
         packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
         secureContainer <- getSecureContainer
 
-        dataCanvas <- secureContainer.dataCanvasManager
+        canvas <- secureContainer.dataCanvasManager
           .getById(canvasId)
           .coreErrorToActionResult
+
+        folder <- secureContainer.dataCanvasManager
+          .getFolder(canvas.id, folderId)
+          .orBadRequest()
 
         _ = packages.map { p =>
           for {
@@ -712,14 +719,20 @@ class DataCanvasController(
               .coreErrorToActionResult
 
             dataCanvasPackage <- secureContainer.dataCanvasManager
-              .attachPackage(dataCanvas.id, dataset.id, pkg.id, organization.id)
+              .attachPackage(
+                canvas.id,
+                folder.id,
+                dataset.id,
+                pkg.id,
+                organization.id
+              )
               .orBadRequest
 
           } yield dataCanvasPackage
         }
       } yield Done
 
-      override val is = result.value.map(OkResult)
+      override val is = result.value.map(OkResult(_))
     }
   }
 
@@ -764,7 +777,7 @@ class DataCanvasController(
         }
 
       } yield Done
-      override val is = result.value.map(OkResult)
+      override val is = result.value.map(NoContentResult)
     }
   }
 
