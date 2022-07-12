@@ -264,19 +264,20 @@ class DataCanvasManager(
   def getPackage(
     folderId: Int,
     packageId: Int,
-    datasetId: Option[Int] = None,
+    datasetId: Int,
     organizationId: Option[Int] = None
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, DataCanvasPackage] =
-    db.run(
-        dataCanvasPackageMapper
-          .filter(_.dataCanvasFolderId === folderId)
-          .filter(_.packageId === packageId)
-          .result
-          .head
-      )
-      .toEitherT
+  ): EitherT[Future, CoreError, DataCanvasPackage] = {
+    val query = dataCanvasPackageMapper
+      .filter(_.dataCanvasFolderId === folderId)
+      .filter(_.datasetId === datasetId)
+      .filter(_.packageId === packageId)
+      .result
+      .head
+
+    db.run(query).toEitherT
+  }
 
   def getAllPackages(
   )(implicit
