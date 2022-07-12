@@ -52,7 +52,7 @@ class MockPublishClient(
   ): EitherT[Future, Either[Throwable, HttpResponse], GetStatusesResponse] = {
     EitherT.rightT[Future, Either[Throwable, HttpResponse]](
       GetStatusesResponse.OK(
-        IndexedSeq(
+        Vector(
           DatasetPublishStatus(
             "PPMI",
             organizationId,

@@ -100,7 +100,7 @@ trait DataCanvasTestMixin extends DataSetTestMixin {
       .attachPackage(canvas.id, dataset.id, `package`.id, organization.id)
       .await match {
       case Left(error) => throw error
-      case Right(value) => value
+      case Right(_) => ()
     }
 
   def getAll(container: SecureAPIContainer = secureContainer): Seq[DataCanvas] =

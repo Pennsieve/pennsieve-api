@@ -17,7 +17,6 @@
 package com.pennsieve.helpers
 
 import java.time.{ OffsetDateTime, ZoneOffset }
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
 import cats.implicits._
@@ -33,7 +32,10 @@ import com.pennsieve.discover.client.publish.{
   UnpublishResponse
 }
 import com.pennsieve.models.PublishStatus
-import com.pennsieve.discover.client.definitions.DatasetPublishStatus
+import com.pennsieve.discover.client.definitions.{
+  DatasetPublishStatus,
+  ReleaseRequest
+}
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.mutable
@@ -46,7 +48,7 @@ class MockPublishClient(
   system: ActorSystem
 ) extends PublishClient("mock-discover-service-host") {
 
-  def clear: Unit = {
+  def clear(): Unit = {
     nextGetStatusValue = None
     publishRequests.clear
     releaseRequests.clear
@@ -142,6 +144,7 @@ class MockPublishClient(
   override def release(
     organizationId: Int,
     datasetId: Int,
+    releaseRequest: ReleaseRequest,
     headers: List[HttpHeader]
   ): EitherT[Future, Either[Throwable, HttpResponse], ReleaseResponse] = {
     releaseRequests += ((organizationId, datasetId))
@@ -210,7 +213,7 @@ class MockPublishClient(
   ): EitherT[Future, Either[Throwable, HttpResponse], GetStatusesResponse] = {
     EitherT.rightT[Future, Either[Throwable, HttpResponse]](
       GetStatusesResponse.OK(
-        IndexedSeq(
+        Vector(
           DatasetPublishStatus(
             name = "PPMI",
             sourceOrganizationId = organizationId,
