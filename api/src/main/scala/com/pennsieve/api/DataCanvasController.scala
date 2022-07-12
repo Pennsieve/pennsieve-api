@@ -650,21 +650,37 @@ class DataCanvasController(
         packageId <- paramT[Int]("packageId")
         secureContainer <- getSecureContainer
 
+        _ = println(
+          s">>> API >>> delete() canvasId: ${canvasId} folderId: ${folderId} packageId: ${packageId}"
+        )
+
         canvas <- secureContainer.dataCanvasManager
           .getById(canvasId)
           .orNotFound()
+
+        _ = println(s">>> API >>> canvas: ${canvas}")
 
         folder <- secureContainer.dataCanvasManager
           .getFolder(canvas.id, folderId)
           .orNotFound()
 
+        _ = println(s">>> API >>> folder: ${folder}")
+
+        pkg <- secureContainer.packageManager
+          .get(packageId)
+          .orNotFound()
+
+        _ = println(s">>> API >>> pkg: ${pkg}")
+
         dataCanvasPackage <- secureContainer.dataCanvasManager
-          .getPackage(folder.id, packageId)
+          .getPackage(folder.id, pkg.datasetId, pkg.id)
           .coreErrorToActionResult()
 
-//        _ <- secureContainer.dataCanvasManager
-//          .detachPackage(dataCanvasPackage)
-//          .orForbidden
+        _ = println(s">>> API >>> dataCanvasPackage: ${dataCanvasPackage}")
+
+        _ <- secureContainer.dataCanvasManager
+          .detachPackage(dataCanvasPackage)
+          .orForbidden
 
       } yield Done
 
