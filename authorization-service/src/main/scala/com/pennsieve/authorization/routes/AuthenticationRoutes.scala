@@ -37,7 +37,9 @@ class AuthenticationRoutes(cognitoConfig: CognitoConfig) extends RouteService {
   case class CognitoConfigDTO(
     region: String,
     userPool: CognitoPoolConfigDTO,
-    tokenPool: CognitoPoolConfigDTO
+    tokenPool: CognitoPoolConfigDTO,
+    identityPool: CognitoPoolConfigDTO
+
   )
 
   object CognitoConfigDTO {
@@ -50,7 +52,8 @@ class AuthenticationRoutes(cognitoConfig: CognitoConfig) extends RouteService {
       CognitoConfigDTO(
         region = cognitoConfig.region.toString,
         userPool = CognitoPoolConfigDTO(cognitoConfig.userPool),
-        tokenPool = CognitoPoolConfigDTO(cognitoConfig.tokenPool)
+        tokenPool = CognitoPoolConfigDTO(cognitoConfig.tokenPool),
+        identityPool = CognitoPoolConfigDTO(cognitoConfig.identityPool)
       )
     }
   }
