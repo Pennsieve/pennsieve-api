@@ -117,6 +117,7 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
   val cognitoAppClientId: String = "67890"
   val cognitoPoolId2: String = "abcdef"
   val cognitoAppClientId2: String = "ghijkl"
+  val cognitoIdentityPoolId: String = "vbnm"
 
   val jwkProvider = new MockJwkProvider()
 
@@ -132,6 +133,12 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
       Region.AP_SOUTH_1,
       cognitoPoolId2,
       cognitoAppClientId2,
+      _ => jwkProvider
+    ),
+    CognitoPoolConfig(
+      Region.AP_SOUTH_1,
+      cognitoIdentityPoolId,
+      "",
       _ => jwkProvider
     )
   )
