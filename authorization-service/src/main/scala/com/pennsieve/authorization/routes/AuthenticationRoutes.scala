@@ -39,7 +39,6 @@ class AuthenticationRoutes(cognitoConfig: CognitoConfig) extends RouteService {
     userPool: CognitoPoolConfigDTO,
     tokenPool: CognitoPoolConfigDTO,
     identityPool: CognitoPoolConfigDTO
-
   )
 
   object CognitoConfigDTO {
