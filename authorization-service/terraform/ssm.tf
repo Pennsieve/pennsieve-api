@@ -22,6 +22,12 @@ resource "aws_ssm_parameter" "cognito_token_pool_app_client_id" {
   value = data.terraform_remote_state.authentication_service.outputs.token_pool_client_id
 }
 
+resource "aws_ssm_parameter" "identity_token_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-identity-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.upload_service_v2.outputs.identity_pool_id
+}
+
 resource "aws_ssm_parameter" "pennsieve_postgres_database" {
   name  = "/${var.environment_name}/${var.service_name}/pennsieve-postgres-database"
   type  = "String"
