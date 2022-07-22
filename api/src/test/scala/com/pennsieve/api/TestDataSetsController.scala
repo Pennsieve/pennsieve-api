@@ -5409,6 +5409,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       s"/${dataset.nodeId}/publication/request?publicationType=release&comments=releasing-early",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
+      println(parsedBody.extract[String])
       status shouldBe 201
     }
 
