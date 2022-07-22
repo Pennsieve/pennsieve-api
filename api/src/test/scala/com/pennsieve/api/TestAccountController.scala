@@ -17,8 +17,8 @@
 package com.pennsieve.api
 
 import com.blackfynn.clients.AntiSpamChallengeClient
-import com.pennsieve.aws.cognito.{CognitoPoolConfig, MockCognito, _}
-import com.pennsieve.models.{DBPermission, Organization}
+import com.pennsieve.aws.cognito.{ CognitoPoolConfig, MockCognito, _ }
+import com.pennsieve.models.{ DBPermission, Organization }
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 import software.amazon.awssdk.regions.Region
