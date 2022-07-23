@@ -761,16 +761,15 @@ case object DataSetPublishingHelper extends LazyLogging {
 
       // The dataset cannot be released unless it is embargoed to Discover
       _ <- checkOrError[CoreError](
-        if (requestedType == PublicationType.Release && requestedStatus == PublicationStatus.Requested)
+        if (requestedType == PublicationType.Release && requestedStatus == PublicationStatus.Requested) {
+          val currentStateTuple =
+            currentState.map(s => (s.publicationType, s.publicationStatus))
           List(
             Some((PublicationType.Embargo, PublicationStatus.Completed)),
             Some((PublicationType.Release, PublicationStatus.Rejected)),
             Some((PublicationType.Release, PublicationStatus.Cancelled))
-          ).contains(
-            currentState
-              .map(s => Some((s.publicationType, s.publicationStatus)))
-          )
-        else true
+          ).contains(currentStateTuple)
+        } else true
       )(PredicateError(s"Only embargoed datasets can be released"))
 
     } yield ()
