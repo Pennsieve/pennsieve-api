@@ -177,7 +177,7 @@ data "terraform_remote_state" "authentication_service" {
 }
 
 # Import Upload-V2 Service
-data "terraform_remote_state" "upload_v2_service" {
+data "terraform_remote_state" "upload_service_v2" {
   backend = "s3"
 
   config = {
