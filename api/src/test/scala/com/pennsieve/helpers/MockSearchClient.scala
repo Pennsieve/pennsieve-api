@@ -27,7 +27,7 @@ import com.pennsieve.discover.client.search.{
 }
 import com.pennsieve.discover.client.definitions.{
   DatasetsPage,
-  PublicDatasetDTO
+  PublicDatasetDto
 }
 import com.pennsieve.models.{ Dataset, Organization, PublishStatus, User }
 
@@ -46,16 +46,16 @@ class MockSearchClient(
     publishedDatasets.clear
   }
 
-  var publishedDatasets: ArrayBuffer[PublicDatasetDTO] =
-    ArrayBuffer.empty[PublicDatasetDTO]
+  var publishedDatasets: ArrayBuffer[PublicDatasetDto] =
+    ArrayBuffer.empty[PublicDatasetDto]
 
   def toMockPublicDatasetDTO(
     dataset: Dataset,
     organization: Organization,
     owner: User,
     embargo: Boolean = false
-  ): PublicDatasetDTO = {
-    PublicDatasetDTO(
+  ): PublicDatasetDto = {
+    PublicDatasetDto(
       id = Random.nextInt(100),
       sourceDatasetId = Some(dataset.id),
       name = dataset.name,
@@ -66,10 +66,10 @@ class MockSearchClient(
       organizationName = organization.name,
       organizationId = Some(organization.id),
       license = dataset.license.get,
-      tags = dataset.tags.toIndexedSeq,
+      tags = dataset.tags.toVector,
       version = 1,
       size = 1234,
-      modelCount = IndexedSeq(),
+      modelCount = Vector(),
       fileCount = 1,
       recordCount = 1,
       uri = "uri",
@@ -116,7 +116,7 @@ class MockSearchClient(
           limitOrDefault,
           offsetOrDefault,
           finalResult.size.toLong,
-          finalResult.toIndexedSeq
+          finalResult.toVector
         )
       )
     )
