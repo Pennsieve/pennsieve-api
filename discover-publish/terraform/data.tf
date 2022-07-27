@@ -106,7 +106,7 @@ data "terraform_remote_state" "discover_s3clean_lambda" {
 }
 
 # Import Upload-V2 Service
-data "terraform_remote_state" "upload_v2_service" {
+data "terraform_remote_state" "upload_service_v2" {
   backend = "s3"
 
   config = {
