@@ -170,3 +170,9 @@ resource "aws_ssm_parameter" "s3_terms_of_service_bucket" {
   type  = "String"
   value = data.terraform_remote_state.platform_infrastructure.outputs.terms_of_service_bucket_id
 }
+
+resource "aws_ssm_parameter" "identity_token_pool_id" {
+  name  = "/${var.environment_name}/${var.service_name}/cognito-identity-pool-id"
+  type  = "String"
+  value = data.terraform_remote_state.upload_service_v2.outputs.identity_pool_id
+}
