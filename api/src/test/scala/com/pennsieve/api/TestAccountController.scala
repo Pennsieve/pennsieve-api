@@ -16,8 +16,8 @@
 
 package com.pennsieve.api
 
-import com.blackfynn.clients.{ AntiSpamChallengeClient }
-import com.pennsieve.aws.cognito.{ MockCognito, _ }
+import com.blackfynn.clients.AntiSpamChallengeClient
+import com.pennsieve.aws.cognito.{ CognitoPoolConfig, MockCognito, _ }
 import com.pennsieve.models.{ DBPermission, Organization }
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
@@ -36,7 +36,8 @@ class TestAccountController extends BaseApiTest {
   val cognitoConfig = CognitoConfig(
     Region.US_EAST_1,
     CognitoPoolConfig(Region.US_EAST_1, "user-pool-id", "client-id"),
-    CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
+    CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id"),
+    CognitoPoolConfig(Region.US_EAST_1, "identity-pool-id", "")
   )
 
   val recaptchaClient: AntiSpamChallengeClient =

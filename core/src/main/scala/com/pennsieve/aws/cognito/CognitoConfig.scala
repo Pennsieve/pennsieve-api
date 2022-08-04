@@ -25,7 +25,8 @@ import java.net.URL
 case class CognitoConfig(
   region: Region,
   userPool: CognitoPoolConfig, // Pennsieve users
-  tokenPool: CognitoPoolConfig // Client token pool
+  tokenPool: CognitoPoolConfig, // Client token pool
+  identityPool: CognitoPoolConfig // Identity pool
 )
 
 /**
@@ -67,6 +68,8 @@ object CognitoConfig {
 
     val tokenPoolId = config.as[String]("cognito.token_pool.id")
 
+    val identityPoolId = config.as[String]("cognito.identity_pool.id")
+
     val userPoolAppClientId =
       config.as[String]("cognito.user_pool.app_client_id")
 
@@ -84,6 +87,11 @@ object CognitoConfig {
         region = region,
         id = tokenPoolId,
         appClientId = tokenPoolAppClientId
+      ),
+      identityPool = CognitoPoolConfig(
+        region = region,
+        id = identityPoolId,
+        appClientId = ""
       )
     )
   }
