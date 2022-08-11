@@ -51,12 +51,12 @@ object BuildCopyRequests {
       Flow[PackagePath]
         .flatMapConcat {
           case (pkg, path) =>
-            Source.fromFutureSource(
+            Source.futureSource(
               filesSource(pkg, path, ignoreFiles.map(_.fileName))
             )
         }
     // Resolve the Future Flow to return a Flow with the PackagePath excluding ignored files
-    Flow.lazyInitAsync(() => futureFlow).mapMaterializedValue(_ => NotUsed)
+    Flow.lazyFutureFlow(() => futureFlow).mapMaterializedValue(_ => NotUsed)
   }
 
   def filesSource(

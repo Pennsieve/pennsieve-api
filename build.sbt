@@ -56,14 +56,26 @@ ThisBuild / scalafmtOnCompile := true
 // Run tests in a separate JVM to prevent resource leaks.
 ThisBuild / Test / fork := true
 
-lazy val akkaVersion = "2.6.5"
-lazy val akkaCirceVersion = "1.27.0"
-lazy val akkaHttpVersion = "10.1.11"
+lazy val akkaVersion = SettingKey[String]("akkaVersion")
+lazy val akka212Version = "2.6.5"
+lazy val akka213Version = "2.6.8"
+ThisBuild / akkaVersion := akka212Version
+
+lazy val akkaCirceVersion = SettingKey[String]("akkaCirceVersion")
+lazy val akkaCirce212Version = "1.27.0"
+lazy val akkaCirce213Version = "1.39.2"
+// Uncomment this if 'akkaCirceVersion' gets used outside of core-clients
+//ThisBuild / akkaCirceVersion := akkaCirce212Version
+
+lazy val akkaHttpVersion = SettingKey[String]("akkaHttpVersion")
+lazy val akkaHttp212Version = "10.1.11"
+lazy val akkaHttp213Version = "10.2.7"
+ThisBuild / akkaHttpVersion := akkaHttp212Version
 
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
 lazy val auditMiddlewareVersion = "1.0.2"
-lazy val authMiddlewareVersion = "5.1.2"
+lazy val authMiddlewareVersion = "5.1.3"
 
 lazy val awsVersion = "1.11.931"
 lazy val awsV2Version = "2.15.58"
@@ -196,7 +208,7 @@ lazy val coreApiSharedSettings = Seq(
     "org.scalikejdbc" %% "scalikejdbc-config" % "2.5.0",
     "com.typesafe.slick" %% "slick" % slickVersion,
     "com.typesafe.slick" %% "slick-hikaricp" % slickVersion,
-    "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+    "com.typesafe.akka" %% "akka-stream" % akkaVersion.value,
     "org.typelevel" %% "cats-core" % catsVersion,
     "com.github.tminglei" %% "slick-pg" % "0.17.3",
     "com.github.tminglei" %% "slick-pg_circe-json" % "0.17.3",
@@ -204,7 +216,7 @@ lazy val coreApiSharedSettings = Seq(
     // Testing deps
     "com.dimafeng" %% "testcontainers-scala" % testContainersVersion % Test,
     "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
-    "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
+    "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
     "org.scalikejdbc" %% "scalikejdbc-test" % "2.5.0" % Test
   ),
   excludeDependencies ++= unwantedDependencies
@@ -252,10 +264,10 @@ lazy val apiSettings = Seq(
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
     "com.pennsieve" %% "doi-service-client" % doiServiceClientVersion,
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
-    "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
+    "com.typesafe.akka" %% "akka-actor" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion.value,
     "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
     "org.scalatra" %% "scalatra" % scalatraVersion,
     "org.scalatra" %% "scalatra-json" % scalatraVersion,
@@ -263,8 +275,8 @@ lazy val apiSettings = Seq(
     "org.typelevel" %% "mouse" % "0.16",
     "io.scalaland" %% "chimney" % "0.2.1",
     // Test deps
-    "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
+    "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
+    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test,
     "org.scalatra" %% "scalatra-scalatest" % scalatraVersion % Test
   ),
   excludeDependencies ++= unwantedDependencies :+ ExclusionRule(
@@ -308,10 +320,10 @@ lazy val coreSettings = Seq(
     "software.amazon.awssdk" % "sns" % awsV2Version,
     "software.amazon.awssdk" % "sqs" % awsV2Version,
     "software.amazon.awssdk" % "cognitoidentityprovider" % awsV2Version,
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
+    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
     "com.auth0" % "jwks-rsa" % "0.8.3",
     "com.nimbusds" % "nimbus-jose-jwt" % "9.7" % Test
   ),
@@ -324,9 +336,9 @@ lazy val jobsSettings = Seq(
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
     "com.pennsieve" %% "timeseries-core" % timeseriesCoreVersion,
-    "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+    "com.typesafe.akka" %% "akka-actor" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-stream" % akkaVersion.value,
     "com.typesafe.akka" %% "akka-stream-contrib" % akkaStreamContribVersion,
     "io.circe" %% "circe-core" % circeVersion.value,
     "io.circe" %% "circe-generic" % circeVersion.value,
@@ -334,8 +346,8 @@ lazy val jobsSettings = Seq(
     "io.circe" %% "circe-java8" % circeVersion.value,
     "org.typelevel" %% "cats-core" % catsVersion,
     // testing deps
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
-    "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
+    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test,
+    "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
     "org.scalatest" %% "scalatest" % scalatestVersion.value % Test
   ),
   excludeDependencies ++= unwantedDependencies,
@@ -367,14 +379,14 @@ lazy val adminSettings = Seq(
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
     "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.14.0",
     "com.iheart" %% "ficus" % ficusVersion,
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
     "io.circe" %% "circe-java8" % circeVersion.value,
     // needed to work correctly on JVM9+ -- this should be moved to bf-akka-http once all bf-akka-http users use JVM9+
     "javax.xml.bind" % "jaxb-api" % "2.2.8",
     // testing deps
     "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
-    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
+    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test,
+    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion.value % Test
   ),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {
@@ -393,16 +405,16 @@ lazy val authorizationServiceSettings = Seq(
   name := "authorization-service",
   publishTo := publishToNexus.value,
   libraryDependencies ++= Seq(
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
     "com.iheart" %% "ficus" % ficusVersion,
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
     "io.circe" %% "circe-java8" % circeVersion.value,
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
     // testing deps
     "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
-    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test,
-    "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test
+    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion.value % Test,
+    "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
+    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test
   ),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {
@@ -445,14 +457,14 @@ lazy val bfAkkaHttpSettings = Seq(
   libraryDependencies ++= Seq(
     "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.14.0",
     "com.iheart" %% "ficus" % ficusVersion,
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
+    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
     "io.circe" %% "circe-java8" % circeVersion.value,
     // testing deps
     "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
-    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
+    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion.value % Test
   )
 )
 
@@ -548,7 +560,7 @@ lazy val etlDataCLISettings = Seq(
 lazy val uploadsConsumerSettings = Seq(
   name := "uploads-consumer",
   libraryDependencies ++= Seq(
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
     "com.typesafe.akka" %% "akka-stream-contrib" % akkaStreamContribVersion,
     "com.dimafeng" %% "testcontainers-scala" % testContainersVersion % Test
   ),
@@ -569,7 +581,7 @@ lazy val bfAkkaSettings = Seq(
   name := "bf-akka",
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "utilities" % utilitiesVersion,
-    "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+    "com.typesafe.akka" %% "akka-stream" % akkaVersion.value,
     "com.lightbend.akka" %% "akka-stream-alpakka-sns" % alpakkaVersion,
     "com.lightbend.akka" %% "akka-stream-alpakka-sqs" % alpakkaVersion,
     "com.typesafe.akka" %% "akka-stream-contrib" % akkaStreamContribVersion,
@@ -583,10 +595,32 @@ lazy val coreClientsSettings = Seq(
   name := "core-clients",
   publishTo := publishToNexus.value,
   publishMavenStyle := true,
+  crossScalaVersions := supportedScalaVersions,
+  circeVersion := getVersion(
+    scalaVersion.value,
+    circe212Version,
+    circe213Version
+  ),
+  akkaVersion := getVersion(
+    scalaVersion.value,
+    akka212Version,
+    akka213Version
+  ),
+  akkaCirceVersion := getVersion(
+    scalaVersion.value,
+    akkaCirce212Version,
+    akkaCirce213Version
+  ),
+  akkaHttpVersion := getVersion(
+    scalaVersion.value,
+    akkaHttp212Version,
+    akkaHttp213Version
+  ),
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "utilities" % utilitiesVersion,
-    "de.heikoseeberger" %% "akka-http-circe" % akkaCirceVersion,
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+    "de.heikoseeberger" %% "akka-http-circe" % akkaCirceVersion.value,
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
+    "com.typesafe.akka" %% "akka-stream" % akkaVersion.value,
     "io.circe" %% "circe-core" % circeVersion.value,
     "io.circe" %% "circe-generic" % circeVersion.value,
     "io.circe" %% "circe-generic-extras" % circeVersion.value
@@ -649,12 +683,12 @@ lazy val discoverPublishSettings = Seq(
   name := "discover-publish",
   libraryDependencies ++= Seq(
     "com.lightbend.akka" %% "akka-stream-alpakka-s3" % alpakkaVersion,
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-http-xml" % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
+    "com.typesafe.akka" %% "akka-http-xml" % akkaHttpVersion.value,
+    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
+    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test
   ),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {

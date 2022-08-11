@@ -48,7 +48,7 @@ class MockPublishClient(
   system: ActorSystem
 ) extends PublishClient("mock-discover-service-host") {
 
-  def clear: Unit = {
+  def clear(): Unit = {
     nextGetStatusValue = None
     publishRequests.clear
     releaseRequests.clear
