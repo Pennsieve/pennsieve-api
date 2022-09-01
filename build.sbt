@@ -88,7 +88,6 @@ ThisBuild / circeVersion := circe212Version
 lazy val circeDerivationVersion = SettingKey[String]("circeDerivationVersion")
 lazy val circeDerivation212Version = "0.11.0-M3"
 lazy val circeDerivation213Version = "0.13.0-M5"
-ThisBuild / circeDerivationVersion := circeDerivation212Version
 
 lazy val ficusVersion = "1.4.0"
 lazy val flywayVersion = "4.2.0"
@@ -105,7 +104,7 @@ ThisBuild / scalatestVersion := scalatest212Version
 lazy val slickVersion = "3.3.3"
 lazy val testContainersVersion = "0.40.1"
 lazy val utilitiesVersion = "4-55953e4"
-lazy val jobSchedulingServiceClientVersion = "3-1a58954"
+lazy val jobSchedulingServiceClientVersion = "5-aaa0a19"
 lazy val serviceUtilitiesVersion = "8-9751ee3"
 lazy val discoverServiceClientVersion = "36-32664eb"
 lazy val doiServiceClientVersion = "3-9436155"
@@ -115,7 +114,6 @@ lazy val commonsIoVersion = "2.6"
 lazy val enumeratumVersion = SettingKey[String]("enumeratumVersion")
 lazy val enumeratum212Version = "1.5.14"
 lazy val enumeratum213Version = "1.7.0"
-ThisBuild / enumeratumVersion := enumeratum212Version
 
 lazy val unwantedDependencies = Seq(
   ExclusionRule("commons-logging", "commons-logging"),
@@ -292,6 +290,32 @@ lazy val coreSettings = Seq(
   Test / publishArtifact := true,
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
   publishMavenStyle := true,
+  crossScalaVersions := supportedScalaVersions,
+  circeVersion := getVersion(
+    scalaVersion.value,
+    circe212Version,
+    circe213Version
+  ),
+  enumeratumVersion := getVersion(
+    scalaVersion.value,
+    enumeratum212Version,
+    enumeratum213Version
+  ),
+  circeDerivationVersion := getVersion(
+    scalaVersion.value,
+    circeDerivation212Version,
+    circeDerivation213Version
+  ),
+  akkaVersion := getVersion(
+    scalaVersion.value,
+    akka212Version,
+    akka213Version
+  ),
+  akkaHttpVersion := getVersion(
+    scalaVersion.value,
+    akkaHttp212Version,
+    akkaHttp213Version
+  ),
   scalacOptions ++= Seq("-language:higherKinds"),
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
