@@ -53,6 +53,7 @@ import com.pennsieve.models.PackageState.{
 import com.pennsieve.models._
 import com.pennsieve.uploads.{ FileUpload, PackagePreview }
 import com.pennsieve.web.Settings
+import io.circe.syntax._
 import org.apache.commons.io.FilenameUtils
 import org.joda.time.DateTime
 import org.scalatra._
@@ -447,7 +448,21 @@ class PackagesController(
         .leftMap[CoreError](x => ServiceError(x.toString()))
         .coreErrorToActionResult
         .subflatMap {
-          case GetPackageStateResponse.OK(state) => state.asRight[ActionResult]
+          case GetPackageStateResponse.OK(json) =>
+            json
+              .as[PackageState]
+              .fold(
+                //The error half of this shouldn't happen since we got an OK and can be removed if
+                // getPackageState is fixed to return OK(PackageState) instead of OK(Json)
+                err => {
+                  logger
+                    .info(s"Error decoding ${json} as a PackageState: ${err}")
+                  UNAVAILABLE
+                },
+                identity
+              )
+              .asRight[ActionResult]
+
           case _ => {
             logger.info(
               s"No State were found in JSS for package ${packageId} of dataset ${datasetId} for organization ${organizationId}"
