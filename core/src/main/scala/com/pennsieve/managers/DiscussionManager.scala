@@ -185,6 +185,7 @@ class DiscussionManager(organization: Organization, db: Database) {
       items
         .groupBy(_._1)
         .mapValues(_.map { case (_, cs) => cs })
+        .toMap // toMap is for Scala 2.13
     }
   }
 

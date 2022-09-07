@@ -20,7 +20,13 @@ import cats.implicits._
 import cats.Eval
 import cats.data.NonEmptyList
 import com.pennsieve.domain.{ CoreError, Error }
-import com.pennsieve.models._
+import com.pennsieve.models.{
+  CollectionUpload,
+  FileType,
+  FileTypeGrouping,
+  FileTypeInfo,
+  PackageType
+}
 import com.pennsieve.models.Utilities._
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
@@ -98,7 +104,7 @@ object PackagePreview {
         )
       )
       .map { files =>
-        val size = fileUploads.map(_.size).flatten.sum
+        val size = fileUploads.flatMap(_.size).sum
         val warnings = getWarnings(files)
 
         // If a necessary master file is missing, then the files and package should be made Generic and should not be processed

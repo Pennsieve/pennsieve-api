@@ -60,6 +60,7 @@ import org.postgresql.util.PSQLException
 import slick.jdbc.{ GetResult, SQLActionBuilder, TransactionIsolation }
 import io.circe.parser.decode
 
+import scala.collection.compat._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success }
 
@@ -803,7 +804,7 @@ class PackageManager(datasetManager: DatasetManager) {
               (p, files.dropRight(1), true)
             case (p, files) => (p, files, false)
           }
-          .to[Seq]
+          .to(Seq)
       }
       .toEitherT
 
@@ -990,6 +991,6 @@ class PackageManager(datasetManager: DatasetManager) {
           .opt(fileIds)(_ => sql"AND f.id = any($fileIds)")
           .as[PackageHierarchy]
       }
-      .map(_.to[Seq])
+      .map(_.to(Seq))
       .toEitherT
 }

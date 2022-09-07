@@ -279,7 +279,8 @@ class S3(val client: AmazonS3) extends S3Trait {
 
     @tailrec
     def iter(listing: ObjectListing): Unit = {
-      val summaries: Seq[S3ObjectSummary] = listing.getObjectSummaries.asScala
+      val summaries: Seq[S3ObjectSummary] =
+        listing.getObjectSummaries.asScala.toSeq
       for (summary <- summaries) {
         client.deleteObject(bucket, summary.getKey)
       }

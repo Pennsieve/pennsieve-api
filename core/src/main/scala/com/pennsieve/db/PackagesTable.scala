@@ -42,6 +42,7 @@ import com.rms.miu.slickcats.DBIOInstances._
 import java.util.UUID
 import java.time.ZonedDateTime
 
+import scala.collection.compat._
 import scala.concurrent.{ ExecutionContext, Future }
 import slick.dbio.Effect
 import slick.jdbc.GetResult
@@ -306,7 +307,7 @@ class PackagesMapper(val organization: Organization)
         AND parents.node_id != $nodeId
       """.as[Int]
       }
-      .map(_.to[Set])
+      .map(_.to(Set))
   }
 
   type PackagesSeen = Set[Int]

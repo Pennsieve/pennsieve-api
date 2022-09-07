@@ -17,12 +17,13 @@
 package com.pennsieve.db
 
 import scala.collection.SortedSet
+import scala.collection.compat._
 import com.pennsieve.traits.PostgresProfile.api._
 
 object ChannelGroup {
 
   def apply(id: Int, channels: List[String]) =
-    new ChannelGroup(id, channels.to[SortedSet])
+    new ChannelGroup(id, channels.to(SortedSet))
 
   def toDBTuple(channelGroup: ChannelGroup) =
     Some((channelGroup.id, channelGroup.channels.toList))

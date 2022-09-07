@@ -141,7 +141,7 @@ class AnnotationManager(organization: Organization, db: Database) {
   ): EitherT[Future, CoreError, Int] =
     run {
       for {
-        _ <- discussions
+        deletedDiscussionCount <- discussions
           .filter(_.annotationId === annotation.id)
           .delete
         deleteAnnotation <- annotations.filter(_.id === annotation.id).delete
@@ -174,6 +174,7 @@ class AnnotationManager(organization: Organization, db: Database) {
       results
         .groupBy(_._1)
         .mapValues(values => values.flatMap(_._2))
+        .toMap // toMap may show as redundant, but is for Scala 2.13
     }
 
   def findLayers(
