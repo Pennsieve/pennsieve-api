@@ -18,39 +18,16 @@ package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
-import com.pennsieve.db.{
-  AllDataCanvasesViewMapper,
-  DataCanvasFolderMapper,
-  DataCanvasMapper,
-  DataCanvasPackageMapper,
-  PackagesMapper
-}
-import com.pennsieve.domain.{
-  CoreError,
-  NotFound,
-  PredicateError,
-  ServiceError,
-  SqlError
-}
-import com.pennsieve.models.{
-  DataCanvas,
-  DataCanvasFolder,
-  DataCanvasPackage,
-  NodeCodes,
-  Organization,
-  Package,
-  User
-}
+import com.pennsieve.core.utilities.{FutureEitherHelpers, checkOrErrorT}
+import com.pennsieve.db.{AllDataCanvasesViewMapper, DataCanvasFolderMapper, DataCanvasMapper, DataCanvasPackageMapper, DataCanvasUserMapper, PackagesMapper}
+import com.pennsieve.domain.{CoreError, NotFound, PredicateError, ServiceError, SqlError}
+import com.pennsieve.models.{DBPermission, DataCanvas, DataCanvasFolder, DataCanvasPackage, DataCanvasUser, NodeCodes, Organization, Package, Role, User}
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.{
-  FutureEitherT,
-  _
-}
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.{FutureEitherT, _}
 import com.pennsieve.messages.BackgroundJob
 import org.postgresql.util.PSQLException
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 import slick.dbio.DBIO
 
 object DataCanvasManager {
@@ -66,6 +43,9 @@ class DataCanvasManager(
 
   val organization: Organization = datacanvasMapper.organization
 
+  implicit val dataCanvasUser: DataCanvasUserMapper = new DataCanvasUserMapper(
+    organization
+  )
   val dataCanvasPackageMapper = new DataCanvasPackageMapper(organization)
   val dataCanvasFolderMapper = new DataCanvasFolderMapper(organization)
 
@@ -130,6 +110,14 @@ class DataCanvasManager(
           permissionBit = permissionBit.getOrElse(0),
           isPublic = isPublic.getOrElse(false)
         )
+
+        _ <- dataCanvasUser += DataCanvasUser(
+          dataCanvas.id,
+          actor.id,
+          DBPermission.Owner,
+          Some(Role.Owner)
+        )
+
       } yield dataCanvas
 
       dataCanvas <- db.run(createdDataCanvas.transactionally).toEitherT
