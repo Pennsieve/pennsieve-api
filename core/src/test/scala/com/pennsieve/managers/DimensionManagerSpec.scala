@@ -25,8 +25,7 @@ import com.pennsieve.models.{
   DimensionProperties,
   Package
 }
-import com.pennsieve.test.helpers.EitherValue._
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global

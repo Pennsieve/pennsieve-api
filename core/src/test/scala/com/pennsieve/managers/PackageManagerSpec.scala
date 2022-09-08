@@ -25,7 +25,7 @@ import com.pennsieve.models.{ CollectionUpload, Package, PackageType }
 import com.pennsieve.models.PackageType._
 import com.pennsieve.traits.PostgresProfile.api._
 import org.postgresql.util.PSQLException
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.EitherValues._
 import org.scalatest.enablers.Messaging.messagingNatureOfThrowable
 import java.util.UUID

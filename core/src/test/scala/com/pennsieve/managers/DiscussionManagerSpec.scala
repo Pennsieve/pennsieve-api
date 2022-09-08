@@ -29,7 +29,6 @@ import com.pennsieve.models.{
   Package,
   PathElement
 }
-import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.EitherValues._
 import com.github.tminglei.slickpg.Range
 

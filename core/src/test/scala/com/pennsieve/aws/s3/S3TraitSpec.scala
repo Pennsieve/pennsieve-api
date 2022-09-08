@@ -19,17 +19,18 @@ package com.pennsieve.aws.s3
 import com.amazonaws.services.s3.model._
 import com.pennsieve.test._
 import com.pennsieve.test.helpers._
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.utilities.Container
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.apache.commons.io.IOUtils
 import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import java.util.UUID
 import scala.util.Random
 
 class S3TraitSpec
-    extends FlatSpec
+    extends AnyFlatSpec
     with Matchers
     with BeforeAndAfterEach
     with BeforeAndAfterAll

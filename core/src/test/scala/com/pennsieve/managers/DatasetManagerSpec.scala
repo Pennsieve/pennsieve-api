@@ -20,8 +20,8 @@ import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
 import com.pennsieve.managers.DatasetManager.{ OrderByColumn, OrderByDirection }
 import com.pennsieve.models._
-import com.pennsieve.test.helpers.EitherValue._
-import org.scalatest.Matchers._
+import org.scalatest.EitherValues._
+import org.scalatest.matchers.should.Matchers._
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global

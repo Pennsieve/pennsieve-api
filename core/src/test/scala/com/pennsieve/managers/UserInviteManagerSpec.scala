@@ -17,13 +17,13 @@
 package com.pennsieve.managers
 
 import java.time.Duration
-
 import com.pennsieve.aws.email.Email
 import com.pennsieve.models.DBPermission.Delete
 import org.scalatest.EitherValues._
-import org.scalatest.Matchers
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import com.pennsieve.aws.cognito.MockCognito
+import org.scalatest.matchers.should.Matchers
 
 class UserInviteManagerSpec extends BaseManagerSpec with Matchers {
 

@@ -21,7 +21,6 @@ import com.pennsieve.models.FileType.GenericData
 import com.pennsieve.models.PackageType.CSV
 import com.pennsieve.models._
 import com.pennsieve.models.FileObjectType.Source
-import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -48,8 +48,9 @@ import com.pennsieve.db._
 import com.pennsieve.models.FileObjectType.Source
 import com.pennsieve.test._
 import com.pennsieve.test.helpers._
-import com.pennsieve.test.helpers.EitherValue._
 import org.scalatest._
+import org.scalatest.EitherValues._
+import org.scalatest.flatspec.AnyFlatSpec
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sns.SnsAsyncClient
@@ -527,4 +528,4 @@ trait ManagerSpec
   }
 }
 
-class BaseManagerSpec extends FlatSpec with ManagerSpec
+class BaseManagerSpec extends AnyFlatSpec with ManagerSpec

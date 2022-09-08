@@ -19,13 +19,14 @@ package com.pennsieve.aws.cognito
 import com.auth0.jwk.{ Jwk, JwkProvider }
 import io.circe.Decoder
 import io.circe.generic.decoding.DerivedDecoder.deriveDecoder
-import org.scalatest.{ FlatSpec, Matchers }
 import pdi.jwt.{ JwtAlgorithm, JwtCirce }
 import software.amazon.awssdk.regions.Region
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.JWK
 import com.pennsieve.models.CognitoId
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import java.security.KeyPair
 import java.security.KeyPairGenerator
@@ -110,7 +111,7 @@ class MockJwkProvider() extends JwkProvider {
   )
 }
 
-class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
+class CognitoJWTAuthenticatorSpec extends AnyFlatSpec with Matchers {
 
   val pennsieveUserId: String = "0f14d0ab-9605-4a62-a9e4-5ed26688389b"
   val cognitoPoolId: String = "12345"

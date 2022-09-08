@@ -23,10 +23,9 @@ import com.pennsieve.db.UserMapper
 import com.pennsieve.domain.PredicateError
 
 import com.pennsieve.models._
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.traits.PostgresProfile.api._
 import org.scalatest.EitherValues._
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

@@ -19,10 +19,9 @@ package com.pennsieve.managers
 import cats.data._
 import cats.implicits._
 import com.pennsieve.models._
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.traits.PostgresProfile.api._
 import org.scalatest.OptionValues._
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 
 import java.util.UUID
 import java.time.{ LocalDate, ZoneId, ZoneOffset, ZonedDateTime }
