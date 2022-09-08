@@ -28,7 +28,13 @@ import com.pennsieve.dtos.Builders.{
   dataCanvasFolderDTO,
   packageDTO
 }
-import com.pennsieve.dtos.{ DataCanvasDTO, DataCanvasFolderDTO, PackageDTO }
+import com.pennsieve.dtos.{
+  DataCanvasDTO,
+  DataCanvasFolderDTO,
+  DownloadManifestDTO,
+  DownloadRequest,
+  PackageDTO
+}
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
@@ -816,4 +822,36 @@ class DataCanvasController(
     }
   }
 
+  //
+  // generate download manifest
+  //
+  post(
+    "/download-manifest",
+    operation(
+      apiOperation[DownloadManifestDTO]("generateDownloadManifest")
+        summary "generate a manifest for downloading the data-canvas content"
+        parameters (bodyParam[DownloadRequest])("body")
+          .description(
+            "nodeIds: the data-canvas node id (will only process first one), fileIds: ignored"
+          )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Done /*DownloadManifestDTO*/ ] =
+        for {
+          secureContainer <- getSecureContainer
+          body <- extractOrErrorT[DownloadRequest](parsedBody)
+          nodeId = body.nodeIds.head
+
+          _ <- secureContainer.dataCanvasManager
+            .getByNodeId(nodeId)
+            .coreErrorToActionResult
+
+          // get folders & packages
+          // format result
+
+        } yield Done
+      override val is = result.value.map(OkResult)
+    }
+  }
 }
