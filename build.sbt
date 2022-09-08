@@ -129,7 +129,7 @@ lazy val slickCats213Version = "0.10.4"
 
 lazy val testContainersVersion = "0.40.1"
 lazy val utilitiesVersion = "4-55953e4"
-lazy val jobSchedulingServiceClientVersion = "5-aaa0a19"
+lazy val jobSchedulingServiceClientVersion = "6-3251c91"
 lazy val serviceUtilitiesVersion = "8-9751ee3"
 lazy val discoverServiceClientVersion = "36-32664eb"
 lazy val doiServiceClientVersion = "3-9436155"
