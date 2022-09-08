@@ -1,4 +1,8 @@
-import CrossCompilationUtil.{getScalacOptions, getVersion, handle212OnlyDependency}
+import CrossCompilationUtil.{
+  getScalacOptions,
+  getVersion,
+  handle212OnlyDependency
+}
 Global / cancelable := true
 
 // common settings
@@ -233,11 +237,7 @@ lazy val coreApiSharedSettings = Seq(
     json4s213Version
   ),
   akkaVersion := getVersion(scalaVersion.value, akka212Version, akka213Version),
-  scalatestVersion := getVersion(
-    scalaVersion.value,
-    scalatest212Version,
-    scalatest213Version
-  ),
+  scalatestVersion := scalatest213Version,
   scalikejdbcVersion := getVersion(
     scalaVersion.value,
     scalikejdbc212Version,
@@ -253,11 +253,7 @@ lazy val coreApiSharedSettings = Seq(
     slickCats212Version,
     slickCats213Version
   ),
-  catsVersion := getVersion(
-    scalaVersion.value,
-    cats212Version,
-    cats213Version
-  ),
+  catsVersion := getVersion(scalaVersion.value, cats212Version, cats213Version),
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
     "org.json4s" %% "json4s-jackson" % json4sVersion.value,

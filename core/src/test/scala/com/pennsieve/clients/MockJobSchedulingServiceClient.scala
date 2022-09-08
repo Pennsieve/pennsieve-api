@@ -22,6 +22,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
 import cats.data.EitherT
 import cats.implicits._
+import io.circe.syntax._
 import com.pennsieve.jobscheduling.clients.generated.definitions.{
   Job,
   UploadResult
@@ -120,9 +121,14 @@ class MockJobSchedulingServiceClient(
           GetPackageStateResponse.NotFound
         )
       case _ =>
+        val expectedPackageState: PackageState = PackageState.PROCESSING
         EitherT.rightT[Future, Either[Throwable, HttpResponse]](
-          GetPackageStateResponse.OK(PackageState.PROCESSING)
+          GetPackageStateResponse.OK(
+            expectedPackageState
+              .asJson(com.pennsieve.models.PackageState.circeEncoder)
+          )
         )
+
     }
 
 }
