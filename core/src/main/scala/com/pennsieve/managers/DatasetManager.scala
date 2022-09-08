@@ -596,7 +596,7 @@ class DatasetManager(
   def validShareId(id: String): Boolean =
     NodeCodes.nodeIdIsOneOf(validShareableNodeCodes, id)
 
-  def createAddCollaboratorQueries(
+  def generateAddCollaboratorQueriesMapper(
     dataset: Dataset,
     validIdsToShareWithMap: Map[String, Int]
   )(
@@ -673,7 +673,7 @@ class DatasetManager(
         .intersect(validIdsToShareWith)
         .diff(currentSharees)
 
-      addQueriesMapper = createAddCollaboratorQueries(
+      addQueriesMapper = generateAddCollaboratorQueriesMapper(
         dataset,
         validIdsToShareWithMap
       )(_)
