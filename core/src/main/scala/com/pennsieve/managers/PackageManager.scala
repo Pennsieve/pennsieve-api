@@ -767,7 +767,7 @@ class PackageManager(datasetManager: DatasetManager) {
         toZonedDatetime(createdAt),
         toZonedDatetime(updatedAt),
         id,
-        attributes.as[List[ModelProperty]].right.get
+        attributes.as[List[ModelProperty]].toOption.get
       )
 
       decode[Seq[Option[File]]](p.nextString()) match {

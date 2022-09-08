@@ -45,7 +45,7 @@ import com.amazonaws.services.s3.model.{
 
 import java.io.{ File, InputStream }
 import java.net.URL
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.annotation.tailrec
 
 trait S3Trait {

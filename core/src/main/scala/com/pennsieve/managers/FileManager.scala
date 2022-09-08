@@ -40,6 +40,7 @@ import com.pennsieve.models.{
 import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.collection.compat._
 
 object FileManager {
 
@@ -434,7 +435,7 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
           .result
       )
       .map(
-        _.groupBy(_.packageId)
+        _.groupBy(_.packageId).view
           .mapValues(files => {
             if (files.size == 1) {
               files.headOption
