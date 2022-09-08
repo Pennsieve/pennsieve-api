@@ -18,16 +18,43 @@ package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
-import com.pennsieve.core.utilities.{FutureEitherHelpers, checkOrErrorT}
-import com.pennsieve.db.{AllDataCanvasesViewMapper, DataCanvasFolderMapper, DataCanvasMapper, DataCanvasPackageMapper, DataCanvasUserMapper, PackagesMapper}
-import com.pennsieve.domain.{CoreError, NotFound, PredicateError, ServiceError, SqlError}
-import com.pennsieve.models.{DBPermission, DataCanvas, DataCanvasFolder, DataCanvasPackage, DataCanvasUser, NodeCodes, Organization, Package, Role, User}
+import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
+import com.pennsieve.db.{
+  AllDataCanvasesViewMapper,
+  DataCanvasFolderMapper,
+  DataCanvasMapper,
+  DataCanvasPackageMapper,
+  DataCanvasUserMapper,
+  PackagesMapper
+}
+import com.pennsieve.domain.{
+  CoreError,
+  NotFound,
+  PredicateError,
+  ServiceError,
+  SqlError
+}
+import com.pennsieve.models.{
+  DBPermission,
+  DataCanvas,
+  DataCanvasFolder,
+  DataCanvasPackage,
+  DataCanvasUser,
+  NodeCodes,
+  Organization,
+  Package,
+  Role,
+  User
+}
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.{FutureEitherT, _}
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.{
+  FutureEitherT,
+  _
+}
 import com.pennsieve.messages.BackgroundJob
 import org.postgresql.util.PSQLException
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import slick.dbio.DBIO
 
 object DataCanvasManager {
@@ -149,6 +176,19 @@ class DataCanvasManager(
           .headOption
       )
       .whenNone(NotFound(id.toString))
+
+  def getByNodeId(
+    nodeId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvas] =
+    db.run(
+        datacanvasMapper
+          .filter(_.nodeId === nodeId)
+          .result
+          .headOption
+      )
+      .whenNone(NotFound(nodeId))
 
   def update(
     dataCanvas: DataCanvas,
