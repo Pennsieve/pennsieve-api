@@ -24,6 +24,7 @@ import com.pennsieve.db.{
   DataCanvasFolderMapper,
   DataCanvasMapper,
   DataCanvasPackageMapper,
+  DataCanvasUserMapper,
   PackagesMapper
 }
 import com.pennsieve.domain.{
@@ -34,12 +35,15 @@ import com.pennsieve.domain.{
   SqlError
 }
 import com.pennsieve.models.{
+  DBPermission,
   DataCanvas,
   DataCanvasFolder,
   DataCanvasPackage,
+  DataCanvasUser,
   NodeCodes,
   Organization,
   Package,
+  Role,
   User
 }
 import com.pennsieve.traits.PostgresProfile.api._
@@ -66,6 +70,9 @@ class DataCanvasManager(
 
   val organization: Organization = datacanvasMapper.organization
 
+  implicit val dataCanvasUser: DataCanvasUserMapper = new DataCanvasUserMapper(
+    organization
+  )
   val dataCanvasPackageMapper = new DataCanvasPackageMapper(organization)
   val dataCanvasFolderMapper = new DataCanvasFolderMapper(organization)
 
@@ -130,6 +137,14 @@ class DataCanvasManager(
           permissionBit = permissionBit.getOrElse(0),
           isPublic = isPublic.getOrElse(false)
         )
+
+        _ <- dataCanvasUser += DataCanvasUser(
+          dataCanvas.id,
+          actor.id,
+          DBPermission.Owner,
+          Some(Role.Owner)
+        )
+
       } yield dataCanvas
 
       dataCanvas <- db.run(createdDataCanvas.transactionally).toEitherT
@@ -161,6 +176,49 @@ class DataCanvasManager(
           .headOption
       )
       .whenNone(NotFound(id.toString))
+
+  def getByNodeId(
+    nodeId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvas] =
+    db.run(
+        datacanvasMapper
+          .filter(_.nodeId === nodeId)
+          .result
+          .headOption
+      )
+      .whenNone(NotFound(nodeId))
+
+  def getForUser(
+    userId: Int = actor.id,
+    withRole: Role = Role.Owner,
+    restrictToRole: Boolean = false
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DataCanvas]] = {
+    val query = dataCanvasUser.maxRoles(userId).flatMap {
+      roleMap: Map[Int, Option[Role]] =>
+        {
+          val dataCanvasIds: List[Int] = roleMap
+            .filter {
+              case (_, Some(role)) =>
+                if (restrictToRole) role == withRole
+                else role >= withRole
+              case (_, None) => false
+            }
+            .keys
+            .toList
+
+          val query = datacanvasMapper.filter(_.id.inSet(dataCanvasIds))
+
+          for {
+            datacanvases <- query.result
+          } yield datacanvases
+        }
+    }
+    db.run(query).toEitherT
+  }
 
   def update(
     dataCanvas: DataCanvas,
