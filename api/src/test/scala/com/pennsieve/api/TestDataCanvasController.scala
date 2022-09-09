@@ -252,8 +252,8 @@ class TestDataCanvasController
     )
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = "test: update requires authentication UPDATED",
-        description = "test: update requires authentication UPDATED"
+        name = Some("test: update requires authentication UPDATED"),
+        description = Some("test: update requires authentication UPDATED")
       )
     )
 
@@ -269,8 +269,8 @@ class TestDataCanvasController
     )
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = "test: update an existing data-canvas UPDATED",
-        description = "test: update an existing data-canvas UPDATED"
+        name = Some("test: update an existing data-canvas UPDATED"),
+        description = Some("test: update an existing data-canvas UPDATED")
       )
     )
 
@@ -286,8 +286,8 @@ class TestDataCanvasController
   test("update a non-existent data-canvas should fail") {
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = randomString(),
-        description = "test: update an existing data-canvas UPDATED"
+        name = Some(randomString()),
+        description = Some("test: update an existing data-canvas UPDATED")
       )
     )
 
@@ -307,8 +307,8 @@ class TestDataCanvasController
     )
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = randomString(256),
-        description = "test: update an existing data-canvas UPDATED"
+        name = Some(randomString(256)),
+        description = Some("test: update an existing data-canvas UPDATED")
       )
     )
 
@@ -329,8 +329,8 @@ class TestDataCanvasController
     // update the data-canvas to make it publicly visible
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = "test: update an existing data-canvas UPDATED",
-        description = "test: update an existing data-canvas UPDATED",
+        name = Some("test: update an existing data-canvas UPDATED"),
+        description = Some("test: update an existing data-canvas UPDATED"),
         isPublic = Some(true)
       )
     )
@@ -346,6 +346,17 @@ class TestDataCanvasController
         .extract[DataCanvasDTO]
 
       result.isPublic shouldBe true
+    }
+  }
+
+  test("update data-canvas name and description are optional") {
+    val canvas = createDataCanvas()
+    putJson(
+      s"/${canvas.id}",
+      write(UpdateDataCanvasRequest()),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
     }
   }
 

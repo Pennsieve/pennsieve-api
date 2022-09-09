@@ -67,8 +67,8 @@ case class CreateDataCanvasRequest(
 )
 
 case class UpdateDataCanvasRequest(
-  name: String,
-  description: String,
+  name: Option[String] = None,
+  description: Option[String] = None,
   isPublic: Option[Boolean] = None,
   status: Option[String] = None
 )
@@ -364,8 +364,8 @@ class DataCanvasController(
         updatedDataCanvas <- secureContainer.dataCanvasManager
           .update(
             dataCanvas.copy(
-              name = body.name,
-              description = body.description,
+              name = body.name.getOrElse(dataCanvas.name),
+              description = body.description.getOrElse(dataCanvas.description),
               statusId = newStatus.id,
               isPublic = body.isPublic.getOrElse(false)
             )
