@@ -36,7 +36,6 @@ import com.pennsieve.models.SubscriptionStatus.{
 }
 import com.pennsieve.models._
 import com.pennsieve.models.DateVersion._
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.traits.PostgresProfile.api._
 import java.time.{ Duration, ZonedDateTime }
 

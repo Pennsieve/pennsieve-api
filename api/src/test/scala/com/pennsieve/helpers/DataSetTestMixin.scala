@@ -44,7 +44,6 @@ import com.pennsieve.clients.DatasetAssetClient
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext
-import com.pennsieve.test.helpers.EitherValue._
 
 import java.io.ByteArrayInputStream
 import com.pennsieve.dtos._

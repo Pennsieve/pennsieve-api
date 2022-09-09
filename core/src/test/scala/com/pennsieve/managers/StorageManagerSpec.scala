@@ -16,17 +16,30 @@
 
 package com.pennsieve.managers
 
-import com.pennsieve.domain.StorageAggregation.{sdatasets, sorganizations, spackages, susers}
+import com.pennsieve.domain.StorageAggregation.{
+  sdatasets,
+  sorganizations,
+  spackages,
+  susers
+}
 import com.pennsieve.db._
 import com.pennsieve.models.PackageType._
-import com.pennsieve.models.{Dataset, File, FileObjectType, FileProcessingState, FileType, Package, PackageState}
+import com.pennsieve.models.{
+  Dataset,
+  File,
+  FileObjectType,
+  FileProcessingState,
+  FileType,
+  Package,
+  PackageState
+}
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.PDF
 import com.pennsieve.core.utilities._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
 import akka.actor.ActorSystem
-import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._
 import org.scalatest.matchers.should.Matchers
 

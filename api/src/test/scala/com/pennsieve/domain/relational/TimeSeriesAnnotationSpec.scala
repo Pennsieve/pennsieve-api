@@ -20,18 +20,20 @@ import akka.stream.testkit.scaladsl.TestSink
 import com.pennsieve.api.ApiSuite
 import com.pennsieve.db.{ TimeSeriesAnnotation, TimeSeriesLayer }
 import com.pennsieve.models.{ Channel, Package, PackageState, PackageType }
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.timeseries._
 import com.github.tminglei.slickpg.Range
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
-import org.scalatest._
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.OptionValues._
+import org.scalatest.EitherValues._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.collection.SortedSet
 
 class TimeSeriesAnnotationSpec
-    extends FlatSpec
+    extends AnyFlatSpec
     with ApiSuite
     with Matchers
     with BeforeAndAfterEach {

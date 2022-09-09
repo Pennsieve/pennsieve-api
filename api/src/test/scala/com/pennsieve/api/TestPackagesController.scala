@@ -60,7 +60,6 @@ import com.pennsieve.models.{
   Role,
   User
 }
-import com.pennsieve.test.helpers.EitherValue._
 import io.circe.parser.decode
 import org.json4s._
 import org.json4s.jackson.JsonMethods._

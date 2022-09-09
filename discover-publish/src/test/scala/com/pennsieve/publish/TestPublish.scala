@@ -48,8 +48,10 @@ import io.circe.parser.decode
 import io.circe.syntax._
 
 import java.time.LocalDate
-import org.scalatest._
 import org.apache.commons.io.IOUtils
+import org.scalatest.{ Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Suite }
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -70,7 +72,7 @@ case class InsecureDatabaseContainer(config: Config, organization: Organization)
 }
 
 class TestPublish
-    extends WordSpec
+    extends AnyWordSpec
     with Matchers
     with PersistantTestContainers
     with S3DockerContainer
@@ -143,7 +145,7 @@ class TestPublish
   var datasetAssetClient: DatasetAssetClient = _
 
   /**
-    * Run prior to publishAssets to clean ${container.s3Bucket}/${container.s3Key}` of existing objects before
+    * Run prior to publishAssets to clean `${container.s3Bucket}/${container.s3Key}` of existing objects before
     * starting the publishing process. This is used to simulate discover-s3clean behavior prior to the discover-publish
     * step function workflow being invoked.
     *

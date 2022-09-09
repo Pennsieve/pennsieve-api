@@ -41,14 +41,17 @@ import com.pennsieve.uploads.{ PackagePreview, S3File }
 import com.pennsieve.web.Settings
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.concurrent.Future
 
-class TestFilesController extends FlatSpec with DataSetTestMixin with ApiSuite {
+class TestFilesController
+    extends AnyFlatSpec
+    with DataSetTestMixin
+    with ApiSuite {
 
   // hack to get around implicit resolution issues with com.pennsieve.test.helpers.EitherValue
-  object EitherSyntax extends cats.syntax.EitherSyntax
+  //object EitherSyntax extends cats.syntax.EitherSyntax
 
   var destination: Package = _
   var tsdestination: Package = _

@@ -21,12 +21,13 @@ import com.pennsieve.etl.`data-cli`.SetChannel.ChannelInfo
 import com.pennsieve.etl.`data-cli`.exceptions._
 import com.pennsieve.models.{ Dataset, Package }
 import com.pennsieve.traits.PostgresProfile.api._
+
 import java.io.{ File => JavaFile }
-
 import com.pennsieve.models.Channel
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class SetChannelSpec extends FlatSpec with Matchers {
+class SetChannelSpec extends AnyFlatSpec with Matchers {
 
   "decodeChannelInfo" should "parse a JSON file into a ChannelInfo without an id" in {
     val file: JavaFile =

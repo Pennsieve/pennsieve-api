@@ -18,7 +18,7 @@ package com.pennsieve.api
 
 import com.pennsieve.models.OnboardingEventType
 import com.pennsieve.models.OnboardingEventType._
-import com.pennsieve.test.helpers.EitherValue._
+import org.scalatest.EitherValues._
 import com.pennsieve.test.helpers.AwaitableImplicits._
 import io.circe._
 import io.circe.syntax._

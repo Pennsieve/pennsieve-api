@@ -63,7 +63,6 @@ import com.pennsieve.models.PackageType.Collection
 import com.pennsieve.models.PublishStatus.{ PublishFailed, PublishSucceeded }
 import com.pennsieve.test.{ LocalstackDockerContainer, _ }
 import com.pennsieve.test.helpers._
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.traits.TimeSeriesDBContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import enumeratum._
@@ -79,8 +78,9 @@ import com.typesafe.scalalogging.LazyLogging
 import net.ceedubs.ficus.Ficus.{ stringValueReader, toFicusConfig }
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
-import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, FunSuite }
+import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach }
 import org.scalatest.EitherValues._
+import org.scalatest.funsuite.AnyFunSuite
 import org.scalatra.test.scalatest._
 import org.scalatra.test.HttpComponentsClientResponse
 
@@ -729,4 +729,4 @@ trait ApiSuite
   }
 }
 
-trait BaseApiTest extends FunSuite with ApiSuite
+trait BaseApiTest extends AnyFunSuite with ApiSuite

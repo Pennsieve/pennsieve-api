@@ -17,15 +17,16 @@
 package com.pennsieve.api
 
 import java.util.UUID
-import org.scalatest._
 import com.pennsieve.models._
 import org.json4s
 import org.json4s._
 import org.json4s.jackson.Serialization.{ read, write }
 import io.circe
 import com.pennsieve.helpers.ModelSerializers
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class TestModelSerializers extends FlatSpec with Matchers {
+class TestModelSerializers extends AnyFlatSpec with Matchers {
 
   protected implicit val jsonFormats
     : Formats = DefaultFormats ++ ModelSerializers.serializers

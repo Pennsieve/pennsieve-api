@@ -23,9 +23,8 @@ import com.pennsieve.models.{ Organization, User }
 import com.pennsieve.test.S3DockerContainer
 import com.pennsieve.utilities.`unused-organization-migration`.UnusedOrganizationMigrationContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
-import org.scalatest._
-import matchers._
 import com.pennsieve.traits.PostgresProfile.api._
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

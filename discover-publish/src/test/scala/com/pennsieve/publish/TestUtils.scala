@@ -16,11 +16,12 @@
 
 package com.pennsieve.publish
 
-import org.scalatest.{ Matchers, Suite, WordSpec }
 import cats._
 import cats.implicits._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class TestUtils extends WordSpec with Matchers {
+class TestUtils extends AnyWordSpec with Matchers {
 
   "joinKeys" should {
 

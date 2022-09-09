@@ -20,13 +20,14 @@ import com.pennsieve.test.helpers.AwaitableImplicits._
 import com.pennsieve.etl.`data-cli`.exceptions._
 import com.pennsieve.models.{ Dataset, ModelProperty, Package, PackageState }
 import com.pennsieve.traits.PostgresProfile.api._
+
 import java.time.ZonedDateTime
 import java.io.{ File => JavaFile }
-
 import com.pennsieve.models.PackageType
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class SetPackagePropertiesSpec extends FlatSpec with Matchers {
+class SetPackagePropertiesSpec extends AnyFlatSpec with Matchers {
 
   "decodeProperties" should "parse a JSON file into a List[ModelProperty]" in {
     val file: JavaFile =

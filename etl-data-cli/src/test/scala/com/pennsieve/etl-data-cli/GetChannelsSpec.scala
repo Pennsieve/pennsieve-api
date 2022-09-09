@@ -20,12 +20,13 @@ import com.pennsieve.test.helpers.AwaitableImplicits._
 import com.pennsieve.etl.`data-cli`.exceptions._
 import com.pennsieve.models.{ Dataset, Package }
 import com.pennsieve.traits.PostgresProfile.api._
+
 import java.io.{ File => JavaFile }
-
 import com.pennsieve.models.Channel
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class GetChannelsSpec extends FlatSpec with Matchers {
+class GetChannelsSpec extends AnyFlatSpec with Matchers {
 
   "parse" should "create a config object" in {
     val args = Array(

@@ -19,17 +19,18 @@ package com.pennsieve.api
 import com.pennsieve.db.TimeSeriesAnnotation
 import com.pennsieve.models.{ Channel, ModelProperty, Package }
 import com.pennsieve.dtos.{ ChannelDTO, ModelPropertiesDTO, ModelPropertyRO }
+
 import scala.collection.SortedSet
 import com.pennsieve.helpers.{ DataSetTestMixin, TimeSeriesHelper }
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.TimeSeries
 import org.json4s._
 import org.json4s.jackson.Serialization.write
-import org.scalatest.FlatSpec
 import org.scalatest.EitherValues._
+import org.scalatest.flatspec.AnyFlatSpec
 
 class TestTimeSeriesController
-    extends FlatSpec
+    extends AnyFlatSpec
     with ApiSuite
     with DataSetTestMixin {
 
