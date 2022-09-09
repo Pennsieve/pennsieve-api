@@ -540,4 +540,18 @@ class AllDataCanvasesViewManager(
           .headOption
       )
       .whenNone(NotFound(nodeId))
+
+  def getForOrganization(
+    orgId: Int,
+    isPublic: Boolean = false
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[(Int, DataCanvas)]] =
+    db.run(
+        allDataCanvasesViewMapper
+          .filter(_.organizationId === orgId)
+          .filter(_.isPublic === isPublic)
+          .result
+      )
+      .toEitherT
 }

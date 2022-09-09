@@ -173,6 +173,13 @@ class DataCanvasController(
     }
   }
 
+  //
+  // Public DataCanvas API endpoints
+  //
+
+  /**
+    * Get a public DataCanvas by node id
+    */
   get(
     "/get/:nodeId",
     operation(
@@ -211,6 +218,53 @@ class DataCanvasController(
       override val is = result.value.map(OkResult(_))
     }
   }
+
+  /**
+    * Get all public DataCanvases for an organization
+    */
+  get(
+    "/get/organization/:orgNodeId",
+    operation(
+      apiOperation[List[DataCanvasDTO]](
+        "getPublicDataCanvasesForAnOrganization"
+      )
+        summary "gets all public data-canvas for an organization"
+        parameters (
+          pathParam[String]("orgNodeId").description("the organization node id")
+        )
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, List[DataCanvasDTO]] = for {
+        orgNodeId <- paramT[String]("orgNodeId")
+        secureContainer <- getSecureContainer
+
+        organization <- secureContainer.organizationManager
+          .getByNodeId(orgNodeId)
+          .coreErrorToActionResult
+
+        response <- secureContainer.allDataCanvasesViewManager
+          .getForOrganization(organization.id, isPublic = true)
+          .coreErrorToActionResult
+
+        datacanvases = response.map(x => x._2)
+
+        dtos <- datacanvasDTOs(datacanvases)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).coreErrorToActionResult
+
+      } yield dtos
+
+      override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  //
+  // DataCanvas: create, update, delete
+  //
 
   /**
     * Create a DataCanvas
