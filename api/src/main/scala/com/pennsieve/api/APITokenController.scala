@@ -46,7 +46,7 @@ class APITokenController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "API Token"
+  override val pennsieveSwaggerTag = "API Token"
 
   /*
    * All routes in this controller should only be accessed via login-based authentication

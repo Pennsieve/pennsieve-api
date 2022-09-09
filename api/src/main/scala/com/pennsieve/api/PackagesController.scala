@@ -132,7 +132,7 @@ class PackagesController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Packages"
+  override val pennsieveSwaggerTag = "Packages"
 
   /**
     * Extractors for paramT and optParamT support

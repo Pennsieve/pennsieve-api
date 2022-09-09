@@ -85,7 +85,7 @@ class DataCanvasController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "DataCanvas"
+  override val pennsieveSwaggerTag = "DataCanvas"
 
   implicit class JValueExtended(value: JValue) {
     def hasField(childString: String): Boolean =

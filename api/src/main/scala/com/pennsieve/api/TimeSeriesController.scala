@@ -118,7 +118,7 @@ class TimeSeriesController(
 ) extends ScalatraServlet
     with AuthenticatedController {
 
-  override val swaggerTag = "TimeSeries"
+  override val pennsieveSwaggerTag = "TimeSeries"
 
   // var so we can override in tests
   implicit var autoSession: DBSession = AutoSession

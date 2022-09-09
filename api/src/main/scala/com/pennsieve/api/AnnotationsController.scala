@@ -73,7 +73,7 @@ class AnnotationsController(
 ) extends ScalatraServlet
     with AuthenticatedController {
 
-  override val swaggerTag: String = "Annotations"
+  override val pennsieveSwaggerTag: String = "Annotations"
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
   // for reads, access to annotations is implied through the node to which they refer

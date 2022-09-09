@@ -67,7 +67,7 @@ class DiscussionsController(
 ) extends ScalatraServlet
     with AuthenticatedController {
 
-  override val swaggerTag: String = "Discussions"
+  override val pennsieveSwaggerTag: String = "Discussions"
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 

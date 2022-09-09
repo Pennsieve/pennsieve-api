@@ -97,7 +97,7 @@ class DataController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Data"
+  override val pennsieveSwaggerTag = "Data"
 
   val moveOperation = (apiOperation[MoveResponse]("moveItems")
     summary "moves files or packages into a destination package"

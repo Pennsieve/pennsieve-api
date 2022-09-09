@@ -54,7 +54,7 @@ class HealthController(
 
   protected val applicationDescription: String = "Core API"
 
-  override val swaggerTag = "Health"
+  override val pennsieveSwaggerTag = "Health"
 
   val getHealthOperation = (apiOperation[Unit]("getHealth")
     summary "performs a health check")

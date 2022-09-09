@@ -199,7 +199,7 @@ class OrganizationsController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Organizations"
+  override val pennsieveSwaggerTag = "Organizations"
 
   val addToOrganizationOperation
     : OperationBuilder = (apiOperation[Map[String, AddUserResponse]](

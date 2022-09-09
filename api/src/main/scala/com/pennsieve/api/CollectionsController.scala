@@ -46,7 +46,7 @@ class CollectionsController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Collections"
+  override val pennsieveSwaggerTag = "Collections"
 
   get(
     "/",

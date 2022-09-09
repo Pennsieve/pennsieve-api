@@ -299,7 +299,7 @@ class DataSetsController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "DataSets"
+  override val pennsieveSwaggerTag = "DataSets"
 
   configureMultipartHandling(
     MultipartConfig(maxFileSize = Some(maxFileUploadSize))

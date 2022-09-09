@@ -184,7 +184,7 @@ class FilesController(
     with AuthenticatedController {
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
-  override val swaggerTag = "Files"
+  override val pennsieveSwaggerTag = "Files"
 
   private def generateManifest(
     dataset: Dataset,

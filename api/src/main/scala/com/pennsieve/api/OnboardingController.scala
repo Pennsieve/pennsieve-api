@@ -38,7 +38,7 @@ class OnboardingController(
 ) extends ScalatraServlet
     with AuthenticatedController {
 
-  override val swaggerTag = "Onboarding"
+  override val pennsieveSwaggerTag = "Onboarding"
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 

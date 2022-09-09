@@ -74,7 +74,7 @@ class WebhooksController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Webhooks"
+  override val pennsieveSwaggerTag = "Webhooks"
 
   post(
     "/",

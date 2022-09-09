@@ -55,7 +55,7 @@ class ImagingController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Imaging"
+  override val pennsieveSwaggerTag = "Imaging"
 
   val getDimensionsOperation = (apiOperation[List[DimensionDTO]](
     "getDimensions"

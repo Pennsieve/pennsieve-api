@@ -40,7 +40,7 @@ class InternalDataSetsController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "DataSetsInternal"
+  override val pennsieveSwaggerTag = "DataSetsInternal"
 
   val touchDataSetOperation: OperationBuilder = (apiOperation[Unit](
     "touchDataSet"

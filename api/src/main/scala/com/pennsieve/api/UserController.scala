@@ -92,7 +92,7 @@ class UserController(
 ) extends ScalatraServlet
     with AuthenticatedController {
 
-  override val swaggerTag = "User"
+  override val pennsieveSwaggerTag = "User"
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 

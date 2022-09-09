@@ -83,7 +83,7 @@ class AccountController(
     with FutureSupport
     with LazyLogging {
 
-  override val swaggerTag = "Account"
+  override val pennsieveSwaggerTag = "Account"
 
   protected implicit def executor: ExecutionContext = asyncExecutor
   override implicit lazy val logger: Logger = Logger("com.pennsieve")

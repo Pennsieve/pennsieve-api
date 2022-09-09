@@ -70,7 +70,7 @@ class ContributorsController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Contributors"
+  override val pennsieveSwaggerTag = "Contributors"
 
   get(
     "/",

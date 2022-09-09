@@ -96,7 +96,7 @@ class ExternalPublicationController(
 
   implicit val relationshipTypeParam = Param.enumParam(RelationshipType)
 
-  override val swaggerTag = "ExternalPublications"
+  override val pennsieveSwaggerTag = "ExternalPublications"
 
   /**
     * Rough validation that:

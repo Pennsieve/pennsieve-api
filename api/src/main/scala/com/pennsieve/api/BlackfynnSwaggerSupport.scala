@@ -22,7 +22,9 @@ import org.scalatra.util.NotNothing
 
 trait PennsieveSwaggerSupport extends SwaggerSupport { self: ScalatraBase =>
 
-  val swaggerTag: String
+  //TODO: Investigate if this is still necessary with Scalatra >= 2.7.x.
+  // They introduced a Option[String] swaggerTag in SwaggerSupportSyntax <: SwaggerSupport
+  val pennsieveSwaggerTag: String
 
   override def apiOperation[T](
     nickname: String
@@ -32,6 +34,6 @@ trait PennsieveSwaggerSupport extends SwaggerSupport { self: ScalatraBase =>
   ): SwaggerSupportSyntax.OperationBuilder =
     super
       .apiOperation(nickname)
-      .tags(swaggerTag)
+      .tags(pennsieveSwaggerTag)
       .authorizations("api_key")
 }
