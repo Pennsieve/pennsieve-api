@@ -66,4 +66,25 @@ class DataCanvasUserMapper(organization: Organization)
       .getByCanvasId(datacanvasId)
       .join(UserMapper)
       .on(_.userId === _.id)
+
+  def maxRoles(
+    userId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] =
+    this
+      .filter(_.userId === userId)
+      .map { row =>
+        row.datacanvasId -> row.role
+      }
+      .distinct
+      .result
+      .map { result =>
+        result
+          .groupBy(_._1)
+          .map {
+            case (resultDataCanvasId, group) =>
+              resultDataCanvasId -> group.map(_._2).max
+          }
+      }
 }

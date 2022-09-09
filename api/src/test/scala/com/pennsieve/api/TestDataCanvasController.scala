@@ -58,6 +58,8 @@ class TestDataCanvasController
     super.afterEach()
   }
 
+  // TODO: write a test for assign DataCanvas owner on create
+
   /**
     * GET tests (read)
     */
@@ -90,6 +92,63 @@ class TestDataCanvasController
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
+    }
+  }
+
+  test("get a user's own data-canvases requires authentication") {
+    val canvas = createDataCanvas(
+      "get a user's own data-canvases requires authentication",
+      "get a user's own data-canvases requires authentication"
+    )
+    get("/", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+    }
+  }
+
+  test("get a user's own data-canvases fails when not authenticated") {
+    val canvas = createDataCanvas(
+      "get a user's own data-canvases requires authentication",
+      "get a user's own data-canvases requires authentication"
+    )
+    get("/") {
+      status should equal(401)
+    }
+  }
+
+  test("get a user's own data-canvases returns only their data-canvases") {
+    // create a data-canvas, owner = user 1
+    postJson(
+      "/",
+      write(
+        CreateDataCanvasRequest(
+          name = "test: user 1's canvas",
+          description = "test: create a new data-canvas"
+        )
+      ),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
+    // create a data-canvas, owner = user 2
+    postJson(
+      "/",
+      write(
+        CreateDataCanvasRequest(
+          name = "test: user 2's canvas",
+          description = "test: create a new data-canvas"
+        )
+      ),
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
+    // invoke the API for user 1
+    get("/", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      // only one data-canvas should be returned
+      val result: List[DataCanvasDTO] = parsedBody
+        .extract[List[DataCanvasDTO]]
+      result.length should equal(1)
     }
   }
 

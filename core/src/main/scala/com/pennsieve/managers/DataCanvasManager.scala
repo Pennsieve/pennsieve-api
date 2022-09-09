@@ -190,6 +190,36 @@ class DataCanvasManager(
       )
       .whenNone(NotFound(nodeId))
 
+  def getForUser(
+    userId: Int = actor.id,
+    withRole: Role = Role.Owner,
+    restrictToRole: Boolean = false
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DataCanvas]] = {
+    val query = dataCanvasUser.maxRoles(userId).flatMap {
+      roleMap: Map[Int, Option[Role]] =>
+        {
+          val dataCanvasIds: List[Int] = roleMap
+            .filter {
+              case (_, Some(role)) =>
+                if (restrictToRole) role == withRole
+                else role >= withRole
+              case (_, None) => false
+            }
+            .keys
+            .toList
+
+          val query = datacanvasMapper.filter(_.id.inSet(dataCanvasIds))
+
+          for {
+            datacanvases <- query.result
+          } yield datacanvases
+        }
+    }
+    db.run(query).toEitherT
+  }
+
   def update(
     dataCanvas: DataCanvas,
     checkforDuplicateNames: Boolean = true

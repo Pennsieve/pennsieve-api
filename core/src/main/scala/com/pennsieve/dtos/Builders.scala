@@ -794,6 +794,37 @@ object Builders {
       )
   }
 
+  def datacanvasDTOs[DIContainer <: DataCanvasManagerContainer](
+    datacanvases: Seq[DataCanvas]
+  )(implicit
+    executionContext: ExecutionContext,
+    secureContainer: DIContainer,
+    system: ActorSystem,
+    jwtConfig: Jwt.Config
+  ): EitherT[Future, CoreError, List[DataCanvasDTO]] = {
+    for {
+      dtos <- datacanvases.toList
+        .traverse {
+          case datacanvas: DataCanvas =>
+            for {
+              _ <- secureContainer.dataCanvasManager.isLocked(datacanvas)
+            } yield
+              DataCanvasDTO(
+                id = datacanvas.id,
+                name = datacanvas.name,
+                description = datacanvas.description,
+                createdAt = datacanvas.createdAt,
+                updatedAt = datacanvas.updatedAt,
+                nodeId = datacanvas.nodeId,
+                permissionBit = datacanvas.permissionBit,
+                role = datacanvas.role,
+                statusId = datacanvas.statusId,
+                isPublic = datacanvas.isPublic
+              )
+        }
+    } yield dtos
+  }
+
   def dataCanvasFolderDTO[DIContainer <: DataCanvasManagerContainer](
     folder: DataCanvasFolder
   )(implicit

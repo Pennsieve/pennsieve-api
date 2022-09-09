@@ -26,6 +26,7 @@ import com.pennsieve.domain.{ CoreError, PredicateError, UnauthorizedError }
 import com.pennsieve.dtos.Builders.{
   dataCanvasDTO,
   dataCanvasFolderDTO,
+  datacanvasDTOs,
   packageDTO
 }
 import com.pennsieve.dtos.{
@@ -45,7 +46,7 @@ import com.pennsieve.helpers.ResultHandlers.{
   OkResult
 }
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.models.{ DataCanvasPackage, Package }
+import com.pennsieve.models.{ DataCanvasPackage, Package, Role }
 import org.json4s.{ JNothing, JValue }
 import org.scalatra.{ ActionResult, AsyncResult, BadRequest, ScalatraServlet }
 import org.scalatra.swagger.Swagger
@@ -105,6 +106,37 @@ class DataCanvasController(
   //
   // DataCanvas operations
   //
+
+  /**
+    * GET the DataCanvases owned by the requesting user
+    */
+  get(
+    "/",
+    operation(
+      apiOperation[List[DataCanvasDTO]]("getOwnedDataCanvases")
+        summary "gets the data-canvases owner by the user"
+    )
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Seq[DataCanvasDTO]] = for {
+        secureContainer <- getSecureContainer
+        userId = secureContainer.user.id
+
+        canvases <- secureContainer.dataCanvasManager
+          .getForUser(userId = userId, withRole = Role.Owner)
+          .coreErrorToActionResult
+
+        dtos <- datacanvasDTOs(canvases)(
+          asyncExecutor,
+          secureContainer,
+          system,
+          jwtConfig
+        ).coreErrorToActionResult
+
+      } yield dtos
+      override val is = result.value.map(OkResult(_))
+    }
+  }
 
   /**
     * GET a DataCanvas by its internal numeric identifier (`id`)
