@@ -89,18 +89,18 @@ class AnnotationsController(
   get("/:id", operation(getAnnotationOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         annotationId <- paramT[Int]("id")
         annotation <- secureContainer.annotationManager
           .get(annotationId)
-          .orNotFound
+          .orNotFound()
         pkgId <- secureContainer.annotationManager
           .findPackageId(annotation)
-          .orError
+          .orError()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetById(pkgId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer

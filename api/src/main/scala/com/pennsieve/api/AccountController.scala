@@ -158,7 +158,7 @@ class AccountController(
           .flatMap(_.id.asUserPoolId)
           .leftMap[CoreError](ThrowableError(_))
           .toEitherT[Future]
-          .orUnauthorized
+          .orUnauthorized()
 
         newUser <- insecureContainer.userManager
           .createFromInvite(
@@ -173,11 +173,11 @@ class AccountController(
             insecureContainer.userInviteManager,
             executor
           )
-          .orBadRequest
+          .orBadRequest()
 
         organizations <- insecureContainer.userManager
           .getOrganizations(newUser)
-          .orError
+          .orError()
 
         preferredOrganization = newUser.preferredOrganizationId.flatMap(
           id => organizations.find(_.id == id)
@@ -217,7 +217,7 @@ class AccountController(
         isVerified <- antiSpamChallengeClient
           .verifyToken(createRequest.recaptchaToken)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- (if (isVerified) {
                 EitherT.rightT[Future, CoreError](())
@@ -225,7 +225,7 @@ class AccountController(
                 EitherT.leftT[Future, Unit](
                   InvalidChallengeResponseError: CoreError
                 )
-              }).coreErrorToActionResult
+              }).coreErrorToActionResult()
 
         cognitoId <- cognitoClient
           .inviteUser(
@@ -235,7 +235,7 @@ class AccountController(
             invitePath = "self-service"
           )
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         user <- insecureContainer.userManager
           .createFromSelfServiceSignUp(
@@ -247,11 +247,11 @@ class AccountController(
             degree = createRequest.degree,
             title = createRequest.title.getOrElse("") // ugly, but needed for a simpler signup flow
           )(insecureContainer.organizationManager, asyncExecutor)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         organizations <- insecureContainer.userManager
           .getOrganizations(user)
-          .orError
+          .orError()
 
         preferredOrganization = user.preferredOrganizationId.flatMap(
           id => organizations.find(_.id == id)
