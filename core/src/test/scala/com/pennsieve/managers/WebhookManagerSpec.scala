@@ -379,7 +379,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
   }
 
   /**
-    * Looks at all webhooks in database and checks that they are equal to the [[expectedWebhooks]] in some order.
+    * Looks at all webhooks in database and checks that they are equal to the {@code expectedWebhooks} in some order.
     *
     * @param whManager
     * @param expectedWebhooks
@@ -398,7 +398,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
 
   /**
     * Looks at all event subscriptions in database and verifies that each subscription
-    * has the [[expectedWebhookId]] and that the actual events match those in [[expectedTargetEvents]]
+    * has the {@code expectedWebhookId} and that the actual events match those in {@code expectedTargetEvents}
     *
     * @param whManager
     * @param expectedWebhookId

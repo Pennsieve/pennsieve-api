@@ -15,7 +15,7 @@
  */
 
 package com.pennsieve.managers
-import com.pennsieve.models.DBPermission.Delete
+
 import com.pennsieve.models.{
   Annotation,
   AnnotationLayer,
@@ -42,7 +42,7 @@ class AnnotationManagerSpec extends BaseManagerSpec {
   val props = List(ModelProperty("mykey", "myvalue", "string", "category"))
   val path = List(PathElement("elementtype", nums))
 
-  override def beforeEach() {
+  override def beforeEach(): Unit = {
     super.beforeEach()
     annotationMgr = annotationManager(testOrganization)
     packageMgr = packageManager(testOrganization, superAdmin)
@@ -51,24 +51,21 @@ class AnnotationManagerSpec extends BaseManagerSpec {
     testPackage = packageMgr
       .create("test package", PDF, READY, testDataset, Some(1), None)
       .await
-      .right
       .value
     layer = annotationMgr
       .createLayer(testPackage, "test layer", "green")
       .await
-      .right
       .value
 
     annotation = annotationMgr
       .create(superAdmin, layer, "here's a thing!", path, props)
       .await
-      .right
       .value
   }
 
   "getting an annotation" should "fetch it" in {
 
-    val fetched = annotationMgr.find(testPackage).await.right.value.map {
+    val fetched = annotationMgr.find(testPackage).await.value.map {
       case (k, v) => (k.id -> v)
     }
 
@@ -86,9 +83,8 @@ class AnnotationManagerSpec extends BaseManagerSpec {
     annotationMgr
       .update(annotation.copy(description = "updated"))
       .await
-      .right
       .value
-    val updated = annotationMgr.get(annotation.id).await.right.value
+    val updated = annotationMgr.get(annotation.id).await.value
     assert(updated.description == "updated")
   }
 
@@ -96,10 +92,10 @@ class AnnotationManagerSpec extends BaseManagerSpec {
     val user = createUser()
 
     val annotation2 =
-      annotationMgr.create(user, layer, "and another thing").await.right.value
+      annotationMgr.create(user, layer, "and another thing").await.value
 
     val amap: Map[Int, Seq[Annotation]] =
-      annotationMgr.find(testPackage).await.right.value.map {
+      annotationMgr.find(testPackage).await.value.map {
         case (k, v) => (k.id -> v)
       }
 
@@ -107,7 +103,7 @@ class AnnotationManagerSpec extends BaseManagerSpec {
     annotationMgr.delete(annotation2).await
 
     val amap2: Map[Int, Seq[Annotation]] =
-      annotationMgr.find(testPackage).await.right.value.map {
+      annotationMgr.find(testPackage).await.value.map {
         case (k, v) => (k.id -> v)
       }
 
@@ -118,7 +114,7 @@ class AnnotationManagerSpec extends BaseManagerSpec {
   "removing an annotation with a discussion" should "fail" in {
     val user = createUser()
     val annotation2 =
-      annotationMgr.create(user, layer, "and another thing").await.right.value
+      annotationMgr.create(user, layer, "and another thing").await.value
     discussionMgr.create(testPackage, Some(annotation2)).await
     val delete = annotationMgr.delete(annotation2).await
     assert(delete.isLeft)
@@ -131,7 +127,6 @@ class AnnotationManagerSpec extends BaseManagerSpec {
     val todelete = annotationMgr
       .createLayer(testPackage, "doomed test layer", "green")
       .await
-      .right
       .value
     assert(annotationMgr.getLayer(todelete.id).await.isRight)
     annotationMgr.deleteLayer(todelete).await

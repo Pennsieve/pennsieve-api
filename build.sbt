@@ -110,7 +110,7 @@ lazy val json4s213Version = "3.5.5"
 
 lazy val jettyVersion = "9.1.3.v20140225"
 lazy val postgresVersion = "42.1.4"
-lazy val scalatraVersion = "2.6.5"//"2.8.2"
+lazy val scalatraVersion = "2.7.1"//"2.6.5"//"2.8.2"
 
 lazy val scalatestVersion = SettingKey[String]("scalatestVersion")
 lazy val scalatest212Version = "3.0.3"
@@ -136,7 +136,7 @@ lazy val utilitiesVersion = "4-55953e4"
 lazy val jobSchedulingServiceClientVersion = "6-3251c91"
 lazy val serviceUtilitiesVersion = "8-9751ee3"
 lazy val discoverServiceClientVersion = "36-32664eb"
-lazy val doiServiceClientVersion = "3-9436155"
+lazy val doiServiceClientVersion = "12-756107b"
 lazy val timeseriesCoreVersion = "4-d8f62a4"
 lazy val commonsIoVersion = "2.6"
 
@@ -280,6 +280,7 @@ lazy val coreApiSharedSettings = Seq(
 // API settings
 lazy val apiSettings = Seq(
   name := "pennsieve-api",
+  scalaVersion := scala213,
   containerPort := 5000,
   Jetty / javaOptions ++= Seq(
     "-Xdebug",
@@ -327,8 +328,8 @@ lazy val apiSettings = Seq(
     "org.scalatra" %% "scalatra" % scalatraVersion,
     "org.scalatra" %% "scalatra-json" % scalatraVersion,
     "org.scalatra" %% "scalatra-swagger" % scalatraVersion,
-    "org.typelevel" %% "mouse" % "0.16",
-    "io.scalaland" %% "chimney" % "0.2.1",
+    "org.typelevel" %% "mouse" % "0.22",
+    "io.scalaland" %% "chimney" % "0.6.1",
     // Test deps
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test,

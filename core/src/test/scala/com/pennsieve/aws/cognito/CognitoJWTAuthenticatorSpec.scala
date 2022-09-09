@@ -27,13 +27,14 @@ import com.nimbusds.jose.jwk.JWK
 import com.pennsieve.models.CognitoId
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.EitherValues._
 
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.util.UUID
 import java.security.interfaces.{ RSAPrivateKey, RSAPublicKey }
 import java.time.Instant
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class MockJwkProvider() extends JwkProvider {
 
@@ -68,8 +69,7 @@ class MockJwkProvider() extends JwkProvider {
     val jwkValues =
       io.circe.parser
         .decode[Map[String, String]](nimbusJwk.toPublicJWK.toJSONString)
-        .right
-        .get
+        .value
         .asJava
         .asInstanceOf[java.util.Map[String, Object]]
 
@@ -174,10 +174,10 @@ class CognitoJWTAuthenticatorSpec extends AnyFlatSpec with Matchers {
       CognitoJWTAuthenticator.validateJwt(validToken)
 
     tokenValidatorResponse.isRight should be(true)
-    tokenValidatorResponse.right.get.id.toString should be(
+    tokenValidatorResponse.value.id.toString should be(
       UUID.fromString(pennsieveUserId).toString
     )
-    tokenValidatorResponse.right.get.expiresAt should be(
+    tokenValidatorResponse.value.expiresAt should be(
       Instant.ofEpochSecond(validTokenTime)
     )
   }

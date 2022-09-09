@@ -75,7 +75,7 @@ class PostgresContainerImpl(dockerImage: String)
 
   def database: PostgresDatabase = PostgresDatabase(
     host = containerIpAddress,
-    port = mappedPort,
+    port = mappedPort(),
     database = PostgresDockerContainer.dbName,
     user = PostgresDockerContainer.user,
     password = PostgresDockerContainer.password,
@@ -97,7 +97,7 @@ class PostgresContainerImpl(dockerImage: String)
         "postgres.host",
         ConfigValueFactory.fromAnyRef(containerIpAddress)
       )
-      .withValue("postgres.port", ConfigValueFactory.fromAnyRef(mappedPort))
+      .withValue("postgres.port", ConfigValueFactory.fromAnyRef(mappedPort()))
       .withValue("postgres.database", ConfigValueFactory.fromAnyRef(dbName))
       .withValue("postgres.user", ConfigValueFactory.fromAnyRef(user))
       .withValue("postgres.password", ConfigValueFactory.fromAnyRef(password))
@@ -107,7 +107,7 @@ class PostgresContainerImpl(dockerImage: String)
       )
       .withValue(
         "data.postgres.port",
-        ConfigValueFactory.fromAnyRef(mappedPort)
+        ConfigValueFactory.fromAnyRef(mappedPort())
       )
       .withValue(
         "data.postgres.database",

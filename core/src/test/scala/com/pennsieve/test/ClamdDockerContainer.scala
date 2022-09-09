@@ -44,7 +44,7 @@ final class ClamdDockerContainerImpl
         "clamd.host",
         ConfigValueFactory.fromAnyRef(containerIpAddress)
       )
-      .withValue("clamd.port", ConfigValueFactory.fromAnyRef(mappedPort))
+      .withValue("clamd.port", ConfigValueFactory.fromAnyRef(mappedPort()))
 }
 
 trait ClamdDockerContainer extends StackedDockerContainer {

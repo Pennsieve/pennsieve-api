@@ -61,7 +61,7 @@ class DimensionManagerSpec extends BaseManagerSpec {
 
     // delete
     manager.delete(dimension, `package`).await.value
-    manager.get(dimension.id, `package`).await should be('left)
+    manager.get(dimension.id, `package`).await should be(Symbol("left"))
   }
 
   "DimensionManager" should "be able to perform all batch dimension operations" in {

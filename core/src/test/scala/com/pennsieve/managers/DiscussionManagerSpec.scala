@@ -55,7 +55,7 @@ class DiscussionManagerSpec extends BaseManagerSpec {
   val props = List(ModelProperty("mykey", "myvalue", "string", "category"))
   val path = List(PathElement("elementtype", nums))
 
-  override def beforeEach() {
+  override def beforeEach(): Unit = {
     super.beforeEach()
     annotationManager = annotationManager(testOrganization)
     discussionManager = discussionManager(testOrganization)
@@ -75,7 +75,6 @@ class DiscussionManagerSpec extends BaseManagerSpec {
         None
       )
       .await
-      .right
       .value
     testPackage2 = packageManager
       .create(
@@ -87,21 +86,18 @@ class DiscussionManagerSpec extends BaseManagerSpec {
         None
       )
       .await
-      .right
       .value
     layer = annotationManager
       .createLayer(testPackage, "test layer", "green")
       .await
-      .right
       .value
     annotation = annotationManager
       .create(superAdmin, layer, "here's a thing!", path, props)
       .await
-      .right
       .value
 
     discussion =
-      discussionManager.create(testPackage, Some(annotation)).await.right.value
+      discussionManager.create(testPackage, Some(annotation)).await.value
     discussionManager.createComment("hello!", superAdmin, discussion).await
     discussionManager
       .createComment("how are you?", superAdmin, discussion)
@@ -140,13 +136,11 @@ class DiscussionManagerSpec extends BaseManagerSpec {
         None
       )(tsManager)
       .await
-      .right
       .value
 
     discussionTs = discussionManager
       .create(testPackage2, None, Some(tsAnnotation))
       .await
-      .right
       .value
     discussionManager
       .createComment(
@@ -160,7 +154,7 @@ class DiscussionManagerSpec extends BaseManagerSpec {
 
   "getting an discussion map" should "find all comments" in {
     val discussionMap: List[(Discussion, Seq[Comment])] =
-      discussionManager.find(testPackage).await.right.value.toList
+      discussionManager.find(testPackage).await.value.toList
 
     val discn = discussionMap.head._1
     assert(discn.annotationId == Some(annotation.id))
@@ -178,15 +172,14 @@ class DiscussionManagerSpec extends BaseManagerSpec {
     val newComment = discussionManager
       .createComment("This is a test!", superAdmin, discussion)
       .await
-      .right
       .value
     val newUpdatedAt =
-      discussionManager.get(newComment.discussionId).await.right.value.updatedAt
+      discussionManager.get(newComment.discussionId).await.value.updatedAt
     assert(oldUpdatedAt.isBefore(newUpdatedAt))
   }
 
   "timeseries annotation ids" should "be persisted" in {
-    val tsDiscussion = discussionManager.get(discussionTs.id).await.right.value
+    val tsDiscussion = discussionManager.get(discussionTs.id).await.value
     assert(tsDiscussion.timeSeriesAnnotationId == Some(tsAnnotation.id))
   }
 
