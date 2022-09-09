@@ -16,7 +16,13 @@
 
 package com.pennsieve.web
 
-import org.scalatra.swagger.{ ApiInfo, JacksonSwaggerBase, Swagger }
+import org.scalatra.swagger.{
+  ApiInfo,
+  ContactInfo,
+  JacksonSwaggerBase,
+  LicenseInfo,
+  Swagger
+}
 import org.scalatra._
 
 class ResourcesApp(implicit val swagger: Swagger)
@@ -27,10 +33,9 @@ object PennsieveAppInfo
     extends ApiInfo(
       """Pennsieve Swagger""",
       """Swagger documentation for the Pennsieve api""",
-      """http://pennsieve.org""",
-      """team@pennsieve.org""",
-      """All rights reserved""",
-      """http://pennsieve.org"""
+      """https://docs.pennsieve.io/docs/pennsieve-terms-of-service""",
+      ContactInfo("Pennsieve Team", "https://docs.pennsieve.io", ""),
+      LicenseInfo("All rights reserved", "https://docs.pennsieve.io")
     )
 
 class SwaggerApp extends Swagger("2.0", "1.0.0", PennsieveAppInfo)
