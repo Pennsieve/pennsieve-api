@@ -110,7 +110,7 @@ lazy val json4s213Version = "3.5.5"
 
 lazy val jettyVersion = "9.1.3.v20140225"
 lazy val postgresVersion = "42.1.4"
-lazy val scalatraVersion = "2.7.1"//"2.6.5"//"2.8.2"
+lazy val scalatraVersion = "2.7.1" //"2.6.5"//"2.8.2"
 
 lazy val scalatestVersion = SettingKey[String]("scalatestVersion")
 lazy val scalatest212Version = "3.0.3"
@@ -119,7 +119,7 @@ ThisBuild / scalatestVersion := scalatest212Version
 
 lazy val scalikejdbcVersion = SettingKey[String]("scalikejdbcVersion")
 lazy val scalikejdbc212Version = "2.5.0"
-lazy val scalikejdbc213Version = "3.4.2"//4.0.0"
+lazy val scalikejdbc213Version = "3.4.2" //4.0.0"
 
 lazy val slickVersion = "3.3.3"
 
@@ -338,7 +338,7 @@ lazy val apiSettings = Seq(
   excludeDependencies ++= unwantedDependencies :+ ExclusionRule(
     "javax.ws.rs",
     "jsr311-api"
-  )
+  ),
 )
 
 // core settings

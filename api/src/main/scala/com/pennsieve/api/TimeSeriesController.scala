@@ -576,9 +576,9 @@ class TimeSeriesController(
           .getChannels(`package`)
       else
         secureContainer.timeSeriesManager
-          .getChannelsByNodeIds(`package`, requestedChannels.to[SortedSet])
+          .getChannelsByNodeIds(`package`, requestedChannels.to(SortedSet))
 
-    channels.map(_.map(_.nodeId).to[SortedSet])
+    channels.map(_.map(_.nodeId).to(SortedSet))
   }
 
   val createAnnotation: OperationBuilder = (apiOperation[TimeSeriesAnnotation](
@@ -650,7 +650,7 @@ class TimeSeriesController(
               params.start + packageStartTime,
               params.end + packageStartTime
             ),
-            channelIds = params.channelIds.to[SortedSet],
+            channelIds = params.channelIds.to(SortedSet),
             data = params.data,
             linkedPackage = params.linkedPackage
           )(secureContainer.timeSeriesManager)
@@ -1265,7 +1265,7 @@ class TimeSeriesController(
           name = params.name,
           label = params.label,
           description = params.description,
-          channelIds = params.channelIds.to[SortedSet],
+          channelIds = params.channelIds.to(SortedSet),
           start = params.start + packageStartTime,
           end = params.end + packageStartTime,
           layerId = params.layer_id.getOrElse(existingAnnotation.layerId),

@@ -26,7 +26,7 @@ import com.pennsieve.domain.{
   UnauthorizedError
 }
 import com.pennsieve.auth.middleware.DatasetPermission
-import com.pennsieve.doi.client.definitions.CitationDTO
+import com.pennsieve.doi.client.definitions.CitationDto
 import com.pennsieve.doi.client.doi.{ DoiClient, GetCitationsResponse }
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
@@ -60,7 +60,7 @@ object ExternalPublicationDTO {
 
   def apply(
     externalPublication: ExternalPublication,
-    citations: Map[Doi, Option[CitationDTO]]
+    citations: Map[Doi, Option[CitationDto]]
   ): ExternalPublicationDTO = {
     val citation = citations
       .get(externalPublication.doi)
@@ -134,7 +134,7 @@ class ExternalPublicationController(
   def getCitations(
     dois: Seq[Doi],
     request: HttpServletRequest
-  ): EitherT[Future, CoreError, Map[Doi, Option[CitationDTO]]] =
+  ): EitherT[Future, CoreError, Map[Doi, Option[CitationDto]]] =
     dois match {
       case _ if dois.isEmpty => EitherT.rightT(Map.empty)
       case _ =>

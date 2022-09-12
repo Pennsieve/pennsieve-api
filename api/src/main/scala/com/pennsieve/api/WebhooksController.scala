@@ -158,8 +158,9 @@ class WebhooksController(
     "/",
     operation(
       apiOperation[List[WebhookDTO]]("getIntegrations")
-        summary "gets all integrations that a user has permission to and that belong to the given organization"
-        parameters ()
+        .summary(
+          "gets all integrations that a user has permission to and that belong to the given organization"
+        )
     )
   ) {
     new AsyncResult {

@@ -39,13 +39,13 @@ import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.discover.client.search.SearchClient
 import com.pennsieve.doi.client.definitions.{
   CreateDraftDoiRequest,
-  CreatorDTO
+  CreatorDto
 }
 import com.pennsieve.doi.client.doi._
 import com.pennsieve.doi.models._
 import com.pennsieve.domain
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
-import com.pennsieve.domain.{ CoreError, _ }
+import com.pennsieve.domain.{ CoreError, ParseError, _ }
 import com.pennsieve.dtos.Builders._
 import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.{
@@ -1295,14 +1295,14 @@ class DataSetsController(
         contributorsName = contributors
           .map(
             x =>
-              CreatorDTO(
+              CreatorDto(
                 firstName = x.firstName,
                 lastName = x.lastName,
                 middleInitial = x.middleInitial,
                 orcid = x.orcid
               )
           )
-          .toIndexedSeq
+          .toVector
 
         bodyWithDefaults = body.copy(
           title = Some(dataset.name),
@@ -2690,7 +2690,7 @@ class DataSetsController(
         )
 
         notFound = (packageIds
-          .to[Set] -- (packages.map(_.id).map(ExternalId.intId _) ++ packages
+          .to(Set) -- (packages.map(_.id).map(ExternalId.intId _) ++ packages
           .map(_.nodeId)
           .map(ExternalId.nodeId _))).toList
 

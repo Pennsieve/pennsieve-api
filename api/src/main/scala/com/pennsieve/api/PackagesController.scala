@@ -358,7 +358,7 @@ class PackagesController(
           .touchUpdatedAtTimestamp(dataset)
           .coreErrorToActionResult
 
-        shouldSetStorage = params.keys.exists(_ == updateStorageParamKey)
+        shouldSetStorage = params.contains(updateStorageParamKey)
         storage <- if (shouldSetStorage) {
           secureContainer.storageManager
             .setPackageStorage(oldPackage)

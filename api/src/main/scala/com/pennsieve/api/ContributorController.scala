@@ -81,21 +81,21 @@ class ContributorsController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[ContributorDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user = secureContainer.user
 
         organizationId = secureContainer.organization.id
 
         demoOrganization <- secureContainer.organizationManager
           .isDemo(organizationId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         contributorsAndUsers <- if (demoOrganization) {
           EitherT.rightT[Future, ActionResult](Seq.empty)
         } else {
           secureContainer.contributorsManager
             .getContributors()
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         }
       } yield contributorsAndUsers.map(ContributorDTO(_))
 
@@ -116,7 +116,7 @@ class ContributorsController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ContributorDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         body <- extractOrErrorT[CreateContributorRequest](parsedBody)
 
@@ -126,7 +126,7 @@ class ContributorsController(
           case Some(orcid) => Some(orcid)
         }
 
-        _ <- orcidClient.verifyOrcid(orcid).toEitherT.orNotFound
+        _ <- orcidClient.verifyOrcid(orcid).toEitherT.orNotFound()
 
         newContributorAndUser <- secureContainer.contributorsManager
           .create(
@@ -138,7 +138,7 @@ class ContributorsController(
             orcid = orcid,
             userId = body.userId
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ContributorDTO(newContributorAndUser)
 
@@ -159,12 +159,12 @@ class ContributorsController(
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ContributorDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         contributorId <- paramT[Int]("id")
 
         contributorAndUser <- secureContainer.contributorsManager
           .getContributor(contributorId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ContributorDTO(contributorAndUser)
 
@@ -186,14 +186,14 @@ class ContributorsController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ContributorDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         contributorId <- paramT[Int]("id")
         hasOrcid = parsedBody.hasField("orcid")
         body <- extractOrErrorT[UpdateContributorRequest](parsedBody)
         orcid = body.orcid.filter(_.nonEmpty)
 
-        _ <- orcidClient.verifyOrcid(orcid).toEitherT.orNotFound
+        _ <- orcidClient.verifyOrcid(orcid).toEitherT.orNotFound()
 
         newContributorAndUser <- secureContainer.contributorsManager
           .updateInfo(
@@ -205,7 +205,7 @@ class ContributorsController(
             contributorId = contributorId,
             overwriteOrcId = hasOrcid
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ContributorDTO(newContributorAndUser)
 
