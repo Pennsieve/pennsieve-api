@@ -56,11 +56,10 @@ class InternalDataSetsController(
       val result: EitherT[Future, ActionResult, Unit] = for {
         datasetId <- paramT[Int]("id")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ()
 

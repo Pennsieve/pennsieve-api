@@ -193,23 +193,23 @@ class ExternalPublicationController(
       val result: EitherT[Future, ActionResult, Seq[ExternalPublicationDTO]] =
         for {
           datasetId <- paramT[String]("id")
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewExternalPublications))(
               dataset
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           externalPublications <- secureContainer.externalPublicationManager
             .get(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
-          citations <- getCitations(externalPublications.map(_.doi), request).coreErrorToActionResult
+          citations <- getCitations(externalPublications.map(_.doi), request)
+            .coreErrorToActionResult()
 
         } yield externalPublications.map(ExternalPublicationDTO(_, citations))
 
@@ -235,7 +235,8 @@ class ExternalPublicationController(
       val result: EitherT[Future, ActionResult, CitationResult] =
         for {
           doi <- doiParamT("doi")
-          citationMap <- getCitations(List(doi), request).coreErrorToActionResult
+          citationMap <- getCitations(List(doi), request)
+            .coreErrorToActionResult()
           citation <- EitherT
             .fromEither[Future] {
               citationMap
@@ -247,7 +248,7 @@ class ExternalPublicationController(
                   Right(CitationResult(citationString))
               }
             }
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield citation
 
       override val is = result.value.map(OkResult(_))
@@ -281,21 +282,20 @@ class ExternalPublicationController(
             RelationshipType.References
           )
 
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(
               Set(DatasetPermission.ManageExternalPublications)
             )(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           externalPublication <- secureContainer.externalPublicationManager
             .createOrUpdate(dataset, doi, relationshipType)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.changelogManager
             .logEvent(
@@ -303,13 +303,14 @@ class ExternalPublicationController(
               ChangelogEventDetail
                 .AddExternalPublication(doi, relationshipType)
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.datasetManager
             .touchUpdatedAtTimestamp(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
-          citations <- getCitations(List(doi), request).coreErrorToActionResult
+          citations <- getCitations(List(doi), request)
+            .coreErrorToActionResult()
 
         } yield ExternalPublicationDTO(externalPublication, citations)
 
@@ -339,21 +340,20 @@ class ExternalPublicationController(
           doi <- doiParamT("doi")
           relationshipType <- paramT[RelationshipType]("relationshipType")
 
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(
               Set(DatasetPermission.ManageExternalPublications)
             )(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.externalPublicationManager
             .delete(dataset, doi, relationshipType)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.changelogManager
             .logEvent(
@@ -361,11 +361,11 @@ class ExternalPublicationController(
               ChangelogEventDetail
                 .RemoveExternalPublication(doi, relationshipType)
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.datasetManager
             .touchUpdatedAtTimestamp(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield ()
 

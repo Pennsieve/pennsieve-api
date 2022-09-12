@@ -460,7 +460,7 @@ class FilesController(
     new AsyncResult {
       val manifest
         : EitherT[Future, ActionResult, List[UploadCompleteResponse]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user = secureContainer.user
         organization = secureContainer.organization
         importId <- paramT[String]("importId")
@@ -506,16 +506,16 @@ class FilesController(
           .traverse(
             packageId => secureContainer.packageManager.getByNodeId(packageId)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         datasetAndRole <- secureContainer.datasetManager
           .getByExternalIdWithMaxRole(ExternalId.nodeId(datasetId))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         (dataset, role) = datasetAndRole
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.CreateDeleteFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Because this endpoint gets the dataset id via a query parameter, not
         // the path, the JWT does not contain a dataset role. However,
@@ -540,12 +540,12 @@ class FilesController(
             concept <- modelServiceClient
               .concept(token, datasetId, req.conceptId)
               .toEitherT[Future]
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
 
             conceptInstance <- modelServiceClient
               .instance(token, datasetId, req.conceptId, req.instanceId)
               .toEitherT[Future]
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
 
           } yield ProxyLinkPayload(token, concept, conceptInstance, req.targets)
         }
@@ -592,7 +592,7 @@ class FilesController(
         encryptionKey <- utilities
           .encryptionKey(organization)
           .toEitherT[Future]
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         manifests <- (importIds zip packagePreviews) traverse {
           case (importId: String, preview: PackagePreview) =>
@@ -602,7 +602,7 @@ class FilesController(
                   _ => InvalidId("import id is not a valid UUID")
                 )
                 .toEitherT[Future]
-                .coreErrorToActionResult
+                .coreErrorToActionResult()
 
               jobType = if (appendToPackage) PayloadType.Append
               else PayloadType.Upload
@@ -622,22 +622,24 @@ class FilesController(
                   links,
                   usingUploadService,
                   hasPreview
-                )(secureContainer, request).recoverWith {
-                  case e: IntegrityError => // unique constraint violation, package already exists
-                    getExistingManifest(
-                      auditLogger,
-                      traceId,
-                      user,
-                      organization,
-                      dataset,
-                      preview,
-                      parsedImportId,
-                      encryptionKey,
-                      jobType,
-                      usingUploadService,
-                      hasPreview
-                    )(secureContainer, request)
-                }.coreErrorToActionResult
+                )(secureContainer, request)
+                  .recoverWith {
+                    case e: IntegrityError => // unique constraint violation, package already exists
+                      getExistingManifest(
+                        auditLogger,
+                        traceId,
+                        user,
+                        organization,
+                        dataset,
+                        preview,
+                        parsedImportId,
+                        encryptionKey,
+                        jobType,
+                        usingUploadService,
+                        hasPreview
+                      )(secureContainer, request)
+                  }
+                  .coreErrorToActionResult()
               else
                 createNewManifest(
                   auditLogger,
@@ -653,7 +655,7 @@ class FilesController(
                   links,
                   usingUploadService,
                   hasPreview
-                )(secureContainer, request).coreErrorToActionResult
+                )(secureContainer, request).coreErrorToActionResult()
 
             } yield manifestAndPackage
         }
@@ -687,7 +689,7 @@ class FilesController(
           .leftT[Future, PreviewPackageResponse](
             OperationNoLongerSupported: CoreError
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       override val is = results.value.map(OkResult)
     }

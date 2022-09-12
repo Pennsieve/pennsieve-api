@@ -286,7 +286,8 @@ trait ParamsSupport {
     jsonFormats: Formats,
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, T] =
-    Try(json.extract[T]).orBadRequest.toEitherT[Future]
+    Try(json.extract[T]).orBadRequest
+      .toEitherT[Future]
 
   def decodeOrErrorT[T: Decoder](
     value: String

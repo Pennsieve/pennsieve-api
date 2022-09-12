@@ -109,7 +109,7 @@ class UserController(
       storageMap <- {
         storageManager
           .getStorage(susers, List(user.id))
-          .orError
+          .orError()
       }
       storage = storageMap.get(user.id).flatten
       dto <- {
@@ -120,7 +120,7 @@ class UserController(
             insecureContainer.customTermsOfServiceManager,
             executor
           )
-          .orError
+          .orError()
       }
     } yield dto
 
@@ -140,7 +140,7 @@ class UserController(
             Forbidden("Internal service only")
           )
         }
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         userId <- paramT[Int]("userId")
         user <- {
@@ -159,7 +159,7 @@ class UserController(
           .append("user-id", user.id)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -178,7 +178,7 @@ class UserController(
   get("/email/:email", operation(getUserByEmailServiceOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, UserDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         loggedInUser = secureContainer.user
 
         traceId <- getTraceId(request)
@@ -199,7 +199,7 @@ class UserController(
           .append("user-id", user.id)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -213,7 +213,7 @@ class UserController(
   get("/", operation(getUserOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, UserDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         loggedInUser = secureContainer.user
 
@@ -227,7 +227,7 @@ class UserController(
           .append("user-node-id", loggedInUser.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -244,7 +244,7 @@ class UserController(
       val userToSave = parsedBody.extract[UpdateUserRequest]
 
       val result: EitherT[Future, ActionResult, UserDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         loggedInUser = secureContainer.user
 
@@ -253,7 +253,7 @@ class UserController(
             userToSave.organization,
             loggedInUser.preferredOrganizationId
           )(insecureContainer.organizationManager, executor)
-          .orError
+          .orError()
 
         colorCheck = Settings.userColors.contains(
           userToSave.color.getOrElse(loggedInUser.color)
@@ -293,10 +293,10 @@ class UserController(
         )
 
         storageServiceClient = secureContainer.storageManager
-        newUser <- insecureContainer.userManager.update(updatedUser).orError
+        newUser <- insecureContainer.userManager.update(updatedUser).orError()
         storageMap <- storageServiceClient
           .getStorage(susers, List(newUser.id))
-          .orError
+          .orError()
         storage = storageMap.get(newUser.id).flatten
         dto <- Builders
           .userDTO(newUser, storage)(
@@ -305,7 +305,7 @@ class UserController(
             insecureContainer.customTermsOfServiceManager,
             executor
           )
-          .orError
+          .orError()
 
         _ <- auditLogger
           .message()
@@ -313,7 +313,7 @@ class UserController(
           .append("user-id", loggedInUser.id)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -332,7 +332,7 @@ class UserController(
       val userToSave = parsedBody.extract[UpdateUserRequest]
 
       val result: EitherT[Future, ActionResult, UserDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         loggedInUser = secureContainer.user
 
@@ -342,10 +342,10 @@ class UserController(
         storageServiceClient = secureContainer.storageManager
         newUser <- insecureContainer.userManager
           .updateEmail(loggedInUser, updatedEmail)
-          .orError
+          .orError()
         storageMap <- storageServiceClient
           .getStorage(susers, List(newUser.id))
-          .orError
+          .orError()
         storage = storageMap.get(newUser.id).flatten
         dto <- Builders
           .userDTO(newUser, storage)(
@@ -354,7 +354,7 @@ class UserController(
             insecureContainer.customTermsOfServiceManager,
             executor
           )
-          .orError
+          .orError()
 
         // then update Cognito User
         _ <- cognitoClient
@@ -364,7 +364,7 @@ class UserController(
             newUser.email
           )
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -372,7 +372,7 @@ class UserController(
           .append("user-id", loggedInUser.id)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -389,7 +389,7 @@ class UserController(
 
       val result: EitherT[Future, ActionResult, UserDTO] = for {
         traceId <- getTraceId(request)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user1 = secureContainer.user
 
         userId <- paramT[Int]("userId")
@@ -422,8 +422,9 @@ class UserController(
             cognitoClient
               .authenticateUser(user1.cognitoId.get.toString, password)
               .toEitherT
-              .coreErrorToActionResult
-          case None => Future.successful(true).toEitherT.coreErrorToActionResult
+              .coreErrorToActionResult()
+          case None =>
+            Future.successful(true).toEitherT.coreErrorToActionResult()
         }
 
         // Cognito does not allow two users to have the same email address, so we must execute these
@@ -472,27 +473,27 @@ class UserController(
                 )
           )
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // update Pennsieve User 2 email <- fakeEmail
         _ <- insecureContainer.userManager
           .updateEmail(user2, fakeEmail)
-          .orError
+          .orError()
 
         // update Pennsieve User 2 cognito_id <- fakeCognitoId
         _ <- insecureContainer.userManager
           .updateCognitoId(user2, fakeCognitoId)
-          .orError
+          .orError()
 
         // update Pennsieve User 1 cognito_id <- realCognitoId
         mergedUser <- insecureContainer.userManager
           .updateCognitoId(user1, realCognitoId)
-          .orError
+          .orError()
 
         storageServiceClient = secureContainer.storageManager
         storageMap <- storageServiceClient
           .getStorage(susers, List(user1.id))
-          .orError
+          .orError()
         storage = storageMap.get(user1.id).flatten
 
         dto <- Builders
@@ -502,7 +503,7 @@ class UserController(
             insecureContainer.customTermsOfServiceManager,
             executor
           )
-          .orError
+          .orError()
 
         _ <- auditLogger
           .message()
@@ -510,7 +511,7 @@ class UserController(
           .append("user-id", user2.id)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -525,7 +526,7 @@ class UserController(
     new AsyncResult {
 
       val result: EitherT[Future, ActionResult, OrcidDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         loggedInUser = secureContainer.user
 
         orcidRequest <- extractOrErrorT[ORCIDRequest](parsedBody)
@@ -546,7 +547,7 @@ class UserController(
         )
 
         updatedUser = loggedInUser.copy(orcidAuthorization = Some(orcidAuth))
-        _ <- secureContainer.userManager.update(updatedUser).orError
+        _ <- secureContainer.userManager.update(updatedUser).orError()
       } yield OrcidDTO(name = orcidAuth.name, orcid = orcidAuth.orcid)
 
       val is = result.value.map(
@@ -564,7 +565,7 @@ class UserController(
   delete("/orcid", operation(deleteORCIDOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         loggedInUser = secureContainer.user
 
         _ <- if (loggedInUser.orcidAuthorization.isDefined)
@@ -581,7 +582,7 @@ class UserController(
             List(OrcidIdentityProvider.customAttributeName)
           )
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- cognitoClient
           .unlinkExternalUser(
@@ -590,15 +591,15 @@ class UserController(
             orcidId
           )
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- cognitoClient
           .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updatedUser = loggedInUser.copy(orcidAuthorization = None)
-        _ <- secureContainer.userManager.update(updatedUser).orError
+        _ <- secureContainer.userManager.update(updatedUser).orError()
       } yield ()
 
       val is = result.value.map(
@@ -625,14 +626,14 @@ class UserController(
         parsedBody.extract[UpdatePennsieveTermsOfServiceRequest].version
 
       val result: EitherT[Future, ActionResult, UserDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         dateVersion <- DateVersion
           .from(newVersion)
           .toEitherT[Future]
           .leftMap(_ => BadRequest(s"Invalid version format: $newVersion"))
         newTerms <- secureContainer.pennsieveTermsOfServiceManager
           .setNewVersion(secureContainer.user.id, dateVersion.toZonedDateTime)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         dto <- Builders
           .userDTO(
             secureContainer.user,
@@ -640,7 +641,7 @@ class UserController(
             pennsieveTermsOfService = Some(newTerms.toDTO),
             customTermsOfService = Seq.empty
           )(insecureContainer.organizationManager, executor)
-          .orError
+          .orError()
       } yield dto
 
       val is = result.value.map(OkResult)
@@ -657,12 +658,12 @@ class UserController(
     new AsyncResult {
       val acceptRequest = parsedBody.extract[AcceptCustomTermsOfServiceRequest]
       val result: EitherT[Future, ActionResult, UserDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         loggedInUser = secureContainer.user
         organization = secureContainer.organization
         acceptedCustomToS <- secureContainer.customTermsOfServiceManager
           .accept(loggedInUser.id, organization.id, acceptRequest.version)
-          .orBadRequest
+          .orBadRequest()
         dto <- Builders
           .userDTO(
             secureContainer.user,
@@ -671,7 +672,7 @@ class UserController(
             customTermsOfService =
               Seq(acceptedCustomToS.toDTO(organization.nodeId))
           )(insecureContainer.organizationManager, executor)
-          .orError
+          .orError()
       } yield dto
 
       val is = result.value.map(OkResult)

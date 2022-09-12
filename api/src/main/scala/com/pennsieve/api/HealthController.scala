@@ -67,11 +67,11 @@ class HealthController(
           .run(sql"select 1".as[Int])
           .map(_.contains(1))
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT[CoreError](dbCheck)(
           ServiceError("DB connection unavailable")
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield ()
 

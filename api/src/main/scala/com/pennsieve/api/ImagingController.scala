@@ -67,18 +67,20 @@ class ImagingController(
   get("/:packageId/dimensions", operation(getDimensionsOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[DimensionDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("packageId")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orError()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        dimensions <- secureContainer.dimensionManager.getAll(pkg).orError
+        dimensions <- secureContainer.dimensionManager
+          .getAll(pkg)
+          .coreErrorToActionResult()
       } yield DimensionDTO(dimensions, pkg)
 
       override val is = result.value.map(OkResult)
@@ -94,21 +96,21 @@ class ImagingController(
   get("/:packageId/dimensions/:id", operation(getDimensionOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DimensionDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         id <- paramT[Int]("id")
         packageId <- paramT[String]("packageId")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dimension <- secureContainer.dimensionManager
           .get(id, pkg)
-          .orNotFound
+          .orNotFound()
       } yield DimensionDTO(dimension, pkg)
 
       override val is = result.value.map(OkResult)
@@ -125,24 +127,24 @@ class ImagingController(
   post("/:packageId/dimensions", operation(createDimensionOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("packageId")
         properties <- extractOrErrorT[DimensionProperties](parsedBody)
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dimension <- secureContainer.dimensionManager
           .create(properties, pkg)
-          .orError
+          .orError()
       } yield DimensionDTO(dimension, pkg)
 
       override val is = result.value.map(CreatedResult)
@@ -161,23 +163,23 @@ class ImagingController(
   post("/:packageId/dimensions/batch", operation(createDimensionsOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("packageId")
         batch <- extractOrErrorT[List[DimensionProperties]](parsedBody)
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         dimensions <- secureContainer.dimensionManager
           .create(batch, pkg)
-          .orError
+          .orError()
       } yield DimensionDTO(dimensions, pkg)
 
       override val is = result.value.map(CreatedResult)
@@ -196,24 +198,24 @@ class ImagingController(
   put("/:packageId/dimensions/:id", operation(updateDimensionOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         id <- paramT[Int]("id")
         packageId <- paramT[String]("packageId")
         body <- extractOrErrorT[DimensionProperties](parsedBody)
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         original <- secureContainer.dimensionManager
           .get(id, pkg)
-          .orNotFound
+          .orNotFound()
         updated = original.copy(
           name = body.name,
           length = body.length,
@@ -223,7 +225,7 @@ class ImagingController(
         )
         dimension <- secureContainer.dimensionManager
           .update(updated, pkg)
-          .orError
+          .orError()
       } yield DimensionDTO(dimension, pkg)
 
       override val is = result.value.map(OkResult)
@@ -242,25 +244,25 @@ class ImagingController(
   put("/:packageId/dimensions/batch", operation(updateDimensionsOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("packageId")
         body <- extractOrErrorT[List[DimensionPropertiesWithId]](parsedBody)
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         batch <- body.traverse(
           properties =>
             secureContainer.dimensionManager
               .get(properties.id, pkg)
-              .orNotFound
+              .orNotFound()
               .map { original =>
                 original.copy(
                   name = properties.name,
@@ -273,7 +275,7 @@ class ImagingController(
         )
         dimensions <- secureContainer.dimensionManager
           .update(batch, pkg)
-          .orError
+          .orError()
       } yield DimensionDTO(dimensions, pkg)
 
       override val is = result.value.map(OkResult)
@@ -290,26 +292,26 @@ class ImagingController(
   delete("/:packageId/dimensions/:id", operation(deleteDimensionOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         id <- paramT[Int]("id")
         packageId <- paramT[String]("packageId")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         dimension <- secureContainer.dimensionManager
           .get(id, pkg)
-          .orNotFound
+          .orNotFound()
         deleted <- secureContainer.dimensionManager
           .delete(dimension, pkg)
-          .orError
+          .orError()
       } yield deleted
 
       override val is = result.value.map(OkResult)
@@ -326,26 +328,26 @@ class ImagingController(
   delete("/:packageId/dimensions/batch", operation(deleteDimensionsOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("packageId")
         ids <- extractOrErrorT[List[Int]](parsedBody)
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         dimensions <- secureContainer.dimensionManager
           .get(ids.toSet, pkg)
-          .orError
+          .orError()
         _ <- secureContainer.dimensionManager
           .delete(dimensions, pkg)
-          .orError
+          .orError()
       } yield ()
 
       override val is = result.value.map(OkResult)
@@ -360,18 +362,18 @@ class ImagingController(
   get("/:packageId/dimensions/count", operation(getDimensionsCountOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("packageId")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        count <- secureContainer.dimensionManager.count(pkg).orError
+        count <- secureContainer.dimensionManager.count(pkg).orError()
       } yield count
 
       override val is = result.value.map(OkResult)

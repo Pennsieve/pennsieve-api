@@ -246,7 +246,7 @@ class DataController(
 
     new AsyncResult {
       val moveResponse = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
         destPackageAndDataset <- moveRequest.destination
@@ -255,32 +255,36 @@ class DataController(
               secureContainer.packageManager
                 .getPackageAndDatasetByNodeId(destId)
           )
-          .orNotFound
+          .orNotFound()
 
-        _ <- destPackageAndDataset.traverse {
-          case (pkg, dataset) => {
-            for {
-              _ <- secureContainer.authorizeDataset(
-                Set(DatasetPermission.EditFiles)
-              )(dataset)
+        _ <- destPackageAndDataset
+          .traverse {
+            case (pkg, dataset) => {
+              for {
+                _ <- secureContainer.authorizeDataset(
+                  Set(DatasetPermission.EditFiles)
+                )(dataset)
 
-              _ <- auditLogger
-                .message()
-                .append("move-target", moveRequest.things: _*)
-                .append("dataset-id", dataset.id)
-                .append("dataset-node-id", dataset.nodeId)
-                .append("package-id", pkg.id)
-                .append("package-node-id", pkg.nodeId)
-                .log(traceId)
-                .toEitherT
-            } yield (pkg, dataset)
+                _ <- auditLogger
+                  .message()
+                  .append("move-target", moveRequest.things: _*)
+                  .append("dataset-id", dataset.id)
+                  .append("dataset-node-id", dataset.nodeId)
+                  .append("package-id", pkg.id)
+                  .append("package-node-id", pkg.nodeId)
+                  .log(traceId)
+                  .toEitherT
+              } yield (pkg, dataset)
+            }
           }
-        }.coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        _ <- destPackageAndDataset.traverse {
-          case (_, dataset) =>
-            secureContainer.datasetManager.assertNotLocked(dataset)
-        }.coreErrorToActionResult
+        _ <- destPackageAndDataset
+          .traverse {
+            case (_, dataset) =>
+              secureContainer.datasetManager.assertNotLocked(dataset)
+          }
+          .coreErrorToActionResult()
 
         results <- moveItems(
           traceId,
@@ -289,11 +293,13 @@ class DataController(
           user
         )(secureContainer)
 
-        _ <- destPackageAndDataset.traverse {
-          case (_, dataset) =>
-            secureContainer.datasetManager
-              .touchUpdatedAtTimestamp(dataset)
-        }.coreErrorToActionResult
+        _ <- destPackageAndDataset
+          .traverse {
+            case (_, dataset) =>
+              secureContainer.datasetManager
+                .touchUpdatedAtTimestamp(dataset)
+          }
+          .coreErrorToActionResult()
 
       } yield {
         MoveResponse(results._2, results._1, moveRequest.destination)
@@ -372,7 +378,7 @@ class DataController(
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DeleteResponse] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
 
@@ -411,31 +417,31 @@ class DataController(
     new AsyncResult {
       val result = for {
         itemId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         result <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(itemId)
-          .orForbidden
+          .orForbidden()
         (pkg, dataset) = result
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageGraphSchema))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- checkOrErrorT(pkg.state != DELETING)(
           NotFound(s"$itemId not found")
         )
         newProperties = ModelProperty.merge(pkg.attributes, updatedProps)
         _ <- secureContainer.packageManager
           .update(pkg.copy(attributes = newProperties))
-          .orError
+          .orError()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -446,7 +452,7 @@ class DataController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         packageDTO(pkg, dataset, false, false)(asyncExecutor, secureContainer)

@@ -48,9 +48,9 @@ class OnboardingController(
   get("/events", operation(getEventsOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user = secureContainer.user
-        events <- secureContainer.onboardingManager.getEvents(user.id).orError
+        events <- secureContainer.onboardingManager.getEvents(user.id).orError()
       } yield events
 
       override val is = result.value.map(OkResult)
@@ -65,12 +65,12 @@ class OnboardingController(
   post("/events", operation(postEventOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user = secureContainer.user
         event <- extractOrErrorT[OnboardingEventType](parsedBody)
         count <- secureContainer.onboardingManager
           .addEvent(user.id, event)
-          .orError
+          .orError()
       } yield count
 
       override val is = result.value.map(OkResult)

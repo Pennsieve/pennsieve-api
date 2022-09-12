@@ -485,8 +485,7 @@ class DataCanvasController(
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
         body <- extractOrErrorT[MoveDataCanvasFolder](parsedBody)
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- secureContainer.dataCanvasManager
           .getById(canvasId)
           .orNotFound()
@@ -512,7 +511,7 @@ class DataCanvasController(
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dto
 
@@ -539,8 +538,7 @@ class DataCanvasController(
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- secureContainer.dataCanvasManager
           .getById(canvasId)
           .orNotFound()
@@ -583,8 +581,7 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, PackageDTO] = for {
         id <- paramT[Int]("id")
         body <- extractOrErrorT[AttachPackageRequest](parsedBody)
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataCanvas <- secureContainer.dataCanvasManager
           .getById(id)
           .orNotFound()
@@ -603,9 +600,10 @@ class DataCanvasController(
 
         _ <- secureContainer.dataCanvasManager
           .attachPackage(dataCanvas.id, dataset.id, pkg.id, organization.id)
-          .orBadRequest
+          .orBadRequest()
 
-        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer).orError
+        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer)
+          .orError()
 
       } yield dto
       override val is = result.value.map(OkResult)
@@ -630,8 +628,7 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, Done] = for {
         id <- paramT[Int]("id")
         pkgId <- paramT[Int]("pkgId")
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- secureContainer.dataCanvasManager
           .getById(id)
           .orNotFound()
@@ -642,7 +639,7 @@ class DataCanvasController(
 
         _ <- secureContainer.dataCanvasManager
           .detachPackage(dataCanvasPackage)
-          .orForbidden
+          .orForbidden()
 
       } yield Done
       override val is = result.value.map(OkResult)
@@ -668,8 +665,7 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, PackageDTO] = for {
         id <- paramT[Int]("id")
         pkgId <- paramT[Int]("pkgId")
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- secureContainer.dataCanvasManager
           .getById(id)
           .orNotFound()
@@ -686,7 +682,8 @@ class DataCanvasController(
           .get(dataCanvasPackage.packageId)
           .orNotFound()
 
-        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer).orError
+        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer)
+          .orError()
 
       } yield dto
       override val is = result.value.map(OkResult)
@@ -709,15 +706,14 @@ class DataCanvasController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[Package]] = for {
         id <- paramT[Int]("id")
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- secureContainer.dataCanvasManager
           .getById(id)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         packages <- secureContainer.dataCanvasManager
           .getPackages(id)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield packages
       override val is = result.value.map(OkResult)
@@ -743,29 +739,28 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, Done] = for {
         id <- paramT[Int]("id")
         packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataCanvas <- secureContainer.dataCanvasManager
           .getById(id)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ = packages.map { p =>
           for {
             dataset <- secureContainer.datasetManager
               .get(p.datasetId)
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
 
             organization <- secureContainer.organizationManager
               .get(p.organizationId.getOrElse(secureContainer.organization.id))
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
 
             pkg <- secureContainer.packageManager
               .get(p.packageId)
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
 
             dataCanvasPackage <- secureContainer.dataCanvasManager
               .attachPackage(dataCanvas.id, dataset.id, pkg.id, organization.id)
-              .orBadRequest
+              .orBadRequest()
 
           } yield dataCanvasPackage
         }
@@ -793,11 +788,10 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, Done] = for {
         id <- paramT[Int]("id")
         packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- secureContainer.dataCanvasManager
           .getById(id)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ = packages.map { p =>
           for {
@@ -807,7 +801,7 @@ class DataCanvasController(
 
             dataCanvasPackage <- secureContainer.dataCanvasManager
               .detachPackage(dataCanvasPackage)
-              .orBadRequest
+              .orBadRequest()
 
           } yield dataCanvasPackage
         }

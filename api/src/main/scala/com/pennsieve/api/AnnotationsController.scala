@@ -105,7 +105,7 @@ class AnnotationsController(
 
         _ <- secureContainer
           .authorizePackageId(Set(DatasetPermission.ViewAnnotations))(pkgId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -116,11 +116,11 @@ class AnnotationsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         users <- secureContainer.annotationManager
           .findUsersForAnnotation(annotation)
-          .orError
+          .orError()
         userMap = users
           .map(
             u =>
@@ -158,25 +158,25 @@ class AnnotationsController(
     new AsyncResult {
       val result = for {
         req <- extractOrErrorT[UpdateAnnotationRequest](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         annotationId <- paramT[Int]("id")
         annotation <- secureContainer.annotationManager
           .get(annotationId)
-          .orNotFound
+          .orNotFound()
 
         pkgId <- secureContainer.annotationManager
           .findPackageId(annotation)
-          .orError
+          .orError()
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetById(pkgId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(pkg.datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -187,15 +187,15 @@ class AnnotationsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         currentLayer <- secureContainer.annotationManager
           .getLayer(annotation.layerId)
-          .orNotFound
+          .orNotFound()
 
         updatedLayer <- req.layerId
           .traverse(id => secureContainer.annotationManager.getLayer(id))
-          .orNotFound
+          .orNotFound()
 
         destLayerId = updatedLayer.map(_.id).getOrElse(annotation.layerId)
 
@@ -208,17 +208,17 @@ class AnnotationsController(
             secureContainer
               .authorizePackageId(Set(DatasetPermission.ManageAnnotations))
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updated <- secureContainer.annotationManager
           .update(
             annotation
               .copy(description = req.description, layerId = destLayerId)
           )
-          .orError
+          .orError()
         annotationOwner <- secureContainer.userManager
           .get(annotation.creatorId)
-          .orError
+          .orError()
       } yield
         AnnotationResponse(AnnotationDTO(updated, annotationOwner.nodeId), None)
 
@@ -238,31 +238,31 @@ class AnnotationsController(
         traceId <- getTraceId(request)
         req <- extractOrErrorT[CreateAnnotationRequest](parsedBody)
         props = ModelPropertyRO.fromRequestObject(req.properties)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user = secureContainer.user
         manager = secureContainer.annotationManager
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(req.annotatedItem)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
-        existingLayers <- manager.findLayers(pkg).orError
+          .coreErrorToActionResult()
+        existingLayers <- manager.findLayers(pkg).orError()
         layer <- req.layerId match {
           case Some(layerId) =>
-            manager.getLayerByPackage(layerId, pkg.id).orNotFound
+            manager.getLayerByPackage(layerId, pkg.id).orNotFound()
           case None => {
             val randomColor =
               Colors.randomNewColor(existingLayers.map(_.color).toSet)
             manager
               .createLayer(pkg, "Default", randomColor.getOrElse(""))
-              .orError
+              .orError()
           }
         }
         annotation <- manager
@@ -273,7 +273,7 @@ class AnnotationsController(
             req.path.getOrElse(Nil),
             props
           )
-          .orError
+          .orError()
         userMap = Map(
           user.nodeId -> Builders
             .userDTO(
@@ -294,7 +294,7 @@ class AnnotationsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         AnnotationResponse(
@@ -315,22 +315,22 @@ class AnnotationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] = for {
         layerid <- paramT[Int]("id")
-        secureContainer <- getSecureContainer
-        layer <- secureContainer.annotationManager.getLayer(layerid).orError
+        secureContainer <- getSecureContainer()
+        layer <- secureContainer.annotationManager.getLayer(layerid).orError()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetById(layer.packageId)
-          .orForbidden
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotationLayers))(
             dataset
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
-        id <- secureContainer.annotationManager.deleteLayer(layer).orError
+          .coreErrorToActionResult()
+        id <- secureContainer.annotationManager.deleteLayer(layer).orError()
       } yield ()
       val is = result.value.map(OkResult)
     }
@@ -347,26 +347,26 @@ class AnnotationsController(
       val result: EitherT[Future, ActionResult, AnnotationLayer] = for {
         req <- extractOrErrorT[UpdateLayerRequest](parsedBody)
         layerid <- paramT[Int]("id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         manager = secureContainer.annotationManager
-        layer <- manager.getLayer(layerid).orNotFound
+        layer <- manager.getLayer(layerid).orNotFound()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetById(layer.packageId)
-          .orForbidden
+          .orForbidden()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotationLayers))(
             dataset
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         newColor = req.color getOrElse layer.color
         updated <- manager
           .updateLayer(layer.copy(name = req.name, color = newColor))
-          .orError
+          .orError()
       } yield updated
       val is = result.value.map(OkResult)
     }
@@ -380,30 +380,30 @@ class AnnotationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, AnnotationLayer] = for {
         req <- extractOrErrorT[CreateLayerRequest](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         manager = secureContainer.annotationManager
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(req.annotatedItem)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotationLayers))(
             dataset
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
-        existingLayers <- manager.findLayers(pkg).orError
+          .coreErrorToActionResult()
+        existingLayers <- manager.findLayers(pkg).orError()
         randomColor = req.color orElse Colors.randomNewColor(
           existingLayers.map(_.color).toSet
         )
         layer <- manager
           .createLayer(pkg, req.name, randomColor.getOrElse(""))
-          .orError
+          .orError()
 
         _ <- auditLogger
           .message()
@@ -414,7 +414,7 @@ class AnnotationsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield layer
 
@@ -433,31 +433,31 @@ class AnnotationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Int] = for {
         traceId <- getTraceId(request)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         annotationId <- paramT[Int]("id")
         withDiscussions <- paramT[Boolean]("withDiscussions", default = false)
         annotation <- secureContainer.annotationManager
           .get(annotationId)
-          .orNotFound
+          .orNotFound()
         packageId <- secureContainer.annotationManager
           .findPackageId(annotation)
-          .orError
+          .orError()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetById(packageId)
-          .orForbidden
+          .orForbidden()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         deleted <- if (withDiscussions) {
           secureContainer.annotationManager
             .deleteAnnotationAndRelatedDiscussions(annotation)
-            .orError
+            .orError()
         } else {
           secureContainer.annotationManager.delete(annotation).leftMap { ge =>
             ge match {
@@ -476,7 +476,7 @@ class AnnotationsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield deleted
 

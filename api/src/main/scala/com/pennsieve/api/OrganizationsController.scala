@@ -214,7 +214,7 @@ class OrganizationsController(
   post("/:id/members", operation(addToOrganizationOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         administrator = secureContainer.user
 
@@ -223,7 +223,7 @@ class OrganizationsController(
         organizationId <- paramT[String]("id")
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // TODO: only process a single invite per request
         results <- inviteRequests.invites.toList
@@ -244,14 +244,14 @@ class OrganizationsController(
                   executor
                 )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
           .append("organization-node-id", organization.id)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         results
@@ -270,7 +270,9 @@ class OrganizationsController(
   ): EitherT[Future, ActionResult, List[UserDTO]] = {
     if (fetch) {
       for {
-        storageMap <- storageManager.getStorage(susers, users.map(_.id)).orError
+        storageMap <- storageManager
+          .getStorage(susers, users.map(_.id))
+          .orError()
         dto <- users
           .traverse(
             user =>
@@ -307,7 +309,7 @@ class OrganizationsController(
     for {
       ownersAndAdministrators <- secureContainer.organizationManager
         .getOwnersAndAdministrators(organization)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
       (owners, administrators) = ownersAndAdministrators
       storageManager = StorageManager.create(secureContainer, organization)
       sanitizedOwners <- sanitizeUsers(owners.toList, expand)(storageManager)
@@ -316,14 +318,14 @@ class OrganizationsController(
       )
       storageMap <- storageManager
         .getStorage(sorganizations, List(organization.id))
-        .orError
+        .orError()
       storage = storageMap.get(organization.id).flatten
       organizationDTO <- Builders
         .organizationDTO(organization, storage = storage)(
           secureContainer.organizationManager,
           executor
         )
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
     } yield
       ExpandedOrganizationResponse(
         organization = organizationDTO,
@@ -337,7 +339,7 @@ class OrganizationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, GetOrganizationsResponse] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           traceId <- getTraceId(request)
           user = secureContainer.user
 
@@ -349,7 +351,7 @@ class OrganizationsController(
           //this is OK because we fetch the organization securely, so we should also be allowed to access the organization details
           organizations <- insecureContainer.userManager
             .getOrganizations(user)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           response <- organizations.traverse(
             expandOrganization(includeAdmins, user, _)(secureContainer)
@@ -361,7 +363,7 @@ class OrganizationsController(
             .append("organization-node-ids", organizations.map(_.nodeId): _*)
             .log(traceId)
             .toEitherT
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield GetOrganizationsResponse(response.toSet)
 
@@ -381,7 +383,7 @@ class OrganizationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ExpandedOrganizationResponse] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           traceId <- getTraceId(request)
           user = secureContainer.user
 
@@ -389,11 +391,11 @@ class OrganizationsController(
 
           organization <- secureContainer.organizationManager
             .getByNodeId(organizationId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           ownersAndAdministrators <- secureContainer.organizationManager
             .getOwnersAndAdministrators(organization)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           (owners, administrators) = ownersAndAdministrators
 
           storageManager = StorageManager.create(secureContainer, organization)
@@ -401,14 +403,14 @@ class OrganizationsController(
           owners <- sanitizeUsers(owners.toList)(storageManager)
           storageMap <- storageManager
             .getStorage(sorganizations, List(organization.id))
-            .orError
+            .orError()
           storage = storageMap.get(organization.id).flatten
           dto <- Builders
             .organizationDTO(organization, storage = storage)(
               secureContainer.organizationManager,
               executor
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- auditLogger
             .message()
@@ -416,7 +418,7 @@ class OrganizationsController(
             .append("organization-node-id", organization.nodeId)
             .log(traceId)
             .toEitherT
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield
           ExpandedOrganizationResponse(
@@ -445,7 +447,7 @@ class OrganizationsController(
   put("/:id", operation(updateOrganizationOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
 
@@ -456,10 +458,10 @@ class OrganizationsController(
 
         updatedOrganization <- secureContainer.organizationManager
           .update(organizationId, organizationToSave)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         ownerAdmins <- secureContainer.organizationManager
           .getOwnersAndAdministrators(updatedOrganization)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         (owners, administrators) = ownerAdmins
 
         ownerDTOs = owners.map(
@@ -487,21 +489,21 @@ class OrganizationsController(
         )
         storageMap <- storageManager
           .getStorage(sorganizations, List(updatedOrganization.id))
-          .orError
+          .orError()
         storage = storageMap.get(updatedOrganization.id).flatten
         dto <- Builders
           .organizationDTO(updatedOrganization, storage = storage)(
             secureContainer.organizationManager,
             executor
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
           .append("organization-node-id", organizationId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         ExpandedOrganizationResponse(
@@ -527,14 +529,14 @@ class OrganizationsController(
     for {
       administrators <- secureContainer.teamManager
         .getAdministrators(team)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
       storageManager = StorageManager.create(secureContainer, organization)
       sanitizedAdministrators <- sanitizeUsers(administrators.toList)(
         storageManager
       )
       members <- secureContainer.teamManager
         .getUsers(team)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
     } yield
       ExpandedTeamResponse(
         TeamDTO((team, organizationTeam)),
@@ -554,7 +556,7 @@ class OrganizationsController(
       val result: EitherT[Future, ActionResult, List[ExpandedTeamResponse]] =
         for {
 
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           traceId <- getTraceId(request)
           user = secureContainer.user
 
@@ -562,11 +564,11 @@ class OrganizationsController(
 
           organization <- secureContainer.organizationManager
             .getByNodeId(organizationId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           teams <- secureContainer.organizationManager
             .getTeams(organization)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           expandedTeams <- teams.traverse {
             case (team, orgTeam) =>
               getTeamsResponseHelper(team, orgTeam, user, organization)(
@@ -580,7 +582,7 @@ class OrganizationsController(
             .append("team-node-ids", teams.map(_._1.nodeId): _*)
             .log(traceId)
             .toEitherT
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield expandedTeams
 
@@ -599,7 +601,7 @@ class OrganizationsController(
   get("/:organizationId/teams/:id", operation(getTeamOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ExpandedTeamResponse] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
 
@@ -608,16 +610,16 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         team <- secureContainer.organizationManager
           .getTeamWithOrganizationTeamByNodeId(organization, teamId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         teamDTO = TeamDTO(team)
 
         administrators <- secureContainer.teamManager
           .getAdministrators(team._1)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         storageManager = StorageManager.create(secureContainer, organization)
         sanitizedAdministrators <- sanitizeUsers(administrators.toList)(
@@ -625,7 +627,7 @@ class OrganizationsController(
         )
         members <- secureContainer.teamManager
           .getUsers(team._1)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -633,7 +635,7 @@ class OrganizationsController(
           .append("team-node-id", team._1.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         ExpandedTeamResponse(
@@ -660,7 +662,7 @@ class OrganizationsController(
   post("/:organizationId/teams", operation(createTeamOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ExpandedTeamResponse] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
 
@@ -669,20 +671,20 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         t <- secureContainer.teamManager
           .create(teamToCreate.name, organization)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         team <- secureContainer.organizationManager
           .getTeamWithOrganizationTeamByNodeId(organization, t.nodeId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         teamDTO = TeamDTO(team)
 
         administrators <- secureContainer.teamManager
           .getAdministrators(team._1)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         storageManager = StorageManager.create(secureContainer, organization)
         sanitizedAdministrators <- sanitizeUsers(administrators.toList)(
@@ -690,7 +692,7 @@ class OrganizationsController(
         )
         members <- secureContainer.teamManager
           .getUsers(team._1)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -698,7 +700,7 @@ class OrganizationsController(
           .append("team-node-id", team._1.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         ExpandedTeamResponse(
@@ -726,7 +728,7 @@ class OrganizationsController(
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, TeamDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         teamToSave <- extractOrErrorT[UpdateGroupRequest](parsedBody)
         organizationId <- paramT[String]("organizationId")
@@ -734,15 +736,15 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.teamManager
           .update(organization, teamId, teamToSave.name)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updated <- secureContainer.organizationManager
           .getTeamWithOrganizationTeamByNodeId(organization, teamId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         teamDTO = TeamDTO(updated)
 
@@ -751,7 +753,7 @@ class OrganizationsController(
           .append("team-node-id", teamId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield teamDTO
 
@@ -769,7 +771,7 @@ class OrganizationsController(
   delete("/:organizationId/teams/:id", operation(deleteTeamOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
 
@@ -778,11 +780,11 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         team <- secureContainer.organizationManager
           .getTeamWithOrganizationTeamByNodeId(organization, teamId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(team._2.systemTeamType isEmpty)(
           BadRequest(
@@ -792,7 +794,7 @@ class OrganizationsController(
 
         _ <- secureContainer.teamManager
           .delete(team._1.id)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -800,7 +802,7 @@ class OrganizationsController(
           .append("team-node-id", team._1.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ()
 
@@ -818,7 +820,7 @@ class OrganizationsController(
   get("/:id/members", operation(getMembersOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[UserDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         organizationId <- paramT[String]("id")
 
@@ -826,33 +828,35 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         members <- secureContainer.organizationManager
           .getOrganizationUsers(organization)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         storageManager = StorageManager.create(secureContainer, organization)
         storageMap <- storageManager
           .getStorage(susers, members.map(_._1.id))
-          .orError
+          .orError()
         pennsieveTermsOfServiceMap <- insecureContainer.pennsieveTermsOfServiceManager
           .getUserMap(members.map(_._1.id))
-          .orError
+          .orError()
         customTermsOfServiceMap <- insecureContainer.customTermsOfServiceManager
           .getUserMap(members.map(_._1.id), organization.id)
-          .orError
-        dto <- members.traverse {
-          case (member, orgUser) =>
-            Builders.userDTO(
-              member,
-              storageMap.get(member.id).flatten,
-              pennsieveTermsOfServiceMap.get(member.id).map(_.toDTO),
-              customTermsOfServiceMap
-                .getOrElse(member.id, Seq.empty)
-                .map(_.toDTO(organization.nodeId)),
-              orgUser.permission.toRole
-            )(insecureContainer.organizationManager, executor)
-        }.coreErrorToActionResult
+          .orError()
+        dto <- members
+          .traverse {
+            case (member, orgUser) =>
+              Builders.userDTO(
+                member,
+                storageMap.get(member.id).flatten,
+                pennsieveTermsOfServiceMap.get(member.id).map(_.toDTO),
+                customTermsOfServiceMap
+                  .getOrElse(member.id, Seq.empty)
+                  .map(_.toDTO(organization.nodeId)),
+                orgUser.permission.toRole
+              )(insecureContainer.organizationManager, executor)
+          }
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -862,7 +866,7 @@ class OrganizationsController(
           .append("team-member-node-ids", members.map(_._1.nodeId): _*)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -885,27 +889,27 @@ class OrganizationsController(
   ) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         organizationId <- paramT[String]("organizationId")
         memberId <- paramT[String]("id")
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         member <- insecureContainer.userManager
           .getByNodeId(memberId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(!member.isIntegrationUser)(
           InvalidAction("Cannot remove integration user"): CoreError
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
         ownersAndAdmins <- secureContainer.organizationManager
           .getOwnersAndAdministrators(organization)(executor)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         owner = ownersAndAdmins._1.toList.headOption
         _ <- secureContainer.packageManager
           .switchOwner(member, owner)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         userDatasets <- secureContainer.datasetManager
           .find(member, Role.Viewer)
           .map(_.map(_.dataset).toList)
@@ -916,7 +920,7 @@ class OrganizationsController(
         storageManager = StorageManager.create(secureContainer, organization)
         storageMap <- storageManager
           .getStorage(susers, List(member.id))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         storage = storageMap.get(member.id).flatten.getOrElse(0L)
         _ = storageManager.incrementStorage(susers, -storage, member.id)
         _ = owner.traverse(
@@ -924,7 +928,7 @@ class OrganizationsController(
         )
         _ <- secureContainer.organizationManager
           .removeUser(organization, member)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield Unit
 
       val is = result.value.map(OkResult)
@@ -944,7 +948,7 @@ class OrganizationsController(
   put("/:organizationId/members/:id", operation(updateMemberOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, UserDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         organizationId <- paramT[String]("organizationId")
         userId <- paramT[String]("id")
@@ -963,22 +967,22 @@ class OrganizationsController(
           .hasPermission(secureContainer.organization, DBPermission.Administer)(
             executor
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         user <- insecureContainer.userManager
           .getByNodeId(userId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(!user.isIntegrationUser)(
           InvalidAction("Integration User cannot be updated."): CoreError
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
         preferredOrganizationId <- insecureContainer.userManager
           .getPreferredOrganizationId(
             userToSave.organization,
             user.preferredOrganizationId
           )(insecureContainer.organizationManager, executor)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updatedUser = user.copy(
           firstName = userToSave.firstName.getOrElse(user.firstName),
@@ -993,25 +997,27 @@ class OrganizationsController(
             .contains(Delete) || userToSave.permission.contains(Administer)
         )(BadRequest(s"Invalid permission: ${userToSave.permission}"))
 
-        _ <- userToSave.permission.traverse { permission =>
-          secureContainer.organizationManager
-            .updateUserPermission(
-              secureContainer.organization,
-              updatedUser,
-              permission
-            )
-        }.coreErrorToActionResult
+        _ <- userToSave.permission
+          .traverse { permission =>
+            secureContainer.organizationManager
+              .updateUserPermission(
+                secureContainer.organization,
+                updatedUser,
+                permission
+              )
+          }
+          .coreErrorToActionResult()
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         storageManager = StorageManager.create(secureContainer, organization)
         newUser <- insecureContainer.userManager
           .update(updatedUser)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         storageMap <- storageManager
           .getStorage(susers, List(newUser.id))
-          .orError
+          .orError()
         storage = storageMap.get(newUser.id).flatten
         dto <- Builders
           .userDTO(newUser, storage = storage)(
@@ -1020,7 +1026,7 @@ class OrganizationsController(
             insecureContainer.customTermsOfServiceManager,
             executor
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -1030,7 +1036,7 @@ class OrganizationsController(
           .append("user-node-id", user.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -1050,17 +1056,17 @@ class OrganizationsController(
   get("/:organizationId/invites", operation(getOrganizationInvites)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         organizationId <- paramT[String]("organizationId")
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         invites <- secureContainer.organizationManager
           .getInvites(organization)(
             insecureContainer.userInviteManager,
             executor
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield invites.map(UserInviteDTO(_))
 
       val is = result.value.map(OkResult)
@@ -1080,7 +1086,7 @@ class OrganizationsController(
   put("/:organizationId/invites/:id", operation(refreshOrganizationInvite)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, AddUserResponse] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         admin = secureContainer.user
 
         organizationId <- paramT[String]("organizationId")
@@ -1088,7 +1094,7 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         inviteOrUser <- secureContainer.organizationManager
           .refreshInvite(
@@ -1103,7 +1109,7 @@ class OrganizationsController(
             insecureContainer.messageTemplates,
             executor
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield AddUserResponse(organization)(inviteOrUser)
 
@@ -1122,8 +1128,7 @@ class OrganizationsController(
   delete("/:organizationId/invites/:id", operation(deleteOrganizationInvite)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         organizationId <- paramT[String]("organizationId")
         inviteId <- paramT[String]("id")
 
@@ -1132,7 +1137,7 @@ class OrganizationsController(
             insecureContainer.userInviteManager,
             executor
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield inviteOrUser
 
       val is = result.value.map(OkResult)
@@ -1151,7 +1156,7 @@ class OrganizationsController(
   get("/:organizationId/teams/:id/members", operation(getTeamMembersOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[UserDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         organizationId <- paramT[String]("organizationId")
         teamId <- paramT[String]("id")
@@ -1160,25 +1165,25 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         team <- insecureContainer.organizationManager
           .getTeamByNodeId(organization, teamId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         members <- secureContainer.teamManager
           .getUsers(team)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         storageManager = StorageManager.create(secureContainer, organization)
         storageMap <- storageManager
           .getStorage(susers, members.map(_.id))
-          .orError
+          .orError()
         pennsieveTermsOfServiceMap <- insecureContainer.pennsieveTermsOfServiceManager
           .getUserMap(members.map(_.id))
-          .orError
+          .orError()
         customTermsOfServiceMap <- insecureContainer.customTermsOfServiceManager
           .getUserMap(members.map(_.id), organization.id)
-          .orError
+          .orError()
         dto <- members
           .traverse(
             member =>
@@ -1193,7 +1198,7 @@ class OrganizationsController(
                     .map(_.toDTO(organization.nodeId))
                 )(insecureContainer.organizationManager, executor)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -1203,7 +1208,7 @@ class OrganizationsController(
           .append("team-member-node-ids", members.map(_.nodeId): _*)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -1224,7 +1229,7 @@ class OrganizationsController(
   post("/:organizationId/teams/:id/members", operation(addToTeamOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[UserDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         admin = secureContainer.user
         organizationId <- paramT[String]("organizationId")
@@ -1234,38 +1239,40 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         team <- insecureContainer.organizationManager
           .getTeamByNodeId(organization, teamId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         administrator = s"${admin.firstName} ${admin.lastName}"
 
         users <- insecureContainer.userManager
           .getByNodeIds(membersToAdd.ids.toSet)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        results <- users.traverse { user =>
-          secureContainer.teamManager
-            .addUser(team, user, Delete)
-            .map { _ =>
-              insecureContainer.emailer
-                .sendEmail(
-                  Email(user.email),
-                  Settings.support_email,
-                  insecureContainer.messageTemplates.addedToTeam(
-                    administrator = administrator,
-                    team = team.name,
-                    emailAddress = user.email,
-                    org = organization
-                  ),
-                  "You’ve been added to a team"
-                )
+        results <- users
+          .traverse { user =>
+            secureContainer.teamManager
+              .addUser(team, user, Delete)
+              .map { _ =>
+                insecureContainer.emailer
+                  .sendEmail(
+                    Email(user.email),
+                    Settings.support_email,
+                    insecureContainer.messageTemplates.addedToTeam(
+                      administrator = administrator,
+                      team = team.name,
+                      emailAddress = user.email,
+                      org = organization
+                    ),
+                    "You’ve been added to a team"
+                  )
 
-              user
-            }
-        }.coreErrorToActionResult
+                user
+              }
+          }
+          .coreErrorToActionResult()
 
         dto <- results
           .traverse(
@@ -1276,7 +1283,7 @@ class OrganizationsController(
               customTermsOfService = Seq.empty
             )(insecureContainer.organizationManager, executor)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -1286,7 +1293,7 @@ class OrganizationsController(
           .append("team-node-id", team.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -1310,7 +1317,7 @@ class OrganizationsController(
   ) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user = secureContainer.user
 
         organizationId <- paramT[String]("organizationId")
@@ -1319,19 +1326,19 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         team <- insecureContainer.organizationManager
           .getTeamByNodeId(organization, teamId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         member <- insecureContainer.userManager
           .getByNodeId(memberId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.teamManager
           .removeUser(team, member)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield Unit
 
       val is = result.value.map(OkResult)
@@ -1351,24 +1358,23 @@ class OrganizationsController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, String] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         organizationId <- paramT[String]("organizationId")
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Read)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         version <- organization.customTermsOfServiceVersion
           .toRight(MissingCustomTermsOfService: CoreError)
           .toEitherT[Future]
-          .orNotFound
+          .orNotFound()
 
         text <- customTermsOfServiceClient
           .getTermsOfService(organization.nodeId, version)
           .leftMap(_ => InvalidDateVersion(version.toString): CoreError)
           .toEitherT[Future]
-          .orNotFound
+          .orNotFound()
 
       } yield text
 
@@ -1387,15 +1393,15 @@ class OrganizationsController(
   get("/:organizationId/dataset-status", operation(getDatasetStatus)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[DatasetStatusDTO]] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         organizationId <- paramT[String]("organizationId")
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Read)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        status <- new DatasetStatusManager(insecureContainer.db, organization).getAllWithUsage.coreErrorToActionResult
+        status <- new DatasetStatusManager(insecureContainer.db, organization).getAllWithUsage
+          .coreErrorToActionResult()
 
       } yield status.map(DatasetStatusDTO(_))
 
@@ -1415,8 +1421,7 @@ class OrganizationsController(
   post("/:organizationId/dataset-status", operation(createDatasetStatus)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetStatusDTO] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- assertNotDemoOrganization(secureContainer)
 
         organizationId <- paramT[String]("organizationId")
@@ -1424,11 +1429,11 @@ class OrganizationsController(
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         status <- new DatasetStatusManager(insecureContainer.db, organization)
           .create(displayName = body.displayName, color = body.color)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield DatasetStatusDTO(status, inUse = DatasetStatusInUse(false))
 
@@ -1452,15 +1457,14 @@ class OrganizationsController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetStatusDTO] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         organizationId <- paramT[String]("organizationId")
         datasetStatusId <- paramT[Int]("datasetStatusId")
         body <- extractOrErrorT[DatasetStatusRequest](parsedBody)
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         status <- new DatasetStatusManager(insecureContainer.db, organization)
           .update(
@@ -1468,7 +1472,7 @@ class OrganizationsController(
             displayName = body.displayName,
             color = body.color
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield DatasetStatusDTO(status)
 
@@ -1491,18 +1495,17 @@ class OrganizationsController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetStatusDTO] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         organizationId <- paramT[String]("organizationId")
         datasetStatusId <- paramT[Int]("datasetStatusId")
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         status <- new DatasetStatusManager(insecureContainer.db, organization)
           .delete(id = datasetStatusId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield DatasetStatusDTO(status)
 
@@ -1523,15 +1526,15 @@ class OrganizationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[DataUseAgreementDTO]] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           organizationId <- paramT[String]("organizationId")
 
           organization <- secureContainer.organizationManager
             .getByNodeId(organizationId, DBPermission.Read)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
-          agreements <- secureContainer.dataUseAgreementManager.getAll.coreErrorToActionResult
+          agreements <- secureContainer.dataUseAgreementManager.getAll
+            .coreErrorToActionResult()
 
         } yield agreements.map(DataUseAgreementDTO(_))
 
@@ -1556,15 +1559,14 @@ class OrganizationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataUseAgreementDTO] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           organizationId <- paramT[String]("organizationId")
 
           body <- extractOrErrorT[CreateDataUseAgreementRequest](parsedBody)
 
           organization <- secureContainer.organizationManager
             .getByNodeId(organizationId, DBPermission.Administer)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- assertNotDemoOrganization(secureContainer)
 
@@ -1575,7 +1577,7 @@ class OrganizationsController(
               body = body.body,
               isDefault = body.isDefault
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield DataUseAgreementDTO(agreement)
 
@@ -1600,8 +1602,7 @@ class OrganizationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           organizationId <- paramT[String]("organizationId")
           agreementId <- paramT[Int]("agreementId")
 
@@ -1609,7 +1610,7 @@ class OrganizationsController(
 
           organization <- secureContainer.organizationManager
             .getByNodeId(organizationId, DBPermission.Administer)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- assertNotDemoOrganization(secureContainer)
 
@@ -1621,7 +1622,7 @@ class OrganizationsController(
               description = body.description,
               isDefault = body.isDefault
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield ()
 
@@ -1646,18 +1647,17 @@ class OrganizationsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           organizationId <- paramT[String]("organizationId")
           agreementId <- paramT[Int]("agreementId")
 
           organization <- secureContainer.organizationManager
             .getByNodeId(organizationId, DBPermission.Administer)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.dataUseAgreementManager
             .delete(agreementId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield ()
 
@@ -1677,10 +1677,10 @@ class OrganizationsController(
     for {
       demoOrganization <- secureContainer.organizationManager
         .isDemo(secureContainer.organization.id)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       _ <- checkOrErrorT(!demoOrganization)(
         InvalidAction("Demo user cannot share datasets."): CoreError
-      ).coreErrorToActionResult
+      ).coreErrorToActionResult()
     } yield ()
 }
