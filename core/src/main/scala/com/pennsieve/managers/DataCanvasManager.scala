@@ -98,6 +98,7 @@ class DataCanvasManager(
   def create(
     name: String,
     description: String,
+    userId: Int = actor.id,
     isPublic: Option[Boolean] = None,
     role: Option[String] = None,
     statusId: Option[Int] = None,
@@ -140,7 +141,7 @@ class DataCanvasManager(
 
         _ <- dataCanvasUser += DataCanvasUser(
           dataCanvas.id,
-          actor.id,
+          userId,
           DBPermission.Owner,
           Some(Role.Owner)
         )
@@ -150,9 +151,7 @@ class DataCanvasManager(
       dataCanvas <- db.run(createdDataCanvas.transactionally).toEitherT
 
       // create root folder
-      rootFolder <- createFolder(dataCanvas.id, "||ROOT||", None)
-
-      // TODO: link datacanvas_user
+      _ <- createFolder(dataCanvas.id, "||ROOT||", None)
 
     } yield dataCanvas
 
