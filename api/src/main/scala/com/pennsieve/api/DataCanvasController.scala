@@ -46,7 +46,12 @@ import com.pennsieve.helpers.ResultHandlers.{
   OkResult
 }
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.models.{ DataCanvasPackage, Package, Role }
+import com.pennsieve.models.{
+  DataCanvasFolderPath,
+  DataCanvasPackage,
+  Package,
+  Role
+}
 import org.json4s.{ JNothing, JValue }
 import org.scalatra.{ ActionResult, AsyncResult, BadRequest, ScalatraServlet }
 import org.scalatra.swagger.Swagger
@@ -652,6 +657,38 @@ class DataCanvasController(
       } yield Done
 
       override val is = result.value.map(NoContentResult(_))
+    }
+  }
+
+  /**
+    * Get folder paths
+    */
+  get(
+    "/:canvasId/folder/paths",
+    operation(
+      apiOperation[List[DataCanvasFolderPath]]("getDataCanvasFolderPaths")
+        summary "get a data-canvas folder paths"
+        parameters (
+          pathParam[Int]("canvasId").description("data-canvas id")
+        )
+    )
+  ) {
+    new AsyncResult() {
+      val result: EitherT[Future, ActionResult, List[DataCanvasFolderPath]] =
+        for {
+          canvasId <- paramT[Int]("canvasId")
+          secureContainer <- getSecureContainer
+
+          canvas <- secureContainer.dataCanvasManager
+            .getById(canvasId)
+            .orNotFound()
+
+          paths <- secureContainer.dataCanvasManager
+            .getFolderPaths(canvas.id)
+            .orNotFound()
+
+        } yield paths.toList
+      override val is = result.value.map(OkResult(_))
     }
   }
 

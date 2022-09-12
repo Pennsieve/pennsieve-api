@@ -38,6 +38,7 @@ import com.pennsieve.models.{
   DBPermission,
   DataCanvas,
   DataCanvasFolder,
+  DataCanvasFolderPath,
   DataCanvasPackage,
   DataCanvasUser,
   NodeCodes,
@@ -56,6 +57,7 @@ import org.postgresql.util.PSQLException
 
 import scala.concurrent.{ ExecutionContext, Future }
 import slick.dbio.DBIO
+import slick.jdbc.GetResult
 
 object DataCanvasManager {
   val maxNameLength = 256
@@ -412,6 +414,43 @@ class DataCanvasManager(
       .filter(_.parentId.isEmpty)
       .result
       .head
+
+    db.run(query).toEitherT
+  }
+
+  def getFolderPaths(
+    canvasId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Vector[DataCanvasFolderPath]] = {
+    implicit val getFolderResult = GetResult(
+      r => DataCanvasFolderPath(r.<<, r.<<, r.<<, r.<<, r.<<)
+    )
+    val query =
+      sql"""
+          WITH RECURSIVE datacanvas_folder_tree AS (
+          -- seed
+          SELECT 1 as level,
+                 id,
+                 parent_id,
+                 name,
+                 cast('' as varchar(255)) as path
+          FROM "#${organization.schemaId}".datacanvas_folder
+          WHERE "#${organization.schemaId}".datacanvas_folder.datacanvas_id = #${canvasId}
+            and "#${organization.schemaId}".datacanvas_folder.parent_id is null
+        UNION ALL
+          -- recursive
+          SELECT r.level+1,
+                 t.id,
+                 t.parent_id,
+                 t.name,
+                 CAST(concat_ws('/', r.path, t.name) as varchar(255)) as path
+          FROM "#${organization.schemaId}".datacanvas_folder t
+          JOIN datacanvas_folder_tree r ON t.parent_id = r.id
+        )
+        SELECT * FROM datacanvas_folder_tree;
+       """
+        .as[DataCanvasFolderPath]
 
     db.run(query).toEitherT
   }

@@ -19,6 +19,7 @@ package com.pennsieve.api
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import com.pennsieve.dtos.DataCanvasDTO
 import com.pennsieve.helpers.{ DataCanvasTestMixin, DataSetTestMixin }
+import com.pennsieve.models.DataCanvasFolderPath
 
 import scala.concurrent.Future
 import org.json4s.jackson.Serialization.{ read, write }
@@ -765,6 +766,26 @@ class TestDataCanvasController
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
+    }
+  }
+
+  test("folder get paths should return entire folder structure") {
+    val canvas = createDataCanvas()
+    val researchFolder = createFolder(canvas.id, "research")
+    val phase1Folder =
+      createFolder(canvas.id, "phase1", Some(researchFolder.id))
+    val phase2Folder =
+      createFolder(canvas.id, "phase2", Some(researchFolder.id))
+
+    get(
+      s"/${canvas.id}/folder/paths",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val result: List[DataCanvasFolderPath] = parsedBody
+        .extract[List[DataCanvasFolderPath]]
+      result.length should equal(4)
     }
   }
 
