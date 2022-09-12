@@ -123,9 +123,9 @@ class DiscussionsController(
                 )
           )
           .toMap
-        val commentedToMap = commentMap.mapValues(
-          comments => comments.map(CommentDTO(_, userIdMap))
-        )
+        val commentedToMap = commentMap.view
+          .mapValues(comments => comments.map(CommentDTO(_, userIdMap)))
+          .toMap
         val discussionDTOs = comments.keys.toList.map(DiscussionDTO(_))
 
         DiscussionsResponse(commentedToMap, discussionDTOs, Some(userNameMap))

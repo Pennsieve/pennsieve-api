@@ -943,7 +943,7 @@ class PackagesController(
                       p.s3Key,
                       DateTime.now.plusMinutes(180).toDate
                     )
-                    .right
+                    .toOption
                     .get,
                   size = p.size,
                   fileExtension = Utilities.getFullExtension(p.s3Key)

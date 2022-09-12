@@ -262,7 +262,7 @@ object ChangelogEventGroupDTO {
       timeRange = eventGroup.timeRange,
       event = eventOrCursor.left.toOption,
       eventCursor =
-        eventOrCursor.right.toOption.map(ChangelogEventCursor.encodeBase64(_))
+        eventOrCursor.toOption.map(ChangelogEventCursor.encodeBase64(_))
     )
 
 }
@@ -3804,14 +3804,8 @@ class DataSetsController(
     response: GetLatestDoiResponse
   ): Either[CoreError, DoiDTO] = {
     response match {
-      case GetLatestDoiResponse.OK(dto) => {
-        dto.as[DoiDTO] match {
-          case Right(decodedDoi) =>
-            Right(decodedDoi)
-          case Left(decodingFailure) =>
-            Left(ParseError(decodingFailure))
-        }
-      }
+      case GetLatestDoiResponse.OK(dto) =>
+        Right(dto)
       case GetLatestDoiResponse.NotFound(e) =>
         Left(domain.NotFound(e))
       case GetLatestDoiResponse.Forbidden(e) =>
@@ -3829,14 +3823,8 @@ class DataSetsController(
     response: CreateDraftDoiResponse
   ): Either[CoreError, DoiDTO] = {
     response match {
-      case CreateDraftDoiResponse.Created(dto) => {
-        dto.as[DoiDTO] match {
-          case Right(decodedDoi) =>
-            Right(decodedDoi)
-          case Left(decodingFailure) =>
-            Left(ParseError(decodingFailure))
-        }
-      }
+      case CreateDraftDoiResponse.Created(dto) =>
+        Right(dto)
       case CreateDraftDoiResponse.BadRequest(e) =>
         Left(PredicateError(e))
       case CreateDraftDoiResponse.Forbidden(e) =>

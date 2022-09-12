@@ -929,7 +929,7 @@ class OrganizationsController(
         _ <- secureContainer.organizationManager
           .removeUser(organization, member)
           .coreErrorToActionResult()
-      } yield Unit
+      } yield ()
 
       val is = result.value.map(OkResult)
     }
@@ -1339,7 +1339,7 @@ class OrganizationsController(
         _ <- secureContainer.teamManager
           .removeUser(team, member)
           .coreErrorToActionResult()
-      } yield Unit
+      } yield ()
 
       val is = result.value.map(OkResult)
     }

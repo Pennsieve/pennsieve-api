@@ -458,6 +458,25 @@ class FilesController(
 
   post("/upload/complete/:importId", operation(uploadManifestOperation)) {
     new AsyncResult {
+
+      def extractProxyLinkRequestBody(
+        hasPreview: Boolean
+      ): EitherT[Future, ActionResult, Option[CompleteProxyLinkRequest]] =
+        if (request.body.nonEmpty) {
+          if (hasPreview) { // Request may contain a nested CompleteProxyLinkRequest
+            extractOrErrorT[Option[CompleteProxyLinkRequest]](
+              parsedBody \ "proxyLink"
+            )
+          } else { // Request may contain a CompleteProxyLinkRequest at the json body root
+            extractOrErrorT[CompleteProxyLinkRequest](parsedBody)
+              .map(t => Option(t))
+          }
+        } else { // Request may have no payload
+          EitherT.liftF(
+            Future.successful(None: Option[CompleteProxyLinkRequest])
+          )
+        }
+
       val manifest
         : EitherT[Future, ActionResult, List[UploadCompleteResponse]] = for {
         secureContainer <- getSecureContainer()
@@ -472,18 +491,7 @@ class FilesController(
 
         traceId <- getTraceId(request)
 
-        proxyLinkRequestBody <- if (!request.body.isEmpty) {
-          if (hasPreview) { // Request may contain a nested CompleteProxyLinkRequest
-            extractOrErrorT[Option[CompleteProxyLinkRequest]](
-              parsedBody \ "proxyLink"
-            )
-          } else { // Request may contain a CompleteProxyLinkRequest at the json body root
-            extractOrErrorT[CompleteProxyLinkRequest](parsedBody)
-              .map(t => Option(t))
-          }
-        } else { // Request may have no payload
-          EitherT.liftF(Future.successful(None))
-        }
+        proxyLinkRequestBody <- extractProxyLinkRequestBody(hasPreview)
 
         // If the hasPreview query param is set to true, then the request will contain a nested PackagePreview
         uploadServicePreview <- if (!request.body.isEmpty && hasPreview) {

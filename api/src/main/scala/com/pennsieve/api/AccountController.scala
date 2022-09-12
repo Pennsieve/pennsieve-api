@@ -97,6 +97,15 @@ class AccountController(
     contentType = formats("json")
   }
 
+  //TODO The comments below refer to Scalatra 2.6.x and are out of date as of 2.7.x.
+  // However, the underlying concern about logging passwords on parse failures still seems to be an issue in 2.7.x:
+  // https://github.com/scalatra/scalatra/blob/dc46304149bab7b251b7558232a8bb80cb03c1f9/json/src/main/scala/org/scalatra/json/JsonSupport.scala#L27
+  // The major change is that Scalatra no longer provides a shouldParseBody method to override.
+  // I think this is okay since we never call parsedBody, so the logs should be clean.
+  // The 2.7.x approach to this may be to override the new method JsonSupport.transformRequestBody()
+  // using something like parseRequestBody() below and then use parsedBody in our operations.
+  // The tests for this class are turned off, so I'm making minimal changes now.
+
   /*
    * Note: We turn off automatic parsing on the request body in JsonSupport
    * for all routes in this controller because Scalatra logs (!) JSON parsing
@@ -109,7 +118,8 @@ class AccountController(
    *   - https://github.com/scalatra/scalatra/blob/v2.6.3/json/src/main/scala/org/scalatra/json/JsonSupport.scala#L83-L92
    *   - https://github.com/scalatra/scalatra/blob/v2.6.3/json/src/main/scala/org/scalatra/json/JsonSupport.scala#L48-L51
    */
-  override protected def shouldParseBody(
+  /*override*/
+  protected def shouldParseBody(
     fmt: String
   )(implicit
     request: HttpServletRequest

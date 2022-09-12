@@ -21,7 +21,7 @@ import com.pennsieve.aws.email.Email
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object Settings {
 
