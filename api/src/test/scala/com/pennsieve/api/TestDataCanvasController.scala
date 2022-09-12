@@ -439,54 +439,13 @@ class TestDataCanvasController
     }
   }
 
-  test("public get all publicly available data-canvas for an organization - 1") {
+  test(
+    "public get all publicly available data-canvas for the user's organization"
+  ) {
     createDataCanvas(isPublic = true)
     createDataCanvas(isPublic = false)
     val orgNodeId = loggedInOrganization.nodeId
 
-    get(
-      s"/get/organization/${orgNodeId}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val result: List[DataCanvasDTO] = parsedBody
-        .extract[List[DataCanvasDTO]]
-      result.length should equal(1)
-    }
-  }
-
-  test("public get all publicly available data-canvas for an organization - 2") {
-    // create public data-canvas in org 1
-    postJson(
-      "/",
-      write(
-        CreateDataCanvasRequest(
-          name = "test: org 1's canvas",
-          description = "test: create a new data-canvas",
-          isPublic = Some(true)
-        )
-      ),
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(201)
-    }
-    // create public data-canvas in org 2
-    postJson(
-      "/",
-      write(
-        CreateDataCanvasRequest(
-          name = "test: oeg 2's canvas",
-          description = "test: create a new data-canvas",
-          isPublic = Some(true)
-        )
-      ),
-      headers = authorizationHeader(externalJwt) ++ traceIdHeader()
-    ) {
-      status should equal(201)
-    }
-    // invoke API to get data-canvases for org 1
-    val orgNodeId = loggedInOrganization.nodeId
     get(
       s"/get/organization/${orgNodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
