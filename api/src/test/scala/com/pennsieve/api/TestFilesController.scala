@@ -99,7 +99,6 @@ class TestFilesController
         None
       )
       .await
-      .right
       .value
     tsdestination = packageManager
       .create(
@@ -111,7 +110,6 @@ class TestFilesController
         None
       )
       .await
-      .right
       .value
 
     mockModelServiceClient.clearCounts()
@@ -284,15 +282,15 @@ class TestFilesController
         )
       )
 
-      val pkg1 = packageManager.get(job1.packageId).await.right.value
-      val parent1 = packageManager.get(pkg1.parentId.get).await.right.value
+      val pkg1 = packageManager.get(job1.packageId).await.value
+      val parent1 = packageManager.get(pkg1.parentId.get).await.value
 
       assert(pkg1.name == "test+IMG")
       assert(parent1.name == destination.name)
       assert(parent1.parentId.isEmpty)
 
       // Check that the corresponding source files were created as well:
-      val srcFiles = fileManager.getSources(pkg1).await.right.value
+      val srcFiles = fileManager.getSources(pkg1).await.value
       assert(
         srcFiles.map(f => (f.name, f.uploadedState, f.checksum)).toSet ==
           Set(
@@ -347,13 +345,13 @@ class TestFilesController
 
       val job1 =
         (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-      val pkg1 = packageManager.get(job1.packageId).await.right.value
+      val pkg1 = packageManager.get(job1.packageId).await.value
 
       assert(pkg1.name == "testIMG")
       assert(pkg1.parentId.isEmpty)
 
       // Check that the corresponding source files were created as well:
-      val srcFiles = fileManager.getSources(pkg1).await.right.value
+      val srcFiles = fileManager.getSources(pkg1).await.value
       assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
     }
   }
@@ -456,12 +454,12 @@ class TestFilesController
 
       val job1 =
         (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-      val pkg1 = packageManager.get(job1.packageId).await.right.value
-      val parent1 = packageManager.get(pkg1.parentId.get).await.right.value
+      val pkg1 = packageManager.get(job1.packageId).await.value
+      val parent1 = packageManager.get(pkg1.parentId.get).await.value
       val grandparent1 =
-        packageManager.get(parent1.parentId.get).await.right.value
+        packageManager.get(parent1.parentId.get).await.value
       val greatGrandparent1 =
-        packageManager.get(grandparent1.parentId.get).await.right.value
+        packageManager.get(grandparent1.parentId.get).await.value
 
       assert(pkg1.name == "testIMG")
       assert(parent1.name == "images")
@@ -469,7 +467,7 @@ class TestFilesController
       assert(greatGrandparent1.name == destination.name)
       assert(greatGrandparent1.parentId.isEmpty)
 
-      val srcFiles = fileManager.getSources(pkg1).await.right.value
+      val srcFiles = fileManager.getSources(pkg1).await.value
       assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
 
       // upload a package from the same upload session (matching collection ids)
@@ -484,12 +482,12 @@ class TestFilesController
 
         val job2 =
           (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-        val pkg2 = packageManager.get(job2.packageId).await.right.value
-        val parent2 = packageManager.get(pkg2.parentId.get).await.right.value
+        val pkg2 = packageManager.get(job2.packageId).await.value
+        val parent2 = packageManager.get(pkg2.parentId.get).await.value
         val grandparent2 =
-          packageManager.get(parent2.parentId.get).await.right.value
+          packageManager.get(parent2.parentId.get).await.value
         val greatGrandparent2 =
-          packageManager.get(grandparent2.parentId.get).await.right.value
+          packageManager.get(grandparent2.parentId.get).await.value
 
         assert(pkg2.name == "testJPG")
         assert(parent2.name == "images")
@@ -500,7 +498,7 @@ class TestFilesController
         assert(greatGrandparent2.id == destination.id)
         assert(greatGrandparent2.parentId.isEmpty)
 
-        val srcFiles = fileManager.getSources(pkg2).await.right.value
+        val srcFiles = fileManager.getSources(pkg2).await.value
         assert(srcFiles.head.name == "testJPG.jpg")
       }
 
@@ -515,12 +513,12 @@ class TestFilesController
 
         val job3 =
           (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-        val pkg3 = packageManager.get(job3.packageId).await.right.value
-        val parent3 = packageManager.get(pkg3.parentId.get).await.right.value
+        val pkg3 = packageManager.get(job3.packageId).await.value
+        val parent3 = packageManager.get(pkg3.parentId.get).await.value
         val grandparent3 =
-          packageManager.get(parent3.parentId.get).await.right.value
+          packageManager.get(parent3.parentId.get).await.value
         val greatGrandparent3 =
-          packageManager.get(grandparent3.parentId.get).await.right.value
+          packageManager.get(grandparent3.parentId.get).await.value
 
         assert(pkg3.name == "testIMG")
         assert(parent3.name == "images")
@@ -531,7 +529,7 @@ class TestFilesController
         assert(greatGrandparent3.id == destination.id)
         assert(greatGrandparent3.parentId.isEmpty)
 
-        val srcFiles = fileManager.getSources(pkg3).await.right.value
+        val srcFiles = fileManager.getSources(pkg3).await.value
         assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
       }
     }
@@ -631,17 +629,17 @@ class TestFilesController
 
       val job1 =
         (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-      val pkg1 = packageManager.get(job1.packageId).await.right.value
-      val parent1 = packageManager.get(pkg1.parentId.get).await.right.value
+      val pkg1 = packageManager.get(job1.packageId).await.value
+      val parent1 = packageManager.get(pkg1.parentId.get).await.value
       val grandparent1 =
-        packageManager.get(parent1.parentId.get).await.right.value
+        packageManager.get(parent1.parentId.get).await.value
 
       assert(pkg1.name == "testIMG")
       assert(parent1.name == "images")
       assert(grandparent1.name == "data")
       assert(grandparent1.parentId.isEmpty)
 
-      val srcFiles = fileManager.getSources(pkg1).await.right.value
+      val srcFiles = fileManager.getSources(pkg1).await.value
       assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
 
       // upload a package from the same upload session (matching collection ids)
@@ -655,10 +653,10 @@ class TestFilesController
 
         val job2 =
           (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-        val pkg2 = packageManager.get(job2.packageId).await.right.value
-        val parent2 = packageManager.get(pkg2.parentId.get).await.right.value
+        val pkg2 = packageManager.get(job2.packageId).await.value
+        val parent2 = packageManager.get(pkg2.parentId.get).await.value
         val grandparent2 =
-          packageManager.get(parent2.parentId.get).await.right.value
+          packageManager.get(parent2.parentId.get).await.value
 
         assert(pkg2.name == "testJPG")
         assert(parent2.name == "images")
@@ -667,7 +665,7 @@ class TestFilesController
         assert(grandparent2.id == grandparent1.id)
         assert(grandparent2.parentId.isEmpty)
 
-        val srcFiles = fileManager.getSources(pkg2).await.right.value
+        val srcFiles = fileManager.getSources(pkg2).await.value
         assert(srcFiles.head.name == "testJPG.jpg")
       }
 
@@ -681,10 +679,10 @@ class TestFilesController
         assert(status == 200)
         val job3 =
           (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-        val pkg3 = packageManager.get(job3.packageId).await.right.value
-        val parent3 = packageManager.get(pkg3.parentId.get).await.right.value
+        val pkg3 = packageManager.get(job3.packageId).await.value
+        val parent3 = packageManager.get(pkg3.parentId.get).await.value
         val grandparent3 =
-          packageManager.get(parent3.parentId.get).await.right.value
+          packageManager.get(parent3.parentId.get).await.value
 
         assert(pkg3.name == "testIMG")
         assert(parent3.name == "images")
@@ -693,7 +691,7 @@ class TestFilesController
         assert(grandparent3.id != grandparent1.id)
         assert(grandparent3.parentId.isEmpty)
 
-        val srcFiles = fileManager.getSources(pkg3).await.right.value
+        val srcFiles = fileManager.getSources(pkg3).await.value
         assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
       }
     }
@@ -740,17 +738,17 @@ class TestFilesController
     ) {
       val job1 =
         (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-      val pkg1 = packageManager.get(job1.packageId).await.right.value
-      val parent1 = packageManager.get(pkg1.parentId.get).await.right.value
+      val pkg1 = packageManager.get(job1.packageId).await.value
+      val parent1 = packageManager.get(pkg1.parentId.get).await.value
       val grandparent1 =
-        packageManager.get(parent1.parentId.get).await.right.value
+        packageManager.get(parent1.parentId.get).await.value
 
       assert(pkg1.name == "testIMG")
       assert(parent1.name == "images")
       assert(grandparent1.name == destination.name)
       assert(grandparent1.parentId.isEmpty)
 
-      val srcFiles = fileManager.getSources(pkg1).await.right.value
+      val srcFiles = fileManager.getSources(pkg1).await.value
       assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
     }
   }
@@ -791,14 +789,14 @@ class TestFilesController
     ) {
       val job1 =
         (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-      val pkg1 = packageManager.get(job1.packageId).await.right.value
-      val parent1 = packageManager.get(pkg1.parentId.get).await.right.value
+      val pkg1 = packageManager.get(job1.packageId).await.value
+      val parent1 = packageManager.get(pkg1.parentId.get).await.value
 
       assert(pkg1.name == "testIMG")
       assert(parent1.name == "images")
       assert(parent1.parentId.isEmpty)
 
-      val srcFiles = fileManager.getSources(pkg1).await.right.value
+      val srcFiles = fileManager.getSources(pkg1).await.value
       assert(srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr"))
     }
   }
@@ -829,7 +827,7 @@ class TestFilesController
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       val job = (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-      val pkg = packageManager.get(job.packageId).await.right.value
+      val pkg = packageManager.get(job.packageId).await.value
       assert(
         pkg.attributes == List(
           ModelProperty("subtype", "Video", "string", "Pennsieve", false, true),
@@ -867,7 +865,7 @@ class TestFilesController
       status should equal(200)
 
       val job = (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-      val pkg = packageManager.get(job.packageId).await.right.value
+      val pkg = packageManager.get(job.packageId).await.value
       assert(pkg.name == "test.avi")
     }
   }
@@ -903,8 +901,8 @@ class TestFilesController
           status should equal(200)
           val job =
             (parsedBody \ "manifest" \ "content").extract[List[Upload]].head
-          val pkg = packageManager.get(job.packageId).await.right.value
-          val srcFiles = fileManager.getSources(pkg).await.right.value
+          val pkg = packageManager.get(job.packageId).await.value
+          val srcFiles = fileManager.getSources(pkg).await.value
 //          assert(srcFiles == 1)
           assert(
             srcFiles.map(_.name).toSet == Set("testIMG.img", "testIMG.hdr")
