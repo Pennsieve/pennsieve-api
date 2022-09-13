@@ -27,6 +27,7 @@ import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO }
 import com.pennsieve.models.Webhook
 import org.json4s.jackson.Serialization.write
 import org.scalatest.OptionValues._
+import org.scalatest.EitherValues._
 
 class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
@@ -249,11 +250,11 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     // check User and IntegrationToken are created
     val integrationUser =
-      organizationManager.getUsers(loggedInOrganization).await.right.get
+      organizationManager.getUsers(loggedInOrganization).await.value
     assert((integrationUser.map(_.id) contains webhook.integrationUserId))
 
     val integrationToken =
-      tokenManager.getByUserId(webhook.integrationUserId).await.right.get
+      tokenManager.getByUserId(webhook.integrationUserId).await.value
     assert((integrationToken.userId == webhook.integrationUserId))
 
     delete(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
@@ -268,7 +269,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     // Check User and IntegrationToken are removed
     val noOrgUser =
-      organizationManager.getUsers(loggedInOrganization).await.right.get
+      organizationManager.getUsers(loggedInOrganization).await.value
     assert(!(noOrgUser.map(_.id) contains webhook.integrationUserId))
 
     val noUserToken =
@@ -589,8 +590,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     val (actualWebhook, _) = secureContainer.webhookManager
       .getWithSubscriptions(expectedWebhook.id)
       .await
-      .right
-      .get
+      .value
 
     actualWebhook.secret should equal(expectedWebhook.secret)
 

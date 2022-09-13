@@ -603,8 +603,7 @@ class DeleteJobSpec
       )
 
     val deleteJobResult = deleteJob.deleteDatasetJobWithResult(job).await
-    assert(deleteJobResult.isRight)
-    val (deleteResult, deleteSummary) = deleteJobResult.right.get
+    val (deleteResult, deleteSummary) = deleteJobResult.value
     assert(deleteSummary.done)
     assert(deleteSummary.counts.models == 10)
     assert(deleteSummary.counts.properties == 50)

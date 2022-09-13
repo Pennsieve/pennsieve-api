@@ -434,7 +434,7 @@ class AuthorizationRoutesSpec
 
       } yield dataset
 
-      val dataset = query.await.right.get
+      val dataset = query.await.value
 
       datasetPublicationStatusManager
         .create(
@@ -734,7 +734,7 @@ class AuthorizationRoutesSpec
       (for {
         refreshedUser <- userManager.get(user.id)
         organization <- userManager.getPreferredOrganization(refreshedUser)
-      } yield organization).awaitFinite().right.get
+      } yield organization).awaitFinite().value
 
     "switch the organization in a user's session" in {
       // Confirm the session starts belonging to Organization Two

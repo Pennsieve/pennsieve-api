@@ -48,7 +48,7 @@ class HealthCheckSpec
   override def afterStart(): Unit = {
     db = postgresContainer.database.forURL
     s3 = new S3(s3Container.s3Client)
-    s3.createBucket("my-bucket").right.get
+    s3.createBucket("my-bucket").toOption.get
   }
 
   override def afterAll(): Unit = {

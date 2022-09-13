@@ -28,7 +28,7 @@ import com.pennsieve.test.helpers._
 import org.scalatest.EitherValues._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.models._
-import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest._
 import matchers._
 
@@ -432,8 +432,7 @@ class TestStorageMigration
     fileManager(testOrganization, superAdmin)
       .get(source.id, pkg)
       .await
-      .right
-      .get
+      .value
       .s3Bucket shouldBe storageBucket
 
     // Other file should migrate normally
@@ -456,7 +455,7 @@ class TestStorageMigration
       val fm = fileManager(testOrganization, superAdmin)
       val pm = packageManager(testOrganization, superAdmin)
       val pkg = pm.db.run(pm.packagesMapper.getPackage(f.packageId)).await
-      val updatedFile = fm.get(f.id, pkg).await.right.get
+      val updatedFile = fm.get(f.id, pkg).await.value
 
       if (updatedFile.s3Bucket != expectedBucket)
         MatchResult(

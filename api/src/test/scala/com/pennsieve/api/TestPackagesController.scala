@@ -117,7 +117,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
   }
@@ -422,8 +421,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
               .value,
             10 seconds
           )
-          .right
-          .get
+          .value
 
       val externalFiles =
         Await
@@ -433,8 +431,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
               .value,
             10 seconds
           )
-          .right
-          .get
+          .value
 
       externalFiles.location shouldBe "https://www.dropbox.com/my-external-file"
       externalFiles.description shouldBe Some(
@@ -488,8 +485,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
               .value,
             10 seconds
           )
-          .right
-          .get
+          .value
 
       val externalFiles =
         Await
@@ -499,8 +495,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
               .value,
             10 seconds
           )
-          .right
-          .get
+          .value
 
       externalFiles.location shouldBe "file:///home/ascended/to/the/cloud"
       externalFiles.description shouldBe Some("!HIGH ENERGY DESCRIPTION!")
@@ -561,7 +556,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{"name": "Updated Package",
@@ -618,7 +612,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         attributes = props
       )
       .await
-      .right
       .value
 
     val request = """{"name": "Updated Package",
@@ -670,7 +663,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         attributes = props
       )
       .await
-      .right
       .value
 
     val request = """{"name": "Updated Package",
@@ -702,7 +694,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{"name": "Updated Package2"}"""
@@ -734,7 +725,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{"packageType": "MRI"}"""
@@ -764,7 +754,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{"state": "READY"}"""
@@ -780,7 +769,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
 
       compact(render(json \ "content" \\ "state")) should include("UNAVAILABLE")
 
-      val pdf = packageManager.getByNodeId(pdfPackage.nodeId).await.right.value
+      val pdf = packageManager.getByNodeId(pdfPackage.nodeId).await.value
 
       pdf.state should equal(UNAVAILABLE)
     }
@@ -797,7 +786,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{"state": "READY"}"""
@@ -813,7 +801,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
 
       compact(render(json \ "content" \\ "state")) should include("READY")
 
-      val pdf = packageManager.getByNodeId(pdfPackage.nodeId).await.right.value
+      val pdf = packageManager.getByNodeId(pdfPackage.nodeId).await.value
 
       pdf.state should equal(READY)
     }
@@ -830,7 +818,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{"state": "READY"}"""
@@ -846,7 +833,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
 
       compact(render(json \ "content" \\ "state")) should include("READY")
 
-      val pdf = packageManager.getByNodeId(pdfPackage.nodeId).await.right.value
+      val pdf = packageManager.getByNodeId(pdfPackage.nodeId).await.value
 
       pdf.state should equal(READY)
     }
@@ -872,7 +859,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         attributes = props
       )
       .await
-      .right
       .value
 
     val request = """{"properties": [{"key": "meta",
@@ -912,7 +898,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     val request = """{"name":"Updated Package","state": "READY","uploader":"""" + loggedInUser.id + """"}"""
 
@@ -941,7 +926,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val filesManager = new FileManager(packageManager, loggedInOrganization)
@@ -958,7 +942,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
           size = 1
         )
         .await
-        .right
         .value
     }
 
@@ -972,7 +955,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
 
       val updatedFile =
-        filesManager.get(testFile.head.id, testPackage).await.right.value
+        filesManager.get(testFile.head.id, testPackage).await.value
       updatedFile.name should not equal ("Updated Package")
 
     }
@@ -990,7 +973,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val filesManager = new FileManager(packageManager, loggedInOrganization)
@@ -1006,7 +988,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         size = 1
       )
       .await
-      .right
       .value
 
     val request = """{"name":"Updated Package","state": "READY","uploader":"""" + loggedInUser.id + """"}"""
@@ -1019,7 +1000,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
 
       val updatedFile =
-        filesManager.get(testFile.id, testPackage).await.right.value
+        filesManager.get(testFile.id, testPackage).await.value
       updatedFile.name should equal("Updated Package")
 
     }
@@ -1036,7 +1017,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val otherPdfPackage = packageManager
@@ -1049,7 +1029,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{"name":"Updated Package","state": "READY","uploader":"""" + loggedInUser.id + """"}"""
@@ -1066,7 +1045,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     secureContainer.packageManager
       .update(otherPdfPackage.copy(state = PackageState.DELETING))
       .await
-      .right
       .value
 
     putJson(
@@ -1090,7 +1068,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{"name": "Updated Package",
@@ -1126,7 +1103,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val fileSize = 10
@@ -1145,7 +1121,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
           size = fileSize
         )
         .await
-        .right
         .value
     }
 
@@ -1211,7 +1186,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         attributes = props
       )
       .await
-      .right
       .value
 
     get(
@@ -1253,7 +1227,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         attributes = props
       )
       .await
-      .right
       .value
 
     fileManager
@@ -1303,7 +1276,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         attributes = props
       )
       .await
-      .right
       .value
 
     fileManager
@@ -1362,7 +1334,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         attributes = props
       )
       .await
-      .right
       .value
 
     get(
@@ -1409,7 +1380,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         attributes = props
       )
       .await
-      .right
       .value
 
     get(
@@ -1442,7 +1412,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     val channel1 = timeSeriesManager
       .createChannel(
@@ -1457,7 +1426,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         0
       )
       .await
-      .right
       .value
     val channel2 = timeSeriesManager
       .createChannel(
@@ -1472,7 +1440,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         0
       )
       .await
-      .right
       .value
 
     get(
@@ -1510,7 +1477,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -1580,7 +1546,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -1664,7 +1629,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     get(
@@ -1697,7 +1661,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     val channel = timeSeriesManager
       .createChannel(
@@ -1712,7 +1675,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         0
       )
       .await
-      .right
       .value
 
     get(
@@ -1742,7 +1704,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         Some(dataPackage)
       )
       .await
-      .right
       .value
 
     get(
@@ -1766,7 +1727,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         Some(dataPackage)
       )
       .await
-      .right
       .value
 
     get(
@@ -1793,7 +1753,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         Some(dataPackage)
       )
       .await
-      .right
       .value
 
     get(
@@ -1820,7 +1779,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         Some(dataPackage)
       )
       .await
-      .right
       .value
 
     get(
@@ -1848,7 +1806,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     fileManager
       .create(
@@ -1886,7 +1843,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     fileManager
       .create(
@@ -1927,7 +1883,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     (1 to 200).map(
@@ -2025,7 +1980,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val createdFiles = (1 to 10).toList.map { idx =>
@@ -2116,7 +2070,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val pdfPackage = packageManager
@@ -2129,7 +2082,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         Some(pdfcollection)
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -2217,7 +2169,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -2271,7 +2222,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     (1 to 200).map(
@@ -2334,7 +2284,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -2408,7 +2357,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     packageManager
       .create(name, packageType, READY, dataset, Some(user.id), parent)
       .await
-      .right
       .value
   }
 
@@ -2431,7 +2379,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         size = 10
       )
       .await
-      .right
       .value
   }
 
@@ -2845,7 +2792,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     val externalOrgSecureContainer =
       secureContainerBuilder(externalUser, externalOrganization)
 
-    externalOrgSecureContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value
+    externalOrgSecureContainer.datasetStatusManager.resetDefaultStatusOptions.await.value
 
     val externalDataset = externalOrgSecureContainer.datasetManager
       .create("Other", Some("Other Dataset"))
@@ -2884,13 +2831,11 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     val colleagueDataset = secureContainer.datasetManager
       .create("colleague")
       .await
-      .right
       .value
 
     secureContainer.datasetManager
       .switchOwner(colleagueDataset, loggedInUser, colleagueUser)
       .await
-      .right
       .value
 
     val colleaguePackage =
@@ -2940,7 +2885,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -3001,7 +2945,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -3056,7 +2999,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     (1 to 200).map(
@@ -3118,7 +3060,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -3190,7 +3131,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -3258,7 +3198,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -3318,7 +3257,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     fileManager
@@ -3417,7 +3355,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     // File #1
     val file1 = fileManager
@@ -3474,7 +3411,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     val subdataset = packageManager
       .create(
@@ -3486,7 +3422,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         Some(collection)
       )
       .await
-      .right
       .value
     val subdataset2 = packageManager
       .create(
@@ -3498,7 +3433,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         Some(subdataset)
       )
       .await
-      .right
       .value
 
     get(
@@ -3525,7 +3459,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{ "size": 1000 }"""
@@ -3553,7 +3486,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{ "size": 1000 }"""
@@ -3579,7 +3511,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val request = """{ "size": 1000 }"""
@@ -3611,7 +3542,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -3635,7 +3565,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe UPLOADED
   }
@@ -3651,7 +3581,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -3682,7 +3611,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe UPLOADED
   }
@@ -3698,7 +3627,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -3729,7 +3657,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe READY
   }
@@ -3738,7 +3666,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     val datasetUpdated = secureContainer.datasetManager
       .create("automaticallyprocessing1", automaticallyProcessPackages = true)
       .await
-      .right
       .value
 
     val pkg = packageManager
@@ -3751,7 +3678,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -3775,7 +3701,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe PROCESSING
   }
@@ -3786,7 +3712,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     val datasetUpdated = secureContainer.datasetManager
       .create("automaticallyprocessing1", automaticallyProcessPackages = true)
       .await
-      .right
       .value
 
     val pkg = packageManager
@@ -3799,7 +3724,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -3823,7 +3747,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe PROCESSING
   }
@@ -3832,7 +3756,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     val datasetUpdated = secureContainer.datasetManager
       .create("automaticallyprocessing1", automaticallyProcessPackages = true)
       .await
-      .right
       .value
 
     val pkg = packageManager
@@ -3845,7 +3768,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -3869,7 +3791,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe PROCESSING
   }
@@ -3885,7 +3807,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -3909,7 +3830,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe READY
   }
@@ -3925,7 +3846,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val unprocessedSource = fileManager
@@ -3940,7 +3860,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         0
       )
       .await
-      .right
       .value
 
     val processedSource = fileManager
@@ -3955,7 +3874,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         0
       )
       .await
-      .right
       .value
 
     put(
@@ -3966,17 +3884,17 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedSource =
-      fileManager.get(unprocessedSource.id, pkg).await.right.get
+      fileManager.get(unprocessedSource.id, pkg).await.value
 
     updatedSource.processingState should equal(FileProcessingState.Processed)
 
     val notUpdatedSource =
-      fileManager.get(processedSource.id, pkg).await.right.get
+      fileManager.get(processedSource.id, pkg).await.value
 
     notUpdatedSource.updatedAt.toInstant should be < (updatedSource.updatedAt.toInstant)
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe READY
   }
@@ -3992,7 +3910,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     put(
@@ -4003,7 +3920,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe UPLOADED
   }
@@ -4019,7 +3936,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     put(
@@ -4030,7 +3946,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     }
 
     val updatedPackage: Package =
-      packageManager.get(pkg.id).await.right.value
+      packageManager.get(pkg.id).await.value
 
     updatedPackage.state shouldBe READY
   }
@@ -4048,7 +3964,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -4070,7 +3985,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     ) {
       status should equal(200)
 
-      val updatedPackage = packageManager.get(pkg.id).await.right.get
+      val updatedPackage = packageManager.get(pkg.id).await.value
       updatedPackage.state should equal(PackageState.PROCESSING)
 
     }
@@ -4087,7 +4002,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val unprocessedSource = fileManager
@@ -4102,7 +4016,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         0
       )
       .await
-      .right
       .value
 
     val processedSource = fileManager
@@ -4117,7 +4030,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         0
       )
       .await
-      .right
       .value
 
     putJson(
@@ -4127,17 +4039,17 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
     }
 
-    val updatedPackage = packageManager.get(pkg.id).await.right.get
+    val updatedPackage = packageManager.get(pkg.id).await.value
 
     updatedPackage.state should equal(PackageState.PROCESSING)
 
     val updatedSource =
-      fileManager.get(unprocessedSource.id, pkg).await.right.get
+      fileManager.get(unprocessedSource.id, pkg).await.value
 
     updatedSource.processingState should equal(FileProcessingState.Processed)
 
     val notUpdatedSource =
-      fileManager.get(processedSource.id, pkg).await.right.get
+      fileManager.get(processedSource.id, pkg).await.value
 
     notUpdatedSource.updatedAt.toInstant should be < (updatedSource.updatedAt.toInstant)
   }
@@ -4153,7 +4065,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -4188,7 +4099,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     putJson(
@@ -4210,7 +4120,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     val payload: String = """{ "fileType": "NeuroDataWithoutBorders" }"""
@@ -4238,7 +4147,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     // Timeseries -> NeuroDataWithoutBorders is OK
@@ -4267,7 +4175,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager
@@ -4294,7 +4201,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val dto = parsedBody.extract[ExtendedPackageDTO]
 
-      val createdPackage = packageManager.get(dto.content.id).await.right.value
+      val createdPackage = packageManager.get(dto.content.id).await.value
       createdPackage.attributes shouldBe List(
         ModelProperty(
           "subtype",
@@ -4320,7 +4227,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
 
     fileManager

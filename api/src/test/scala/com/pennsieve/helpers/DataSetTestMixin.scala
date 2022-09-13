@@ -89,7 +89,7 @@ trait DataSetTestMixin {
   )(implicit
     ec: ExecutionContext
   ): DataUseAgreement = {
-    secureContainer.dataUseAgreementManager.create(name, body).await.right.value
+    secureContainer.dataUseAgreementManager.create(name, body).await.value
   }
 
   def createCollection(
@@ -100,7 +100,6 @@ trait DataSetTestMixin {
     secureContainer.collectionManager
       .create(name)
       .await
-      .right
       .value
 
   def addDatasetToCollection(
@@ -112,7 +111,6 @@ trait DataSetTestMixin {
     secureContainer.datasetManager
       .addCollection(dataset, collection.id)
       .await
-      .right
       .value
 
   def createPackage(
@@ -139,7 +137,6 @@ trait DataSetTestMixin {
         externalLocation = externalLocation
       )
       .await
-      .right
       .value
 
   def createTeam(
@@ -188,8 +185,7 @@ trait DataSetTestMixin {
         None,
         new ByteArrayInputStream(bannerData.getBytes)
       )
-      .right
-      .get
+      .value
 
     val readme = createAsset(dataset, name = "readme.md", container = container)
     val readmeData = "readme description"
@@ -200,15 +196,13 @@ trait DataSetTestMixin {
         None,
         new ByteArrayInputStream(readmeData.getBytes)
       )
-      .right
-      .get
+      .value
 
     container.datasetManager
       .update(
         dataset.copy(bannerId = Some(banner.id), readmeId = Some(readme.id))
       )
       .await
-      .right
       .value
   }
 
@@ -230,13 +224,11 @@ trait DataSetTestMixin {
         None,
         new ByteArrayInputStream(changelogData.getBytes)
       )
-      .right
-      .get
+      .value
 
     container.datasetManager
       .update(dataset.copy(changelogId = Some(changelog.id)))
       .await
-      .right
       .value
   }
 
@@ -255,14 +247,12 @@ trait DataSetTestMixin {
     val contributorAndUser = secureContainer.contributorsManager
       .create(firstName, lastName, email, middleInitial, degree, orcid, userId)
       .await
-      .right
       .value
 
     dataset.foreach(
       secureContainer.datasetManager
         .addContributor(_, contributorAndUser._1.id)
         .await
-        .right
         .value
     )
 
@@ -314,7 +304,6 @@ trait DataSetTestMixin {
     val user = secureContainer.userManager
       .create(newUser)
       .await
-      .right
       .value
 
     organizationManager
@@ -403,8 +392,7 @@ trait DataSetTestMixin {
     container.datasetManager
       .addUserCollaborator(dataset, collaborator, role)
       .await
-      .right
-      .get
+      .value
       .oldRole
   }
 
@@ -417,12 +405,11 @@ trait DataSetTestMixin {
   ): DatasetIntegration = {
 
     val integrationUser =
-      container.userManager.get(webhook.integrationUserId).await.right.get
+      container.userManager.get(webhook.integrationUserId).await.value
 
     container.datasetManager
       .enableWebhook(dataset, webhook, integrationUser)
       .await
-      .right
-      .get
+      .value
   }
 }

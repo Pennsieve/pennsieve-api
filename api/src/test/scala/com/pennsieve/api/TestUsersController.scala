@@ -197,7 +197,7 @@ class TestUsersController extends BaseApiTest {
       body should include("M")
 
       val updatedUser =
-        insecureContainer.userManager.get(loggedInUser.id).await.right.value
+        insecureContainer.userManager.get(loggedInUser.id).await.value
       assert(updatedUser.firstName == "newfirstname")
       assert(updatedUser.lastName == "newlastname")
       assert(updatedUser.middleInitial == Some("M"))
@@ -209,7 +209,7 @@ class TestUsersController extends BaseApiTest {
   test("update user email") {
     val updatedEmail = "updated@email.com"
     val beforeUser =
-      insecureContainer.userManager.get(loggedInUser.id).await.right.value
+      insecureContainer.userManager.get(loggedInUser.id).await.value
     val updateReq = write(
       UpdateUserRequest(
         firstName = Some(beforeUser.firstName),
@@ -233,7 +233,7 @@ class TestUsersController extends BaseApiTest {
       body should include(updatedEmail)
 
       val updatedUser =
-        insecureContainer.userManager.get(loggedInUser.id).await.right.value
+        insecureContainer.userManager.get(loggedInUser.id).await.value
       assert(updatedUser.email == updatedEmail)
     }
   }
@@ -258,7 +258,6 @@ class TestUsersController extends BaseApiTest {
         insecureContainer.userManager
           .get(loggedInUser.id)
           .await
-          .right
           .value
           .degree == None
       )
@@ -283,8 +282,7 @@ class TestUsersController extends BaseApiTest {
       val dbTerms = insecureContainer.pennsieveTermsOfServiceManager
         .get(loggedInUser.id)
         .await
-        .right
-        .get
+        .value
         .get
         .toDTO
       dbTerms.version should equal(tosTestVersion)
@@ -340,8 +338,8 @@ class TestUsersController extends BaseApiTest {
 
   test("terms of service date versions should function as expected") {
     // Parsing correctly formatted dates should work:
-    val dv1: DateVersion = DateVersion.from("19990909120000").right.get
-    val dv2: DateVersion = DateVersion.from("20080501053000").right.get
+    val dv1: DateVersion = DateVersion.from("19990909120000").value
+    val dv2: DateVersion = DateVersion.from("20080501053000").value
     dv1 should be < (dv2)
     dv2 should be > (dv1)
     DateVersion.from("1999foo0909120000").isLeft should be(true)
@@ -365,25 +363,23 @@ class TestUsersController extends BaseApiTest {
     val (dv1, _, _) =
       mockCustomToSClient
         .updateTermsOfService("pennsieve", "Lorem ipsum", v1)
-        .right
-        .get
+        .value
     dv1.toString should equal("19990909120000")
     val (dv2, _, _) = mockCustomToSClient
       .updateTermsOfService("pennsieve", "Something else", v2)
-      .right
-      .get
+      .value
     dv2.toString should equal("20080501053000")
-    mockCustomToSClient.getTermsOfService("pennsieve", v1).right.get should be(
+    mockCustomToSClient.getTermsOfService("pennsieve", v1).value should be(
       "Lorem ipsum"
     )
-    mockCustomToSClient.getTermsOfService("pennsieve", v2).right.get should be(
+    mockCustomToSClient.getTermsOfService("pennsieve", v2).value should be(
       "Something else"
     )
     mockCustomToSClient.getTermsOfService("pennsieve", v3).isLeft should be(
       true
     )
     mockCustomToSClient.updateTermsOfService("pennsieve", "Lorem ipsum #2", v2)
-    mockCustomToSClient.getTermsOfService("pennsieve", v2).right.get should be(
+    mockCustomToSClient.getTermsOfService("pennsieve", v2).value should be(
       "Lorem ipsum #2"
     )
   }
@@ -437,8 +433,7 @@ class TestUsersController extends BaseApiTest {
       insecureContainer.customTermsOfServiceManager
         .get(loggedInUser.id, loggedInOrganization.id)
         .await
-        .right
-        .get
+        .value
         .get
 
     val v = foundToS.acceptedVersion

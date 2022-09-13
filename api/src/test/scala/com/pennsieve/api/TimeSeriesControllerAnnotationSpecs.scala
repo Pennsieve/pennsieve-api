@@ -480,7 +480,7 @@ class TimeSeriesControllerAnnotationSpecs
       val end = (parsedBody \ "annotation" \ "end").extract[Long]
 
       val expected = TimeSeriesHelper.resetAnnotationStartTime(
-        packageStartTime.right.get
+        packageStartTime.value
       )(annotation)
 
       start should be(expected.start)
@@ -597,15 +597,13 @@ class TimeSeriesControllerAnnotationSpecs
           None
         )(secureContainer.timeSeriesManager)
         .await
-        .right
-        .get
+        .value
     }
 
     val packageStartTime = TimeSeriesHelper
       .getPackageStartTime(timeseriesPackage, secureContainer)
       .await
-      .right
-      .get
+      .value
 
     get(
       s"/${timeseriesPackage.nodeId}/layers/${layer.id}/annotations?start=0&end=40&layerName=testLayer&channelIds=$channelOneNodeId&startAtEpoch=true",

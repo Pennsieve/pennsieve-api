@@ -34,6 +34,7 @@ import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext
 
@@ -84,8 +85,7 @@ class CachePopulationJobSpec
     val cached = storageManager
       .getStorage(StorageAggregation.spackages, List(pkg.id))
       .await
-      .right
-      .get
+      .value
 
     val expected =
       Map(pkg.id -> Some(123L))
@@ -144,8 +144,7 @@ class CachePopulationJobSpec
         )
       )
       .await
-      .right
-      .get
+      .value
 
     val expected =
       Map(
@@ -201,8 +200,7 @@ class CachePopulationJobSpec
         )
       )
       .await
-      .right
-      .get
+      .value
 
     val expected =
       Map(
@@ -219,8 +217,7 @@ class CachePopulationJobSpec
       storageManager
         .getStorage(StorageAggregation.sdatasets, List(testDataset.id))
         .await
-        .right
-        .get == Map(testDataset.id -> Some(3910))
+        .value == Map(testDataset.id -> Some(3910))
     )
 
     assert(
@@ -230,8 +227,7 @@ class CachePopulationJobSpec
           List(testOrganization.id)
         )
         .await
-        .right
-        .get == Map(testOrganization.id -> Some(3910))
+        .value == Map(testOrganization.id -> Some(3910))
     )
   }
 
@@ -269,8 +265,7 @@ class CachePopulationJobSpec
         List(parentCollection.id, collection.id)
       )
       .await
-      .right
-      .get
+      .value
 
     val expected = Map(parentCollection.id -> None, collection.id -> None)
     assert(cached == expected)
@@ -311,14 +306,12 @@ class CachePopulationJobSpec
     val testOrgStorageBefore = storageManagerTestOrganization
       .getStorage(sorganizations, List(testOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(testOrgStorageBefore == Map(testOrganization.id -> None))
     val newOrgStorageBefore = storageManagerNewOrganization
       .getStorage(sorganizations, List(newOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(newOrgStorageBefore == Map(newOrganization.id -> None))
 
     val job = new StorageCachePopulationJob(insecureContainer, false) // populate storage cache for all orgs
@@ -327,14 +320,12 @@ class CachePopulationJobSpec
     val testOrgStorageAfter = storageManagerTestOrganization
       .getStorage(sorganizations, List(testOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(testOrgStorageAfter == Map(testOrganization.id -> Some(123L)))
     val newOrgStorageAfter = storageManagerNewOrganization
       .getStorage(sorganizations, List(newOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(newOrgStorageAfter == Map(newOrganization.id -> Some(10000L)))
 
     // add another package to testOrganization
@@ -362,14 +353,12 @@ class CachePopulationJobSpec
     val testOrgStorageAfter2 = storageManagerTestOrganization
       .getStorage(sorganizations, List(testOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(testOrgStorageAfter2 == Map(testOrganization.id -> Some(123L))) // testOrg storage should stay the same
     val newOrgStorageAfter2 = storageManagerNewOrganization
       .getStorage(sorganizations, List(newOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(newOrgStorageAfter2 == Map(newOrganization.id -> Some(19999L))) // newOrg storage should be updated
   }
 }

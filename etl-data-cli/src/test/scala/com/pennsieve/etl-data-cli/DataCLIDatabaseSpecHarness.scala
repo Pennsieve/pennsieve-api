@@ -49,7 +49,7 @@ trait DataCLIDatabaseSpecHarness
     val status = new DatasetStatusManager(dataCLIContainer.db, organization)
       .create("Test")
       .await
-      .right
+      .toOption
       .get
 
     val dataset = Dataset(

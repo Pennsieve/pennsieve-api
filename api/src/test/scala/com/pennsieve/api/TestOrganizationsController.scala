@@ -238,7 +238,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val currentSubscription = organizationManager
       .getSubscription(loggedInOrganization.id)
       .await
-      .right
       .value
 
     assert(currentSubscription.`type`.isEmpty)
@@ -260,7 +259,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         organizationManager
           .getSubscription(loggedInOrganization.id)
           .await
-          .right
           .value
           .`type`
           .contains("Trial")
@@ -296,7 +294,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
   test("get an organization's team") {
     val team =
-      teamManager.create("Boom", loggedInOrganization).await.right.value
+      teamManager.create("Boom", loggedInOrganization).await.value
 
     get(
       s"/${loggedInOrganization.nodeId}/teams/${team.nodeId}",
@@ -324,7 +322,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
   test("create an duplicate organization team") {
 
     val team1 =
-      teamManager.create("Boom", loggedInOrganization).await.right.value
+      teamManager.create("Boom", loggedInOrganization).await.value
 
     val createReq = write(CreateGroupRequest("Boom"))
 
@@ -340,9 +338,9 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
   test("update an organization team") {
     val team1 =
-      teamManager.create("Foo", loggedInOrganization).await.right.value
+      teamManager.create("Foo", loggedInOrganization).await.value
     val team2 =
-      teamManager.create("Bar", loggedInOrganization).await.right.value
+      teamManager.create("Bar", loggedInOrganization).await.value
 
     val createReq = write(UpdateGroupRequest("Boom"))
 
@@ -358,9 +356,9 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
   test("update an organization team with a duplicate") {
     val team1 =
-      teamManager.create("Foo", loggedInOrganization).await.right.value
+      teamManager.create("Foo", loggedInOrganization).await.value
     val team2 =
-      teamManager.create("Bar", loggedInOrganization).await.right.value
+      teamManager.create("Bar", loggedInOrganization).await.value
 
     val createReq = write(UpdateGroupRequest("Bar"))
 
@@ -375,13 +373,12 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("delete an organization team") {
-    val team = teamManager.create("Foo", loggedInOrganization).await.right.value
+    val team = teamManager.create("Foo", loggedInOrganization).await.value
 
     assert(
       organizationManager
         .getTeams(loggedInOrganization)
         .await
-        .right
         .value
         .size == 2
     )
@@ -394,7 +391,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         organizationManager
           .getTeams(loggedInOrganization)
           .await
-          .right
           .value
           .size == 1
       )
@@ -414,7 +410,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         organizationManager
           .getTeams(loggedInOrganization)
           .await
-          .right
           .value
           .size == 1
       )
@@ -490,7 +485,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val user = userManager
       .create(makeUser("remove@test.com"))
       .await
-      .right
       .value
 
     organizationManager.addUser(loggedInOrganization, user, Delete).await
@@ -505,7 +499,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .await
 
     assert(
-      secureDataSetManager.find(user, Role.Viewer).await.right.value.size == 1
+      secureDataSetManager.find(user, Role.Viewer).await.value.size == 1
     )
     delete(
       s"/${loggedInOrganization.nodeId}/members/${user.nodeId}",
@@ -517,11 +511,10 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       organizationManager
         .getUsers(loggedInOrganization)
         .await
-        .right
         .value should not contain user
 
       assert(
-        secureDataSetManager.find(user, Role.Viewer).await.right.value.isEmpty
+        secureDataSetManager.find(user, Role.Viewer).await.value.isEmpty
       )
     }
   }
@@ -531,7 +524,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val user = userManager
       .create(makeIntegrationUser())
       .await
-      .right
       .value
 
     organizationManager.addUser(loggedInOrganization, user, Delete).await
@@ -550,7 +542,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       organizationManager
         .getUsers(loggedInOrganization)
         .await
-        .right
         .value should contain(user)
     }
   }
@@ -607,13 +598,12 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("add an organization team member") {
-    val team = teamManager.create("Foo", loggedInOrganization).await.right.value
+    val team = teamManager.create("Foo", loggedInOrganization).await.value
 
     val member =
       userManager
         .create(makeUser("another@test.com"))
         .await
-        .right
         .value
 
     val createReq = write(AddToTeamRequest(List(member.nodeId)))
@@ -629,30 +619,29 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("remove an organization team member") {
-    val team = teamManager.create("Foo", loggedInOrganization).await.right.value
+    val team = teamManager.create("Foo", loggedInOrganization).await.value
 
     val user =
       userManager
         .create(makeUser("another@test.com"))
         .await
-        .right
         .value
     organizationManager.addUser(loggedInOrganization, user, Delete).await
 
     teamManager.addUser(team, user, Delete).await
 
-    assert(teamManager.getUsers(team).await.right.value.size == 1)
+    assert(teamManager.getUsers(team).await.value.size == 1)
     delete(
       s"/${loggedInOrganization.nodeId}/teams/${team.nodeId}/members/${user.nodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-      assert(teamManager.getUsers(team).await.right.value.size == 0)
+      assert(teamManager.getUsers(team).await.value.size == 0)
     }
   }
 
   test("demo organization user cannot get users from a team") {
-    val team = teamManager.create("Foo", sandboxOrganization).await.right.value
+    val team = teamManager.create("Foo", sandboxOrganization).await.value
 
     get(
       s"/${sandboxOrganization.nodeId}/teams/${team.nodeId}/members",
@@ -675,7 +664,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
           Duration.ofSeconds(60)
         )(userManager, mockCognito, ec)
         .await
-        .right
         .value
     }
 
@@ -703,7 +691,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         Duration.ofSeconds(-1)
       )(userManager, mockCognito, ec)
       .await
-      .right
       .value
 
     put(
@@ -733,13 +720,11 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         Duration.ofSeconds(-1)
       )(userManager, mockCognito, ec)
       .await
-      .right
       .value
 
     val invitedUser = userManager
       .create(makeUser(email))
       .await
-      .right
       .value
 
     userInviteManager.isValid(invalidInvite) should be(false)
@@ -768,7 +753,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         Duration.ofSeconds(60)
       )(userManager, mockCognito, ec)
       .await
-      .right
       .value
 
     delete(
@@ -786,7 +770,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       userManager
         .create(makeUser("another@test.com"))
         .await
-        .right
         .value
     organizationManager.addUser(loggedInOrganization, user, Delete).await
 
@@ -794,7 +777,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       userManager
         .create(makeUser("owner@test.com"))
         .await
-        .right
         .value
     organizationManager.addUser(loggedInOrganization, owner, Owner).await
     val pkg = packageManager
@@ -809,7 +791,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         List.empty
       )
       .await
-      .right
       .value
 
     delete(
@@ -829,7 +810,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
           .size == 1
       )
       assert(
-        packageManager.get(pkg.id).await.right.value.ownerId.contains(owner.id)
+        packageManager.get(pkg.id).await.value.ownerId.contains(owner.id)
       )
     }
   }
@@ -840,7 +821,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       userManager
         .create(makeUser("another@test.com"))
         .await
-        .right
         .value
     organizationManager.addUser(loggedInOrganization, user, Delete).await
     val pkg = packageManager
@@ -855,7 +835,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         List.empty
       )
       .await
-      .right
       .value
 
     delete(
@@ -867,7 +846,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       assert(
         userManager.getPackages(user, loggedInOrganization).await.value.isEmpty
       )
-      assert(packageManager.get(pkg.id).await.right.value.ownerId.isEmpty)
+      assert(packageManager.get(pkg.id).await.value.ownerId.isEmpty)
     }
   }
 
@@ -881,8 +860,8 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("get custom terms succeeds") {
-    val dv1 = DateVersion.from("19990909120000").right.get
-    val dv2 = DateVersion.from("20080530053000").right.get
+    val dv1 = DateVersion.from("19990909120000").value
+    val dv2 = DateVersion.from("20080530053000").value
     mockCustomTermsOfServiceClient.updateTermsOfService(
       loggedInOrganization.nodeId,
       "VERSION-1",
@@ -923,8 +902,8 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("new custom terms supersedes old") {
-    val dv1 = DateVersion.from("19990909120000").right.get
-    val dv2 = DateVersion.from("20080530053000").right.get
+    val dv1 = DateVersion.from("19990909120000").value
+    val dv2 = DateVersion.from("20080530053000").value
     mockCustomTermsOfServiceClient.updateTermsOfService(
       loggedInOrganization.nodeId,
       "VERSION-1",
@@ -993,7 +972,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       dto.inUse shouldBe DatasetStatusInUse(false)
     }
 
-    secureContainer.datasetStatusManager.getAll.await.right.value
+    secureContainer.datasetStatusManager.getAll.await.value
       .map(s => (s.name, s.displayName)) shouldBe List(
       ("NO_STATUS", "No Status"),
       ("WORK_IN_PROGRESS", "Work in Progress"),
@@ -1032,7 +1011,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
 
     val datasetStatus =
-      secureContainer.datasetStatusManager.getAll.await.right.value.head
+      secureContainer.datasetStatusManager.getAll.await.value.head
 
     putJson(
       s"/${loggedInOrganization.nodeId}/dataset-status/${datasetStatus.id}",
@@ -1061,7 +1040,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
 
     val datasetStatus =
-      secureContainer.datasetStatusManager.getAll.await.right.value.head
+      secureContainer.datasetStatusManager.getAll.await.value.head
 
     putJson(
       s"/${loggedInOrganization.nodeId}/dataset-status/${datasetStatus.id}",
@@ -1077,7 +1056,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val datasetStatus = secureContainer.datasetStatusManager
       .create("In Progress", color = "#71747C")
       .await
-      .right
       .value
 
     val updateRequest =
@@ -1100,7 +1078,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .get(datasetStatus.id)
       .map(s => (s.name, s.displayName, s.color))
       .await
-      .right
       .value shouldBe ("READY_FOR_PUBLICATION", "Ready for Publication", "#2760FF")
   }
 
@@ -1109,7 +1086,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val status1 = secureContainer.datasetStatusManager
       .create(displayName = "Ready for Publication", color = "#71747C")
       .await
-      .right
       .value
 
     val dataset1 = secureContainer.datasetManager
@@ -1119,11 +1095,10 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         statusId = Some(status1.id)
       )
       .await
-      .right
       .value
 
     val status2 =
-      secureContainer.datasetStatusManager.getAll.await.right.value(2)
+      secureContainer.datasetStatusManager.getAll.await.value(2)
 
     val dataset2 = secureContainer.datasetManager
       .create(
@@ -1132,7 +1107,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         statusId = Some(status2.id)
       )
       .await
-      .right
       .value
 
     delete(
@@ -1143,7 +1117,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       parsedBody.extract[DatasetStatusDTO].name shouldBe "READY_FOR_PUBLICATION"
     }
 
-    secureContainer.datasetStatusManager.getAll.await.right.value
+    secureContainer.datasetStatusManager.getAll.await.value
       .map(s => (s.name, s.displayName)) shouldBe List(
       ("NO_STATUS", "No Status"),
       ("WORK_IN_PROGRESS", "Work in Progress"),
@@ -1155,7 +1129,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     secureContainer.datasetManager
       .get(dataset1.id)
       .await
-      .right
       .value
       .statusId shouldBe defaultDatasetStatus.id
 
@@ -1163,7 +1136,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     secureContainer.datasetManager
       .get(dataset2.id)
       .await
-      .right
       .value
       .statusId shouldBe status2.id
   }
@@ -1171,7 +1143,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
   test("cannot delete all dataset status options") {
 
     val datasetStatus =
-      secureContainer.datasetStatusManager.getAll.await.right.value.head
+      secureContainer.datasetStatusManager.getAll.await.value.head
 
     // Remove all but one status
     secureContainer.db
@@ -1225,9 +1197,9 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val statusId = parsedBody.extract[DatasetStatusDTO].id
 
-      datasetStatusManager.getAll.await.right.value
+      datasetStatusManager.getAll.await.value
         .map(_.name) should contain("READY_FOR_PUBLICATION")
-      externalDatasetStatusManager.getAll.await.right.value
+      externalDatasetStatusManager.getAll.await.value
         .map(_.name) should not contain ("READY_FOR_PUBLICATION")
 
       // Can get status in `loggedInOrganization`
@@ -1332,13 +1304,11 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val agreement1 = secureContainer.dataUseAgreementManager
       .create("New data use agreement", "Lots of legal text")
       .await
-      .right
       .value
 
     val agreement2 = secureContainer.dataUseAgreementManager
       .create("Another data use agreement", "Lots of legal text")
       .await
-      .right
       .value
 
     get(
@@ -1358,7 +1328,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val agreement = secureContainer.dataUseAgreementManager
       .create("New data use agreement", "Lots of legal text")
       .await
-      .right
       .value
 
     delete(
@@ -1382,7 +1351,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val agreement = secureContainer.dataUseAgreementManager
       .create("New data use agreement", "Lots of legal text")
       .await
-      .right
       .value
 
     putJson(
@@ -1416,7 +1384,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val agreement = secureContainer.dataUseAgreementManager
       .create("New data use agreement", "Lots of legal text")
       .await
-      .right
       .value
 
     putJson(
@@ -1445,7 +1412,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val agreement = sandboxUserContainer.dataUseAgreementManager
       .create("New data use agreement", "Lots of legal text")
       .await
-      .right
       .value
 
     putJson(
@@ -1478,7 +1444,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val agreement1 = secureContainer.dataUseAgreementManager
       .create("New data use agreement", "Lots of legal text", isDefault = true)
       .await
-      .right
       .value
 
     val agreement2 = secureContainer.dataUseAgreementManager
@@ -1488,7 +1453,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         isDefault = false
       )
       .await
-      .right
       .value
 
     putJson(
@@ -1518,7 +1482,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val agreement = secureContainer.dataUseAgreementManager
       .create("New data use agreement", "Lots of legal text")
       .await
-      .right
       .value
 
     val dataset =
@@ -1549,7 +1512,6 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val agreement = secureContainer.dataUseAgreementManager
       .create("New data use agreement", "Lots of legal text")
       .await
-      .right
       .value
 
     val dataset =
@@ -1558,14 +1520,12 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     secureContainer.datasetPreviewManager
       .requestAccess(dataset, colleagueUser, Some(agreement))
       .await
-      .right
       .value
 
     // Remove agreement from dataset, only linked via previewer
     secureContainer.datasetManager
       .update(dataset.copy(dataUseAgreementId = None))
       .await
-      .right
       .value
 
     delete(

@@ -679,7 +679,7 @@ class TestPublish
       // should write a temp results file to publish bucket
       val tempResults = decode[Publish.TempPublishResults](
         downloadFile(publishBucket, testKey + "outputs.json")
-      ).right.get
+      ).value
       tempResults.readmeKey shouldBe testKey + Publish.README_FILENAME
       tempResults.bannerKey shouldBe testKey + Publish.BANNER_FILENAME
       tempResults.changelogKey shouldBe testKey + Publish.CHANGELOG_FILENAME
@@ -855,7 +855,7 @@ class TestPublish
       // should write a temp results file to publish bucket
       val tempResults = decode[Publish.TempPublishResults](
         downloadFile(embargoBucket, testKey + "outputs.json")
-      ).right.get
+      ).value
       tempResults.readmeKey shouldBe testKey + Publish.README_FILENAME
       tempResults.bannerKey shouldBe testKey + Publish.BANNER_FILENAME
       tempResults.changelogKey shouldBe testKey + Publish.CHANGELOG_FILENAME
@@ -1423,8 +1423,7 @@ class TestPublish
         e
       })
       .map(_.getObjectContent())
-      .right
-      .get
+      .value
 
     try {
       IOUtils.toString(stream, "utf-8")
@@ -1476,8 +1475,7 @@ class TestPublish
     publishContainer.datasetManager
       .setIgnoreFiles(publishContainer.dataset, ignoreFiles)
       .await
-      .right
-      .get
+      .value
 
   def createDatasetStatus(
     displayName: String = generateRandomString()
@@ -1485,7 +1483,7 @@ class TestPublish
     new DatasetStatusManager(
       databaseContainer.db,
       databaseContainer.organization
-    ).create(displayName).await.right.get
+    ).create(displayName).await.value
 
   def createDataset(
     name: String = generateRandomString(),
