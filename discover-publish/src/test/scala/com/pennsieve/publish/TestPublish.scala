@@ -39,7 +39,7 @@ import com.pennsieve.models._
 import com.pennsieve.publish.models.CopyAction
 import com.pennsieve.test._
 import com.pennsieve.test.helpers._
-import com.pennsieve.test.helpers.EitherValue._
+import org.scalatest.EitherValues._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
