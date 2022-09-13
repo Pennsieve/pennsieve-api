@@ -37,12 +37,13 @@ import com.pennsieve.models.{
   User
 }
 import com.pennsieve.traits.PostgresProfile.api._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+
 import java.util.UUID
 
-import org.scalatest.{ Matchers, WordSpec }
-
 trait UploadsConsumerDatabaseSpecHarness
-    extends WordSpec
+    extends AnyWordSpec
     with UploadsConsumerSpecHarness
     with Matchers {
 

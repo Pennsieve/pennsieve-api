@@ -48,9 +48,9 @@ class ExternalFilesManagerSpec extends BaseManagerSpec {
     val result = externalFileManager().get(pkg).await
     assert(result.isRight)
     assert(
-      result.right.value.location == "file:///home/pennsieve/data/vm/Linux_x86.virtualvm"
+      result.value.location == "file:///home/pennsieve/data/vm/Linux_x86.virtualvm"
     )
-    assert(result.right.value.description == Some("Debian"))
+    assert(result.value.description == Some("Debian"))
   }
 
   "fetching an external file" should "fail if the package type is not external" in {
@@ -71,7 +71,7 @@ class ExternalFilesManagerSpec extends BaseManagerSpec {
     )
     val pkg2 = createPackage(`type` = PackageType.Image)
     val m = externalFileManager()
-    val externalFile = m.get(pkg1).await.right.value
+    val externalFile = m.get(pkg1).await.value
     val fetched = m.update(pkg2, externalFile).await
     assert(fetched.isLeft)
     assert(fetched.left.value == UnsupportedPackageType(pkg2.`type`))
@@ -87,7 +87,7 @@ class ExternalFilesManagerSpec extends BaseManagerSpec {
       externalLocation = Some("file:///home/pennsieve/data/bar.dat")
     )
     val m = externalFileManager()
-    val externalFile = m.get(pkg1).await.right.value
+    val externalFile = m.get(pkg1).await.value
     val fetched = m.update(pkg2, externalFile).await
     assert(fetched.isLeft)
     assert(
@@ -106,10 +106,10 @@ class ExternalFilesManagerSpec extends BaseManagerSpec {
       externalLocation = Some("file:///home/pennsieve/data/bar.dat")
     )
     val m = externalFileManager()
-    val externalFile = m.get(pkg1).await.right.value
+    val externalFile = m.get(pkg1).await.value
     val fetched = m.update(pkg1, externalFile).await
     assert(fetched.isRight)
-    assert(fetched.right.value == externalFile)
+    assert(fetched.value == externalFile)
   }
 
   "delete an external file" should "fail if the package type is not external" in {

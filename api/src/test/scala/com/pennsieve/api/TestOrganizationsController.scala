@@ -76,8 +76,8 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
   override def beforeEach(): Unit = {
     super.beforeEach()
-    mockCustomTermsOfServiceClient.reset
-    mockCognito.reset
+    mockCustomTermsOfServiceClient.reset()
+    mockCognito.reset()
   }
 
   def makeIntegrationUser(): User =
@@ -753,7 +753,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       response.user.map(_.email) should be(Some("invitetester@test.com"))
       response.user.map(_.id) should be(Some(invitedUser.nodeId))
 
-      userInviteManager.get(invalidInvite.id).await should be('Left)
+      userInviteManager.get(invalidInvite.id).await should be(Symbol("Left"))
     }
   }
 
@@ -776,7 +776,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should be(200)
-      userInviteManager.get(invite.id).await should be('Left)
+      userInviteManager.get(invite.id).await should be(Symbol("Left"))
     }
   }
 

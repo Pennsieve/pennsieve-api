@@ -120,8 +120,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   override def afterEach(): Unit = {
     super.afterEach()
-    mockSqsClient.sentMessages.clear
-    mockPublishClient.clear
+    mockSqsClient.sentMessages.clear()
+    mockPublishClient.clear()
     mockSearchClient.clear
   }
 
@@ -1005,7 +1005,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 3
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("test-ds1", "test-ds2", "test-ds3")
+        .to(Set) shouldBe Set("test-ds1", "test-ds2", "test-ds3")
     }
 
     // similarly, single word queries should word the same as above, by implicitly appending the ":*" prefix
@@ -1022,7 +1022,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 3
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("test-ds1", "test-ds2", "test-ds3")
+        .to(Set) shouldBe Set("test-ds1", "test-ds2", "test-ds3")
     }
 
     // Search "dataset" AND "6" OR "9" should yield four results:
@@ -1041,7 +1041,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 4
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set(
+        .to(Set) shouldBe Set(
         "dataset-5",
         "dataset-6",
         "dataset-8",
@@ -1063,7 +1063,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 0
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set()
+        .to(Set) shouldBe Set()
     }
 
     // Search "datazet" AND "6" OR "9" should be nothing
@@ -1079,7 +1079,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 0
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set()
+        .to(Set) shouldBe Set()
     }
 
     // Multi-term search should work:
@@ -1098,7 +1098,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 2
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("dataset-5", "dataset-6")
+        .to(Set) shouldBe Set("dataset-5", "dataset-6")
     }
 
     //search with just an integer should match on the integer ID and any other field
@@ -1119,13 +1119,13 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       //the name of ds12 matches 11
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set(
+        .to(Set) shouldBe Set(
         "A Data set with number 11 in the name",
         "dataset-10"
       )
       response.datasets
         .map(_.content.intId)
-        .to[Set] shouldBe Set(11, 13)
+        .to(Set) shouldBe Set(11, 13)
     }
 
   }
@@ -1149,7 +1149,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 4
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("test-ds1", "Home")
+        .to(Set) shouldBe Set("test-ds1", "Home")
     }
 
     get(
@@ -1163,7 +1163,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 4
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("test-ds2", "test-ds3")
+        .to(Set) shouldBe Set("test-ds2", "test-ds3")
     }
 
   }
@@ -1207,7 +1207,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 5
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("Home", "Test-ds1")
+        .to(Set) shouldBe Set("Home", "Test-ds1")
     }
 
     get(
@@ -1223,7 +1223,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 5
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("A New DataSet", "Test-ds3")
+        .to(Set) shouldBe Set("A New DataSet", "Test-ds3")
     }
 
   }
@@ -1267,7 +1267,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 5
       response.datasets
         .map(_.content.intId)
-        .to[Set] shouldBe Set(1, 2, 3, 4, 5)
+        .to(Set) shouldBe Set(1, 2, 3, 4, 5)
     }
 
     get(
@@ -1283,7 +1283,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 5
       response.datasets
         .map(_.content.intId)
-        .to[Set] shouldBe Set(5, 4)
+        .to(Set) shouldBe Set(5, 4)
     }
   }
 
@@ -1336,7 +1336,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 2
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("test-ds1", "test-ds2")
+        .to(Set) shouldBe Set("test-ds1", "test-ds2")
     }
 
   }
@@ -2205,13 +2205,14 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       "10.2137/abcd-1234",
       Some("My Dataset"),
       Some("http://discover.pennsieve.org/datasets/1"),
+      "my publisher",
       None,
       Some(2019),
       Some(DoiState.Draft)
     )
 
     val json = write(doi)
-    json shouldBe """{"organizationId":1,"datasetId":1,"doi":"10.2137/abcd-1234","title":"My Dataset","url":"http://discover.pennsieve.org/datasets/1","publicationYear":2019,"state":"draft"}"""
+    json shouldBe """{"organizationId":1,"datasetId":1,"doi":"10.2137/abcd-1234","title":"My Dataset","url":"http://discover.pennsieve.org/datasets/1","publisher":"my publisher","publicationYear":2019,"state":"draft"}"""
     read[DoiDTO](json).state shouldBe Some(DoiState.Draft)
 
   }
@@ -2236,7 +2237,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     val reserveDoiRequest =
       CreateDraftDoiRequest(
         Some("testTitle"),
-        Some(IndexedSeq(CreatorDTO("Creator M", "Maker"))),
+        Some(Vector(CreatorDto("Creator M", "Maker"))),
         Some(2019),
         Some("abc-123")
       )
@@ -4727,21 +4728,21 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
           )
         )
         putJson(url, requestBody, requestHeaders) {
-          val currentStatus = currentPublicationStatus
+          val currentStatus = currentPublicationStatus()
           (
             status,
             currentStatus,
-            currentPublicationType,
+            currentPublicationType(),
             publisherTeamStateCorrect(currentStatus)
           )
         }
       case _ =>
         postJson(url, "", requestHeaders) {
-          val currentStatus = currentPublicationStatus
+          val currentStatus = currentPublicationStatus()
           (
             status,
             currentStatus,
-            currentPublicationType,
+            currentPublicationType(),
             publisherTeamStateCorrect(currentStatus)
           )
         }
@@ -4756,8 +4757,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Draft)
-    currentPublicationType shouldBe None
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Draft)
+    currentPublicationType() shouldBe None
 
     val alreadySentMessagesSubjectList = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
@@ -4780,8 +4781,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Publication)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
 
     postJson(
       s"/${dataset.nodeId}/publication/reject?publicationType=publication&comments=hello%20world",
@@ -4800,8 +4801,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Rejected)
-    currentPublicationType shouldBe Some(PublicationType.Publication)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Rejected)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
 
     postJson(
       s"/${dataset.nodeId}/publication/request?publicationType=publication",
@@ -4820,8 +4821,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Publication)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
 
     postJson(
       s"/${dataset.nodeId}/publication/cancel?publicationType=publication",
@@ -4840,8 +4841,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Cancelled)
-    currentPublicationType shouldBe Some(PublicationType.Publication)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Cancelled)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
 
     postJson(
       s"/${dataset.nodeId}/publication/request?publicationType=publication",
@@ -4860,8 +4861,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Publication)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
 
     publicationRequestResult(
       PublicationStatus.Accepted,
@@ -4915,8 +4916,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Draft)
-    currentPublicationType shouldBe None
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Draft)
+    currentPublicationType() shouldBe None
 
     postJson(
       s"/${dataset.nodeId}/publication/request?publicationType=publication&comments=hello%20world",
@@ -4933,8 +4934,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Publication)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
 
     val updateReq = write(
       UpdateDataSetRequest(
@@ -5040,8 +5041,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Revision)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Revision)
 
     postJson(
       s"/${dataset.nodeId}/publication/reject?publicationType=revision&comments=hello%20world",
@@ -5060,8 +5061,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Rejected)
-    currentPublicationType shouldBe Some(PublicationType.Revision)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Rejected)
+    currentPublicationType() shouldBe Some(PublicationType.Revision)
 
     postJson(
       s"/${dataset.nodeId}/publication/request?publicationType=revision",
@@ -5080,8 +5081,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Revision)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Revision)
 
     postJson(
       s"/${dataset.nodeId}/publication/cancel?publicationType=revision",
@@ -5098,8 +5099,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Cancelled)
-    currentPublicationType shouldBe Some(PublicationType.Revision)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Cancelled)
+    currentPublicationType() shouldBe Some(PublicationType.Revision)
 
     postJson(
       s"/${dataset.nodeId}/publication/request?publicationType=revision",
@@ -5118,8 +5119,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Revision)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Revision)
 
     publicationRequestResult(
       PublicationStatus.Accepted,
@@ -5186,8 +5187,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       (parsedBody \ "createdBy").extract[Int] shouldBe colleagueUser.id
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Revision)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Revision)
 
   }
 
@@ -5209,8 +5210,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Cancelled)
-    currentPublicationType shouldBe Some(PublicationType.Publication)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Cancelled)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
   }
 
   test("2 step publishing - fail to embargo dataset without release date") {
@@ -5259,8 +5260,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     val embargoReleaseDate = LocalDate.now.plusWeeks(1)
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Draft)
-    currentPublicationType shouldBe None
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Draft)
+    currentPublicationType() shouldBe None
 
     postJson(
       s"/${dataset.nodeId}/publication/request?publicationType=embargo&comments=requested&embargoReleaseDate=$embargoReleaseDate",
@@ -5270,8 +5271,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Embargo)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Embargo)
 
     postJson(
       s"/${dataset.nodeId}/publication/accept?publicationType=embargo&comments=accepted",
@@ -5281,8 +5282,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Accepted)
-    currentPublicationType shouldBe Some(PublicationType.Embargo)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Embargo)
 
     val request = write(
       PublishCompleteRequest(
@@ -5303,8 +5304,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 200
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Completed)
-    currentPublicationType shouldBe Some(PublicationType.Embargo)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Embargo)
 
     // The embargo release date should be propagated through the workflow
     get(
@@ -5412,8 +5413,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Requested)
-    currentPublicationType shouldBe Some(PublicationType.Release)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Release)
 
     post(
       s"/${dataset.nodeId}/publication/accept?publicationType=release&comments=ok",
@@ -5422,8 +5423,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Accepted)
-    currentPublicationType shouldBe Some(PublicationType.Release)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Release)
 
     val request = write(
       PublishCompleteRequest(
@@ -5444,8 +5445,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 200
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Completed)
-    currentPublicationType shouldBe Some(PublicationType.Release)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Release)
 
     val sentMessages = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
@@ -5601,8 +5602,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 403
     }
 
-    currentPublicationStatus shouldBe Some(PublicationStatus.Completed)
-    currentPublicationType shouldBe Some(PublicationType.Embargo)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Embargo)
   }
 
   test("grant preview access to embargoed dataset") {
@@ -5998,7 +5999,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 2
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("My Dataset", "My second Dataset")
+        .to(Set) shouldBe Set("My Dataset", "My second Dataset")
     }
   }
 
@@ -6052,10 +6053,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 2
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("My Dataset", "My second Dataset")
+        .to(Set) shouldBe Set("My Dataset", "My second Dataset")
       response.datasets
         .map(_.publication.status)
-        .to[Set] shouldBe Set(
+        .to(Set) shouldBe Set(
         PublicationStatus.Rejected,
         PublicationStatus.Requested
       )
@@ -6105,7 +6106,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 2
       response.datasets
         .map(dataset => dataset.content.id)
-        .to[Set] shouldBe Set(publicationDataset.nodeId, embargoDataset.nodeId)
+        .to(Set) shouldBe Set(publicationDataset.nodeId, embargoDataset.nodeId)
     }
   }
 
@@ -6133,7 +6134,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.totalCount shouldBe 3
       response.datasets
         .map(_.content.name)
-        .to[Set] shouldBe Set("Home", "My Dataset", "My second Dataset")
+        .to(Set) shouldBe Set("Home", "My Dataset", "My second Dataset")
 
       response.datasets
         .map(_.publication) shouldBe

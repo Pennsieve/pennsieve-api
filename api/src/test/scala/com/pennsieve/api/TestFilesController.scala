@@ -114,7 +114,7 @@ class TestFilesController
       .right
       .value
 
-    mockModelServiceClient.clearCounts
+    mockModelServiceClient.clearCounts()
     // coerce to LocalETLServiceClient here in order to access the
     // payloadsSent property
     //

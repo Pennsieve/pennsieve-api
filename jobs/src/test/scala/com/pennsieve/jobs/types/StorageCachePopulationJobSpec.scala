@@ -31,12 +31,14 @@ import com.pennsieve.models.{
   Package
 }
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
-import org.scalatest.{ BeforeAndAfterAll, FlatSpec, Matchers }
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.ExecutionContext
 
 class CachePopulationJobSpec
-    extends FlatSpec
+    extends AnyFlatSpec
     with SpecHelper
     with Matchers
     with TestKitBase

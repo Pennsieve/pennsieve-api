@@ -45,7 +45,7 @@ class TestDiscussionsController extends BaseApiTest {
     )
   }
 
-  override def beforeEach() {
+  override def beforeEach(): Unit = {
     super.beforeEach()
     val discussionMgr = secureContainer.discussionManager
 

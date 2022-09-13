@@ -40,7 +40,7 @@ import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
 import akka.actor.ActorSystem
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
-import org.scalatest._
+import org.scalatest.EitherValues._
 import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.ExecutionContextExecutor
@@ -143,8 +143,7 @@ class StorageManagerSpec extends BaseManagerSpec with Matchers {
     val result = storageManager(testOrganization)
       .getStorage(sdatasets, List(123))
       .await
-      .right
-      .get
+      .value
     assert(result == Map(123 -> None))
   }
 
@@ -153,50 +152,47 @@ class StorageManagerSpec extends BaseManagerSpec with Matchers {
     val big = Int.MaxValue.toLong * 2
     assert(big.toString == "4294967294")
     val storageMnger = storageManager(testOrganization)
-    storageMnger.incrementStorage(spackages, big, pkg1.id).await.right.get
+    storageMnger.incrementStorage(spackages, big, pkg1.id).await.value
     val result =
-      storageMnger.getStorage(spackages, List(pkg1.id)).await.right.get
+      storageMnger.getStorage(spackages, List(pkg1.id)).await.value
     assert(result == Map(pkg1.id -> Some(big)))
   }
 
   "storageManager" should "return the correct number for cached storage sizes" in {
     val (pkg1, pkg2, pkg3) = createStuff()
     val storageMnger = storageManager(testOrganization)
-    storageMnger.incrementStorage(spackages, 123456, pkg1.id).await.right.get
+    storageMnger.incrementStorage(spackages, 123456, pkg1.id).await.value
     val packageStorage =
-      storageMnger.getStorage(spackages, List(pkg1.id)).await.right.get
+      storageMnger.getStorage(spackages, List(pkg1.id)).await.value
     assert(packageStorage == Map(pkg1.id -> Some(123456)))
     val orgStorage = storageMnger
       .getStorage(sorganizations, List(testOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(orgStorage == Map(testOrganization.id -> Some(123456)))
   }
 
   "multiple packages in a dataset" should "have their size added together" in {
     val (pkg1, pkg2, pkg3) = createStuff()
     val storageMnger = storageManager(testOrganization)
-    storageMnger.incrementStorage(spackages, 123456, pkg1.id).await.right.get
-    storageMnger.incrementStorage(spackages, 123456, pkg2.id).await.right.get
+    storageMnger.incrementStorage(spackages, 123456, pkg1.id).await.value
+    storageMnger.incrementStorage(spackages, 123456, pkg2.id).await.value
     val orgStorage = storageMnger
       .getStorage(sorganizations, List(testOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(orgStorage == Map(testOrganization.id -> Some(123456 * 2)))
   }
 
   "updating with a negative number" should "decrease the usage" in {
     val (pkg1, pkg2, pkg3) = createStuff()
     val storageMnger = storageManager(testOrganization)
-    storageMnger.incrementStorage(spackages, 123456, pkg1.id).await.right.get
-    storageMnger.incrementStorage(spackages, -55, pkg2.id).await.right.get
+    storageMnger.incrementStorage(spackages, 123456, pkg1.id).await.value
+    storageMnger.incrementStorage(spackages, -55, pkg2.id).await.value
     val orgStorage = storageMnger
       .getStorage(sorganizations, List(testOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(orgStorage == Map(testOrganization.id -> Some(123401)))
   }
 
@@ -205,29 +201,28 @@ class StorageManagerSpec extends BaseManagerSpec with Matchers {
       createNestedStuff()
     val storageMnger = storageManager(testOrganization)
 
-    storageMnger.incrementStorage(spackages, file.size, pkg.id).await.right.get
+    storageMnger.incrementStorage(spackages, file.size, pkg.id).await.value
 
     val packageStorage =
-      storageMnger.getStorage(spackages, List(pkg.id)).await.right.get
+      storageMnger.getStorage(spackages, List(pkg.id)).await.value
     assert(packageStorage == Map(pkg.id -> Some(54321)))
 
     val orgStorage = storageMnger
       .getStorage(sorganizations, List(testOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(orgStorage == Map(testOrganization.id -> Some(54321)))
 
     val coll3Storage =
-      storageMnger.getStorage(spackages, List(collection3.id)).await.right.get
+      storageMnger.getStorage(spackages, List(collection3.id)).await.value
     assert(coll3Storage == Map(collection3.id -> Some(54321)))
 
     val coll2Storage =
-      storageMnger.getStorage(spackages, List(collection2.id)).await.right.get
+      storageMnger.getStorage(spackages, List(collection2.id)).await.value
     assert(coll2Storage == Map(collection2.id -> Some(54321)))
 
     val coll1Storage =
-      storageMnger.getStorage(spackages, List(collection1.id)).await.right.get
+      storageMnger.getStorage(spackages, List(collection1.id)).await.value
     assert(coll1Storage == Map(collection1.id -> Some(54321)))
 
   }
@@ -251,14 +246,12 @@ class StorageManagerSpec extends BaseManagerSpec with Matchers {
     storageMnger
       .incrementStorage(spackages, file.size, pkg.id)
       .awaitFinite()
-      .right
-      .get
+      .value
 
     val orgStorage = storageMnger
       .getStorage(sorganizations, List(testOrganization.id))
       .await
-      .right
-      .get
+      .value
     assert(orgStorage == Map(testOrganization.id -> Some(54321)))
   }
 
@@ -326,11 +319,10 @@ class StorageManagerSpec extends BaseManagerSpec with Matchers {
     val result = storageManagerTestOrg
       .setPackageStorage(pkg1)
       .await
-      .right
-      .get
+      .value
 
     val storageAfter =
-      storageManagerTestOrg.getStorage(spackages, List(pkg1.id)).await.right.get
+      storageManagerTestOrg.getStorage(spackages, List(pkg1.id)).await.value
 
     assert(storageAfter == Map(pkg1.id -> Some(54321L)))
   }

@@ -117,9 +117,7 @@ lazy val scalatest212Version = "3.0.3"
 lazy val scalatest213Version = "3.2.11"
 ThisBuild / scalatestVersion := scalatest212Version
 
-lazy val scalikejdbcVersion = SettingKey[String]("scalikejdbcVersion")
-lazy val scalikejdbc212Version = "2.5.0"
-lazy val scalikejdbc213Version = "3.4.2" //4.0.0"
+lazy val scalikejdbcVersion = "3.5.0"
 
 lazy val slickVersion = "3.3.3"
 
@@ -238,11 +236,6 @@ lazy val coreApiSharedSettings = Seq(
   ),
   akkaVersion := getVersion(scalaVersion.value, akka212Version, akka213Version),
   scalatestVersion := scalatest213Version,
-  scalikejdbcVersion := getVersion(
-    scalaVersion.value,
-    scalikejdbc212Version,
-    scalikejdbc213Version
-  ),
   slickPgVersion := getVersion(
     scalaVersion.value,
     slickPg212Version,
@@ -259,8 +252,8 @@ lazy val coreApiSharedSettings = Seq(
     "org.json4s" %% "json4s-jackson" % json4sVersion.value,
     "org.json4s" %% "json4s-ext" % json4sVersion.value,
     "commons-io" % "commons-io" % commonsIoVersion,
-    "org.scalikejdbc" %% "scalikejdbc" % scalikejdbcVersion.value,
-    "org.scalikejdbc" %% "scalikejdbc-config" % scalikejdbcVersion.value,
+    "org.scalikejdbc" %% "scalikejdbc" % scalikejdbcVersion,
+    "org.scalikejdbc" %% "scalikejdbc-config" % scalikejdbcVersion,
     "com.typesafe.slick" %% "slick" % slickVersion,
     "com.typesafe.slick" %% "slick-hikaricp" % slickVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion.value,
@@ -272,7 +265,7 @@ lazy val coreApiSharedSettings = Seq(
     "com.dimafeng" %% "testcontainers-scala" % testContainersVersion % Test,
     "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
-    "org.scalikejdbc" %% "scalikejdbc-test" % scalikejdbcVersion.value % Test
+    "org.scalikejdbc" %% "scalikejdbc-test" % scalikejdbcVersion % Test
   ),
   excludeDependencies ++= unwantedDependencies
 )

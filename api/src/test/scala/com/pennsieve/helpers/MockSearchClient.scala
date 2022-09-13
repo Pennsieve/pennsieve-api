@@ -43,7 +43,7 @@ class MockSearchClient(
 ) extends SearchClient("mock-discover-service-host") {
 
   def clear: Unit = {
-    publishedDatasets.clear
+    publishedDatasets.clear()
   }
 
   var publishedDatasets: ArrayBuffer[PublicDatasetDto] =

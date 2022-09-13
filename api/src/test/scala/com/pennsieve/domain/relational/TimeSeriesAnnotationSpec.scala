@@ -113,7 +113,7 @@ class TimeSeriesAnnotationSpec
   }
 
   def channelIds(channels: Channel*): SortedSet[String] =
-    channels.map(_.nodeId).to[SortedSet]
+    channels.map(_.nodeId).to(SortedSet)
 
   def createAnnotations(
     start: Int,

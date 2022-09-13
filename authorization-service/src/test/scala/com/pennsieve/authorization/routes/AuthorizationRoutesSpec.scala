@@ -33,7 +33,6 @@ import akka.stream._
 import akka.testkit.TestKitBase
 import cats.data._
 import cats.implicits._
-import com.pennsieve.akka.http.EitherValue._
 import com.pennsieve.aws.cognito.MockJwkProvider
 import com.pennsieve.auth.middleware.{
   DatasetId,
@@ -86,6 +85,7 @@ import shapeless._
 import scala.collection.immutable.{ Seq => ImmutableSeq }
 import scala.concurrent.duration._
 import scala.concurrent._
+import org.scalatest.EitherValues._
 
 class AuthorizationRoutesSpec
     extends AuthorizationServiceSpec

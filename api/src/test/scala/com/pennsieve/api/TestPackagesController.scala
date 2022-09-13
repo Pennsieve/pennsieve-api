@@ -104,7 +104,7 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
     )
   }
 
-  override def beforeEach() {
+  override def beforeEach(): Unit = {
 
     super.beforeEach()
     dataPackage = packageManager

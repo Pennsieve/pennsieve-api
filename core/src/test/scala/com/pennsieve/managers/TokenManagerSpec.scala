@@ -34,13 +34,10 @@ class TokenManagerSpec extends BaseManagerSpec {
     val (token, secret) = _secureTokenManager
       .create("test token", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
     assert(token.userId == user.id)
     assert(
-      _secureTokenManager.get(user, testOrganization).await.right.value == List(
-        token
-      )
+      _secureTokenManager.get(user, testOrganization).await.value == List(token)
     )
   }
 
@@ -73,10 +70,9 @@ class TokenManagerSpec extends BaseManagerSpec {
     val (token, secret) = _secureTokenManager
       .create("test token", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
 
-    assert(_secureTokenManager.get(token.token).await.right.value == token)
+    assert(_secureTokenManager.get(token.token).await.value == token)
   }
 
   "get" should "fail to get a non-existent api token" in {
@@ -113,7 +109,6 @@ class TokenManagerSpec extends BaseManagerSpec {
     val (token, secret) = _secureTokenManagerOne
       .create("test token", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
 
     val failedGet: CoreError =
@@ -129,16 +124,14 @@ class TokenManagerSpec extends BaseManagerSpec {
     val (tokenOne, secret1) = _secureTokenManager
       .create("test token 1", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
     val (tokenTwo, secret2) = _secureTokenManager
       .create("test token 2", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
 
     val tokens: Set[Token] =
-      _secureTokenManager.get(user, testOrganization).await.right.value.toSet
+      _secureTokenManager.get(user, testOrganization).await.value.toSet
 
     assert(tokens.contains(tokenOne))
     assert(tokens.contains(tokenTwo))
@@ -151,19 +144,16 @@ class TokenManagerSpec extends BaseManagerSpec {
     val (token, secret) = _secureTokenManager
       .create("test token", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
     val updated = _secureTokenManager
       .update(token.copy(name = "updated token"))
       .await
-      .right
       .value
 
     assert(
       _secureTokenManager
         .get(token.token)
         .await
-        .right
         .value
         .name == "updated token"
     )
@@ -186,7 +176,6 @@ class TokenManagerSpec extends BaseManagerSpec {
     val (token, secret) = _secureTokenManagerOne
       .create("test token", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
     val failedUpdate = _secureTokenManagerTwo
       .update(token.copy(name = "updated name"))
@@ -204,14 +193,12 @@ class TokenManagerSpec extends BaseManagerSpec {
     val (token, secret) = _secureTokenManager
       .create("test token", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
 
     assert(
       _secureTokenManager
         .get(user, testOrganization)
         .await
-        .right
         .value
         .contains(token)
     )
@@ -223,7 +210,6 @@ class TokenManagerSpec extends BaseManagerSpec {
       !(_secureTokenManager
         .get(user, testOrganization)
         .await
-        .right
         .value
         .contains(token))
     )
@@ -246,7 +232,6 @@ class TokenManagerSpec extends BaseManagerSpec {
     val (token, secret) = _secureTokenManagerOne
       .create("test token", user, testOrganization, mockCognitoClient)
       .await
-      .right
       .value
     val failedDelete: CoreError =
       _secureTokenManagerTwo.delete(token, mockCognitoClient).await.left.value

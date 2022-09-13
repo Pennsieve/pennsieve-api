@@ -129,7 +129,7 @@ class TestOnboardingController extends BaseApiTest {
 
     get(s"/events", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val events = getEventsFromResponse
+      val events = getEventsFromResponse()
       events should have length (2)
       events should contain(OnboardingEventType.FirstTimeSignOn)
       events should contain(OnboardingEventType.CreatedDataset)
@@ -149,7 +149,7 @@ class TestOnboardingController extends BaseApiTest {
     }
     get(s"/events", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val events = getEventsFromResponse
+      val events = getEventsFromResponse()
       events should have length (1)
       events should ===(Seq(OnboardingEventType.FirstTimeSignOn))
     }
@@ -179,7 +179,7 @@ class TestOnboardingController extends BaseApiTest {
     }
     get(s"/events", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val events = getEventsFromResponse
+      val events = getEventsFromResponse()
       events should have length (3)
       events should contain(OnboardingEventType.FirstTimeSignOn)
       events should contain(OnboardingEventType.CreatedDataset)

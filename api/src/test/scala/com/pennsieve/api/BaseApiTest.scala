@@ -475,10 +475,10 @@ trait ApiSuite
       loggedInUser,
       loggedInOrganization,
       cognito = CognitoSession
-        .API(CognitoId.TokenPoolId.randomId, Instant.now().plusSeconds(10))
+        .API(CognitoId.TokenPoolId.randomId(), Instant.now().plusSeconds(10))
     )(jwtConfig, insecureContainer.db, ec)
 
-    secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value
+    secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.value
 
     defaultDatasetStatus = secureContainer.db
       .run(secureContainer.datasetStatusManager.getDefaultStatus)
@@ -498,7 +498,6 @@ trait ApiSuite
     home = packageManager
       .create("Home", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     personal = packageManager
@@ -511,7 +510,6 @@ trait ApiSuite
         None
       )
       .await
-      .right
       .value
 
     // This will check to see if an organization of sandbox already exists, and if so, uses that

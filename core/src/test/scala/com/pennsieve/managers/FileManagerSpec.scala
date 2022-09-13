@@ -55,7 +55,7 @@ class FileManagerSpec extends BaseManagerSpec {
     val fetched = fm.getViews(pkg, None, None).await
 
     assert(fetched.isRight)
-    assert(fetched.right.value.head.objectType === FileObjectType.View)
+    assert(fetched.value.head.objectType === FileObjectType.View)
   }
 
   "a file" should "be returned in place of a view if no view exists in a package" in {
@@ -80,7 +80,7 @@ class FileManagerSpec extends BaseManagerSpec {
     val fetched = fm.getViews(pkg, None, None).await
 
     assert(fetched.isRight)
-    assert(fetched.right.value.head.objectType === FileObjectType.File)
+    assert(fetched.value.head.objectType === FileObjectType.File)
   }
 
   "a source" should "be returned in place of a view if no view exists in a package" in {
@@ -99,7 +99,7 @@ class FileManagerSpec extends BaseManagerSpec {
     val fetched = fm.getViews(pkg, None, None).await
 
     assert(fetched.isRight)
-    assert(fetched.right.value.head.objectType === FileObjectType.Source)
+    assert(fetched.value.head.objectType === FileObjectType.Source)
   }
 
   "a file" should "be returned if it exists in a package" in {
@@ -124,7 +124,7 @@ class FileManagerSpec extends BaseManagerSpec {
     val fetched = fm.getFiles(pkg, None, None).await
 
     assert(fetched.isRight)
-    assert(fetched.right.value.head.objectType === FileObjectType.File)
+    assert(fetched.value.head.objectType === FileObjectType.File)
   }
 
   "a source" should "be returned in place of a file if no file exists in a package" in {
@@ -143,7 +143,7 @@ class FileManagerSpec extends BaseManagerSpec {
     val fetched = fm.getFiles(pkg, None, None).await
 
     assert(fetched.isRight)
-    assert(fetched.right.value.head.objectType === FileObjectType.Source)
+    assert(fetched.value.head.objectType === FileObjectType.Source)
   }
 
   "a source" should "always be returned regardless of other file types that exist in a package" in {
@@ -174,7 +174,7 @@ class FileManagerSpec extends BaseManagerSpec {
     val fetched = fm.getSources(pkg, None, None).await
 
     assert(fetched.isRight)
-    assert(fetched.right.value.head.objectType === FileObjectType.Source)
+    assert(fetched.value.head.objectType === FileObjectType.Source)
   }
 
   "a file created by a user" should "be readable by that user" in {
@@ -220,7 +220,7 @@ class FileManagerSpec extends BaseManagerSpec {
     assert(fm.get(fileThree.id, pkg).await.isRight)
 
     var res = fm.delete(pkg).await
-    assert(res.isRight && res.right.value == 3)
+    assert(res.isRight && res.value == 3)
     assert(fm.get(fileOne.id, pkg).await.isLeft)
     assert(fm.get(fileTwo.id, pkg).await.isLeft)
     assert(fm.get(fileThree.id, pkg).await.isLeft)
@@ -241,7 +241,7 @@ class FileManagerSpec extends BaseManagerSpec {
     )
 
     res = fm.delete(pkg, onlyIds = Some(Set(fileFour.id))).await
-    assert(res.isRight && res.right.value === 1)
+    assert(res.isRight && res.value === 1)
     assert(fm.get(fileFour.id, pkg).await.isLeft)
     assert(fm.get(fileFive.id, pkg).await.isRight)
   }
@@ -271,7 +271,7 @@ class FileManagerSpec extends BaseManagerSpec {
     val fetched = fm.getSources(pkg, None, None, excludePending = true).await
 
     assert(
-      fetched.right.get
+      fetched.value
         .map(f => (f.id, f.uploadedState))
         .toSet == Set((source.id, Some(FileState.UPLOADED)), (file.id, None))
     )
@@ -325,9 +325,7 @@ class FileManagerSpec extends BaseManagerSpec {
     val fm = fileManager(organization = testOrganization, user = user)
     val fetched = fm.getSources(pkg, None, None, excludePending = false).await
 
-    assert(
-      fetched.right.value.map(_.uploadedState) == List(Some(FileState.PENDING))
-    )
+    assert(fetched.value.map(_.uploadedState) == List(Some(FileState.PENDING)))
   }
 
 //  "files" should "not be created if it does not follow naming conventions" in {

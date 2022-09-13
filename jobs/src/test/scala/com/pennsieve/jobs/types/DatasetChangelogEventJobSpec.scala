@@ -34,13 +34,15 @@ import com.pennsieve.models.{
 }
 import com.typesafe.config.{ ConfigFactory, ConfigValueFactory }
 import io.circe.parser._
-import org.scalatest.{ BeforeAndAfterAll, FlatSpec, Matchers }
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class DatasetChangelogEventJobSpec
-    extends FlatSpec
+    extends AnyFlatSpec
     with SpecHelper
     with Matchers
     with TestKitBase
