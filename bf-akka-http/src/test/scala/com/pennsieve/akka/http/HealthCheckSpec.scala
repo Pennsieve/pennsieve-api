@@ -23,8 +23,6 @@ import com.pennsieve.traits.PostgresProfile.api._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.model.StatusCodes.{ InternalServerError, OK }
 import com.pennsieve.akka.http._
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import io.circe.java8.time._
 import io.circe.syntax._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import org.scalatest.BeforeAndAfterAll
