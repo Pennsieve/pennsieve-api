@@ -150,7 +150,7 @@ def generatePublishContainerStep(String service, String sbt, String imageTag, cr
             }
 
             withCredentials([creds]) {
-                sh "${sbt} clean pullRemoteCache ${service}/docker"
+                sh "${sbt} clean +pullRemoteCache ${service}/docker"
             }
 
             for (image in images) {
