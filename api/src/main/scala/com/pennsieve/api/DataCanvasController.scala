@@ -119,19 +119,19 @@ class DataCanvasController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[DataCanvasDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         userId = secureContainer.user.id
 
         canvases <- secureContainer.dataCanvasManager
           .getForUser(userId = userId, withRole = Role.Owner)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dtos <- datacanvasDTOs(canvases)(
           asyncExecutor,
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dtos
       override val is = result.value.map(OkResult(_))
@@ -528,6 +528,7 @@ class DataCanvasController(
         folderId <- paramT[Int]("folderId")
         body <- extractOrErrorT[MoveDataCanvasFolder](parsedBody)
         secureContainer <- getSecureContainer()
+
         _ <- secureContainer.dataCanvasManager
           .getById(canvasId)
           .orNotFound()
@@ -581,6 +582,7 @@ class DataCanvasController(
         folderId <- paramT[Int]("folderId")
 
         secureContainer <- getSecureContainer()
+
         _ <- secureContainer.dataCanvasManager
           .getById(canvasId)
           .orNotFound()
@@ -657,7 +659,8 @@ class DataCanvasController(
           )
           .orBadRequest()
 
-        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer).orError()
+        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer)
+          .orError()
       } yield dto
 
       override val is = result.value.map(CreatedResult(_))
@@ -746,11 +749,11 @@ class DataCanvasController(
 //        canvasId <- paramT[Int]("canvasId")
 //        folderId <- paramT[Int]("folderId")
 //        packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
-//        secureContainer <- getSecureContainer
+//        secureContainer <- getSecureContainer()
 //
 //        canvas <- secureContainer.dataCanvasManager
 //          .getById(canvasId)
-//          .coreErrorToActionResult
+//          .coreErrorToActionResult()
 //
 //        folder <- secureContainer.dataCanvasManager
 //          .getFolder(canvas.id, folderId)
@@ -760,15 +763,15 @@ class DataCanvasController(
 //          for {
 //            dataset <- secureContainer.datasetManager
 //              .get(p.datasetId)
-//              .coreErrorToActionResult
+//              .coreErrorToActionResult()
 //
 //            organization <- secureContainer.organizationManager
 //              .get(p.organizationId.getOrElse(secureContainer.organization.id))
-//              .coreErrorToActionResult
+//              .coreErrorToActionResult()
 //
 //            pkg <- secureContainer.packageManager
 //              .get(p.packageId)
-//              .coreErrorToActionResult
+//              .coreErrorToActionResult()
 //
 //            dataCanvasPackage <- secureContainer.dataCanvasManager
 //              .attachPackage(
@@ -778,7 +781,7 @@ class DataCanvasController(
 //                pkg.id,
 //                organization.id
 //              )
-//              .orBadRequest
+//              .orBadRequest()
 //
 //          } yield dataCanvasPackage
 //        }
@@ -809,11 +812,11 @@ class DataCanvasController(
 //        canvasId <- paramT[Int]("canvasId")
 //        folderId <- paramT[Int]("folderId")
 //        packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
-//        secureContainer <- getSecureContainer
+//        secureContainer <- getSecureContainer()
 //
 //        _ <- secureContainer.dataCanvasManager
 //          .getById(canvasId)
-//          .coreErrorToActionResult
+//          .coreErrorToActionResult()
 //
 //        _ = packages.map { `package` =>
 //          for {
@@ -823,7 +826,7 @@ class DataCanvasController(
 //
 ////            _ <- secureContainer.dataCanvasManager
 ////              .detachPackage(dataCanvasPackage)
-////              .orBadRequest
+////              .orBadRequest()
 //
 //          } yield dataCanvasPackage
 //        }
@@ -861,13 +864,7 @@ class DataCanvasController(
           // get folders & packages
           // format result
 
-            dataCanvasPackage <- secureContainer.dataCanvasManager
-              .detachPackage(dataCanvasPackage)
-              .orBadRequest()
-
-          } yield dataCanvasPackage
-        }
-      } yield Done
+        } yield Done
       override val is = result.value.map(OkResult)
     }
   }
