@@ -17,9 +17,10 @@
 package com.pennsieve.models
 
 import com.pennsieve.core.utilities
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class PackageStateSpec extends FlatSpec with Matchers {
+class PackageStateSpec extends AnyFlatSpec with Matchers {
 
   "FAILED" should "deserialize as ERROR" in {
     PackageState.withName("FAILED") shouldBe PackageState.ERROR

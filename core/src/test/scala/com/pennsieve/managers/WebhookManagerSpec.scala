@@ -19,6 +19,7 @@ package com.pennsieve.managers
 import com.pennsieve.domain.{ NotFound, PermissionError, PredicateError }
 import com.pennsieve.models._
 import slick.jdbc.PostgresProfile.api._
+import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -78,8 +79,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    assert(result.isRight)
-    val (returnedWebhook, returnedTargetEvents) = result.right.get
+    val (returnedWebhook, returnedTargetEvents) = result.value
     assert(returnedWebhook.apiUrl == expectedApiUrl)
     assert(returnedWebhook.imageUrl.isDefined)
     assert(returnedWebhook.imageUrl.get == expectedImageUrl)
@@ -127,8 +127,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    assert(result.isRight)
-    val (returnedWebhook, returnedTargetEvents) = result.right.get
+    val (returnedWebhook, returnedTargetEvents) = result.value
     assert(returnedWebhook.apiUrl == expectedApiUrl)
     assert(returnedWebhook.imageUrl.isDefined)
     assert(returnedWebhook.imageUrl.get == expectedImageUrl)
@@ -171,8 +170,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    assert(result.isRight)
-    val (returnedWebhook, returnedTargetEvents) = result.right.get
+    val (returnedWebhook, returnedTargetEvents) = result.value
     assert(returnedWebhook.apiUrl == expectedApiUrl)
     assert(returnedWebhook.imageUrl.isDefined)
     assert(returnedWebhook.imageUrl.get == expectedImageUrl)
@@ -216,8 +214,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PredicateError])
 
     checkActualWebhooks(whManager)
@@ -252,8 +249,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PredicateError])
 
     checkActualWebhooks(whManager)
@@ -288,8 +284,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PredicateError])
 
     checkActualWebhooks(whManager)
@@ -324,8 +319,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PredicateError])
 
     checkActualWebhooks(whManager)
@@ -358,8 +352,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    assert(result.isRight)
-    val (returnedWebhook, returnedTargetEvents) = result.right.get
+    val (returnedWebhook, returnedTargetEvents) = result.value
     assert(returnedWebhook.apiUrl == expectedApiUrl)
     assert(returnedWebhook.imageUrl.isEmpty)
     assert(returnedWebhook.isDefault == expectedIsDefault)
@@ -379,7 +372,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
   }
 
   /**
-    * Looks at all webhooks in database and checks that they are equal to the [[expectedWebhooks]] in some order.
+    * Looks at all webhooks in database and checks that they are equal to the {@code expectedWebhooks} in some order.
     *
     * @param whManager
     * @param expectedWebhooks
@@ -398,7 +391,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
 
   /**
     * Looks at all event subscriptions in database and verifies that each subscription
-    * has the [[expectedWebhookId]] and that the actual events match those in [[expectedTargetEvents]]
+    * has the {@code expectedWebhookId} and that the actual events match those in {@code expectedTargetEvents}
     *
     * @param whManager
     * @param expectedWebhookId
@@ -440,8 +433,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         withPermission = DBPermission.Administer
       )
       .await
-    assert(result.isRight)
-    val returnedWebhook = result.right.get
+    val returnedWebhook = result.value
     assert(returnedWebhook.id == webhook.id)
   }
 
@@ -455,8 +447,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         withPermission = DBPermission.Administer
       )
       .await
-    assert(result.isRight)
-    val returnedWebhook = result.right.get
+    val returnedWebhook = result.value
     assert(returnedWebhook.id == webhook.id)
   }
 
@@ -469,8 +460,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         withPermission = DBPermission.Administer
       )
       .await
-    assert(result.isRight)
-    val returnedWebhook = result.right.get
+    val returnedWebhook = result.value
     assert(returnedWebhook.id == webhook.id)
   }
 
@@ -484,8 +474,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         withPermission = DBPermission.Administer
       )
       .await
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PermissionError])
   }
 
@@ -498,8 +487,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         withPermission = DBPermission.Administer
       )
       .await
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[NotFound])
   }
 
@@ -513,8 +501,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         withPermission = DBPermission.Administer
       )
       .await
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[NotFound])
   }
 
@@ -532,8 +519,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val result =
       whManager.update(updatedWebhook, targetEvents = Some(newEvents)).await
 
-    assert(result.isRight)
-    val (returnedWebhook, returnedEvents) = result.right.get
+    val (returnedWebhook, returnedEvents) = result.value
     assert(returnedWebhook.description == newDescription)
     assert(returnedEvents.toSet == newEvents.toSet)
 
@@ -547,8 +533,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val whManager = webhookManager()
 
     val result = whManager.update(webhook).await
-    assert(result.isRight)
-    val (returnedWebhook, returnedEvents) = result.right.get
+    val (returnedWebhook, returnedEvents) = result.value
     assert(webhook == returnedWebhook)
     assert(returnedEvents == subscriptions)
 
@@ -562,8 +547,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val whManager = webhookManager()
 
     val result = whManager.update(webhook, targetEvents = Some(Nil)).await
-    assert(result.isRight)
-    val (returnedWebhook, returnedEvents) = result.right.get
+    val (returnedWebhook, returnedEvents) = result.value
     assert(webhook == returnedWebhook)
     assert(returnedEvents.isEmpty)
 
@@ -582,8 +566,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         targetEvents = Some(List("FILES", "STATUS", "NON-EVENT"))
       )
       .await
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PredicateError])
     assert(error.getMessage.contains("NON-EVENT"))
 
@@ -610,9 +593,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val whManager = webhookManager()
     val result = whManager.update(unsavedWebhook).await
 
-    assert(result.isLeft)
-
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[NotFound])
     assert(error.getMessage.contains(unsavedWebhook.id.toString))
     checkActualWebhooks(whManager)
@@ -625,8 +606,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
 
     val updatedWebhook = webhook.copy(apiUrl = "")
     val result = whManager.update(updatedWebhook).await
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PredicateError])
     assert(error.getMessage contains "api url")
 
@@ -642,8 +622,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val updatedWebhook = webhook.copy(displayName = "display name" * 300)
     val result = whManager.update(updatedWebhook).await
 
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PredicateError])
     assert(error.getMessage contains "display name")
 
@@ -661,8 +640,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     )
     val result = whManager.update(updatedWebhook).await
 
-    assert(result.isLeft)
-    val error = result.left.get
+    val error = result.left.value
     assert(error.isInstanceOf[PredicateError])
     assert(error.getMessage contains "image url")
 
@@ -678,8 +656,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val updatedWebhook = webhook.copy(imageUrl = Some(""))
     val result = whManager.update(updatedWebhook).await
 
-    assert(result.isRight)
-    val (returnedWebhook, returnedEvents) = result.right.get
+    val (returnedWebhook, returnedEvents) = result.value
     assert(returnedWebhook.imageUrl.isEmpty)
     assert(returnedEvents == subscriptions)
 
@@ -695,8 +672,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val updatedWebhook = webhook.copy(imageUrl = None)
     val result = whManager.update(updatedWebhook).await
 
-    assert(result.isRight)
-    val (returnedWebhook, returnedEvents) = result.right.get
+    val (returnedWebhook, returnedEvents) = result.value
     assert(returnedWebhook.imageUrl.isEmpty)
     assert(returnedEvents == subscriptions)
 
@@ -712,8 +688,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     )
     val whManager = webhookManager()
     val result = whManager.delete(webhook).await
-    assert(result.isRight)
-    val deletedRowCount = result.right.get
+    val deletedRowCount = result.value
     assert(deletedRowCount == 1)
 
     checkActualWebhooks(whManager, webhook2)
@@ -737,8 +712,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       webhook.id + 1
     )
     val result = webhookManager().delete(unsavedWebhook).await
-    assert(result.isRight)
-    val deletedRowCount = result.right.get
+    val deletedRowCount = result.value
     assert(deletedRowCount == 0)
 
     val whManager = webhookManager()

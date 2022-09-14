@@ -21,11 +21,12 @@ import com.pennsieve.etl.`data-cli`.SetDimension.DimensionInfo
 import com.pennsieve.etl.`data-cli`.exceptions._
 import com.pennsieve.models.{ Dataset, Dimension, DimensionAssignment, Package }
 import com.pennsieve.traits.PostgresProfile.api._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import java.io.{ File => JavaFile }
-import org.scalatest.{ FlatSpec, Matchers }
 
-class SetDimensionSpec extends FlatSpec with Matchers {
+class SetDimensionSpec extends AnyFlatSpec with Matchers {
 
   "decodeDimensionInfo" should "parse a JSON file into a DimensionInfo without an id" in {
     val file: JavaFile =

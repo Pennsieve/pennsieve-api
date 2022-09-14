@@ -18,18 +18,17 @@ package com.pennsieve.aws.s3
 
 import com.amazonaws.services.s3.model._
 import com.pennsieve.test._
-import com.pennsieve.test.helpers._
-import com.pennsieve.test.helpers.EitherValue._
-import com.pennsieve.utilities.Container
-import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.apache.commons.io.IOUtils
-import org.scalatest._
+import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, TestSuite }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.EitherValues._
 
 import java.util.UUID
 import scala.util.Random
 
 class S3TraitSpec
-    extends FlatSpec
+    extends AnyFlatSpec
     with Matchers
     with BeforeAndAfterEach
     with BeforeAndAfterAll
@@ -47,25 +46,25 @@ class S3TraitSpec
 
   "objectSummaries" should "list all objects under a prefix bucket" in {
 
-    val bucket = s3.createBucket("list-object-bucket").right.get.getName
+    val bucket = s3.createBucket("list-object-bucket").value.getName
 
     // list objects only returns 1000 objects. Create more than that to test pagination:
 
     for {
       i <- (1 to 2500).toList
-    } yield s3.putObject(bucket, s"prefix/$i.txt", "data").right.get
+    } yield s3.putObject(bucket, s"prefix/$i.txt", "data").value
 
-    s3.objectSummaries(bucket, "prefix").right.get.length shouldBe 2500
+    s3.objectSummaries(bucket, "prefix").value.length shouldBe 2500
   }
 
   def createSourceAndDestBuckets(): (String, String) = {
     val uuid = UUID.randomUUID()
 
     val sourceBucket =
-      s3.createBucket(s"source-bucket-$uuid").right.get
+      s3.createBucket(s"source-bucket-$uuid").value
 
     val destBucket =
-      s3.createBucket(s"dest-bucket-$uuid").right.get
+      s3.createBucket(s"dest-bucket-$uuid").value
 
     (sourceBucket.getName, destBucket.getName)
   }
@@ -81,8 +80,7 @@ class S3TraitSpec
         destBucket,
         "dest/small-file.txt"
       )
-      .right
-      .get
+      .value
 
     s3.getObject(destBucket, "dest/small-file.txt")
       .map(_.getObjectContent)
@@ -111,8 +109,7 @@ class S3TraitSpec
         destBucket,
         "dest/small-file.txt"
       )
-      .right
-      .get
+      .value
 
     s3.getObject(destBucket, "dest/small-file.txt")
       .map(_.getObjectMetadata().getUserMetaDataOf("chunk-size")) shouldBe Right(
@@ -134,10 +131,8 @@ class S3TraitSpec
         multipartChunkSize = fiveMegabytes,
         multipartCopyLimit = fiveMegabytes
       )
-      .right
-      .get
-      .right
-      .get shouldBe an[CompleteMultipartUploadResult]
+      .value
+      .value shouldBe an[CompleteMultipartUploadResult]
 
     s3.getObject(destBucket, "dest/big-file.txt")
       .map(_.getObjectContent)
@@ -169,10 +164,8 @@ class S3TraitSpec
         multipartChunkSize = fiveMegabytes,
         multipartCopyLimit = fiveMegabytes
       )
-      .right
-      .get
-      .right
-      .get shouldBe an[CompleteMultipartUploadResult]
+      .value
+      .value shouldBe an[CompleteMultipartUploadResult]
 
     s3.getObject(destBucket, "dest/big-file.txt")
       .map(_.getObjectMetadata().getUserMetaDataOf("chunk-size")) shouldBe Right(
@@ -202,10 +195,8 @@ class S3TraitSpec
           multipartChunkSize = fiveMegabytes,
           multipartCopyLimit = fiveMegabytes
         )
-        .right
-        .get
-        .right
-        .get shouldBe an[CompleteMultipartUploadResult]
+        .value
+        .value shouldBe an[CompleteMultipartUploadResult]
 
       s3.getObject(destBucket, fileName)
         .map(_.getObjectContent)

@@ -17,9 +17,10 @@
 package com.pennsieve.uploads
 
 import com.pennsieve.models.{ FileType, PackageType }
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class FileUploadSpec extends FlatSpec with Matchers {
+class FileUploadSpec extends AnyFlatSpec with Matchers {
 
   "constructor" should "correctly handle normal file names" in {
 

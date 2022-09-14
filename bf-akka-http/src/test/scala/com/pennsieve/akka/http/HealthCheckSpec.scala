@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+package com.pennsieve.akka.http
+
 import com.pennsieve.aws.s3.{ S3, S3Trait }
 import com.pennsieve.core.utilities.PostgresDatabase
 import com.pennsieve.test._
-import org.scalatest._
 import com.pennsieve.traits.PostgresProfile.api._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.model.StatusCodes.{ InternalServerError, OK }
@@ -26,11 +27,14 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import io.circe.java8.time._
 import io.circe.syntax._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.Future
 
-class HealthServiceSpec
-    extends WordSpec
+class HealthCheckSpec
+    extends AnyWordSpec
     with Matchers
     with BeforeAndAfterAll
     with ScalatestRouteTest
@@ -44,7 +48,7 @@ class HealthServiceSpec
   override def afterStart(): Unit = {
     db = postgresContainer.database.forURL
     s3 = new S3(s3Container.s3Client)
-    s3.createBucket("my-bucket").right.get
+    s3.createBucket("my-bucket").toOption.get
   }
 
   override def afterAll(): Unit = {

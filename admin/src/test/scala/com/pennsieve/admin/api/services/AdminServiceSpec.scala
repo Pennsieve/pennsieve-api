@@ -43,12 +43,14 @@ import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.clients._
 import com.typesafe.config.{ Config, ConfigValueFactory }
 import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import software.amazon.awssdk.regions.Region
 
 import scala.concurrent.Future
 
 trait AdminServiceSpec
-    extends WordSpec
+    extends AnyWordSpec
     with RouterServiceSpec
     with Matchers
     with BeforeAndAfterEach

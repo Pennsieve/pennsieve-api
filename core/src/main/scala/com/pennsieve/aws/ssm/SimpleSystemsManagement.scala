@@ -24,7 +24,7 @@ import com.amazonaws.services.simplesystemsmanagement.model.{
 
 import com.pennsieve.aws.AsyncHandler
 import cats.implicits._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import com.typesafe.config.{ Config, ConfigFactory }
 import scala.concurrent.{ ExecutionContext, Future }
 

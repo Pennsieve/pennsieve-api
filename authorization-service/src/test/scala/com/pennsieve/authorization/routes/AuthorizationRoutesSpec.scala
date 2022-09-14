@@ -33,7 +33,6 @@ import akka.stream._
 import akka.testkit.TestKitBase
 import cats.data._
 import cats.implicits._
-import com.pennsieve.akka.http.EitherValue._
 import com.pennsieve.aws.cognito.MockJwkProvider
 import com.pennsieve.auth.middleware.{
   DatasetId,
@@ -86,6 +85,7 @@ import shapeless._
 import scala.collection.immutable.{ Seq => ImmutableSeq }
 import scala.concurrent.duration._
 import scala.concurrent._
+import org.scalatest.EitherValues._
 
 class AuthorizationRoutesSpec
     extends AuthorizationServiceSpec
@@ -434,7 +434,7 @@ class AuthorizationRoutesSpec
 
       } yield dataset
 
-      val dataset = query.await.right.get
+      val dataset = query.await.value
 
       datasetPublicationStatusManager
         .create(
@@ -734,7 +734,7 @@ class AuthorizationRoutesSpec
       (for {
         refreshedUser <- userManager.get(user.id)
         organization <- userManager.getPreferredOrganization(refreshedUser)
-      } yield organization).awaitFinite().right.get
+      } yield organization).awaitFinite().value
 
     "switch the organization in a user's session" in {
       // Confirm the session starts belonging to Organization Two

@@ -24,17 +24,13 @@ import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import akka.testkit.TestKitBase
 import com.typesafe.config.{ Config, ConfigValueFactory }
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-import scala.collection.JavaConverters._
-import org.scalatest.{
-  BeforeAndAfterAll,
-  BeforeAndAfterEach,
-  Matchers,
-  WordSpec
-}
+import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach }
 
 trait AuthorizationServiceSpec
-    extends WordSpec
+    extends AnyWordSpec
     with RouterServiceSpec
     with Matchers
     with BeforeAndAfterEach

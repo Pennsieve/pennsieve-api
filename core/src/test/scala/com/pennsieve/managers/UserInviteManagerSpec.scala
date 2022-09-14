@@ -17,13 +17,13 @@
 package com.pennsieve.managers
 
 import java.time.Duration
-
 import com.pennsieve.aws.email.Email
 import com.pennsieve.models.DBPermission.Delete
 import org.scalatest.EitherValues._
-import org.scalatest.Matchers
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import com.pennsieve.aws.cognito.MockCognito
+import org.scalatest.matchers.should.Matchers
 
 class UserInviteManagerSpec extends BaseManagerSpec with Matchers {
 
@@ -45,7 +45,6 @@ class UserInviteManagerSpec extends BaseManagerSpec with Matchers {
         ttl = Duration.ofSeconds(60)
       )(userManager, mockCognito, global)
       .await
-      .right
       .value
 
     val secondInvite = userInviteManager
@@ -58,13 +57,11 @@ class UserInviteManagerSpec extends BaseManagerSpec with Matchers {
         ttl = Duration.ofSeconds(60)
       )(userManager, mockCognito, global)
       .await
-      .right
       .value
 
     userInviteManager
       .getByEmail(secondInvite.email)
       .await
-      .right
       .value should have size 1
   }
 
@@ -86,7 +83,6 @@ class UserInviteManagerSpec extends BaseManagerSpec with Matchers {
         ttl = Duration.ofSeconds(60)
       )(userManager, mockCognito, global)
       .await
-      .right
       .value
 
     val refreshedUserInvite = userInviteManager
@@ -99,7 +95,6 @@ class UserInviteManagerSpec extends BaseManagerSpec with Matchers {
         ttl = Duration.ofSeconds(60)
       )(userManager, mockCognito, global)
       .await
-      .right
       .value
 
     mockCognito.reSentInvites.get(Email(email)) shouldBe Some(

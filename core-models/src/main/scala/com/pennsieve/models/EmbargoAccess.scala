@@ -30,7 +30,8 @@ object EmbargoAccess extends Enum[EmbargoAccess] with CirceEnum[EmbargoAccess] {
   case object Requested extends EmbargoAccess
   case object Granted extends EmbargoAccess
   @deprecated(
-    "Should not be used. Embargo access request refusal is no longer supported."
+    "Should not be used. Embargo access request refusal is no longer supported.",
+    "166-27f7fae"
   )
   case object Refused extends EmbargoAccess
 }

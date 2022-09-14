@@ -59,7 +59,7 @@ final case class MD5(value: String) extends AnyVal {
   *
   * Documents are stored on S3 according to the convention:
   *
-  * - s3://${ASSET_BUCKET}/${TERMS_DOCUMENTS_PREFIX}/${organizationId}/terms_of_use_${version}.html
+  * - `s3://${ASSET_BUCKET}/${TERMS_DOCUMENTS_PREFIX}/${organizationId}/terms_of_use_${version}.html`
   *
   * @param s3
   */

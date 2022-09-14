@@ -54,7 +54,7 @@ class HealthController(
 
   protected val applicationDescription: String = "Core API"
 
-  override val swaggerTag = "Health"
+  override val pennsieveSwaggerTag = "Health"
 
   val getHealthOperation = (apiOperation[Unit]("getHealth")
     summary "performs a health check")
@@ -67,11 +67,11 @@ class HealthController(
           .run(sql"select 1".as[Int])
           .map(_.contains(1))
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT[CoreError](dbCheck)(
           ServiceError("DB connection unavailable")
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield ()
 

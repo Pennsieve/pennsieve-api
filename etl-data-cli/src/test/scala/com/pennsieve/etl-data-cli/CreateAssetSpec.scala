@@ -26,11 +26,12 @@ import com.pennsieve.models.{
   Package
 }
 import com.pennsieve.test.helpers.AwaitableImplicits._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import java.io.{ File => JavaFile }
-import org.scalatest.{ FlatSpec, Matchers }
 
-class CreateAssetSpec extends FlatSpec with Matchers {
+class CreateAssetSpec extends AnyFlatSpec with Matchers {
 
   "decodeAssetInfo" should "parse a JSON file into an AssetInfo" in {
     val file: JavaFile =

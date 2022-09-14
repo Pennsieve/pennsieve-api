@@ -19,17 +19,18 @@ package com.pennsieve.api
 import com.pennsieve.db.TimeSeriesAnnotation
 import com.pennsieve.models.{ Channel, ModelProperty, Package }
 import com.pennsieve.dtos.{ ChannelDTO, ModelPropertiesDTO, ModelPropertyRO }
+
 import scala.collection.SortedSet
 import com.pennsieve.helpers.{ DataSetTestMixin, TimeSeriesHelper }
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.TimeSeries
 import org.json4s._
 import org.json4s.jackson.Serialization.write
-import org.scalatest.FlatSpec
 import org.scalatest.EitherValues._
+import org.scalatest.flatspec.AnyFlatSpec
 
 class TestTimeSeriesController
-    extends FlatSpec
+    extends AnyFlatSpec
     with ApiSuite
     with DataSetTestMixin {
 
@@ -55,7 +56,6 @@ class TestTimeSeriesController
     val `package` = packageManager
       .create("Baz", TimeSeries, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     val channels = (1 to numberOfChannels).map { i =>
@@ -72,7 +72,6 @@ class TestTimeSeriesController
           0
         )
         .await
-        .right
         .value
     }.toList
 
@@ -165,8 +164,7 @@ class TestTimeSeriesController
     val packageStartTime = TimeSeriesHelper
       .getPackageStartTime(tsPkg, secureContainer)
       .await
-      .right
-      .get
+      .value
 
     get(
       s"/${tsPkg.nodeId}/channels/${channel.nodeId}?startAtEpoch=true",
@@ -298,7 +296,6 @@ class TestTimeSeriesController
       val updated = timeSeriesManager
         .getChannel(origChannels.head.id, tsPkg)
         .await
-        .right
         .value
       updated.end should equal(12345L)
     }
@@ -345,7 +342,7 @@ class TestTimeSeriesController
       ))
 
       val updatedPackageChannels =
-        timeSeriesManager.getChannels(tsPkg).await.right.value
+        timeSeriesManager.getChannels(tsPkg).await.value
 
       val firstPackageChannel =
         updatedPackageChannels.find(_.nodeId == firstChannel.content.id).get

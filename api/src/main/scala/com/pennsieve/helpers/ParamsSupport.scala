@@ -146,19 +146,19 @@ object Param {
   /**
     * An implicit instance must be constructed for each enum to be decoded.
     */
-  def enumParam[A <: EnumEntry](enum: Enum[A]): Param[A] =
+  def enumParam[A <: EnumEntry](paramEnum: Enum[A]): Param[A] =
     new Param[A] {
       def get(
         value: String
       )(implicit
         key: ParamKey
       ): Either[ActionResult, A] =
-        enum
+        paramEnum
           .withNameInsensitiveOption(value)
           .toRight(
             BadRequest(
               Error(
-                s"invalid parameter $key: must be one of ${enum.values.map(_.entryName)}"
+                s"invalid parameter $key: must be one of ${paramEnum.values.map(_.entryName)}"
               )
             )
           )
@@ -286,7 +286,8 @@ trait ParamsSupport {
     jsonFormats: Formats,
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, T] =
-    Try(json.extract[T]).orBadRequest.toEitherT[Future]
+    Try(json.extract[T]).orBadRequest
+      .toEitherT[Future]
 
   def decodeOrErrorT[T: Decoder](
     value: String

@@ -70,7 +70,7 @@ class TestAnnotationsController extends BaseApiTest {
     }
 
     val anns: Map[AnnotationLayer, Seq[Annotation]] =
-      annotationManager.find(personal).await.right.value
+      annotationManager.find(personal).await.value
 
     //we should find one empty layer
     assert(anns.values.toList.contains(Seq()))
@@ -81,7 +81,6 @@ class TestAnnotationsController extends BaseApiTest {
     val oldLayer = annotationManager
       .createLayer(personal, "test layer", "autumn embers")
       .await
-      .right
       .value
 
     val updateRequest =
@@ -95,7 +94,7 @@ class TestAnnotationsController extends BaseApiTest {
       status should equal(200)
 
       val updatedLayer =
-        annotationManager.getLayer(oldLayer.id).await.right.value
+        annotationManager.getLayer(oldLayer.id).await.value
 
       assert(updatedLayer.color == "red")
       assert(updatedLayer.name == "test layer updated")
@@ -107,7 +106,6 @@ class TestAnnotationsController extends BaseApiTest {
     val deleteme = annotationManager
       .createLayer(personal, "doomed layer", "black")
       .await
-      .right
       .value
 
     delete(s"/layer/${deleteme.id}", headers = authorizationHeader(loggedInJwt)) {
@@ -148,7 +146,6 @@ class TestAnnotationsController extends BaseApiTest {
     val testLayer = annotationManager
       .createLayer(home, "test layer", "autumn embers")
       .await
-      .right
       .value
 
     val props = List(
@@ -184,12 +181,10 @@ class TestAnnotationsController extends BaseApiTest {
     val layer = annotationManager
       .createLayer(home, "home folder", "red")
       .await
-      .right
       .value
     val annotation = annotationManager
       .create(loggedInUser, layer, "this is the thing", Nil, props)
       .await
-      .right
       .value
 
     get(
@@ -210,18 +205,15 @@ class TestAnnotationsController extends BaseApiTest {
     val layer = annotationManager
       .createLayer(home, "home folder", "red")
       .await
-      .right
       .value
     val layer2 = annotationManager
       .createLayer(home, "the other layer", "blue")
       .await
-      .right
       .value
 
     val annotation = annotationManager
       .create(loggedInUser, layer, "this is the thing", Nil, props)
       .await
-      .right
       .value
 
     putJson(
@@ -231,7 +223,7 @@ class TestAnnotationsController extends BaseApiTest {
     ) {
       status should equal(200)
       body should include("not the thing you're looking for")
-      val ann = annotationManager.get(annotation.id).await.right.value
+      val ann = annotationManager.get(annotation.id).await.value
       assert(ann.description == "not the thing you're looking for")
       assert(ann.layerId == layer.id)
     }
@@ -245,7 +237,7 @@ class TestAnnotationsController extends BaseApiTest {
     ) {
       status should equal(200)
       body should include("another annotation update")
-      val ann = annotationManager.get(annotation.id).await.right.value
+      val ann = annotationManager.get(annotation.id).await.value
       assert(ann.description == "another annotation update")
       assert(ann.layerId == layer2.id)
     }
@@ -257,12 +249,10 @@ class TestAnnotationsController extends BaseApiTest {
     val layer = annotationManager
       .createLayer(home, "home folder", "red")
       .await
-      .right
       .value
     val _annotation = annotationManager
       .create(loggedInUser, layer, "this is the thing", Nil, Nil)
       .await
-      .right
       .value
 
     delete(
@@ -281,15 +271,13 @@ class TestAnnotationsController extends BaseApiTest {
     val layer = annotationManager
       .createLayer(home, "home folder", "red")
       .await
-      .right
       .value
     val _annotation = annotationManager
       .create(loggedInUser, layer, "this is the thing", Nil, Nil)
       .await
-      .right
       .value
     val discussion =
-      discussionManager.create(home, Some(_annotation)).await.right.value
+      discussionManager.create(home, Some(_annotation)).await.value
     discussionManager.createComment("hey there", loggedInUser, discussion).await
 
     delete(

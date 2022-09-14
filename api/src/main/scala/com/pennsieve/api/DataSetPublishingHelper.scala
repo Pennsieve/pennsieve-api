@@ -615,7 +615,7 @@ case object DataSetPublishingHelper extends LazyLogging {
                   )
                 )
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
       }
 
       _ <- secureContainer

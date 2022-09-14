@@ -37,12 +37,14 @@ import com.pennsieve.models.{
   User
 }
 import com.pennsieve.traits.PostgresProfile.api._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.EitherValues._
+
 import java.util.UUID
 
-import org.scalatest.{ Matchers, WordSpec }
-
 trait UploadsConsumerDatabaseSpecHarness
-    extends WordSpec
+    extends AnyWordSpec
     with UploadsConsumerSpecHarness
     with Matchers {
 
@@ -73,8 +75,7 @@ trait UploadsConsumerDatabaseSpecHarness
     val teams = new OrganizationManager(consumerContainer.db)
       .getPublisherTeam(organization)
       .await
-      .right
-      .get
+      .value
 
     val (publisherTeam, orgTeam) = teams
 
@@ -95,8 +96,7 @@ trait UploadsConsumerDatabaseSpecHarness
     val status = new DatasetStatusManager(consumerContainer.db, organization)
       .create("Test")
       .await
-      .right
-      .get
+      .value
 
     val dataset = Dataset(
       nodeId = NodeCodes.generateId(NodeCodes.dataSetCode),
@@ -166,8 +166,7 @@ trait UploadsConsumerDatabaseSpecHarness
         comments = Some("v1")
       )
       .await
-      .right
-      .get
+      .value
 
   }
 }

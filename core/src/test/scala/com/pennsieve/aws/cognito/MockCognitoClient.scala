@@ -100,7 +100,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     sentDeletes.append(token)
-    Future.successful(Unit)
+    Future.successful(())
   }
 
   def unlinkExternalUser(
@@ -111,7 +111,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     unlinkedExternalUsers.append((providerName, attributeName, attributeValue))
-    Future.successful(Unit)
+    Future.successful(())
   }
 
   def deleteUser(
@@ -120,7 +120,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     deletedUsers.append(username)
-    Future.successful(Unit)
+    Future.successful(())
   }
 
   def disableUser(
@@ -129,7 +129,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     disabledUsers.append(username)
-    Future.successful(Unit)
+    Future.successful(())
   }
 
   def deleteUserAttributes(
@@ -139,7 +139,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     deletedUserAttributes.append((username, attributeNames))
-    Future.successful(Unit)
+    Future.successful(())
   }
 
   def updateUserAttribute(

@@ -46,7 +46,7 @@ class CollectionsController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Collections"
+  override val pennsieveSwaggerTag = "Collections"
 
   get(
     "/",
@@ -58,11 +58,10 @@ class CollectionsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[CollectionDTO]] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           collection <- secureContainer.collectionManager
             .getCollections()
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield collection.map(CollectionDTO(_))
 
@@ -83,13 +82,12 @@ class CollectionsController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, CollectionDTO] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         body <- extractOrErrorT[CreateCollectionRequest](parsedBody)
 
         newCollection <- secureContainer.collectionManager
           .create(name = body.name)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield CollectionDTO(newCollection)
 
@@ -109,19 +107,18 @@ class CollectionsController(
   put("/:id", operation(updateCollectionOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, CollectionDTO] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         body <- extractOrErrorT[UpdateCollectionRequest](parsedBody)
 
         collectionId <- paramT[Int]("id")
 
         collection <- secureContainer.collectionManager
           .get(collectionId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         newCollection <- secureContainer.collectionManager
           .update(collection = collection, name = body.name)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield CollectionDTO(newCollection)
 

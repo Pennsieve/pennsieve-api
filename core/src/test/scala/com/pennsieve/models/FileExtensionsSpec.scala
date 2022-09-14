@@ -17,9 +17,10 @@
 package com.pennsieve.models
 
 import com.pennsieve.core.{ utilities => coreUtilities }
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class FileExtensionsSpec extends FlatSpec with Matchers {
+class FileExtensionsSpec extends AnyFlatSpec with Matchers {
 
   "splitFileName" should "return correctly for normal file names" in {
 

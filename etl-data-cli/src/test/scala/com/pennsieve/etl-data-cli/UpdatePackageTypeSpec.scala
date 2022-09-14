@@ -19,9 +19,10 @@ package com.pennsieve.etl.`data-cli`
 import com.pennsieve.models.PackageType
 import com.pennsieve.models.{ Dataset, Package }
 import com.pennsieve.test.helpers.AwaitableImplicits._
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class UpdatePackageTypeSpec extends FlatSpec with Matchers {
+class UpdatePackageTypeSpec extends AnyFlatSpec with Matchers {
 
   "decodePackageType" should "parse a string into a PackageType" in {
     val result = UpdatePackageType.decodePackageType("Slide").await
@@ -56,7 +57,7 @@ class UpdatePackageTypeDatabaseSpec extends DataCLIDatabaseSpecHarness {
 
   "update" should "should update package type" in {
 
-    getPackage(`package` id).`type` should equal(PackageType.Image)
+    getPackage(`package`.id).`type` should equal(PackageType.Image)
 
     UpdatePackageType
       .update(`package`.id, organization.id, PackageType.Slide)(
@@ -64,7 +65,7 @@ class UpdatePackageTypeDatabaseSpec extends DataCLIDatabaseSpecHarness {
       )
       .await
 
-    getPackage(`package` id).`type` should equal(PackageType.Slide)
+    getPackage(`package`.id).`type` should equal(PackageType.Slide)
 
   }
 }

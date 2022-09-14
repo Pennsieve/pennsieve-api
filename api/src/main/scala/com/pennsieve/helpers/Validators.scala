@@ -18,22 +18,38 @@ package com.pennsieve.helpers
 
 object Validators {
 
-  def greaterThan[T <% Ordered[T]](min: T): T => Either[String, T] =
+  def greaterThan[T](
+    min: T
+  )(implicit
+    ev: T => Ordered[T]
+  ): T => Either[String, T] =
     (value: T) =>
       if (value > min) Right(value)
       else Left(s"must be greater than $min")
 
-  def greaterThanOrEqualTo[T <% Ordered[T]](min: T): T => Either[String, T] =
+  def greaterThanOrEqualTo[T](
+    min: T
+  )(implicit
+    ev: T => Ordered[T]
+  ): T => Either[String, T] =
     (value: T) =>
       if (value >= min) Right(value)
       else Left(s"must be greater than or equal to $min")
 
-  def lessThan[T <% Ordered[T]](max: T): T => Either[String, T] =
+  def lessThan[T](
+    max: T
+  )(implicit
+    ev: T => Ordered[T]
+  ): T => Either[String, T] =
     (value: T) =>
       if (value < max) Right(value)
       else Left(s"must be less than $max")
 
-  def lessThanOrEqualTo[T <% Ordered[T]](max: T): T => Either[String, T] =
+  def lessThanOrEqualTo[T](
+    max: T
+  )(implicit
+    ev: T => Ordered[T]
+  ): T => Either[String, T] =
     (value: T) =>
       if (value <= max) Right(value)
       else Left(s"must be less than or equal to $max")

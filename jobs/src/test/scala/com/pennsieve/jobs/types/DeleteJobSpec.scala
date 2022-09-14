@@ -42,6 +42,8 @@ import com.typesafe.config.{ Config, ConfigFactory }
 import org.apache.commons.io.IOUtils
 import org.scalatest.EitherValues._
 import org.scalatest._
+import org.scalatest.flatspec.FixtureAnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import scalikejdbc.ConnectionPool
 import scalikejdbc.scalatest.AutoRollback
 
@@ -107,7 +109,7 @@ class MockModelServiceClient extends ModelServiceV2Client {
 }
 
 class DeleteJobSpec
-    extends fixture.FlatSpec
+    extends FixtureAnyFlatSpec
     with SpecHelper
     with Matchers
     with TestKitBase
@@ -440,7 +442,6 @@ class DeleteJobSpec
     val channel = tm
       .createChannel(timeseriesPackage, "test", 0, 100, "", 1, "type", None, 0)
       .await
-      .right
       .value
 
     val lookups = (0 to 9).map { i =>
@@ -475,7 +476,6 @@ class DeleteJobSpec
         data = None
       )(tm)
       .await
-      .right
       .value
 
     val msg: CatalogDeleteJob =
@@ -603,8 +603,7 @@ class DeleteJobSpec
       )
 
     val deleteJobResult = deleteJob.deleteDatasetJobWithResult(job).await
-    assert(deleteJobResult.isRight)
-    val (deleteResult, deleteSummary) = deleteJobResult.right.get
+    val (deleteResult, deleteSummary) = deleteJobResult.value
     assert(deleteSummary.done)
     assert(deleteSummary.counts.models == 10)
     assert(deleteSummary.counts.properties == 50)

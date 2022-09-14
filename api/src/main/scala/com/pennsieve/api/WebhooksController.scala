@@ -74,7 +74,7 @@ class WebhooksController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Webhooks"
+  override val pennsieveSwaggerTag = "Webhooks"
 
   post(
     "/",
@@ -88,8 +88,7 @@ class WebhooksController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, WebhookDTO] = for {
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         body <- extractOrErrorT[CreateWebhookRequest](parsedBody)
 
         // All integrations have an associated user
@@ -105,7 +104,7 @@ class WebhooksController(
               lastName = "User"
             )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Adding the integrationuser to the organization
         _ <- insecureContainer.organizationManager
@@ -114,7 +113,7 @@ class WebhooksController(
             integrationUser,
             DBPermission.Delete
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Create the API-Token and Secret:
         // Using INSECURE CONTAINER as we are creating an API key using a different user than the targeted user.
@@ -125,7 +124,7 @@ class WebhooksController(
             organization = secureContainer.organization,
             cognitoClient = cognitoClient
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Create the webhook and eventType subscriptions.
         newWebhookAndSubscriptions <- secureContainer.webhookManager
@@ -141,7 +140,7 @@ class WebhooksController(
             targetEvents = body.targetEvents,
             integrationUser = integrationUser
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         WebhookDTO(
@@ -158,16 +157,18 @@ class WebhooksController(
     "/",
     operation(
       apiOperation[List[WebhookDTO]]("getIntegrations")
-        summary "gets all integrations that a user has permission to and that belong to the given organization"
-        parameters ()
+        .summary(
+          "gets all integrations that a user has permission to and that belong to the given organization"
+        )
     )
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[WebhookDTO]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           webhookMap <- {
-            secureContainer.webhookManager.getWithSubscriptions
+            secureContainer.webhookManager
+              .getWithSubscriptions()
               .coreErrorToActionResult()
           }
 
@@ -189,12 +190,12 @@ class WebhooksController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, WebhookDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         webhookId <- paramT[Int]("id")
 
         webhookMap <- secureContainer.webhookManager
           .getWithSubscriptions(webhookId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield WebhookDTO(webhookMap._1, webhookMap._2)
 
@@ -214,13 +215,13 @@ class WebhooksController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, WebhookDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         webhookId <- paramT[Int]("id")
         body <- extractOrErrorT[UpdateWebhookRequest](parsedBody)
 
         webhook <- secureContainer.webhookManager
           .getWithPermissionCheck(webhookId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updatedWebhook = webhook.copy(
           apiUrl = body.apiUrl.getOrElse(webhook.apiUrl),
@@ -234,7 +235,7 @@ class WebhooksController(
         )
         updatedWebhookAndEvents <- secureContainer.webhookManager
           .update(updatedWebhook, body.targetEvents)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield WebhookDTO(updatedWebhookAndEvents._1, updatedWebhookAndEvents._2)
 
@@ -253,20 +254,20 @@ class WebhooksController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Int] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         webhookId <- paramT[Int]("id")
         webhook <- secureContainer.webhookManager
           .getWithPermissionCheck(webhookId, DBPermission.Administer)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         deleted <- secureContainer.webhookManager
           .delete(webhook)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Remove users associated with Webhook
         integrationMember <- insecureContainer.userManager
           .get(webhook.integrationUserId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         userDatasets <- secureContainer.datasetManager
           .find(integrationMember, Role.Viewer)
@@ -304,7 +305,7 @@ class WebhooksController(
         // Remove Integration User from Organization
         _ <- secureContainer.organizationManager
           .removeUser(secureContainer.organization, integrationMember)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield deleted
 

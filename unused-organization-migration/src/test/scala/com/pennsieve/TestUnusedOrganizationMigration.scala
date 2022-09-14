@@ -23,9 +23,9 @@ import com.pennsieve.models.{ Organization, User }
 import com.pennsieve.test.S3DockerContainer
 import com.pennsieve.utilities.`unused-organization-migration`.UnusedOrganizationMigrationContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
-import org.scalatest._
-import matchers._
 import com.pennsieve.traits.PostgresProfile.api._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -77,8 +77,7 @@ class TestUnusedOrganizationMigration
     userManager
       .get(otherUser.id)
       .await
-      .right
-      .get
+      .value
       .preferredOrganizationId shouldBe (Some(testOrganization2.id))
 
     migration.scanAndDeleteAll()
@@ -87,16 +86,14 @@ class TestUnusedOrganizationMigration
     userManager
       .get(otherUser.id)
       .await
-      .right
-      .get
+      .value
       .preferredOrganizationId shouldBe (Some(testOrganization.id))
 
     // If not part of other org, set to NULL
     userManager
       .get(thirdUser.id)
       .await
-      .right
-      .get
+      .value
       .preferredOrganizationId shouldBe (None)
 
     // Organization should be gone

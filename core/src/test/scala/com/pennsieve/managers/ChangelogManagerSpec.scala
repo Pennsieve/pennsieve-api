@@ -19,10 +19,10 @@ package com.pennsieve.managers
 import cats.data._
 import cats.implicits._
 import com.pennsieve.models._
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.traits.PostgresProfile.api._
 import org.scalatest.OptionValues._
-import org.scalatest.Matchers._
+import org.scalatest.EitherValues._
+import org.scalatest.matchers.should.Matchers._
 
 import java.util.UUID
 import java.time.{ LocalDate, ZoneId, ZoneOffset, ZonedDateTime }
@@ -49,7 +49,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
     dataset: Dataset,
     cm: ChangelogManager
   ): ChangelogEventAndType =
-    cm.logEvent(dataset, detail, date).await.right.get
+    cm.logEvent(dataset, detail, date).await.value
 
   def logEvents(
     events: (ChangelogEventDetail, ZonedDateTime)*
@@ -62,8 +62,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         case (e, d) => cm.logEvent(dataset, e, d)
       }
       .await
-      .right
-      .get
+      .value
 
   "cursor" should "round trip base64 encode/decode" in {
 
@@ -77,7 +76,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
     val encoded = ChangelogEventGroupCursor.encodeBase64(cursor)
 
     val decoded =
-      ChangelogEventGroupCursor.decodeBase64(encoded).right.get
+      ChangelogEventGroupCursor.decodeBase64(encoded).value
 
     cursor shouldBe decoded
   }
@@ -123,15 +122,14 @@ class ChangelogManagerSpec extends BaseManagerSpec {
     val dm = datasetManager()
     val cm = changelogManager()
 
-    val dataset = dm.create("test dataset").await.right.get
+    val dataset = dm.create("test dataset").await.value
 
     cm.logEvent(
         dataset,
         ChangelogEventDetail.CreatePackage(433, None, None, None)
       )
       .await
-      .right
-      .get
+      .value
   }
 
   "publication log" should "push events to changelog" in {
@@ -140,21 +138,19 @@ class ChangelogManagerSpec extends BaseManagerSpec {
     val cm = changelogManager()
     val dpsm = datasetPublicationStatusManager()
 
-    val dataset = dm.create("test dataset").await.right.get
+    val dataset = dm.create("test dataset").await.value
 
     val status = dpsm
       .create(dataset, PublicationStatus.Requested, PublicationType.Embargo)
       .await
-      .right
-      .get
+      .value
 
     val events = database
       .run(cm.changelogEventMapper.getEvents(dataset).result)
       .await
       .toList
       .traverse(ChangelogEventAndType.from(_))
-      .right
-      .get
+      .value
 
     events.map(e => (e.userId, e.eventType, e.detail)) shouldBe List(
       (
@@ -169,7 +165,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     val e1 = logEvent(
       ChangelogEventDetail.CreatePackage(19, None, None, None),
@@ -200,14 +196,13 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         )
       )
       .await
-      .right
-      .get
+      .value
 
     page1 shouldBe List(e4, e3, e2)
     cursor1 shouldBe defined
 
     val (page2, cursor2) =
-      cm.getEvents(dataset, limit = 3, cursor = cursor1.get).await.right.get
+      cm.getEvents(dataset, limit = 3, cursor = cursor1.get).await.value
 
     page2 shouldBe List(e1)
     cursor2 shouldBe empty
@@ -217,7 +212,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     val e1 =
       logEvent(ChangelogEventDetail.CreatePackage(19, None, None, None), Now)
@@ -240,14 +235,13 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         )
       )
       .await
-      .right
-      .get
+      .value
 
     page1 shouldBe List(e4, e3, e2)
     cursor1 shouldBe defined
 
     val (page2, cursor2) =
-      cm.getEvents(dataset, limit = 3, cursor = cursor1.get).await.right.get
+      cm.getEvents(dataset, limit = 3, cursor = cursor1.get).await.value
 
     page2 shouldBe List(e1)
     cursor2 shouldBe empty
@@ -257,7 +251,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     val user1 = createUser()
     val user2 = createUser()
@@ -298,8 +292,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         )
       )
       .await
-      .right
-      .get
+      .value
 
     events.map(_.eventType) shouldBe List(ChangelogEventName.CREATE_PACKAGE)
   }
@@ -308,7 +301,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     val event =
       logEvent(
@@ -316,7 +309,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         Now.minusHours(2)
       )
 
-    val (timeline, _) = cm.getTimeline(dataset, now = Now).await.right.get
+    val (timeline, _) = cm.getTimeline(dataset, now = Now).await.value
     timeline.map(_._2) shouldBe List(Left(event))
   }
 
@@ -324,7 +317,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     val e1 = logEvent(
       ChangelogEventDetail.CreatePackage(21, None, None, None),
@@ -335,7 +328,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
       Now.minusHours(1)
     )
 
-    val (timeline, _) = cm.getTimeline(dataset, now = Now).await.right.get
+    val (timeline, _) = cm.getTimeline(dataset, now = Now).await.value
     timeline.map(_._2) shouldBe List(
       Right(
         ChangelogEventCursor(
@@ -352,7 +345,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     logEvents(
       (ChangelogEventDetail.CreatePackage(21, None, None, None), Now),
@@ -385,7 +378,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
       )
     )
 
-    val (timeline, cursor) = cm.getTimeline(dataset, now = Now).await.right.get
+    val (timeline, cursor) = cm.getTimeline(dataset, now = Now).await.value
     timeline.map(_._1) shouldBe List(
       ChangelogEventGroup(
         dataset.id,
@@ -442,11 +435,11 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     createSampleEvents(Now)
 
-    val (timeline, cursor) = cm.getTimeline(dataset, now = Now).await.right.get
+    val (timeline, cursor) = cm.getTimeline(dataset, now = Now).await.value
 
     timeline.map(_._1) shouldBe List(
       ChangelogEventGroup(
@@ -501,7 +494,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     val Now = ZonedDateTime.of(2021, 2, 16, 9, 0, 0, 0, EST)
 
@@ -516,8 +509,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         now = ZonedDateTime.of(2021, 2, 18, 9, 0, 0, 0, EST)
       )
       .await
-      .right
-      .get
+      .value
 
     // Should round group to Feb 1st instead of January 28th, which would be the
     // group period if dates were purely selected by 7-day intervals from today.
@@ -533,12 +525,12 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     createSampleEvents(Now)
 
     val (page1, cursor1) =
-      cm.getTimeline(dataset, limit = 3, now = Now).await.right.get
+      cm.getTimeline(dataset, limit = 3, now = Now).await.value
     cursor1 shouldBe defined
 
     page1.map(_._1) shouldBe List(
@@ -574,7 +566,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
     // Should split events across the week boundary
 
     val (page2, cursor2) =
-      cm.getTimeline(dataset, limit = 1, cursor1, now = Now).await.right.get
+      cm.getTimeline(dataset, limit = 1, cursor1, now = Now).await.value
 
     cursor2 shouldBe defined
 
@@ -591,7 +583,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
     )
 
     val (page3, cursor3) =
-      cm.getTimeline(dataset, limit = 2, cursor2, now = Now).await.right.get
+      cm.getTimeline(dataset, limit = 2, cursor2, now = Now).await.value
 
     cursor3 shouldBe None
 
@@ -612,7 +604,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     createSampleEvents(Now)
 
@@ -623,8 +615,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         now = Now
       )
       .await
-      .right
-      .get
+      .value
 
     packages
       .map(_._1)
@@ -641,8 +632,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         now = Now
       )
       .await
-      .right
-      .get
+      .value
 
     page1
       .map(_._1)
@@ -660,8 +650,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         now = Now
       )
       .await
-      .right
-      .get
+      .value
 
     page2
       .map(_._1)
@@ -674,7 +663,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     createSampleEvents(Now)
 
@@ -685,8 +674,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
         now = Now
       )
       .await
-      .right
-      .get
+      .value
 
     page
       .map(_._1)
@@ -701,7 +689,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
   "changelog" should "filter timeline by user" in {
 
     val dm = datasetManager()
-    val dataset = dm.create("test dataset").await.right.get
+    val dataset = dm.create("test dataset").await.value
     val cm = changelogManager()
 
     val user1 = createUser()
@@ -746,8 +734,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     cm.getTimeline(dataset, userId = Some(user1.id), now = Now)
       .await
-      .right
-      .get
+      .value
       ._1
       .map(_._1)
       .map(g => (g.eventType, g.totalCount)) shouldBe List(
@@ -759,8 +746,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     cm.getTimeline(dataset, userId = Some(user2.id), now = Now)
       .await
-      .right
-      .get
+      .value
       ._1
       .map(_._1)
       .map(g => (g.eventType, g.totalCount)) shouldBe List(
@@ -774,7 +760,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     logEvents(
       (ChangelogEventDetail.CreateRecord(UUID.randomUUID(), None, None), Now),
@@ -790,8 +776,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     cm.getTimeline(dataset, now = Now)
       .await
-      .right
-      .get
+      .value
       ._1
       .map(_._1)
       .map(g => g.eventType) shouldBe List(
@@ -804,7 +789,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
 
     val dm = datasetManager()
     implicit val cm = changelogManager()
-    implicit val dataset = dm.create("test dataset").await.right.get
+    implicit val dataset = dm.create("test dataset").await.value
 
     logEvents(
       (
@@ -817,7 +802,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
       )
     )
     val (page1, cursor1) =
-      cm.getTimeline(dataset, limit = 1, now = Now).await.right.get
+      cm.getTimeline(dataset, limit = 1, now = Now).await.value
 
     page1
       .map(_._1)
@@ -839,8 +824,7 @@ class ChangelogManagerSpec extends BaseManagerSpec {
     val (page2, cursor2) =
       cm.getTimeline(dataset, limit = 1, cursor = cursor1, now = Now)
         .await
-        .right
-        .get
+        .value
 
     page2
       .map(_._1)

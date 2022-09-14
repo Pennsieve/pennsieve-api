@@ -97,7 +97,7 @@ object ResultHandlers {
 
   def NoContentResult[T](result: Either[ActionResult, T]): ActionResult =
     HandleResult[T](result) { res =>
-      ActionResult(204, Unit, headers = Map.empty)
+      ActionResult(204, (), headers = Map.empty)
     }
 
   def OkFilterFieldResult[T](

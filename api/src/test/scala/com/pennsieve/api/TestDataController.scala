@@ -69,17 +69,14 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val collection2 = packageManager
       .create("Bar", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val pkg = packageManager
       .create("Baz", PDF, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     val moveReq = write(MoveRequest(List(pkg.nodeId), Some(collection2.nodeId)))
@@ -101,12 +98,10 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val collection2 = packageManager
       .create("Bar", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val pkg = packageManager
       .create(
@@ -118,7 +113,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection)
       )
       .await
-      .right
       .value
     val pkg2 = packageManager
       .create(
@@ -130,7 +124,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection2)
       )
       .await
-      .right
       .value
 
     val moveReq = write(MoveRequest(List(pkg.nodeId), Some(collection2.nodeId)))
@@ -155,12 +148,10 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val collection2 = packageManager
       .create("Bar", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val pkg = packageManager
       .create(
@@ -172,7 +163,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection)
       )
       .await
-      .right
       .value
     val pkg2 = packageManager
       .create(
@@ -184,7 +174,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection2)
       )
       .await
-      .right
       .value
 
     val pkg3 = packageManager
@@ -197,7 +186,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection2)
       )
       .await
-      .right
       .value
 
     val moveReq = write(
@@ -225,7 +213,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     val moveReq =
@@ -250,7 +237,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val collection2 = packageManager
       .create(
@@ -262,7 +248,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection)
       )
       .await
-      .right
       .value
     val moveReq =
       write(MoveRequest(List(collection.nodeId), Some(collection2.nodeId)))
@@ -286,7 +271,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val collection2 = packageManager
       .create(
@@ -298,7 +282,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection)
       )
       .await
-      .right
       .value
     val moveReq =
       write(MoveRequest(List(collection2.nodeId), Some(collection.nodeId)))
@@ -322,7 +305,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val collection2 = packageManager
       .create(
@@ -334,7 +316,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection)
       )
       .await
-      .right
       .value
     val moveReq = write(MoveRequest(List(collection2.nodeId), None))
 
@@ -347,7 +328,7 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       compactRender(parsedBody \ "failures") should not include (collection2.nodeId)
 
       val moved =
-        packageManager.getByNodeId(collection2.nodeId).await.right.value
+        packageManager.getByNodeId(collection2.nodeId).await.value
 
       assert(moved.parentId.isEmpty)
     }
@@ -374,12 +355,10 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val collection2 = packageManager
       .create("Bar", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val pkg = packageManager
       .create(
@@ -391,7 +370,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection)
       )
       .await
-      .right
       .value
 
     val moveReq = write(
@@ -425,7 +403,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     val collection2 = packageManager
       .create(
@@ -437,7 +414,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     val pkg1 = packageManager
       .create(
@@ -449,7 +425,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection1)
       )
       .await
-      .right
       .value
     secureContainer.storageManager
       .incrementStorage(spackages, 1000, pkg1.id)
@@ -458,14 +433,12 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val datasetStorageBefore = secureContainer.storageManager
       .getStorage(sdatasets, List(dataset1.id))
       .await
-      .right
       .value
       .get(dataset1.id)
       .flatten
     val storageMap1 = secureContainer.storageManager
       .getStorage(spackages, List(collection1.id, collection2.id, pkg1.id))
       .await
-      .right
       .value
     val coll1StorageBefore = storageMap1.get(collection1.id).flatten
     val coll2StorageBefore = storageMap1.get(collection2.id).flatten
@@ -492,14 +465,12 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val datasetStorageAfter = secureContainer.storageManager
       .getStorage(sdatasets, List(dataset1.id))
       .await
-      .right
       .value
       .get(dataset1.id)
       .flatten
     val storageMap2 = secureContainer.storageManager
       .getStorage(spackages, List(collection1.id, collection2.id, pkg1.id))
       .await
-      .right
       .value
     val coll1StorageAfter = storageMap2.get(collection1.id).flatten
     val coll2StorageAfter = storageMap2.get(collection2.id).flatten
@@ -523,7 +494,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     val myPkg = packageManager
       .create(
@@ -535,7 +505,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         None
       )
       .await
-      .right
       .value
     secureContainer.storageManager
       .incrementStorage(spackages, 1000, myPkg.id)
@@ -544,14 +513,12 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val datasetStorageBefore1 = secureContainer.storageManager
       .getStorage(sdatasets, List(myDataset.id))
       .await
-      .right
       .value
       .get(myDataset.id)
       .flatten
     val storageMapBefore = secureContainer.storageManager
       .getStorage(spackages, List(myCollection.id, myPkg.id))
       .await
-      .right
       .value
     val collStorageBefore1 = storageMapBefore.get(myCollection.id).flatten
     val pkgStorageBefore1 = storageMapBefore.get(myPkg.id).flatten
@@ -577,14 +544,12 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val datasetStorageAfter1 = secureContainer.storageManager
       .getStorage(sdatasets, List(myDataset.id))
       .await
-      .right
       .value
       .get(myDataset.id)
       .flatten
     val storageMapAfter = secureContainer.storageManager
       .getStorage(spackages, List(myCollection.id, myPkg.id))
       .await
-      .right
       .value
     val collStorageAfter1 = storageMapAfter.get(myCollection.id).flatten
     val pkgStorageAfter1 = storageMapAfter.get(myPkg.id).flatten
@@ -600,7 +565,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val pkg = packageManager
       .create("Foo", PDF, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val deleteReq = write(DeleteRequest(List(pkg.nodeId)))
 
@@ -619,7 +583,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     val deleteReq = write(DeleteRequest(List(collection.nodeId)))
@@ -671,12 +634,10 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val pkg = packageManager
       .create("Baz", PDF, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     val datasetTwo = createDataSet("My DataSet2")
@@ -684,7 +645,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val collection2 = packageManager
       .create("Bar", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
     val pkg2 = packageManager
       .create(
@@ -696,7 +656,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
         Some(collection2)
       )
       .await
-      .right
       .value
 
     val validItemIds = List(pkg.nodeId, collection.nodeId)
@@ -734,7 +693,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val pkg = packageManager
       .create("Foo", PDF, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     val property = ModelPropertyRO(
@@ -753,7 +711,7 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-      val updatedPkg = packageManager.get(pkg.id).await.right.value
+      val updatedPkg = packageManager.get(pkg.id).await.value
       updatedPkg.attributes.find(_.key == "test") shouldBe defined
     }
   }
@@ -764,7 +722,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     val pkg = packageManager
       .create("Foo", PDF, DELETING, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     putJson(

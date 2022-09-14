@@ -45,7 +45,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
     new AWSBootstrapHelper
   }
 
-  override def init(context: ServletContext) {
+  override def init(context: ServletContext): Unit = {
 
     try {
 
@@ -55,7 +55,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
 
       // disable CORS support
       ///////////////////////////////
-      context.initParameters("org.scalatra.cors.enable") = "false"
+      context.setInitParameter("org.scalatra.cors.enable", "false")
 
       // documentation endpoints
       ///////////////////////////////
@@ -315,7 +315,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
     }
   }
 
-  override def destroy(context: ServletContext) {
+  override def destroy(context: ServletContext): Unit = {
     system.terminate()
   }
 }

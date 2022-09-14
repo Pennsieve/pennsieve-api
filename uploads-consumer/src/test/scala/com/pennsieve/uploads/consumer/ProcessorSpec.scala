@@ -17,17 +17,18 @@
 package com.pennsieve.uploads.consumer
 
 import com.pennsieve.models._
-import com.pennsieve.test.helpers.EitherValue._
+import org.scalatest.EitherValues._
 import io.circe.syntax._
 import io.circe.java8.time._
-import java.util.UUID
 
+import java.util.UUID
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
 import com.pennsieve.akka.consumer.ProcessorUtilities
 import com.pennsieve.models
-import org.scalatest.{ Matchers, WordSpec }
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class ProcessorSpec extends WordSpec with Matchers {
+class ProcessorSpec extends AnyWordSpec with Matchers {
 
   val importId: JobId = new JobId(UUID.randomUUID)
   val packageId: Int = 1

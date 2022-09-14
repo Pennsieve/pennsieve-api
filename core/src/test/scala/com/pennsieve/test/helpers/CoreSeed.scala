@@ -17,7 +17,6 @@
 package com.pennsieve.test.helpers
 
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.core.utilities.{
   OrganizationManagerContainer,
   PostgresDatabase,
@@ -27,7 +26,7 @@ import com.pennsieve.managers.{ SecureOrganizationManager, UserManager }
 import com.pennsieve.models.DBPermission.{ Administer, Delete, Owner }
 import com.pennsieve.models.SubscriptionStatus.ConfirmedSubscription
 import com.pennsieve.models._
-
+import org.scalatest.EitherValues._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 trait CoreSeed[

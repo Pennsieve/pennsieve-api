@@ -61,7 +61,7 @@ import com.pennsieve.models.{
   Upload
 }
 import com.pennsieve.service.utilities.ContextLogger
-import com.pennsieve.test.helpers.EitherValue._
+import org.scalatest.EitherValues._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.uploads.consumer.antivirus._
 import org.apache.commons.io.FilenameUtils
