@@ -58,6 +58,8 @@ class TestDataCanvasController
     super.afterEach()
   }
 
+  // TODO: write a test for assign DataCanvas owner on create
+
   /**
     * GET tests (read)
     */
@@ -90,6 +92,63 @@ class TestDataCanvasController
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
+    }
+  }
+
+  test("get a user's own data-canvases requires authentication") {
+    val canvas = createDataCanvas(
+      "get a user's own data-canvases requires authentication",
+      "get a user's own data-canvases requires authentication"
+    )
+    get("/", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+    }
+  }
+
+  test("get a user's own data-canvases fails when not authenticated") {
+    val canvas = createDataCanvas(
+      "get a user's own data-canvases requires authentication",
+      "get a user's own data-canvases requires authentication"
+    )
+    get("/") {
+      status should equal(401)
+    }
+  }
+
+  test("get a user's own data-canvases returns only their data-canvases") {
+    // create a data-canvas, owner = user 1
+    postJson(
+      "/",
+      write(
+        CreateDataCanvasRequest(
+          name = "test: user 1's canvas",
+          description = "test: create a new data-canvas"
+        )
+      ),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
+    // create a data-canvas, owner = user 2
+    postJson(
+      "/",
+      write(
+        CreateDataCanvasRequest(
+          name = "test: user 2's canvas",
+          description = "test: create a new data-canvas"
+        )
+      ),
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
+    // invoke the API for user 1
+    get("/", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      // only one data-canvas should be returned
+      val result: List[DataCanvasDTO] = parsedBody
+        .extract[List[DataCanvasDTO]]
+      result.length should equal(1)
     }
   }
 
@@ -306,7 +365,7 @@ class TestDataCanvasController
       s"/${canvas.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(204)
     }
   }
 
@@ -377,7 +436,6 @@ class TestDataCanvasController
     val createFolderRequest =
       write(CreateDataCanvasFolder(name = randomString(), parent = None))
 
-    println(s"TEST - /${canvas.id}/folder body: ${createFolderRequest}")
     postJson(s"/${canvas.id}/folder", createFolderRequest) {
       status should equal(401)
     }
@@ -393,7 +451,7 @@ class TestDataCanvasController
       createFolderRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(201)
     }
   }
 
@@ -442,7 +500,7 @@ class TestDataCanvasController
       createFolderRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(201)
     }
 
     postJson(
@@ -509,7 +567,7 @@ class TestDataCanvasController
       folderRenameRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(201)
     }
   }
 
@@ -556,7 +614,7 @@ class TestDataCanvasController
       folderMoveRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(201)
     }
   }
 
@@ -631,7 +689,7 @@ class TestDataCanvasController
       s"/${canvas.id}/folder/${folder.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(204)
     }
   }
 
@@ -669,7 +727,7 @@ class TestDataCanvasController
       s"/${canvas.id}/folder/${topFolder.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(204)
     }
 
     get(
@@ -683,10 +741,11 @@ class TestDataCanvasController
   /**
     * Package tests
     */
-  ignore("package attach requires authentication") {
+  test("package attach requires authentication") {
     val dataset = createDataSet("a test dataset")
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
+    val folder = createFolder(canvas.id)
     val attachPackageRequest = write(
       AttachPackageRequest(
         datasetId = dataset.id,
@@ -695,32 +754,34 @@ class TestDataCanvasController
       )
     )
 
-    postJson(s"/${canvas.id}/package", attachPackageRequest) {
+    postJson(s"/${canvas.id}/folder/${folder.id}/package", attachPackageRequest) {
       status should equal(401)
     }
   }
 
-  ignore("package attach to data-canvas - no organization specified") {
+  test("package attach succeeds when no organization is specified") {
     val dataset = createDataSet("a test dataset")
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
+    val folder = createFolder(canvas.id)
     val attachPackageRequest = write(
       AttachPackageRequest(datasetId = dataset.id, packageId = pkg.id, None)
     )
 
     postJson(
-      s"/${canvas.id}/package",
+      s"/${canvas.id}/folder/${folder.id}/package",
       attachPackageRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(201)
     }
   }
 
-  ignore("package attach to data-canvas - organization specified") {
+  test("package attach succeeds when an organization is specified") {
     val dataset = createDataSet("a test dataset")
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
+    val folder = createFolder(canvas.id)
     val attachPackageRequest = write(
       AttachPackageRequest(
         datasetId = dataset.id,
@@ -730,60 +791,79 @@ class TestDataCanvasController
     )
 
     postJson(
-      s"/${canvas.id}/package",
+      s"/${canvas.id}/folder/${folder.id}/package",
       attachPackageRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(201)
     }
   }
 
-  ignore("package get for a data-canvas requires authentication") {
-    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
+  test("package detach requires authentication") {
+    val dataset = createDataSet("a test dataset")
+    val `package` = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val folder = createFolder(canvas.id)
+    val attachPackageRequest = write(
+      AttachPackageRequest(
+        datasetId = dataset.id,
+        packageId = `package`.id,
+        organizationId = Some(loggedInOrganization.id)
+      )
+    )
 
-    get(s"/${canvas.id}/package/${packages(0).id}") {
-      status should equal(401)
-    }
-  }
-
-  ignore("package get for a data-canvas with authentication") {
-    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
-
-    get(
-      s"/${canvas.id}/package/${packages(0).id}",
+    postJson(
+      s"/${canvas.id}/folder/${folder.id}/package",
+      attachPackageRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(201)
     }
-  }
 
-  ignore("package detach requires authentication") {
-    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
-
-    delete(s"/${canvas.id}/package/${packages(0).id}") {
+    delete(s"/${canvas.id}/folder/${folder.id}/package/${`package`.id}") {
       status should equal(401)
     }
   }
 
+  // TODO: figure out why this tests fails
   ignore("package detach from data-canvas") {
-    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 1)
+    val dataset = createDataSet("a test dataset")
+    val `package` = createPackage(dataset, "a test package")
+    val canvas = createDataCanvas()
+    val folder = createFolder(canvas.id)
+    val attachPackageRequest = write(
+      AttachPackageRequest(
+        datasetId = dataset.id,
+        packageId = `package`.id,
+        organizationId = Some(loggedInOrganization.id)
+      )
+    )
+
+    postJson(
+      s"/${canvas.id}/folder/${folder.id}/package",
+      attachPackageRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
 
     delete(
-      s"/${canvas.id}/package/${packages(0).id}",
+      s"/${canvas.id}/folder/${folder.id}/package/${`package`.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
+      status should equal(204)
     }
   }
 
   /**
     * List of Packages operations
     */
-  ignore("list of packages - attach to a data-canvas") {
+  ignore("package list is attached to a data-canvas folder") {
     val dataset = createDataSet(randomString())
     val package1 = createPackage(dataset, randomString())
     val package2 = createPackage(dataset, randomString())
     val canvas = createDataCanvas()
+    val folder = createFolder(canvas.id)
 
     val attachPackagesRequest = write(
       List(
@@ -801,46 +881,16 @@ class TestDataCanvasController
     )
 
     postJson(
-      s"/${canvas.id}/packages",
+      s"/${canvas.id}/folder/${folder.id}/packages",
       attachPackagesRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
-    }
-
-    get(
-      s"/${canvas.id}/package/${package1.id}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
-
-    get(
-      s"/${canvas.id}/package/${package2.id}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
+      status should equal(201)
     }
   }
 
-  ignore("list of packages - get all packages attached to a data-canvas") {
-    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 2)
-
-    get(
-      s"/${canvas.id}/packages",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val result: List[com.pennsieve.models.Package] = parsedBody
-        .extract[List[com.pennsieve.models.Package]]
-
-      result.length should equal(2)
-    }
-  }
-
-  ignore("list of packages - remove a list of packages from a data-canvas") {
-    val (canvas, dataset, packages) = setupCanvas(numberOfPackages = 3)
+  ignore("package list is detached from a data-canvas folder") {
+    val (canvas, folder, dataset, packages) = setupCanvas(numberOfPackages = 3)
 
     val detachPackagesRequest = write(
       List(
@@ -858,23 +908,11 @@ class TestDataCanvasController
     )
 
     deleteJson(
-      s"/${canvas.id}/packages",
+      s"/${canvas.id}/folder/${folder.id}/packages",
       detachPackagesRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(200)
-    }
-
-    get(
-      s"/${canvas.id}/packages",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val result: List[com.pennsieve.models.Package] = parsedBody
-        .extract[List[com.pennsieve.models.Package]]
-
-      result.length should equal(1)
+      status should equal(204)
     }
   }
 

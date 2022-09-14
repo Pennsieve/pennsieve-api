@@ -25,13 +25,13 @@ import scala.concurrent.ExecutionContext
 final class DataCanvasPackageTable(schema: String, tag: Tag)
     extends Table[DataCanvasPackage](tag, Some(schema), "datacanvas_package") {
 
-  def dataCanvasId: Rep[Int] = column[Int]("datacanvas_id")
+  def dataCanvasFolderId: Rep[Int] = column[Int]("datacanvas_folder_id")
   def organizationId: Rep[Int] = column[Int]("organization_id")
   def packageId: Rep[Int] = column[Int]("package_id")
   def datasetId: Rep[Int] = column[Int]("dataset_id")
 
   def * =
-    (dataCanvasId, organizationId, packageId, datasetId)
+    (dataCanvasFolderId, organizationId, packageId, datasetId)
       .mapTo[DataCanvasPackage]
 }
 
@@ -46,7 +46,7 @@ class DataCanvasPackageMapper(val organization: Organization)
   ): DBIO[Boolean] =
     this
       .get(
-        dataCanvasPackage.dataCanvasId,
+        dataCanvasPackage.dataCanvasFolderId,
         dataCanvasPackage.datasetId,
         dataCanvasPackage.packageId
       )
@@ -60,12 +60,12 @@ class DataCanvasPackageMapper(val organization: Organization)
       .map(_.getOrElse(false))
 
   def get(
-    dataCanvasId: Int,
+    dataCanvasFolderId: Int,
     datasetId: Int,
     packageId: Int
   ): Query[DataCanvasPackageTable, DataCanvasPackage, Seq] =
     this
-      .filter(_.dataCanvasId === dataCanvasId)
+      .filter(_.dataCanvasFolderId === dataCanvasFolderId)
       .filter(_.datasetId === datasetId)
       .filter(_.packageId === packageId)
 }

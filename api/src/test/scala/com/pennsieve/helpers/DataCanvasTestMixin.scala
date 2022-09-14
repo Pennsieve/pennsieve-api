@@ -41,12 +41,13 @@ trait DataCanvasTestMixin extends DataSetTestMixin {
   def setupCanvas(numberOfPackages: Int = 1) = {
     val dataset = createDataSet(randomString())
     val canvas = createDataCanvas()
+    val folder = createFolder(canvas.id)
     val packages = List.range(1, numberOfPackages + 1).map { i =>
       val `package` = createPackage(dataset, randomString())
-      attachPackage(canvas, dataset, `package`)
+      attachPackage(canvas, folder, dataset, `package`)
       `package`
     }
-    (canvas, dataset, packages)
+    (canvas, folder, dataset, packages)
   }
 
   def createDataCanvas(
@@ -91,13 +92,20 @@ trait DataCanvasTestMixin extends DataSetTestMixin {
 
   def attachPackage(
     canvas: DataCanvas,
+    folder: DataCanvasFolder,
     dataset: Dataset,
     `package`: Package,
     organization: Organization = loggedInOrganization,
     container: SecureAPIContainer = secureContainer
   ): Unit =
     container.dataCanvasManager
-      .attachPackage(canvas.id, dataset.id, `package`.id, organization.id)
+      .attachPackage(
+        canvas.id,
+        folder.id,
+        dataset.id,
+        `package`.id,
+        organization.id
+      )
       .await match {
       case Left(error) => throw error
       case Right(_) => ()

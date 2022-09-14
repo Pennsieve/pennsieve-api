@@ -24,6 +24,7 @@ import com.pennsieve.db.{
   DataCanvasFolderMapper,
   DataCanvasMapper,
   DataCanvasPackageMapper,
+  DataCanvasUserMapper,
   PackagesMapper
 }
 import com.pennsieve.domain.{
@@ -34,12 +35,15 @@ import com.pennsieve.domain.{
   SqlError
 }
 import com.pennsieve.models.{
+  DBPermission,
   DataCanvas,
   DataCanvasFolder,
   DataCanvasPackage,
+  DataCanvasUser,
   NodeCodes,
   Organization,
   Package,
+  Role,
   User
 }
 import com.pennsieve.traits.PostgresProfile.api._
@@ -66,6 +70,9 @@ class DataCanvasManager(
 
   val organization: Organization = datacanvasMapper.organization
 
+  implicit val dataCanvasUser: DataCanvasUserMapper = new DataCanvasUserMapper(
+    organization
+  )
   val dataCanvasPackageMapper = new DataCanvasPackageMapper(organization)
   val dataCanvasFolderMapper = new DataCanvasFolderMapper(organization)
 
@@ -130,6 +137,14 @@ class DataCanvasManager(
           permissionBit = permissionBit.getOrElse(0),
           isPublic = isPublic.getOrElse(false)
         )
+
+        _ <- dataCanvasUser += DataCanvasUser(
+          dataCanvas.id,
+          actor.id,
+          DBPermission.Owner,
+          Some(Role.Owner)
+        )
+
       } yield dataCanvas
 
       dataCanvas <- db.run(createdDataCanvas.transactionally).toEitherT
@@ -161,6 +176,49 @@ class DataCanvasManager(
           .headOption
       )
       .whenNone(NotFound(id.toString))
+
+  def getByNodeId(
+    nodeId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvas] =
+    db.run(
+        datacanvasMapper
+          .filter(_.nodeId === nodeId)
+          .result
+          .headOption
+      )
+      .whenNone(NotFound(nodeId))
+
+  def getForUser(
+    userId: Int = actor.id,
+    withRole: Role = Role.Owner,
+    restrictToRole: Boolean = false
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DataCanvas]] = {
+    val query = dataCanvasUser.maxRoles(userId).flatMap {
+      roleMap: Map[Int, Option[Role]] =>
+        {
+          val dataCanvasIds: List[Int] = roleMap
+            .filter {
+              case (_, Some(role)) =>
+                if (restrictToRole) role == withRole
+                else role >= withRole
+              case (_, None) => false
+            }
+            .keys
+            .toList
+
+          val query = datacanvasMapper.filter(_.id.inSet(dataCanvasIds))
+
+          for {
+            datacanvases <- query.result
+          } yield datacanvases
+        }
+    }
+    db.run(query).toEitherT
+  }
 
   def update(
     dataCanvas: DataCanvas,
@@ -235,6 +293,7 @@ class DataCanvasManager(
 
   def attachPackage(
     dataCanvasId: Int,
+    folderId: Int,
     datasetId: Int,
     packageId: Int,
     organizationId: Int = organization.id
@@ -246,7 +305,7 @@ class DataCanvasManager(
 
       attachedDataCanvasPackage = for {
         dataCanvasPackage <- (dataCanvasPackageMapper returning dataCanvasPackageMapper) += DataCanvasPackage(
-          dataCanvasId = dataCanvasId,
+          dataCanvasFolderId = folderId,
           datasetId = datasetId,
           packageId = packageId,
           organizationId = organizationId
@@ -261,36 +320,42 @@ class DataCanvasManager(
   }
 
   def getPackage(
-    dataCanvasId: Int,
+    folderId: Int,
     packageId: Int,
-    datasetId: Option[Int] = None,
+    datasetId: Int,
     organizationId: Option[Int] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, DataCanvasPackage] = {
-    db.run(
-        dataCanvasPackageMapper
-          .filter(_.dataCanvasId === dataCanvasId)
-          .filter(_.packageId === packageId)
-          .result
-          .headOption
-      )
-      .whenNone(NotFound(s"dataCanvas: ${dataCanvasId} package: ${packageId}"))
+    val query = dataCanvasPackageMapper
+      .filter(_.dataCanvasFolderId === folderId)
+      .filter(_.datasetId === datasetId)
+      .filter(_.packageId === packageId)
+      .result
+      .head
+
+    db.run(query).toEitherT
   }
+
+  def getAllPackages(
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DataCanvasPackage]] =
+    db.run(dataCanvasPackageMapper.result).toEitherT
 
   def detachPackage(
     dataCanvasPackage: DataCanvasPackage
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Boolean] = {
+  ): EitherT[Future, CoreError, Boolean] =
     for {
-      _ <- FutureEitherHelpers.assert(dataCanvasPackage.dataCanvasId > 0)(
-        PredicateError("data-canvas id must be greater than zero")
+      _ <- FutureEitherHelpers.assert(dataCanvasPackage.dataCanvasFolderId > 0)(
+        PredicateError("data-canvas folder id must be greater than zero")
       )
 
       query = for {
         _ <- dataCanvasPackageMapper
-          .filter(_.dataCanvasId === dataCanvasPackage.dataCanvasId)
+          .filter(_.dataCanvasFolderId === dataCanvasPackage.dataCanvasFolderId)
           .filter(_.datasetId === dataCanvasPackage.datasetId)
           .filter(_.organizationId === dataCanvasPackage.organizationId)
           .filter(_.packageId === dataCanvasPackage.packageId)
@@ -304,24 +369,23 @@ class DataCanvasManager(
             SqlError(e.getMessage()): CoreError
         }
     } yield true
-  }
 
-  def getPackages(
-    dataCanvasId: Int
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Seq[Package]] = {
-    val query = dataCanvasPackageMapper
-      .filter(_.dataCanvasId === dataCanvasId)
-      .join(packagesMapper)
-      .on(_.packageId === _.id)
-      .map {
-        case (_, pkg) => pkg
-      }
-      .result
-
-    db.run(query).toEitherT
-  }
+//  def getPackages(
+//    dataCanvasId: Int
+//  )(implicit
+//    ec: ExecutionContext
+//  ): EitherT[Future, CoreError, Seq[Package]] = {
+//    val query = dataCanvasPackageMapper
+//      .filter(_.dataCanvasId === dataCanvasId)
+//      .join(packagesMapper)
+//      .on(_.packageId === _.id)
+//      .map {
+//        case (_, pkg) => pkg
+//      }
+//      .result
+//
+//    db.run(query).toEitherT
+//  }
 
   def getFolder(
     canvasId: Int,
