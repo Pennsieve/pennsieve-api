@@ -593,7 +593,6 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val whManager = webhookManager()
     val result = whManager.update(unsavedWebhook).await
 
-
     val error = result.left.value
     assert(error.isInstanceOf[NotFound])
     assert(error.getMessage.contains(unsavedWebhook.id.toString))

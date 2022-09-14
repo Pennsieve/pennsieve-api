@@ -498,9 +498,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       .addUserCollaborator(newDataset, user, Role.Editor)
       .await
 
-    assert(
-      secureDataSetManager.find(user, Role.Viewer).await.value.size == 1
-    )
+    assert(secureDataSetManager.find(user, Role.Viewer).await.value.size == 1)
     delete(
       s"/${loggedInOrganization.nodeId}/members/${user.nodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -513,9 +511,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         .await
         .value should not contain user
 
-      assert(
-        secureDataSetManager.find(user, Role.Viewer).await.value.isEmpty
-      )
+      assert(secureDataSetManager.find(user, Role.Viewer).await.value.isEmpty)
     }
   }
 
@@ -809,9 +805,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
           .value
           .size == 1
       )
-      assert(
-        packageManager.get(pkg.id).await.value.ownerId.contains(owner.id)
-      )
+      assert(packageManager.get(pkg.id).await.value.ownerId.contains(owner.id))
     }
   }
 
