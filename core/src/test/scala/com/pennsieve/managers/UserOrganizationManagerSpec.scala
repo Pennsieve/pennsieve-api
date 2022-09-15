@@ -26,8 +26,8 @@ import com.pennsieve.models.{
   SystemTeamType
 }
 import com.pennsieve.test.helpers.TestDatabase
-import com.pennsieve.test.helpers.EitherValue._
-import org.scalatest.Matchers
+import org.scalatest.EitherValues._
+import org.scalatest.matchers.should.Matchers
 import sun.awt.AWTAccessor.SystemTrayAccessor
 
 import scala.concurrent.ExecutionContext.Implicits.global

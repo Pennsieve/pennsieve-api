@@ -23,9 +23,10 @@ import com.pennsieve.aws.ssm.{
 import com.pennsieve.utilities.{ Container => ConfigContainer }
 import com.typesafe.config.ConfigFactory
 import net.ceedubs.ficus.Ficus._
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class ConfigSpec extends FlatSpec with Matchers {
+class ConfigSpec extends AnyFlatSpec with Matchers {
 
   "this" should "create an ssm container" in {
 

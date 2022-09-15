@@ -67,7 +67,7 @@ object Authenticator {
     organization: Organization,
     datasetId: Option[Int] = None,
     cognito: CognitoSession =
-      CognitoSession.Browser(CognitoId.UserPoolId.randomId,
+      CognitoSession.Browser(CognitoId.UserPoolId.randomId(),
         Instant.now().plusSeconds(60)),
     duration: FiniteDuration = 60.seconds
   )(implicit

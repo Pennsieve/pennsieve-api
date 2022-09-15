@@ -46,7 +46,7 @@ class APITokenController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "API Token"
+  override val pennsieveSwaggerTag = "API Token"
 
   /*
    * All routes in this controller should only be accessed via login-based authentication
@@ -68,12 +68,12 @@ class APITokenController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, APITokenSecretDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         organization = secureContainer.organization
         body <- extractOrError[CreateTokenRequest](parsedBody).toEitherT[Future]
         tokenSecret <- secureContainer.tokenManager
           .create(body.name, secureContainer.user, organization, cognitoClient)
-          .orError
+          .orError()
       } yield APITokenSecretDTO(tokenSecret)
 
       val is = result.value.map(CreatedResult)
@@ -89,11 +89,11 @@ class APITokenController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[APITokenDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         organization = secureContainer.organization
         tokens <- secureContainer.tokenManager
           .get(secureContainer.user, organization)
-          .orError
+          .orError()
       } yield tokens.map(t => APITokenDTO(t))
 
       val is = result.value.map(OkResult)
@@ -115,12 +115,12 @@ class APITokenController(
     new AsyncResult {
       val result = for {
         tokenUUID <- paramT[String]("uuid")
-        secureContainer <- getSecureContainer
-        token <- secureContainer.tokenManager.get(tokenUUID).orError
+        secureContainer <- getSecureContainer()
+        token <- secureContainer.tokenManager.get(tokenUUID).orError()
         body <- extractOrError[CreateTokenRequest](parsedBody).toEitherT[Future]
         updatedToken <- secureContainer.tokenManager
           .update(token.copy(name = body.name))
-          .orError
+          .orError()
       } yield APITokenDTO(updatedToken)
 
       override val is = result.value.map(OkResult)
@@ -138,11 +138,11 @@ class APITokenController(
     new AsyncResult {
       val result = for {
         tokenUUID <- paramT[String]("uuid")
-        secureContainer <- getSecureContainer
-        token <- secureContainer.tokenManager.get(tokenUUID).orError
+        secureContainer <- getSecureContainer()
+        token <- secureContainer.tokenManager.get(tokenUUID).orError()
         deleted <- secureContainer.tokenManager
           .delete(token, cognitoClient)
-          .orError
+          .orError()
       } yield deleted
 
       override val is = result.value.map(OkResult)

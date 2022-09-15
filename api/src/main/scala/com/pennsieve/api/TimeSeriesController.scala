@@ -118,7 +118,7 @@ class TimeSeriesController(
 ) extends ScalatraServlet
     with AuthenticatedController {
 
-  override val swaggerTag = "TimeSeries"
+  override val pennsieveSwaggerTag = "TimeSeries"
 
   // var so we can override in tests
   implicit var autoSession: DBSession = AutoSession
@@ -182,21 +182,21 @@ class TimeSeriesController(
   get("/:id/channels", operation(getChannelsOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         startAtEpoch <- paramT[Boolean]("startAtEpoch", default = false)
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         channels <- secureContainer.timeSeriesManager
           .getChannels(pkg)
-          .orError
+          .orError()
 
       } yield {
         if (startAtEpoch) {
@@ -228,25 +228,25 @@ class TimeSeriesController(
   get("/:id/channels/:channelId", operation(getChannelOperation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ChannelDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         channelId <- paramT[String]("channelId")
         startAtEpoch <- paramT[Boolean]("startAtEpoch", default = false)
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         channel <- secureContainer.timeSeriesManager
           .getChannelByNodeId(channelId, pkg)
-          .orNotFound
+          .orNotFound()
 
         packageStartTime <- if (startAtEpoch) {
-          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError
+          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         } else EitherT.pure[Future, ActionResult](0L)
 
         channelStartingAtEpoch = if (startAtEpoch) {
@@ -274,16 +274,16 @@ class TimeSeriesController(
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Any] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest("channels can only be added to time series packages")
@@ -309,7 +309,7 @@ class TimeSeriesController(
                 c.spikeDuration,
                 properties
               )
-              .orError
+              .orError()
           } yield channel
         }
       } yield
@@ -333,21 +333,21 @@ class TimeSeriesController(
   put("/:id/channels/:channelId", operation(updateChannel)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ChannelDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         channelId <- paramT[String]("channelId")
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest("channels only exist on time series packages")
         )
@@ -361,7 +361,7 @@ class TimeSeriesController(
 
         channel <- secureContainer.timeSeriesManager
           .getChannelByNodeId(channelId, pkg)
-          .orNotFound
+          .orNotFound()
         properties = ModelPropertyRO.fromRequestObject(channelParam.properties)
         updatedChannel = channel.copy(
           name = channelParam.name,
@@ -378,7 +378,7 @@ class TimeSeriesController(
 
         updated <- secureContainer.timeSeriesManager
           .updateChannel(updatedChannel, pkg)
-          .orError
+          .orError()
       } yield ChannelDTO(updated, pkg)
 
       override val is = result.value.map(OkResult)
@@ -398,25 +398,25 @@ class TimeSeriesController(
   put("/:id/channels/:channelId/properties", operation(updateChannel)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ChannelDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         channelId <- paramT[String]("channelId")
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         channel <- secureContainer.timeSeriesManager
           .getChannelByNodeId(channelId, pkg)
-          .orNotFound
+          .orNotFound()
         propertyRequestObjects <- extractOrErrorT[List[ModelPropertyRO]](
           parsedBody
         )
@@ -432,7 +432,7 @@ class TimeSeriesController(
 
         updated <- secureContainer.timeSeriesManager
           .updateChannel(updatedChannel, pkg)
-          .orError
+          .orError()
       } yield ChannelDTO(updated, pkg)
 
       override val is = result.value.map(OkResult)
@@ -452,20 +452,20 @@ class TimeSeriesController(
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[ChannelDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest("channels only exist on time series packages")
@@ -496,7 +496,7 @@ class TimeSeriesController(
                 .getChannelByNodeId(id, pkg)
           }
           .sequence
-          .orNotFound
+          .orNotFound()
 
         channelsMap = channelsTuples.toMap
         updatedChannels = channels.map { channel =>
@@ -519,7 +519,7 @@ class TimeSeriesController(
 
         updated <- secureContainer.timeSeriesManager
           .updateChannels(updatedChannels, pkg)
-          .orError
+          .orError()
       } yield updated.map(ChannelDTO(_, pkg))
 
       override val is = result.value.map(OkResult)
@@ -536,28 +536,28 @@ class TimeSeriesController(
   delete("/:id/channels/:channelId", operation(deleteChannel)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Boolean] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         channelId <- paramT[String]("channelId")
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         channel <- secureContainer.timeSeriesManager
           .getChannelByNodeId(channelId, pkg)
-          .orNotFound
+          .orNotFound()
         _ <- secureContainer.timeSeriesManager
           .deleteChannel(channel, pkg)
-          .orError
+          .orError()
       } yield true
 
       override val is = result.value.map(OkResult)
@@ -576,9 +576,9 @@ class TimeSeriesController(
           .getChannels(`package`)
       else
         secureContainer.timeSeriesManager
-          .getChannelsByNodeIds(`package`, requestedChannels.to[SortedSet])
+          .getChannelsByNodeIds(`package`, requestedChannels.to(SortedSet))
 
-    channels.map(_.map(_.nodeId).to[SortedSet])
+    channels.map(_.map(_.nodeId).to(SortedSet))
   }
 
   val createAnnotation: OperationBuilder = (apiOperation[TimeSeriesAnnotation](
@@ -603,25 +603,25 @@ class TimeSeriesController(
   post("/:id/layers/:layerId/annotations", operation(createAnnotation)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, TimeSeriesAnnotation] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user = secureContainer.user
         packageId <- paramT[String]("id")
         startAtEpoch <- paramT[Boolean]("startAtEpoch", default = false)
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         packageStartTime <- if (startAtEpoch)
-          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError
+          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
@@ -629,14 +629,15 @@ class TimeSeriesController(
         )
         params <- extractOrErrorT[TimeSeriesAnnotationWriteRequest](parsedBody)
 
-        channelIds <- getChannelIds(params.channelIds, pkg)(secureContainer).coreErrorToActionResult
+        channelIds <- getChannelIds(params.channelIds, pkg)(secureContainer)
+          .coreErrorToActionResult()
 
         dataDB = insecureContainer.dataDB
         layerId <- paramT[Int]("layerId")
         layer <- insecureContainer.layerManager
           .getBy(layerId)
           .whenNone[CoreError](NotFound(s"Layer:$layerId"))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         createdTimeSeriesAnnotation <- insecureContainer.timeSeriesAnnotationManager
           .create(
@@ -650,11 +651,11 @@ class TimeSeriesController(
               params.start + packageStartTime,
               params.end + packageStartTime
             ),
-            channelIds = params.channelIds.to[SortedSet],
+            channelIds = params.channelIds.to(SortedSet),
             data = params.data,
             linkedPackage = params.linkedPackage
           )(secureContainer.timeSeriesManager)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield
         TimeSeriesHelper.resetAnnotationStartTime(packageStartTime)(
           createdTimeSeriesAnnotation
@@ -693,19 +694,19 @@ class TimeSeriesController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, AnnotationResult] = for {
         annotationId <- paramT[Int]("annotationId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         includeLinkedPackages <- paramT[Boolean]("includeLinks", default = true)
         startAtEpoch <- paramT[Boolean]("startAtEpoch", default = false)
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
@@ -716,23 +717,23 @@ class TimeSeriesController(
           .whenNone[CoreError](
             NotFound(s"Could not find layer with id: $layerId")
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         annotation <- insecureContainer.timeSeriesAnnotationManager
           .getBy(annotationId)
           .whenNone[CoreError](NotFound("Annotation not found"))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         packageStartTime <- if (startAtEpoch)
-          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError
+          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
-        userdto <- getUserMap(Seq(annotation)).orError
+        userdto <- getUserMap(Seq(annotation)).orError()
 
         linkedPackageDTO <- if (includeLinkedPackages) {
           for {
             linkedPackage <- annotation.linkedPackage.traverse(
               pkgId =>
-                secureContainer.packageManager.getByNodeId(pkgId).orNotFound
+                secureContainer.packageManager.getByNodeId(pkgId).orNotFound()
             )
             linkedDTO <- linkedPackage.traverse(
               linkedPkg =>
@@ -743,7 +744,7 @@ class TimeSeriesController(
                   includeChildren = true,
                   include = Some(Set(View)),
                   storage = None
-                )(executor, secureContainer).orError
+                )(executor, secureContainer).orError()
             )
           } yield linkedDTO
         } else {
@@ -810,22 +811,22 @@ class TimeSeriesController(
         requestedChannelIds = multiParams("channelIds")
         startAtEpoch <- paramT[Boolean]("startAtEpoch", default = false)
 
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
         )
 
         packageStartTime <- if (startAtEpoch)
-          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError
+          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
         layerId <- paramT[Int]("layerId")
@@ -834,8 +835,9 @@ class TimeSeriesController(
           .whenNone[CoreError](
             NotFound(s"Could not find layer with id: $layerId")
           )
-          .coreErrorToActionResult
-        channelIds <- getChannelIds(requestedChannelIds, pkg)(secureContainer).coreErrorToActionResult
+          .coreErrorToActionResult()
+        channelIds <- getChannelIds(requestedChannelIds, pkg)(secureContainer)
+          .coreErrorToActionResult()
 
         annotations <- insecureContainer.timeSeriesAnnotationManager
           .findBy(
@@ -847,7 +849,7 @@ class TimeSeriesController(
             offset = offset
           )
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         resetAnnotations = annotations.map(
           TimeSeriesHelper.resetAnnotationStartTime(packageStartTime)
@@ -864,7 +866,7 @@ class TimeSeriesController(
           secureContainer,
           dataset,
           includeLinkedPackages
-        ).orError
+        ).orError()
       } yield dto
 
       override val is = result.value.map(OkResult)
@@ -963,28 +965,29 @@ class TimeSeriesController(
         mergePeriods <- paramT[Boolean]("mergePeriods", default = false)
         startAtEpoch <- paramT[Boolean]("startAtEpoch", default = false)
 
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
         )
 
         packageStartTime <- if (startAtEpoch)
-          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError
+          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
         requestedChannelIds = multiParams("channelIds")
-        channelIds <- getChannelIds(requestedChannelIds, pkg)(secureContainer).coreErrorToActionResult
+        channelIds <- getChannelIds(requestedChannelIds, pkg)(secureContainer)
+          .coreErrorToActionResult()
 
         layerId <- paramT[Int]("layerId")
         layer <- insecureContainer.layerManager
@@ -992,7 +995,7 @@ class TimeSeriesController(
           .whenNone[CoreError](
             NotFound(s"Could not find layer with id: $layerId")
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         windows = if (mergePeriods) {
           insecureContainer.timeSeriesAnnotationManager.chunkWindowAggregate(
             frameStart = start + packageStartTime,
@@ -1035,21 +1038,21 @@ class TimeSeriesController(
   get("/:id/hasAnnotations", operation(hasAnnotations)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Boolean] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         hasAnnotations <- insecureContainer.timeSeriesAnnotationManager
           .hasAnnotations(pkg.nodeId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield hasAnnotations
 
       override val is = result.value.map(OkResult)
@@ -1116,19 +1119,19 @@ class TimeSeriesController(
         mergePeriods <- paramT[Boolean]("mergePeriods", default = false)
         startAtEpoch <- paramT[Boolean]("startAtEpoch", default = false)
 
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         packageStartTime <- if (startAtEpoch)
-          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError
+          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
@@ -1140,11 +1143,12 @@ class TimeSeriesController(
         validLayerIds <- insecureContainer.layerManager
           .getLayerIds(packageId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         layerIdsToQueryWith = layerIds.intersect(validLayerIds)
 
         requestedChannelIds = multiParams("channelIds")
-        channelIds <- getChannelIds(requestedChannelIds, pkg)(secureContainer).coreErrorToActionResult
+        channelIds <- getChannelIds(requestedChannelIds, pkg)(secureContainer)
+          .coreErrorToActionResult()
 
         windows <- Source(layerIdsToQueryWith)
           .mapAsync(1) { layerId =>
@@ -1183,7 +1187,7 @@ class TimeSeriesController(
               accu.updated(layerId, results)
           }
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield
         windows.map {
           case (layerId, layerWindows) =>
@@ -1224,24 +1228,24 @@ class TimeSeriesController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, TimeSeriesAnnotation] = for {
         annotationId <- paramT[Int]("annotationId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         startAtEpoch <- paramT[Boolean]("startAtEpoch", default = false)
 
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         packageStartTime <- if (startAtEpoch)
-          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError
+          TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
@@ -1252,20 +1256,20 @@ class TimeSeriesController(
         layer <- insecureContainer.layerManager
           .getBy(layerId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         params <- extractOrErrorT[TimeSeriesAnnotationWriteRequest](parsedBody)
 
         existingAnnotation <- insecureContainer.timeSeriesAnnotationManager
           .getBy(annotationId)
           .whenNone[CoreError](NotFound(s"TimeSeriesAnnotation:$annotationId"))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updatedAnnotation = existingAnnotation.copy(
           name = params.name,
           label = params.label,
           description = params.description,
-          channelIds = params.channelIds.to[SortedSet],
+          channelIds = params.channelIds.to(SortedSet),
           start = params.start + packageStartTime,
           end = params.end + packageStartTime,
           layerId = params.layer_id.getOrElse(existingAnnotation.layerId),
@@ -1273,7 +1277,7 @@ class TimeSeriesController(
         )
         savedAnnotation <- insecureContainer.timeSeriesAnnotationManager
           .update(pkg, updatedAnnotation)(secureContainer.timeSeriesManager)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield
         TimeSeriesHelper.resetAnnotationStartTime(packageStartTime)(
           savedAnnotation
@@ -1303,19 +1307,19 @@ class TimeSeriesController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] = for {
         annotationId <- paramT[Int]("annotationId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
@@ -1327,11 +1331,11 @@ class TimeSeriesController(
           .whenNone[CoreError](
             NotFound(s"Could not find layer with id: $layerId")
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         deleteResult <- insecureContainer.timeSeriesAnnotationManager
           .delete(annotationId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield deleteResult
 
       override val is = result.value.map(OkResult)
@@ -1354,19 +1358,19 @@ class TimeSeriesController(
   delete("/:id/layers/:layerId/annotations", operation(deleteAnnotations)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Int] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
@@ -1377,12 +1381,12 @@ class TimeSeriesController(
           .whenNone[CoreError](
             NotFound(s"Could not find layer with id: $layerId")
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         ids <- extractOrErrorT[Set[Int]](parsedBody)
         deleteResult <- insecureContainer.timeSeriesAnnotationManager
           .delete(pkg.nodeId, layer.id, ids)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield deleteResult
 
       override val is = result.value.map(OkResult)
@@ -1403,21 +1407,21 @@ class TimeSeriesController(
   post("/:id/layers", operation(createLayer)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, TimeSeriesLayer] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         timeSeriesId <- paramT[String]("id")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(timeSeriesId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotationLayers))(
             dataset
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
@@ -1429,7 +1433,7 @@ class TimeSeriesController(
         exsistingLayerColors <- insecureContainer.layerManager
           .getExistingColors(timeSeriesId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         createdLayer <- insecureContainer.layerManager
           .create(
             timeSeriesId = timeSeriesId,
@@ -1439,7 +1443,7 @@ class TimeSeriesController(
               .orElse(Colors.randomNewColor(exsistingLayerColors))
           )
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield createdLayer
 
       override val is = result.value.map(CreatedResult)
@@ -1465,16 +1469,16 @@ class TimeSeriesController(
         : EitherT[Future, ActionResult, PagedResponse[TimeSeriesLayer]] = for {
         limit <- paramT[Long]("limit", default = 100L)
         offset <- paramT[Long]("offset", default = 0L)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         timeSeriesId <- paramT[String]("id")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(timeSeriesId)
-          .orNotFound
+          .orNotFound()
         (timeSeries, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(timeSeries.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
@@ -1482,7 +1486,7 @@ class TimeSeriesController(
         layers <- insecureContainer.layerManager
           .findBy(timeSeriesId = timeSeriesId, limit = limit, offset = offset)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield {
         PagedResponse[TimeSeriesLayer](
           limit = limit,
@@ -1509,16 +1513,16 @@ class TimeSeriesController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, TimeSeriesLayer] = for {
         layerId <- paramT[Int]("layerId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         timeSeriesId <- paramT[String]("id")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(timeSeriesId)
-          .orNotFound
+          .orNotFound()
         (timeSeries, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(timeSeries.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
@@ -1526,7 +1530,7 @@ class TimeSeriesController(
         layer <- insecureContainer.layerManager
           .getBy(layerId)
           .whenNone[CoreError](NotFound("Layer not found"))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield layer
 
       override val is = result.value.map(OkResult)
@@ -1549,20 +1553,20 @@ class TimeSeriesController(
       val result: EitherT[Future, ActionResult, TimeSeriesLayer] = for {
         timeSeriesId <- paramT[String]("id")
         layerId <- paramT[Int]("layerId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(timeSeriesId)
-          .orNotFound
+          .orNotFound()
         (timeSeries, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotationLayers))(
             dataset
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(timeSeries.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
@@ -1570,7 +1574,7 @@ class TimeSeriesController(
         existingLayer <- insecureContainer.layerManager
           .getBy(layerId)
           .whenNone[CoreError](NotFound("Layer not found"))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         layerParams <- extractOrErrorT[LayerRequest](parsedBody)
         updateLayer = existingLayer.copy(
           name = layerParams.name,
@@ -1580,7 +1584,7 @@ class TimeSeriesController(
         savedLayer <- insecureContainer.layerManager
           .update(updateLayer)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield savedLayer
 
       override val is = result.value.map(OkResult)
@@ -1602,20 +1606,20 @@ class TimeSeriesController(
       val result: EitherT[Future, ActionResult, Unit] = for {
         timeSeriesId <- paramT[String]("id")
         layerId <- paramT[Int]("layerId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(timeSeriesId)
-          .orNotFound
+          .orNotFound()
         (timeSeries, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageAnnotationLayers))(
             dataset
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(timeSeries.`type` == PackageType.TimeSeries)(
           BadRequest(Error("Id does not point to a valid TimeSeries package"))
@@ -1623,7 +1627,7 @@ class TimeSeriesController(
         deleteResult <- insecureContainer.layerManager
           .delete(layerId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield deleteResult
 
       override val is = result.value.map(OkResult)

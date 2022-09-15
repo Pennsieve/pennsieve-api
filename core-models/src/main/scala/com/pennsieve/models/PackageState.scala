@@ -68,7 +68,7 @@ object PackageState extends Enum[PackageState] with CirceEnum[PackageState] {
     * Legacy error state. Confusingly used for both upload and processing
     * failures in different scenarios.
     */
-  @deprecated("Use UPLOAD_FAILED or PROCESSING_FAILED")
+  @deprecated("Use UPLOAD_FAILED or PROCESSING_FAILED", "166-27f7fae")
   case object ERROR
       extends PackageState
       with PackageUploadState

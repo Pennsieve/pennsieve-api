@@ -39,6 +39,7 @@ import com.pennsieve.core.utilities._
 import com.pennsieve.dtos.{ Builders, PackageDTO }
 import com.pennsieve.models._
 import io.circe.syntax._
+import org.scalatest.EitherValues._
 
 class PackageServiceSpec extends AdminServiceSpec with TestKitBase {
 
@@ -51,8 +52,7 @@ class PackageServiceSpec extends AdminServiceSpec with TestKitBase {
       val ds = container.datasetManager
         .create("Test Dataset")
         .await
-        .right
-        .get
+        .value
 
       val importId = java.util.UUID.randomUUID()
 
@@ -67,8 +67,7 @@ class PackageServiceSpec extends AdminServiceSpec with TestKitBase {
           Some(importId)
         )
         .await
-        .right
-        .get
+        .value
 
       val expected =
         PackageResponse(

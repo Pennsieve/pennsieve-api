@@ -53,6 +53,7 @@ import com.pennsieve.models.PackageState.{
 import com.pennsieve.models._
 import com.pennsieve.uploads.{ FileUpload, PackagePreview }
 import com.pennsieve.web.Settings
+import io.circe.syntax._
 import org.apache.commons.io.FilenameUtils
 import org.joda.time.DateTime
 import org.scalatra._
@@ -131,7 +132,7 @@ class PackagesController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "Packages"
+  override val pennsieveSwaggerTag = "Packages"
 
   /**
     * Extractors for paramT and optParamT support
@@ -152,7 +153,7 @@ class PackagesController(
 
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
         body <- extractOrErrorT[CreatePackageRequest](parsedBody)
@@ -161,17 +162,17 @@ class PackagesController(
         )
         containingDataset <- secureContainer.datasetManager
           .getByNodeId(body.dataset)
-          .orError
+          .orError()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(containingDataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(containingDataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         containingPackage <- body.parent.traverse(
-          parent => secureContainer.packageManager.getByNodeId(parent).orError
+          parent => secureContainer.packageManager.getByNodeId(parent).orError()
         )
         owner <- if (user.isSuperAdmin) {
           body.owner
@@ -179,7 +180,7 @@ class PackagesController(
               secureContainer.userManager.getByNodeId(ownerNodeId)
             }
             .getOrElse(EitherT.rightT[Future, CoreError](user))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } else {
           EitherT.rightT[Future, ActionResult](user)
         }
@@ -208,18 +209,18 @@ class PackagesController(
             description = body.description,
             externalLocation = body.externalLocation
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(
             containingDataset,
             ChangelogEventDetail.CreatePackage(newPackage, containingPackage)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(containingDataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -229,12 +230,12 @@ class PackagesController(
           .append("package-node-id", newPackage.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dto <- packageDTO(newPackage, containingDataset)(
           asyncExecutor,
           secureContainer
-        ).orError
+        ).orError()
       } yield dto
 
       override val is = result.value.map(CreatedResult)
@@ -265,13 +266,13 @@ class PackagesController(
         intId => packageManager.getPackageAndDatasetById(intId)
       )
       .valueOr(identity)
-      .coreErrorToActionResult
+      .coreErrorToActionResult()
 
   put("/:id", operation(updatePackageOperation)) {
     new AsyncResult {
       val result = for {
         packageId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         maybeTraceId <- tryGetTraceId(request)
         user = secureContainer.user
         result <- getPackageAndDatasetFromIdOrNodeId(
@@ -282,14 +283,14 @@ class PackagesController(
 
         sources <- secureContainer.fileManager
           .getSources(oldPackage)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         body <- extractOrErrorT[UpdatePackageRequest](parsedBody)
 
@@ -327,7 +328,7 @@ class PackagesController(
             description = body.description,
             externalLocation = body.externalLocation
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- if (oldPackage.name != updatedPackage.name) {
           if (sources.length == 1) {
@@ -338,7 +339,7 @@ class PackagesController(
           for {
             parent <- secureContainer.packageManager
               .getParent(oldPackage)
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
             _ <- secureContainer.changelogManager
               .logEvent(
                 dataset,
@@ -349,30 +350,30 @@ class PackagesController(
                   parent = parent
                 )
               )
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           } yield ()
         } else EitherT.rightT[Future, ActionResult](())
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        shouldSetStorage = params.keys.exists(_ == updateStorageParamKey)
+        shouldSetStorage = params.contains(updateStorageParamKey)
         storage <- if (shouldSetStorage) {
           secureContainer.storageManager
             .setPackageStorage(oldPackage)
-            .orError
+            .orError()
             .map(_.some)
         } else {
           secureContainer.storageManager
             .getStorage(spackages, List(updatedPackage.id))
-            .orError
+            .orError()
             .map(_.get(updatedPackage.id).flatten)
         }
         dto <- packageDTO(updatedPackage, dataset, storage = storage)(
           asyncExecutor,
           secureContainer
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
         _ <- maybeTraceId match {
           case Some(traceId) =>
@@ -384,7 +385,7 @@ class PackagesController(
               .append("package-node-id", updatedPackage.nodeId)
               .log(traceId)
               .toEitherT
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           case _ => EitherT.rightT[Future, ActionResult](())
         }
 
@@ -445,9 +446,23 @@ class PackagesController(
           List(tokenHeader)
         )
         .leftMap[CoreError](x => ServiceError(x.toString()))
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
         .subflatMap {
-          case GetPackageStateResponse.OK(state) => state.asRight[ActionResult]
+          case GetPackageStateResponse.OK(json) =>
+            json
+              .as[PackageState]
+              .fold(
+                //The error half of this shouldn't happen since we got an OK and can be removed if
+                // getPackageState is fixed to return OK(PackageState) instead of OK(Json)
+                err => {
+                  logger
+                    .info(s"Error decoding ${json} as a PackageState: ${err}")
+                  UNAVAILABLE
+                },
+                identity
+              )
+              .asRight[ActionResult]
+
           case _ => {
             logger.info(
               s"No State were found in JSS for package ${packageId} of dataset ${datasetId} for organization ${organizationId}"
@@ -460,12 +475,12 @@ class PackagesController(
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, PackageDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
         traceId <- getTraceId(request)
         result <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         (pkg, dataset) = result
 
         updatedPackage <- pkg.state match {
@@ -477,7 +492,7 @@ class PackagesController(
             ).flatMap { foundPackageState =>
               secureContainer.packageManager
                 .update(pkg.copy(state = foundPackageState))
-                .coreErrorToActionResult
+                .coreErrorToActionResult()
             }
           }
           case _ => EitherT.pure[Future, ActionResult](pkg)
@@ -485,7 +500,7 @@ class PackagesController(
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         includeParam <- optParamT[String]("include")
         _ <- checkOrErrorT(
@@ -501,7 +516,7 @@ class PackagesController(
 
         storageMap <- secureContainer.storageManager
           .getStorage(spackages, List(updatedPackage.id))
-          .orError
+          .orError()
         storage = storageMap.get(updatedPackage.id).flatten
 
         dto <- packageDTO(
@@ -511,7 +526,7 @@ class PackagesController(
           includeChildren,
           include,
           storage = storage
-        )(asyncExecutor, secureContainer).orError
+        )(asyncExecutor, secureContainer).orError()
 
         _ <- auditLogger
           .message()
@@ -521,7 +536,7 @@ class PackagesController(
           .append("package-node-id", updatedPackage.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield {
         // reset the start time for any channels in this package if
@@ -556,7 +571,7 @@ class PackagesController(
       val result: EitherT[Future, ActionResult, Unit] = for {
         packageId <- paramT[String]("id")
         traceId <- getTraceId(request)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         entities <- getPackageAndDatasetFromIdOrNodeId(
           secureContainer.packageManager,
           getIdOrNodeId(packageId)
@@ -565,10 +580,10 @@ class PackagesController(
 
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.CreateDeleteFiles))(pkg)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT(pkg.state == UPLOADED) {
           BadRequest(Error("Can only process a package in the UPLOADED state."))
@@ -578,7 +593,7 @@ class PackagesController(
           .getUnprocessedSources(pkg)
           .map(_.toList)
           .map(NonEmptyList.fromList)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
           .flatMap(
             _.toRight(
               BadRequest("Package contains no source files to process.")
@@ -605,7 +620,7 @@ class PackagesController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ()
 
@@ -631,8 +646,7 @@ class PackagesController(
         traceId <- getTraceId(request)
         // Get the originating (source) package ID parameter:
         packageId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         // Resolve the package and dataset objects from the package ID:
         entities <- getPackageAndDatasetFromIdOrNodeId(
           secureContainer.packageManager,
@@ -642,7 +656,7 @@ class PackagesController(
         (originatingPackage, dataset) = entities
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Check that the package was fully and successfully processed:
         _ <- checkOrErrorT(originatingPackage.state == PackageState.READY)(
@@ -698,11 +712,11 @@ class PackagesController(
             dataset,
             ChangelogEventDetail.CreatePackage(targetPackage, parent)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Schedule the export:
         _ <- exportPackage(
@@ -720,7 +734,7 @@ class PackagesController(
           .append("package-node-id", originatingPackage.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         ExtendedPackageDTO.simple(
@@ -745,11 +759,11 @@ class PackagesController(
       val result: EitherT[Future, ActionResult, Unit] = for {
         packageId <- paramT[String]("id")
         userId <- paramT[Int]("user_id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         _ <- checkOrErrorT(isServiceClaim(request))(Forbidden())
         uploadUser <- secureContainer.userManager
           .get(userId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         entities <- getPackageAndDatasetFromIdOrNodeId(
           secureContainer.packageManager,
           getIdOrNodeId(packageId)
@@ -772,23 +786,23 @@ class PackagesController(
 
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.EditFiles))(initialPackage)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updatedPackage <- if (initialPackage.state == UNAVAILABLE) {
           secureContainer.packageManager
             .update(initialPackage.copy(state = UPLOADED))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } else EitherT.rightT[Future, ActionResult](initialPackage)
 
         storage <- secureContainer.storageManager
           .setPackageStorage(updatedPackage)
-          .orError
+          .orError()
 
         sources <- secureContainer.fileManager
           .getUnprocessedSources(updatedPackage)
           .map(_.toList)
           .map(NonEmptyList.fromList)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         hasWorkflow = sources
           .map(
@@ -812,7 +826,7 @@ class PackagesController(
           case (UPLOADED, _, _, false, Some(_)) =>
             secureContainer.packageManager
               .update(updatedPackage.copy(state = READY))
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
 
           // automatically process packages turned on and package has a workflow
           // means we should send the package for processing
@@ -895,12 +909,12 @@ class PackagesController(
     new AsyncResult {
       val result =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           body <- extractOrErrorT[DownloadRequest](parsedBody)
 
           packageHierarchy <- secureContainer.packageManager
             .getPackageHierarchy(body.nodeIds, body.fileIds)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           (datasetIds, rootNodeIds, downloadResponse) = packageHierarchy
             .foldLeft(
@@ -929,7 +943,7 @@ class PackagesController(
                       p.s3Key,
                       DateTime.now.plusMinutes(180).toDate
                     )
-                    .right
+                    .toOption
                     .get,
                   size = p.size,
                   fileExtension = Utilities.getFullExtension(p.s3Key)
@@ -956,7 +970,7 @@ class PackagesController(
                   Set(DatasetPermission.ViewFiles)
                 )(datasetId)
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           // these nodes did not exist in the result
           unfoundNodes = body.nodeIds.filter(
@@ -967,7 +981,7 @@ class PackagesController(
           emptyCollectionNodeIds <- secureContainer.packageManager
             .getByNodeIds(unfoundNodes)
             .map(packages => packages.map(_.nodeId))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- unfoundNodes
             .traverse(
@@ -976,7 +990,7 @@ class PackagesController(
                   emptyCollectionNodeIds.contains(nodeId)
                 )(PredicateError(s"$nodeId not found"))
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           validNodeIds = (body.nodeIds.toSet
             .diff(emptyCollectionNodeIds.toSet))
@@ -989,7 +1003,7 @@ class PackagesController(
                   PredicateError(s"$nodeId not found")
                 )
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield downloadResponse
 
@@ -1025,7 +1039,7 @@ class PackagesController(
       encryptionKey <- utilities
         .encryptionKey(organization)
         .toEitherT[Future]
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       payload = ETLWorkflow(
         packageId = pkg.id,
@@ -1057,11 +1071,11 @@ class PackagesController(
 
       _ <- secureContainer.fileManager
         .setSourcesToProcessed(sources.toList)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       result <- secureContainer.packageManager
         .update(pkg.copy(state = PROCESSING))
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
     } yield (result, payload)
   }
 
@@ -1091,7 +1105,7 @@ class PackagesController(
       encryptionKey <- utilities
         .encryptionKey(organization)
         .toEitherT[Future]
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       payload = ETLExportWorkflow(
         packageId = targetPackage.id,
@@ -1121,7 +1135,7 @@ class PackagesController(
 
       result <- secureContainer.packageManager
         .update(targetPackage.copy(state = PROCESSING))
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
     } yield (result, payload)
   }
@@ -1158,12 +1172,12 @@ class PackagesController(
 
       channels <- secureContainer.timeSeriesManager
         .getChannels(pkg)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       encryptionKey <- utilities
         .encryptionKey(organization)
         .toEitherT[Future]
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       payload = ETLAppendWorkflow(
         packageId = pkg.id,
@@ -1196,7 +1210,7 @@ class PackagesController(
 
       _ <- secureContainer.fileManager
         .setSourcesToProcessed(sources.toList)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
     } yield payload
   }
 
@@ -1217,15 +1231,15 @@ class PackagesController(
     for {
       totalCount <- secureContainer.fileManager
         .getTotalSourceCount(pkg)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       _ <- secureContainer
         .authorizePackage(Set(DatasetPermission.ViewFiles))(pkg)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       sources <- secureContainer.fileManager
         .getSources(pkg, Some(limit), Some(offset), orderBy)
-        .orNotFound
+        .orNotFound()
       files = sources.map { f =>
         val md5 = getMD5(f).toOption
         FileDTO(f, pkg, md5)
@@ -1284,10 +1298,10 @@ class PackagesController(
           default = OrderByColumn.Name
         )
 
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
         sources <- getPagedSources(
           pkg,
@@ -1310,7 +1324,7 @@ class PackagesController(
           .append("files", sources.results.map(_.content.id).toList: _*)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield sources
 
@@ -1338,10 +1352,10 @@ class PackagesController(
         traceId <- getTraceId(request)
         limit <- paramT[Int]("limit", default = FILES_LIMIT_DEFAULT)
         offset <- paramT[Int]("offset", default = FILES_OFFSET_DEFAULT)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
         sources <- getPagedSources(pkg, limit, offset, None, secureContainer)
         _ <- auditLogger
@@ -1352,7 +1366,7 @@ class PackagesController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield sources.results
 
       override val is = result.value.map(OkResult)
@@ -1381,20 +1395,20 @@ class PackagesController(
         traceId <- getTraceId(request)
         limit <- paramT[Int]("limit", default = FILES_LIMIT_DEFAULT)
         offset <- paramT[Int]("offset", default = FILES_OFFSET_DEFAULT)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         organization = secureContainer.organization
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ViewFiles))(pkg)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         files <- secureContainer.fileManager
           .getFiles(pkg, limit.some, offset.some)
-          .orNotFound
+          .orNotFound()
 
         _ <- auditLogger
           .message()
@@ -1407,7 +1421,7 @@ class PackagesController(
           .append("files", files.map(_.id): _*)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield {
         files.map(FileDTO(_, pkg)).toList
       }
@@ -1436,20 +1450,20 @@ class PackagesController(
         packageId <- paramT[String]("id")
         limit <- paramT[Int]("limit", default = FILES_LIMIT_DEFAULT)
         offset <- paramT[Int]("offset", default = FILES_OFFSET_DEFAULT)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         organization = secureContainer.organization
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ViewFiles))(pkg)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         views <- secureContainer.fileManager
           .getViews(pkg, limit.some, offset.some)
-          .orNotFound
+          .orNotFound()
 
         _ <- auditLogger
           .message()
@@ -1462,7 +1476,7 @@ class PackagesController(
           .append("views", views.map(_.id): _*)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield {
         views.map(FileDTO(_, pkg))
       }
@@ -1490,18 +1504,18 @@ class PackagesController(
         fileId <- paramT[Int]("id")
         short <- paramT[Boolean]("short", default = false)
 
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ViewFiles))(pkg)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         organization = secureContainer.organization
-        file <- secureContainer.fileManager.get(fileId, pkg).orNotFound
+        file <- secureContainer.fileManager.get(fileId, pkg).orNotFound()
 
         url <- if (!short)
           objectStore
@@ -1541,7 +1555,7 @@ class PackagesController(
           .append("file", fileId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield url
 
@@ -1571,7 +1585,7 @@ class PackagesController(
 
     new AsyncResult {
       val s3url = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         packageId <- captures.headOption
           .toRight(BadRequest(Error("Missing package id")))
@@ -1581,19 +1595,19 @@ class PackagesController(
           .toEitherT[Future]
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ViewFiles))(pkg)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         organization = secureContainer.organization
         // Needed since `packageId` in `captures `is still expected to be a string UID, but file no longer is
         fileIdAsInt <- Try(fileId.toInt).toOption
           .toRight(BadRequest(Error("Not a file pointer")))
           .toEitherT[Future]
-        file <- secureContainer.fileManager.get(fileIdAsInt, pkg).orNotFound
+        file <- secureContainer.fileManager.get(fileIdAsInt, pkg).orNotFound()
         // TODO This is necessary since the File model no longer relies on nodeId
         // only it's ID (which is just an autoincremented int)
         _ <- auditLogger
@@ -1606,7 +1620,7 @@ class PackagesController(
           .append("file", file.id)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         fileName = filePath.getOrElse("") //filePath might be empty if the whole key
         url <- objectStore
           .getPresignedUrl(
@@ -1642,17 +1656,19 @@ class PackagesController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, GetAnnotationsResponse] = for {
         packageId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
-        pkg <- secureContainer.packageManager.getByNodeId(packageId).orNotFound
+        secureContainer <- getSecureContainer()
+        pkg <- secureContainer.packageManager
+          .getByNodeId(packageId)
+          .orNotFound()
 
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ViewAnnotations))(pkg)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        annotations <- secureContainer.annotationManager.find(pkg).orError
+        annotations <- secureContainer.annotationManager.find(pkg).orError()
         users <- secureContainer.annotationManager
           .findAnnotationUsersForPackage(pkg)
-          .orError
+          .orError()
 
         userIdMap = users.map(u => u.id -> u.nodeId).toMap
         userMap = users
@@ -1695,24 +1711,23 @@ class PackagesController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, SetStorageResponse] = for {
         pkgId <- paramT[Int]("id")
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- checkOrErrorT(isServiceClaim(request))(Forbidden())
 
         _ <- secureContainer
           .authorizePackageId(Set(DatasetPermission.EditFiles))(pkgId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // set new storage value
         requestBody <- extractOrErrorT[SetStorageRequest](parsedBody)
         _ <- secureContainer.storageManager
           .incrementStorage(spackages, requestBody.size, pkgId)
-          .orError
+          .orError()
 
         storageMap <- secureContainer.storageManager
           .getStorage(spackages, List(pkgId))
           .map(_.map { case (k, v) => (k.toString, v.getOrElse(0L)) })
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield SetStorageResponse(storageMap)
 

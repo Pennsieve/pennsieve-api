@@ -72,7 +72,7 @@ class APITokenControllerSpecs extends BaseApiTest {
 
       val secureTokenManager =
         new SecureTokenManager(loggedInUser, insecureContainer.db)
-      val token = secureTokenManager.get(response.key).await.right.value
+      val token = secureTokenManager.get(response.key).await.value
 
       token.userId should be(loggedInUser.id)
 
@@ -88,7 +88,6 @@ class APITokenControllerSpecs extends BaseApiTest {
         mockCognito
       )
       .await
-      .right
       .value
 
     get("/", headers = authorizationHeader(loggedInJwt)) {
@@ -113,7 +112,6 @@ class APITokenControllerSpecs extends BaseApiTest {
     val (pennsieveToken, secret) = tokenManager
       .create("pennsieve api token", loggedInUser, pennsieve, mockCognito)
       .await
-      .right
       .value
 
     get("/", headers = authorizationHeader(loggedInJwt)) {
@@ -140,7 +138,7 @@ class APITokenControllerSpecs extends BaseApiTest {
 
       val secureTokenManager =
         new SecureTokenManager(loggedInUser, insecureContainer.db)
-      val token = secureTokenManager.get(apiToken.token).await.right.value
+      val token = secureTokenManager.get(apiToken.token).await.value
       token.name should be("updated name")
     }
   }

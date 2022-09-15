@@ -107,7 +107,7 @@ class DataCanvasController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "DataCanvas"
+  override val pennsieveSwaggerTag = "DataCanvas"
 
   implicit class JValueExtended(value: JValue) {
     def hasField(childString: String): Boolean =
@@ -130,19 +130,19 @@ class DataCanvasController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[DataCanvasDTO]] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         userId = secureContainer.user.id
 
         canvases <- secureContainer.dataCanvasManager
           .getForUser(userId = userId, withRole = Role.Owner)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dtos <- datacanvasDTOs(canvases)(
           asyncExecutor,
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dtos
       override val is = result.value.map(OkResult(_))
@@ -165,18 +165,18 @@ class DataCanvasController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataCanvasDTO] = for {
         datacanvasId <- paramT[Int]("id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         datacanvas <- secureContainer.dataCanvasManager
           .getById(datacanvasId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dto <- dataCanvasDTO(datacanvas)(
           asyncExecutor,
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dto
 
@@ -204,25 +204,25 @@ class DataCanvasController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataCanvasDTO] = for {
         nodeId <- paramT[String]("nodeId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         response <- secureContainer.allDataCanvasesViewManager
           .get(nodeId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         organizationId = response._1
         datacanvas = response._2
 
         _ <- checkOrErrorT[CoreError](datacanvas.isPublic)(
           UnauthorizedError("data-canvas is not publicly available")
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
         dto <- dataCanvasDTO(datacanvas)(
           asyncExecutor,
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dto
 
@@ -293,7 +293,7 @@ class DataCanvasController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataCanvasDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         body <- extractOrErrorT[CreateDataCanvasRequest](parsedBody)
 
         status <- body.status match {
@@ -301,12 +301,12 @@ class DataCanvasController(
             secureContainer.db
               .run(secureContainer.datasetStatusManager.getByName(name))
               .toEitherT
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           case None => // Use the default status
             secureContainer.db
               .run(secureContainer.datasetStatusManager.getDefaultStatus)
               .toEitherT
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
         }
 
         newDataCanvas <- secureContainer.dataCanvasManager
@@ -316,7 +316,7 @@ class DataCanvasController(
             isPublic = body.isPublic,
             statusId = Some(status.id)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // TODO: changelog event: Created DataCanvas
 
@@ -325,7 +325,7 @@ class DataCanvasController(
           secureContainer,
           system,
           jwtConfig
-        ).orError
+        ).orError()
       } yield dto
 
       override val is = result.value.map(CreatedResult)
@@ -350,23 +350,23 @@ class DataCanvasController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataCanvasDTO] = for {
         id <- paramT[Int]("id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         body <- extractOrErrorT[UpdateDataCanvasRequest](parsedBody)
 
         dataCanvas <- secureContainer.dataCanvasManager
           .getById(id)
-          .orNotFound
+          .orNotFound()
 
         oldStatus <- secureContainer.datasetStatusManager
           .get(dataCanvas.statusId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         newStatus <- body.status match {
           case Some(name) => {
             secureContainer.db
               .run(secureContainer.datasetStatusManager.getByName(name))
               .toEitherT
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           }
           case None => // Keep existing status
             EitherT.rightT[Future, ActionResult](oldStatus)
@@ -381,7 +381,7 @@ class DataCanvasController(
               isPublic = body.isPublic.getOrElse(false)
             )
           )
-          .orBadRequest
+          .orBadRequest()
 
         // TODO: changelog event: Updated DataCanvas
 
@@ -390,7 +390,7 @@ class DataCanvasController(
           secureContainer,
           system,
           jwtConfig
-        ).orError
+        ).orError()
       } yield dto
 
       override val is = result.value.map(CreatedResult(_))
@@ -410,7 +410,7 @@ class DataCanvasController(
     new AsyncResult() {
       val result: EitherT[Future, ActionResult, Done] = for {
         id <- paramT[Int]("id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         dataCanvas <- secureContainer.dataCanvasManager
           .getById(id)
@@ -418,7 +418,7 @@ class DataCanvasController(
 
         _ <- secureContainer.dataCanvasManager
           .delete(dataCanvas)
-          .orForbidden
+          .orForbidden()
 
       } yield Done
       override val is = result.value.map(NoContentResult)
@@ -447,7 +447,7 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, DataCanvasFolderDTO] = for {
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         canvas <- secureContainer.dataCanvasManager
           .getById(canvasId)
@@ -462,7 +462,7 @@ class DataCanvasController(
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dto
 
@@ -489,7 +489,7 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, DataCanvasFolderDTO] = for {
         canvasId <- paramT[Int]("canvasId")
         body <- extractOrErrorT[CreateDataCanvasFolder](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         canvas <- secureContainer.dataCanvasManager
           .getById(canvasId)
@@ -515,7 +515,7 @@ class DataCanvasController(
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dto
 
@@ -544,7 +544,7 @@ class DataCanvasController(
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
         body <- extractOrErrorT[RenameDataCanvasFolder](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         _ <- secureContainer.dataCanvasManager
           .getById(canvasId)
@@ -563,7 +563,7 @@ class DataCanvasController(
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dto
 
@@ -592,7 +592,7 @@ class DataCanvasController(
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
         body <- extractOrErrorT[MoveDataCanvasFolder](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         _ <- secureContainer.dataCanvasManager
           .getById(canvasId)
@@ -619,7 +619,7 @@ class DataCanvasController(
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dto
 
@@ -646,7 +646,7 @@ class DataCanvasController(
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
 
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         _ <- secureContainer.dataCanvasManager
           .getById(canvasId)
@@ -724,7 +724,7 @@ class DataCanvasController(
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
         body <- extractOrErrorT[AttachPackageRequest](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         canvas <- secureContainer.dataCanvasManager
           .getById(canvasId)
@@ -754,9 +754,10 @@ class DataCanvasController(
             pkg.id,
             organization.id
           )
-          .orBadRequest
+          .orBadRequest()
 
-        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer).orError
+        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer)
+          .orError()
       } yield dto
 
       override val is = result.value.map(CreatedResult(_))
@@ -783,7 +784,7 @@ class DataCanvasController(
         canvasId <- paramT[Int]("canvasId")
         folderId <- paramT[Int]("folderId")
         packageId <- paramT[Int]("packageId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         _ = println(
           s">>> API >>> delete() canvasId: ${canvasId} folderId: ${folderId} packageId: ${packageId}"
@@ -815,7 +816,7 @@ class DataCanvasController(
 
         _ <- secureContainer.dataCanvasManager
           .detachPackage(dataCanvasPackage)
-          .orForbidden
+          .orForbidden()
 
       } yield Done
 
@@ -845,11 +846,11 @@ class DataCanvasController(
 //        canvasId <- paramT[Int]("canvasId")
 //        folderId <- paramT[Int]("folderId")
 //        packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
-//        secureContainer <- getSecureContainer
+//        secureContainer <- getSecureContainer()
 //
 //        canvas <- secureContainer.dataCanvasManager
 //          .getById(canvasId)
-//          .coreErrorToActionResult
+//          .coreErrorToActionResult()
 //
 //        folder <- secureContainer.dataCanvasManager
 //          .getFolder(canvas.id, folderId)
@@ -859,15 +860,15 @@ class DataCanvasController(
 //          for {
 //            dataset <- secureContainer.datasetManager
 //              .get(p.datasetId)
-//              .coreErrorToActionResult
+//              .coreErrorToActionResult()
 //
 //            organization <- secureContainer.organizationManager
 //              .get(p.organizationId.getOrElse(secureContainer.organization.id))
-//              .coreErrorToActionResult
+//              .coreErrorToActionResult()
 //
 //            pkg <- secureContainer.packageManager
 //              .get(p.packageId)
-//              .coreErrorToActionResult
+//              .coreErrorToActionResult()
 //
 //            dataCanvasPackage <- secureContainer.dataCanvasManager
 //              .attachPackage(
@@ -877,7 +878,7 @@ class DataCanvasController(
 //                pkg.id,
 //                organization.id
 //              )
-//              .orBadRequest
+//              .orBadRequest()
 //
 //          } yield dataCanvasPackage
 //        }
@@ -908,11 +909,11 @@ class DataCanvasController(
 //        canvasId <- paramT[Int]("canvasId")
 //        folderId <- paramT[Int]("folderId")
 //        packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
-//        secureContainer <- getSecureContainer
+//        secureContainer <- getSecureContainer()
 //
 //        _ <- secureContainer.dataCanvasManager
 //          .getById(canvasId)
-//          .coreErrorToActionResult
+//          .coreErrorToActionResult()
 //
 //        _ = packages.map { `package` =>
 //          for {
@@ -922,7 +923,7 @@ class DataCanvasController(
 //
 ////            _ <- secureContainer.dataCanvasManager
 ////              .detachPackage(dataCanvasPackage)
-////              .orBadRequest
+////              .orBadRequest()
 //
 //          } yield dataCanvasPackage
 //        }
@@ -948,13 +949,13 @@ class DataCanvasController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DownloadManifestDTO] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           body <- extractOrErrorT[DownloadRequest](parsedBody)
           nodeId = body.nodeIds.head
 
           canvas <- secureContainer.dataCanvasManager
             .getByNodeId(nodeId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           folderPaths <- secureContainer.dataCanvasManager
             .getFolderPaths(canvas.id)

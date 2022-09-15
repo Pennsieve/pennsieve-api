@@ -17,13 +17,14 @@
 package com.pennsieve.jobs
 
 import com.pennsieve.messages._
-import com.pennsieve.test.helpers.EitherValue._
+import org.scalatest.EitherValues._
 import io.circe.syntax._
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }
 import com.pennsieve.audit.middleware.TraceId
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class ProcessJobSpec extends FlatSpec with Matchers {
+class ProcessJobSpec extends AnyFlatSpec with Matchers {
 
   "Processor.parse" should "be able to parse a CachePopulationJob" in {
     val job: BackgroundJob = CachePopulationJob(false, Some(123))

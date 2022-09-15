@@ -16,13 +16,14 @@
 
 package com.pennsieve.uploads
 
-import com.pennsieve.test.helpers.EitherValue._
+import org.scalatest.EitherValues._
+
 import java.util.UUID
-
 import com.pennsieve.models.{ FileType, JobId, PackageType }
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class PackagePreviewSpec extends FlatSpec with Matchers {
+class PackagePreviewSpec extends AnyFlatSpec with Matchers {
 
   "fromFiles" should "PackagePreviewSpec.scalaname a package correctly when the type is known" in {
     val importId: JobId = new JobId(UUID.randomUUID)

@@ -81,7 +81,6 @@ class TestAccountController extends BaseApiTest {
         Duration.ofSeconds(1000)
       )(userManager, mockCognito, ec)
       .await
-      .right
       .value
 
     val newUserRequest = CreateUserRequest(
@@ -94,7 +93,7 @@ class TestAccountController extends BaseApiTest {
 
     postJson("/", write(newUserRequest)) {
       status should be(200)
-      userInviteManager.get(invite.id).await should be('Left)
+      userInviteManager.get(invite.id).await should be(Symbol("Left"))
     }
   }
 
@@ -111,7 +110,6 @@ class TestAccountController extends BaseApiTest {
         Duration.ofSeconds(0)
       )(userManager, mockCognito, ec)
       .await
-      .right
       .value
 
     val badRequest = CreateUserRequest(

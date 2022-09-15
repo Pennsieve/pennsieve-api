@@ -43,7 +43,7 @@ class SecurityController(
 ) extends ScalatraServlet
     with AuthenticatedController {
 
-  override val swaggerTag = "Security"
+  override val pennsieveSwaggerTag = "Security"
 
   protected implicit def executor: ExecutionContext = asyncExecutor
 

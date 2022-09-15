@@ -20,8 +20,8 @@ import cats.implicits._
 import com.pennsieve.audit.middleware.TraceId
 import com.pennsieve.managers.DatasetManager.{ OrderByColumn, OrderByDirection }
 import com.pennsieve.models._
-import com.pennsieve.test.helpers.EitherValue._
-import org.scalatest.Matchers._
+import org.scalatest.EitherValues._
+import org.scalatest.matchers.should.Matchers._
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -131,7 +131,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       processingState = FileProcessingState.NotProcessable
     )
 
-    val count = dm.sourceFileCount(dataset).await.right.get
+    val count = dm.sourceFileCount(dataset).await.value
 
     assert(count == 2L)
 
@@ -201,8 +201,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("foo")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 0
     )
@@ -218,8 +217,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("fox")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 2
     )
@@ -235,8 +233,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("fantas")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 1 // match "fantastic"
     )
@@ -252,8 +249,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("dog")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 2
     )
@@ -268,8 +264,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("fox & jump") // "jumped" should be stemmed to "jump"
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 1
     )
@@ -284,8 +279,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("fox | jump") // "jumped" should be stemmed to "jump"
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 3
     )
@@ -300,8 +294,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("(fox | jump) & lazy")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 1
     )
@@ -337,8 +330,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("dog | england")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 3
     )
@@ -353,8 +345,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("dog & england")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 0
     )
@@ -376,8 +367,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("gamma")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 2
     )
@@ -392,8 +382,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("alpha")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 2
     )
@@ -408,8 +397,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("delt:* | epsilon") // match a prefix
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 2
     )
@@ -424,8 +412,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("omega & delta")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 1
     )
@@ -440,8 +427,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("omega & zeta")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 0
     )
@@ -492,8 +478,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("super | ivanovich") // dataset creator = "SUPER ADMIN"
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 5 // admin dataset + Dataset 0-4, as super admin is the creator of all datasets
     )
@@ -508,8 +493,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("super & ivanovich") // dataset creator = "SUPER ADMIN"
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 1
     )
@@ -524,8 +508,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("suber & ivanovich") // misspell dataset creator
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 0
     )
@@ -557,8 +540,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("fox jump")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 1
     )
@@ -573,8 +555,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("fox jump alpha")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 1
     )
@@ -589,15 +570,14 @@ class DatasetManagerSpec extends BaseManagerSpec {
           textSearch = Some("fox jump beta")
         )
         .await
-        .right
-        .get
+        .value
         ._1
         .size == 0
     )
   }
 
   def isLocked(dataset: Dataset, user: User): Boolean =
-    datasetManager(testOrganization, user).isLocked(dataset).await.right.get
+    datasetManager(testOrganization, user).isLocked(dataset).await.value
 
   "a dataset" should "not be locked for publishers when under review" in {
 
@@ -611,14 +591,12 @@ class DatasetManagerSpec extends BaseManagerSpec {
       .getPublisherTeam(testOrganization)
       .map(_._1)
       .await
-      .right
-      .get
+      .value
     teamManager()
       .addUser(publisherTeam, publisherUser, DBPermission.Administer)
       .await
-      .right
-      .get
-    dm.addTeamCollaborator(dataset, publisherTeam, Role.Editor).await.right.get
+      .value
+    dm.addTeamCollaborator(dataset, publisherTeam, Role.Editor).await.value
 
     // And with one other team and user for good measure
 
@@ -629,15 +607,14 @@ class DatasetManagerSpec extends BaseManagerSpec {
       otherTeamUser,
       DBPermission.Administer
     )
-    dm.addTeamCollaborator(dataset, otherTeam, Role.Manager).await.right.get
+    dm.addTeamCollaborator(dataset, otherTeam, Role.Manager).await.value
 
     // Is not locked for publishers while pending review
 
     datasetPublicationStatusManager()
       .create(dataset, PublicationStatus.Requested, PublicationType.Publication)
       .await
-      .right
-      .get
+      .value
 
     assert(!isLocked(dataset, publisherUser))
     assert(isLocked(dataset, superAdmin))
@@ -648,8 +625,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     datasetPublicationStatusManager()
       .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
       .await
-      .right
-      .get
+      .value
 
     assert(isLocked(dataset, publisherUser))
     assert(isLocked(dataset, superAdmin))
@@ -660,8 +636,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     datasetPublicationStatusManager()
       .create(dataset, PublicationStatus.Failed, PublicationType.Publication)
       .await
-      .right
-      .get
+      .value
 
     assert(!isLocked(dataset, publisherUser))
     assert(isLocked(dataset, superAdmin))
@@ -676,7 +651,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     val result = dm.enableWebhook(dataset, webhook, integrationUser).await
     assert(result.isRight)
-    val returned = result.right.get
+    val returned = result.value
     assert(returned.datasetId == dataset.id)
     assert(returned.webhookId == webhook.id)
     assert(returned.enabledBy == user.id)
@@ -702,11 +677,11 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val dm = datasetManager(user = user)
 
     val firstResult =
-      dm.enableWebhook(dataset, webhook, integrationUser).await.right.get
+      dm.enableWebhook(dataset, webhook, integrationUser).await.value
     val secondResultEither =
       dm.enableWebhook(dataset, webhook, integrationUser).await
     assert(secondResultEither.isRight)
-    val secondResult = secondResultEither.right.get
+    val secondResult = secondResultEither.value
 
     assert(firstResult.equals(secondResult))
 
@@ -731,14 +706,14 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val dm1 = datasetManager(user = user1)
 
     val firstResult =
-      dm1.enableWebhook(dataset, webhook, integrationUser).await.right.get
+      dm1.enableWebhook(dataset, webhook, integrationUser).await.value
 
     val user2 = createUser()
     val dm2 = datasetManager(user = user2)
     val secondResultEither =
       dm2.enableWebhook(dataset, webhook, integrationUser).await
     assert(secondResultEither.isRight)
-    val secondResult = secondResultEither.right.get
+    val secondResult = secondResultEither.value
 
     assert(firstResult.equals(secondResult))
 
@@ -766,7 +741,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     val result = dm.disableWebhook(dataset, webhook, integrationUser).await
     assert(result.isRight)
-    val deletedRowCount = result.right.get
+    val deletedRowCount = result.value
     assert(deletedRowCount == 1)
 
     val actualIntegrations = database
@@ -790,12 +765,12 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val dm = datasetManager(user = user)
 
     val enabledWebhook =
-      dm.enableWebhook(dataset, webhook2, integrationUser).await.right.get
+      dm.enableWebhook(dataset, webhook2, integrationUser).await.value
 
     val result = dm.disableWebhook(dataset, webhook1, integrationUser).await
     assert(result.isRight)
 
-    val deletedRowCount = result.right.get
+    val deletedRowCount = result.value
     assert(deletedRowCount == 0)
 
     val actualIntegrations = database
@@ -823,7 +798,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     val result = dm.enableDefaultWebhooks(dataset).await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 1)
 
@@ -859,7 +834,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     val result = dm.enableDefaultWebhooks(dataset).await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 1)
 
@@ -893,7 +868,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       .enableDefaultWebhooks(dataset, Some(Set(requestedWebhook.id)), None)
       .await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 2)
 
@@ -941,7 +916,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       )
       .await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 2)
 
@@ -991,7 +966,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       )
       .await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 2)
 
@@ -1036,7 +1011,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       )
       .await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 1)
 
@@ -1079,7 +1054,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       )
       .await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 1)
 
@@ -1119,7 +1094,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       )
       .await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 1)
 
@@ -1149,7 +1124,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
     val result = dm.enableDefaultWebhooks(dataset).await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 0)
 
@@ -1179,7 +1154,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       )
       .await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 0)
 
@@ -1210,7 +1185,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       )
       .await
     assert(result.isRight)
-    val enabledCountOpt = result.right.get
+    val enabledCountOpt = result.value
     assert(enabledCountOpt.isDefined)
     assert(enabledCountOpt.get == 0)
 

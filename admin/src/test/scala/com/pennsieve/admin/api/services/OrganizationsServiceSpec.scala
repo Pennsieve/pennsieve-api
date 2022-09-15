@@ -58,6 +58,7 @@ import io.circe.syntax._
 import io.circe.parser._
 import shapeless.syntax.inject._
 import org.scalatest.OptionValues._
+import org.scalatest.EitherValues._
 
 import scala.collection.JavaConverters._
 import scala.compat.java8.FutureConverters._
@@ -601,11 +602,10 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         .head
         .body
 
-      parse(sentMessage).right.get.hcursor
+      parse(sentMessage).value.hcursor
         .downField("CachePopulationJob")
         .get[Int]("organizationId")
-        .right
-        .get shouldBe organizationOne.id
+        .value shouldBe organizationOne.id
     }
 
     "start the storage cache population job in a different organization" in {
@@ -629,11 +629,10 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         .head
         .body
 
-      parse(sentMessage).right.get.hcursor
+      parse(sentMessage).value.hcursor
         .downField("CachePopulationJob")
         .get[Int]("organizationId")
-        .right
-        .get shouldBe organizationTwo.id
+        .value shouldBe organizationTwo.id
     }
 
     "allow an admin user to upload new custom terms" in {
@@ -649,7 +648,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         routes ~> check {
         status shouldEqual OK
         val version =
-          DateVersion.from(responseAs[String].replace("\"", "")).right.get
+          DateVersion.from(responseAs[String].replace("\"", "")).value
 
         val customTOSClient =
           testDIContainer.customTermsOfServiceClient
@@ -662,7 +661,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         val versionDB = organizationManager
           .getCustomTermsOfServiceVersion(organizationOne.nodeId)
           .await
-        versionDB.right.get.toDateVersion shouldBe version
+        versionDB.value.toDateVersion shouldBe version
       }
     }
 
@@ -688,7 +687,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         routes ~> check {
         status shouldEqual OK
         val version =
-          DateVersion.from(responseAs[String].replace("\"", "")).right.get
+          DateVersion.from(responseAs[String].replace("\"", "")).value
 
         // returned version shuold be the same as existing version
         version shouldBe existingVersion.toDateVersion
@@ -704,7 +703,7 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         val versionDB = organizationManager
           .getCustomTermsOfServiceVersion(organizationOne.nodeId)
           .await
-        versionDB.right.get.toDateVersion shouldBe existingVersion.toDateVersion
+        versionDB.value.toDateVersion shouldBe existingVersion.toDateVersion
 
       }
     }

@@ -21,7 +21,6 @@ import com.pennsieve.aws.cognito.{
   CognitoPoolConfig,
   MockJwkProvider
 }
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.core.utilities._
 import com.pennsieve.db._
 import com.pennsieve.managers._

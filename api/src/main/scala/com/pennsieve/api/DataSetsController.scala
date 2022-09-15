@@ -39,13 +39,13 @@ import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.discover.client.search.SearchClient
 import com.pennsieve.doi.client.definitions.{
   CreateDraftDoiRequest,
-  CreatorDTO
+  CreatorDto
 }
 import com.pennsieve.doi.client.doi._
 import com.pennsieve.doi.models._
 import com.pennsieve.domain
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
-import com.pennsieve.domain.{ CoreError, _ }
+import com.pennsieve.domain.{ CoreError, ParseError, _ }
 import com.pennsieve.dtos.Builders._
 import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.{
@@ -262,7 +262,7 @@ object ChangelogEventGroupDTO {
       timeRange = eventGroup.timeRange,
       event = eventOrCursor.left.toOption,
       eventCursor =
-        eventOrCursor.right.toOption.map(ChangelogEventCursor.encodeBase64(_))
+        eventOrCursor.toOption.map(ChangelogEventCursor.encodeBase64(_))
     )
 
 }
@@ -299,7 +299,7 @@ class DataSetsController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "DataSets"
+  override val pennsieveSwaggerTag = "DataSets"
 
   configureMultipartHandling(
     MultipartConfig(maxFileSize = Some(maxFileUploadSize))
@@ -399,7 +399,8 @@ class DataSetsController(
     checkOrErrorT[CoreError](ifMatchHeader match {
       case None => true
       case Some(updatedMilli) => updatedMilli == etag.asHeader
-    })(StaleUpdateError(s"$entity has changed since last retrieved")).coreErrorToActionResult
+    })(StaleUpdateError(s"$entity has changed since last retrieved"))
+      .coreErrorToActionResult()
   }
 
   // To be used when then entity may not yet exist
@@ -413,7 +414,7 @@ class DataSetsController(
       case None =>
         checkOrErrorT[CoreError](
           ifMatchHeader == None || ifMatchHeader == Some("0")
-        )(StaleUpdateError(s"$entity already exists")).coreErrorToActionResult
+        )(StaleUpdateError(s"$entity already exists")).coreErrorToActionResult()
       case Some(etag) => checkIfMatchTimestamp(entity, etag)
     }
   }
@@ -436,16 +437,16 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataSetDTO] = for {
         datasetId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         storageServiceClient = secureContainer.storageManager
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         status <- secureContainer.datasetStatusManager
           .get(dataset.statusId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(
@@ -456,11 +457,11 @@ class DataSetsController(
               DatasetPermission.ViewDiscussionComments
             )
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         storageMap <- storageServiceClient
           .getStorage(sdatasets, List(dataset.id))
-          .orError
+          .orError()
 
         storage = storageMap.get(dataset.id).flatten
 
@@ -473,13 +474,13 @@ class DataSetsController(
           .map(
             secureContainer.datasetPublicationStatusManager
               .getPublicationStatus(_)
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           )
           .getOrElse(EitherT.rightT[Future, ActionResult](None))
 
         contributors <- secureContainer.datasetManager
           .getContributors(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dto <- datasetDTO(
           dataset,
@@ -499,7 +500,7 @@ class DataSetsController(
           ),
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -507,7 +508,7 @@ class DataSetsController(
           .append("dataset-node-id", dataset.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- setETagHeader(dataset.etag)
       } yield dto
@@ -530,20 +531,19 @@ class DataSetsController(
 
       val result: EitherT[Future, ActionResult, Map[String, Long]] = for {
         datasetId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         counts <- secureContainer.packageManager
           .packageTypes(dataset)
           .map(_.map { case (k, v) => (k.toString, v.toLong) })
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield counts
       override val is = result.value.map(OkResult(_))
     }
@@ -571,7 +571,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[DataSetDTO]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           organization = secureContainer.organization
           traceId <- getTraceId(request)
           storageServiceClient = secureContainer.storageManager
@@ -600,7 +600,7 @@ class DataSetsController(
             .append("dataset-node-ids", datasets.map(_.dataset.nodeId): _*)
             .log(traceId)
             .toEitherT
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           dto <- {
             datasetDTOs(
@@ -617,7 +617,7 @@ class DataSetsController(
               ),
               system,
               jwtConfig
-            ).orError
+            ).orError()
           }
         } yield dto
 
@@ -694,7 +694,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, PaginatedDatasets] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           storageServiceClient = secureContainer.storageManager
 
           limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
@@ -720,7 +720,7 @@ class DataSetsController(
                     secureContainer.datasetStatusManager.getByName(statusName)
                   )
                   .toEitherT
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
               }
             }
 
@@ -737,7 +737,7 @@ class DataSetsController(
             PredicateError(
               "can't use withRole and onlyMyDatasets option together"
             )
-          ).coreErrorToActionResult
+          ).coreErrorToActionResult()
 
           publicationTypes <- listParamT[PublicationType]("publicationType")
             .map {
@@ -780,7 +780,7 @@ class DataSetsController(
               restrictToRole = withRole.isDefined || ownerOnly.isDefined,
               collectionId = collectionId
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           traceId <- getTraceId(request)
 
@@ -798,7 +798,7 @@ class DataSetsController(
             )
             .log(traceId)
             .toEitherT
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           dtos <- datasetDTOs(
             datasetsAndStatus,
@@ -814,7 +814,7 @@ class DataSetsController(
             ),
             system,
             jwtConfig
-          ).orError
+          ).orError()
 
         } yield PaginatedDatasets(limit, offset, datasetCount, dtos)
 
@@ -835,7 +835,7 @@ class DataSetsController(
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataSetDTO] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
 
         user = secureContainer.user
@@ -847,15 +847,16 @@ class DataSetsController(
             secureContainer.db
               .run(secureContainer.datasetStatusManager.getByName(name))
               .toEitherT
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           case None => // Use the default status
             secureContainer.db
               .run(secureContainer.datasetStatusManager.getDefaultStatus)
               .toEitherT
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
         }
 
-        dataUseAgreement <- secureContainer.dataUseAgreementManager.getDefault.coreErrorToActionResult
+        dataUseAgreement <- secureContainer.dataUseAgreementManager.getDefault
+          .coreErrorToActionResult()
 
         newDataset <- secureContainer.datasetManager
           .create(
@@ -868,7 +869,7 @@ class DataSetsController(
             tags = body.tags,
             dataUseAgreement = dataUseAgreement
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         includedWebhookIds = if (body.includedWebhookIds.isEmpty) None
         else Some(body.includedWebhookIds.toSet)
@@ -882,7 +883,7 @@ class DataSetsController(
             includedWebhookIds,
             excludedWebhookIds
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         changelog = DatasetAssetsManager.defaultChangelogText
         _ <- secureContainer.datasetAssetsManager
@@ -898,11 +899,11 @@ class DataSetsController(
                 IOUtils.toInputStream(changelog, "utf-8")
               )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(newDataset, ChangelogEventDetail.CreateDataset())
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -910,7 +911,7 @@ class DataSetsController(
           .append("dataset-node-id", newDataset.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dto <- datasetDTO(
           newDataset,
@@ -927,7 +928,7 @@ class DataSetsController(
           ),
           system,
           jwtConfig
-        ).orError
+        ).orError()
       } yield dto
 
       override val is = result.value.map(CreatedResult)
@@ -951,12 +952,12 @@ class DataSetsController(
         traceId <- getTraceId(request)
         datasetId <- paramT[String]("id")
         req <- extractOrErrorT[UpdateDataSetRequest](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         storageServiceClient = secureContainer.storageManager
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(
@@ -970,24 +971,24 @@ class DataSetsController(
               DatasetPermission.EditContributors
             )
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkIfMatchTimestamp("dataset", dataset.etag)
 
         oldStatus <- secureContainer.datasetStatusManager
           .get(dataset.statusId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         newStatus <- req.status match {
           case Some(name) => {
             secureContainer.db
               .run(secureContainer.datasetStatusManager.getByName(name))
               .toEitherT
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           }
           case None => // Keep existing status
             EitherT.rightT[Future, ActionResult](oldStatus)
@@ -1000,7 +1001,7 @@ class DataSetsController(
             secureContainer.dataUseAgreementManager
               .get(agreementId)
               .map(_.id.some)
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           case None if parsedBody.hasField("dataUseAgreementId") =>
             EitherT.rightT[Future, ActionResult](None)
           case _ =>
@@ -1023,14 +1024,14 @@ class DataSetsController(
               dataUseAgreementId = dataUseAgreementId
             )
           )
-          .orForbidden
+          .orForbidden()
 
         _ <- secureContainer.changelogManager
           .logEvents(
             updatedDataset,
             diffDatasetChanges(dataset, updatedDataset, oldStatus, newStatus)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         organization = secureContainer.organization
 
@@ -1075,23 +1076,23 @@ class DataSetsController(
 
         //     case None => EitherT.rightT[Future, CoreError](())
         //   }
-        // }.coreErrorToActionResult
+        // }.coreErrorToActionResult()
 
         publicationStatus <- dataset.publicationStatusId
           .map(
             secureContainer.datasetPublicationStatusManager
               .getPublicationStatus(_)
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           )
           .getOrElse(EitherT.rightT[Future, ActionResult](None))
 
         contributors <- secureContainer.datasetManager
           .getContributors(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         storageMap <- storageServiceClient
           .getStorage(sdatasets, List(updatedDataset.id))
-          .orError
+          .orError()
         storage = storageMap.get(dataset.id).flatten
 
         _ <- auditLogger
@@ -1100,7 +1101,7 @@ class DataSetsController(
           .append("dataset-node-id", updatedDataset.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dto <- datasetDTO(
           updatedDataset,
@@ -1118,7 +1119,7 @@ class DataSetsController(
           ),
           system,
           jwtConfig
-        ).orError
+        ).orError()
 
         _ <- setETagHeader(updatedDataset.etag)
 
@@ -1193,25 +1194,24 @@ class DataSetsController(
       val deleteResult: EitherT[Future, ActionResult, Done] = for {
         traceId <- getTraceId(request)
         datasetId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.DeleteDataset))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // if the dataset is locked,
         // it is in the middle of the publishing process and cannot be deleted until that is done
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         datasetPublicationLog <- secureContainer.datasetPublicationStatusManager
           .getLogByDataset(dataset.id)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkOrErrorT[CoreError](
           datasetPublicationLog.isEmpty ||
@@ -1222,7 +1222,7 @@ class DataSetsController(
           PredicateError(
             "datasets must be unpublished from discover before they can be deleted"
           )
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
         organization = secureContainer.organization
 
@@ -1234,15 +1234,15 @@ class DataSetsController(
             publishClient,
             sendNotification
           )(ec, system, jwtConfig)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         deleteMessage <- secureContainer.datasetManager
           .delete(traceId, dataset)
-          .orForbidden
+          .orForbidden()
 
         _ <- sqsClient
           .send(insecureContainer.sqs_queue, deleteMessage.asJson.noSpaces)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield Done
 
@@ -1264,20 +1264,20 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, DoiDTO] = for {
         datasetId <- paramT[String]("id")
         body <- extractOrErrorT[CreateDraftDoiRequest](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         organization = secureContainer.organization
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ReserveDoi))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         currentOwner <- secureContainer.datasetManager
           .getOwner(dataset)
@@ -1285,7 +1285,7 @@ class DataSetsController(
 
         contributorsAndUsers <- secureContainer.datasetManager
           .getContributors(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         contributors = contributorsAndUsers.map {
           case (contributor, user) =>
@@ -1295,14 +1295,14 @@ class DataSetsController(
         contributorsName = contributors
           .map(
             x =>
-              CreatorDTO(
+              CreatorDto(
                 firstName = x.firstName,
                 lastName = x.lastName,
                 middleInitial = x.middleInitial,
                 orcid = x.orcid
               )
           )
-          .toIndexedSeq
+          .toVector
 
         bodyWithDefaults = body.copy(
           title = Some(dataset.name),
@@ -1333,11 +1333,11 @@ class DataSetsController(
           secureContainer.user.nodeId,
           dataset.id,
           doiServiceResponse
-        ).toEitherT[Future].coreErrorToActionResult
+        ).toEitherT[Future].coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield doi
 
@@ -1355,12 +1355,12 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DoiDTO] = for {
         datasetId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         organization = secureContainer.organization
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         // DOI can be viewed if the dataset can be viewed
         _ <- secureContainer
@@ -1372,7 +1372,7 @@ class DataSetsController(
               DatasetPermission.ViewDiscussionComments
             )
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         token = JwtAuthenticator.generateServiceToken(
           1.minute,
@@ -1393,7 +1393,7 @@ class DataSetsController(
           secureContainer.user.nodeId,
           dataset.id,
           doiServiceResponse
-        ).toEitherT[Future].coreErrorToActionResult
+        ).toEitherT[Future].coreErrorToActionResult()
 
       } yield doi
 
@@ -1414,22 +1414,22 @@ class DataSetsController(
   get("/:id/collaborators", operation(getCollaborators)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         datasetId <- paramT[String]("id")
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orBadRequest
+          .orBadRequest()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewPeopleAndRoles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         collaborators <- secureContainer.datasetManager
           .getCollaborators(dataset)
-          .orBadRequest
+          .orBadRequest()
         dto <- Builders
           .collaboratorsDTO(collaborators)(secureContainer)
-          .orError
+          .orError()
       } yield dto
 
       override val is = result.value.map(OkResult)
@@ -1450,22 +1450,22 @@ class DataSetsController(
       val shareResponse = for {
         datasetId <- paramT[String]("id")
         reqIds <- extractOrErrorT[Set[String]](parsedBody)
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(
             Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- assertNotDemoOrganization(secureContainer)
 
         results <- secureContainer.datasetManager
           .addCollaborators(dataset, reqIds)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // TODO logEvent
       } yield results
@@ -1486,27 +1486,27 @@ class DataSetsController(
   delete("/:id/collaborators", operation(unShareDataSetOperation)) {
     new AsyncResult {
       val unshareResponse = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         datasetId <- paramT[String]("id")
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(
             Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         unShareIds <- extractOrErrorT[Set[String]](parsedBody)
 
         results <- secureContainer.datasetManager
           .removeCollaborators(dataset, unShareIds, false)
-          .orForbidden
+          .orForbidden()
 
         // TODO: logEvent
       } yield results
@@ -1527,22 +1527,22 @@ class DataSetsController(
     new AsyncResult {
       val results: EitherT[Future, ActionResult, DatasetPermissionResponse] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           user = secureContainer.user
           datasetNodeId <- paramT[String]("id")
 
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetNodeId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewPeopleAndRoles))(
               dataset
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           role <- secureContainer.datasetManager
             .maxRole(dataset, user)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield {
           DatasetPermissionResponse(user.id, dataset.id, role.toPermission)
         }
@@ -1564,15 +1564,15 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[ContributorDTO]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           contributorsAndUsers <- secureContainer.datasetManager
             .getContributors(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield contributorsAndUsers.map(ContributorDTO(_))
 
       override val is = result.value.map(OkResult(_))
@@ -1592,33 +1592,32 @@ class DataSetsController(
         datasetId <- paramT[String]("id")
         contributorId <- extractOrErrorT[AddContributorRequest](parsedBody)
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- assertNotDemoOrganization(secureContainer)
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         results <- secureContainer.datasetManager
           .addContributor(dataset, contributorId.contributorId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dto <- secureContainer.contributorsManager
           .getContributor(contributorId.contributorId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
           .map(ContributorDTO(_))
 
         _ <- secureContainer.changelogManager
           .logEvent(dataset, ChangelogEventDetail.AddContributor(dto))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield dto
 
@@ -1639,35 +1638,34 @@ class DataSetsController(
         datasetId <- paramT[String]("datasetId")
         body <- extractOrErrorT[SwitchContributorsOrderRequest](parsedBody)
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditContributors))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         contributor <- secureContainer.datasetManager
           .getContributor(dataset, body.contributorId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         otherContributor <- secureContainer.datasetManager
           .getContributor(dataset, body.otherContributorId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .switchContributorOrder(dataset, contributor, otherContributor)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ()
       override val is = switchResponse.value.map(OkResult)
@@ -1689,35 +1687,35 @@ class DataSetsController(
         datasetId <- paramT[String]("datasetId")
         contributorId <- paramT[Int]("contributorId")
 
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.EditContributors))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         toDelete <- secureContainer.contributorsManager
           .getContributor(contributorId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
           .map(ContributorDTO(_))
 
         _ <- secureContainer.datasetManager
           .removeContributor(dataset, contributorId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(dataset, ChangelogEventDetail.RemoveContributor(toDelete))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield ()
 
       override val is = removeResponse.value.map(OkResult)
@@ -1737,15 +1735,15 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[CollectionDTO]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           collections <- secureContainer.datasetManager
             .getCollections(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield collections.map(CollectionDTO(_))
 
       override val is = result.value.map(OkResult(_))
@@ -1767,37 +1765,36 @@ class DataSetsController(
           parsedBody
         )
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageDatasetCollections))(
             dataset
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         collection <- secureContainer.datasetManager
           .addCollection(dataset, addCollectionRequest.collectionId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(dataset, ChangelogEventDetail.AddCollection(collection))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         collections <- secureContainer.datasetManager
           .getCollections(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield collections.map(CollectionDTO(_))
 
@@ -1817,32 +1814,32 @@ class DataSetsController(
         datasetId <- paramT[String]("datasetId")
         collectionId <- paramT[Int]("collectionId")
 
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ManageDatasetCollections))(
             dataset
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         collection <- secureContainer.datasetManager
           .removeCollection(dataset, collectionId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(dataset, ChangelogEventDetail.RemoveCollection(collection))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield ()
 
       override val is = removeResponse.value.map(OkResult)
@@ -1862,23 +1859,23 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[UserCollaboratorRoleDTO]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
 
           _ <- assertNotDemoOrganization(secureContainer)
 
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewPeopleAndRoles))(
               dataset
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           usersAndRoles <- secureContainer.datasetManager
             .getUserCollaborators(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield
           usersAndRoles.map {
             case (user, role) =>
@@ -1906,33 +1903,32 @@ class DataSetsController(
         datasetId <- paramT[String]("id")
         userDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- assertNotDemoOrganization(secureContainer)
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(
             Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- assertNotDemoOrganization(secureContainer)
 
         user <- secureContainer.userManager
           .getByNodeId(userDto.id)
-          .orNotFound
+          .orNotFound()
 
         _ <- checkOrErrorT(!user.isIntegrationUser)(
           InvalidAction("Cannot manually add integration users to a dataset"): CoreError
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
         oldRole <- secureContainer.datasetManager
           .addUserCollaborator(dataset, user, userDto.role)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(
@@ -1945,7 +1941,7 @@ class DataSetsController(
               organizationId = None
             )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ()
 
@@ -1963,32 +1959,32 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           userDto <- extractOrErrorT[RemoveCollaboratorRequest](parsedBody)
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(
               Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
             )(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           user <- secureContainer.userManager
             .getByNodeId(userDto.id)
-            .orNotFound
+            .orNotFound()
 
           _ <- checkOrErrorT(!user.isIntegrationUser)(
             InvalidAction(
               "Cannot manually remove integration users from dataset."
             ): CoreError
-          ).coreErrorToActionResult
+          ).coreErrorToActionResult()
 
           oldRole <- secureContainer.datasetManager
             .deleteUserCollaborator(dataset, user)
-            .orForbidden
+            .orForbidden()
 
           _ <- secureContainer.changelogManager
             .logEvent(
@@ -2001,7 +1997,7 @@ class DataSetsController(
                 organizationId = None
               )
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield ()
 
@@ -2021,20 +2017,20 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[TeamCollaboratorRoleDTO]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewPeopleAndRoles))(
               dataset
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           teamsAndRoles <- secureContainer.datasetManager
             .getTeamCollaborators(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield
           teamsAndRoles.map {
             case (team, role) =>
@@ -2055,26 +2051,25 @@ class DataSetsController(
       val addResponse: EitherT[Future, ActionResult, Unit] = for {
         datasetId <- paramT[String]("id")
         teamDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- assertNotDemoOrganization(secureContainer)
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(
             Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         team <- secureContainer.organizationManager
           .getTeamWithOrganizationTeamByNodeId(
             secureContainer.organization,
             teamDto.id
           )
-          .orNotFound
+          .orNotFound()
 
         _ <- checkOrErrorT(team._2.systemTeamType isEmpty)(
           BadRequest(
@@ -2084,7 +2079,7 @@ class DataSetsController(
 
         oldRole <- secureContainer.datasetManager
           .addTeamCollaborator(dataset, team._1, teamDto.role)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(
@@ -2097,7 +2092,7 @@ class DataSetsController(
               organizationId = None
             )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield ()
 
       override val is = addResponse.value.map(OkResult)
@@ -2114,25 +2109,25 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           teamDto <- extractOrErrorT[RemoveCollaboratorRequest](parsedBody)
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(
               Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
             )(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           team <- secureContainer.organizationManager
             .getTeamWithOrganizationTeamByNodeId(
               secureContainer.organization,
               teamDto.id
             )
-            .orNotFound
+            .orNotFound()
 
           _ <- checkOrErrorT(team._2.systemTeamType isEmpty)(
             BadRequest(
@@ -2141,7 +2136,7 @@ class DataSetsController(
           )
           oldRole <- secureContainer.datasetManager
             .deleteTeamCollaborator(dataset, team._1)
-            .orForbidden
+            .orForbidden()
 
           _ <- secureContainer.changelogManager
             .logEvent(
@@ -2154,7 +2149,7 @@ class DataSetsController(
                 organizationId = None
               )
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield ()
 
@@ -2178,16 +2173,16 @@ class DataSetsController(
       val getResponse: EitherT[Future, ActionResult, OrganizationRoleDTO] =
         for {
           datasetId <- paramT[String]("id")
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewPeopleAndRoles))(
               dataset
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield
           OrganizationRoleDTO(
             dataset.role,
@@ -2217,26 +2212,25 @@ class DataSetsController(
         organizationRoleRequest <- extractOrErrorT[OrganizationRoleDTO](
           parsedBody
         )
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- assertNotDemoOrganization(secureContainer)
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         _ <- secureContainer
           .authorizeDataset(
             Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .setOrganizationCollaboratorRole(
             dataset,
             organizationRoleRequest.role
           )
-          .orForbidden
+          .orForbidden()
 
         _ <- secureContainer.changelogManager
           .logEvent(
@@ -2249,7 +2243,7 @@ class DataSetsController(
               organizationId = secureContainer.organization.id.some
             )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ()
 
@@ -2270,21 +2264,21 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(
               Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
             )(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.datasetManager
             .setOrganizationCollaboratorRole(dataset, None)
-            .orForbidden
+            .orForbidden()
 
           _ <- secureContainer.changelogManager
             .logEvent(
@@ -2297,7 +2291,7 @@ class DataSetsController(
                 organizationId = secureContainer.organization.id.some
               )
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield ()
 
@@ -2316,16 +2310,16 @@ class DataSetsController(
     new AsyncResult {
       val results: EitherT[Future, ActionResult, DatasetRoleResponse] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           user = secureContainer.user
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orForbidden
+            .orForbidden()
 
           role <- secureContainer.datasetManager
             .maxRole(dataset, user)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield {
           DatasetRoleResponse(
             userId = user.id,
@@ -2353,21 +2347,20 @@ class DataSetsController(
 
         body <- extractOrErrorT[SwitchOwnerRequest](parsedBody)
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- assertNotDemoOrganization(secureContainer)
 
         newOwner <- secureContainer.userManager
           .getByNodeId(body.id)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -2375,7 +2368,7 @@ class DataSetsController(
           .append("dataset-node-id", dataset.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         currentOwner <- secureContainer.datasetManager
           .getOwner(dataset)
@@ -2390,7 +2383,7 @@ class DataSetsController(
 
         _ <- secureContainer.datasetManager
           .switchOwner(dataset, currentOwner, newOwner)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(
@@ -2398,11 +2391,11 @@ class DataSetsController(
             ChangelogEventDetail
               .UpdateOwner(oldOwner = currentOwner.id, newOwner = newOwner.id)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         message = insecureContainer.messageTemplates
           .datasetOwnerChangedNotification(
@@ -2548,12 +2541,12 @@ class DataSetsController(
             }
           }
 
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           organization = secureContainer.organization
 
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           packagesPageAndFiles <- (
             if (includeSources) {
@@ -2615,7 +2608,7 @@ class DataSetsController(
             )
             .log(traceId)
             .toEitherT
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield packagesPage
       }
@@ -2635,7 +2628,7 @@ class DataSetsController(
 
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         user = secureContainer.user
         organization = secureContainer.organization
 
@@ -2645,15 +2638,15 @@ class DataSetsController(
 
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetNodeId)
-          .orError
+          .orError()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         packages <- secureContainer.packageManager
           .getByExternalIdsForDataset(dataset, packageIds)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- auditLogger
           .message()
@@ -2664,16 +2657,16 @@ class DataSetsController(
           .append("package-node-ids", packages.map(_.nodeId): _*)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         storage <- secureContainer.storageManager
           .getStorage(spackages, packages.map(_.id))
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         packageSingleSourceMap <- secureContainer.fileManager
           .getSingleSourceMap(packages)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         dtos = packages.map(
           pkg =>
@@ -2690,7 +2683,7 @@ class DataSetsController(
         )
 
         notFound = (packageIds
-          .to[Set] -- (packages.map(_.id).map(ExternalId.intId _) ++ packages
+          .to(Set) -- (packages.map(_.id).map(ExternalId.intId _) ++ packages
           .map(_.nodeId)
           .map(ExternalId.nodeId _))).toList
 
@@ -2716,12 +2709,12 @@ class DataSetsController(
         for {
           datasetNodeId <- paramT[String]("id")
 
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           organization = secureContainer.organization
 
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetNodeId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           status <- DataSetPublishingHelper
             .getPublishedStatus(
@@ -2730,7 +2723,7 @@ class DataSetsController(
               dataset,
               secureContainer.user
             )(ec, system, jwtConfig)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield status
 
       val is = result.value.map(OkResult)
@@ -2746,14 +2739,14 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[DatasetPublishStatus]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           statuses <- DataSetPublishingHelper
             .getPublishedStatusForOrganization(
               publishClient,
               secureContainer.organization,
               secureContainer.user
             )(ec, system, jwtConfig)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield statuses
 
@@ -2795,7 +2788,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetPublicationStatus] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           publicationType <- paramT[PublicationType]("publicationType")
           comments <- optParamT[String]("comments")
           datasetId <- paramT[String]("id")
@@ -2815,7 +2808,7 @@ class DataSetsController(
               publicationType,
               datasetAssetClient
             )(request, ec, system, jwtConfig)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           embargoReleaseDate <- embargoReleaseDate match {
             case Some(releaseDate)
@@ -2839,19 +2832,19 @@ class DataSetsController(
           contributors <- secureContainer.datasetManager
             .getContributors(validated.dataset)
             .map(_.map(ContributorDTO(_)))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           isPublisher <- secureContainer.organizationManager
             .isPublisher(secureContainer.organization)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- DataSetPublishingHelper
             .gatherPublicationInfo(validated, contributors, isPublisher)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- DataSetPublishingHelper
             .addPublisherTeam(secureContainer, validated.dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           response <- secureContainer.datasetPublicationStatusManager
             .create(
@@ -2861,7 +2854,7 @@ class DataSetsController(
               comments = comments,
               embargoReleaseDate = embargoReleaseDate
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- if (validated.publicationType == PublicationType.Publication) {
             DataSetPublishingHelper.emailContributorsPublicationRequest(
@@ -2874,7 +2867,7 @@ class DataSetsController(
           } else {
             EitherT
               .rightT[Future, CoreError](List[SesMessageResult]())
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           }
 
         } yield response
@@ -2894,8 +2887,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetPublicationStatus] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           publicationType <- paramT[PublicationType]("publicationType")
           comments <- optParamT[String]("comments")
           datasetId <- paramT[String]("id")
@@ -2908,15 +2900,15 @@ class DataSetsController(
               publicationType,
               datasetAssetClient
             )(request, ec, system, jwtConfig)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- DataSetPublishingHelper
             .removePublisherTeam(secureContainer, validated.dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.packageManager
             .markFilesInPendingStateAsUploaded(dataset = validated.dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           response <- secureContainer.datasetPublicationStatusManager
             .create(
@@ -2926,7 +2918,7 @@ class DataSetsController(
               comments = comments,
               embargoReleaseDate = validated.embargoReleaseDate
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield response
 
@@ -2946,8 +2938,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetPublicationStatus] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           publicationType <- paramT[PublicationType]("publicationType")
           comments <- optParamT[String]("comments")
           datasetId <- paramT[String]("id")
@@ -2960,16 +2951,16 @@ class DataSetsController(
               publicationType,
               datasetAssetClient
             )(request, ec, system, jwtConfig)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           contributors <- secureContainer.datasetManager
             .getContributors(validated.dataset)
             .map(_.map(ContributorDTO(_)))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- DataSetPublishingHelper
             .removePublisherTeam(secureContainer, validated.dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           response <- secureContainer.datasetPublicationStatusManager
             .create(
@@ -2979,11 +2970,11 @@ class DataSetsController(
               comments = comments,
               embargoReleaseDate = validated.embargoReleaseDate
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.packageManager
             .markFilesInPendingStateAsUploaded(dataset = validated.dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- if (validated.publicationType == PublicationType.Publication) {
             DataSetPublishingHelper.emailContributorsDatasetRejected(
@@ -2998,7 +2989,7 @@ class DataSetsController(
           } else {
             EitherT
               .rightT[Future, CoreError](List[SesMessageResult]())
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
           }
 
         } yield response
@@ -3019,7 +3010,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetPublicationStatus] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           publicationType <- paramT[PublicationType]("publicationType")
           comments <- optParamT[String]("comments")
           datasetId <- paramT[String]("id")
@@ -3032,21 +3023,21 @@ class DataSetsController(
               publicationType,
               datasetAssetClient
             )(request, ec, system, jwtConfig)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           contributors <- secureContainer.datasetManager
             .getContributors(validated.dataset)
             .map(_.map(ContributorDTO(_)))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           collections <- secureContainer.datasetManager
             .getCollections(validated.dataset)
             .map(_.map(CollectionDTO(_)))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           externalPublications <- secureContainer.externalPublicationManager
             .get(validated.dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           currentPublicationStatus <- DataSetPublishingHelper
             .getPublishedStatus(
@@ -3055,7 +3046,7 @@ class DataSetsController(
               validated.dataset,
               secureContainer.user
             )(ec, system, jwtConfig)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           bearerToken <- AuthenticatedController
             .getBearerToken(request)
@@ -3063,7 +3054,7 @@ class DataSetsController(
 
           isPublisher <- secureContainer.organizationManager
             .isPublisher(secureContainer.organization)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           response <- validated.publicationType match {
             case PublicationType.Publication | PublicationType.Embargo =>
@@ -3071,7 +3062,7 @@ class DataSetsController(
 
                 publicationInfo <- DataSetPublishingHelper
                   .gatherPublicationInfo(validated, contributors, isPublisher)
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 _ <- DataSetPublishingHelper
                   .sendPublishRequest(
@@ -3091,7 +3082,7 @@ class DataSetsController(
                     collections = collections,
                     externalPublications = externalPublications
                   )(ec, system, jwtConfig)
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 response <- secureContainer.datasetPublicationStatusManager
                   .create(
@@ -3101,7 +3092,7 @@ class DataSetsController(
                     comments = comments,
                     embargoReleaseDate = validated.embargoReleaseDate
                   )
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 _ <- DataSetPublishingHelper.emailContributorsDatasetAccepted(
                   insecureContainer,
@@ -3118,7 +3109,7 @@ class DataSetsController(
 
                 publicationInfo <- DataSetPublishingHelper
                   .gatherPublicationInfo(validated, contributors, isPublisher)
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 _ <- DataSetPublishingHelper
                   .sendReviseRequest(
@@ -3145,7 +3136,7 @@ class DataSetsController(
                     comments = None,
                     embargoReleaseDate = validated.embargoReleaseDate
                   )
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 _ <- DataSetPublishingHelper.emailContributorsRevisionAccepted(
                   insecureContainer,
@@ -3158,7 +3149,7 @@ class DataSetsController(
                 // remove the publishing team for revisions since the process is complete
                 _ <- DataSetPublishingHelper
                   .removePublisherTeam(secureContainer, validated.dataset)
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 // add entries for both Accept and Complete, since the revise job is syncronous
                 response <- secureContainer.datasetPublicationStatusManager
@@ -3169,7 +3160,7 @@ class DataSetsController(
                     comments = comments,
                     embargoReleaseDate = validated.embargoReleaseDate
                   )
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
               } yield response
             case PublicationType.Removal =>
               for {
@@ -3182,7 +3173,7 @@ class DataSetsController(
                     publishClient,
                     sendNotification
                   )(ec, system, jwtConfig)
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 _ <- secureContainer.datasetPublicationStatusManager
                   .create(
@@ -3192,12 +3183,12 @@ class DataSetsController(
                     comments = None,
                     embargoReleaseDate = validated.embargoReleaseDate
                   )
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 // remove the publishing team for withdrawals since the process is complete
                 _ <- DataSetPublishingHelper
                   .removePublisherTeam(secureContainer, validated.dataset)
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 // add entries for both Accept and Complete, since the unpublish job is syncronous
                 response <- secureContainer.datasetPublicationStatusManager
@@ -3208,7 +3199,7 @@ class DataSetsController(
                     comments = comments,
                     embargoReleaseDate = validated.embargoReleaseDate
                   )
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
               } yield response
 
             case PublicationType.Release =>
@@ -3221,7 +3212,7 @@ class DataSetsController(
                     publishClient,
                     sendNotification
                   )(ec, system, jwtConfig)
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 response <- secureContainer.datasetPublicationStatusManager
                   .create(
@@ -3231,7 +3222,7 @@ class DataSetsController(
                     comments = comments,
                     embargoReleaseDate = validated.embargoReleaseDate
                   )
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 _ <- DataSetPublishingHelper
                   .emailContributorsEmbargoedDatasetReleasedAccepted(
@@ -3261,7 +3252,7 @@ class DataSetsController(
         for {
           datasetId <- paramT[Int]("id")
 
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           organization = secureContainer.organization
           _ <- checkOrErrorT(secureContainer.user.isSuperAdmin)(
             Forbidden("Must be superadmin to complete publish")
@@ -3269,11 +3260,11 @@ class DataSetsController(
 
           dataset <- secureContainer.datasetManager
             .get(datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           owner <- secureContainer.datasetManager
             .getOwner(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           body <- extractOrErrorT[PublishCompleteRequest](parsedBody)
 
@@ -3289,7 +3280,7 @@ class DataSetsController(
                 ): CoreError
               )
             })
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ = if (publicationStatus.publicationStatus != PublicationStatus.Accepted) {
             logger.error(
@@ -3307,7 +3298,7 @@ class DataSetsController(
             PredicateError(
               s"Publication type must be publication, embargo, or release, but was ${publicationStatus.publicationType}"
             ): CoreError
-          ).coreErrorToActionResult
+          ).coreErrorToActionResult()
 
           _ <- secureContainer.datasetPublicationStatusManager
             .create(
@@ -3320,7 +3311,7 @@ class DataSetsController(
               comments = publicationStatus.comments,
               embargoReleaseDate = publicationStatus.embargoReleaseDate
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           // Only remove the publisher team if the publish was successful.
           // In the case of failure, a subsequent success (via retry) or a
@@ -3333,12 +3324,12 @@ class DataSetsController(
                   )
                 } else {
                   EitherT.rightT[Future, CoreError](())
-                }).coreErrorToActionResult
+                }).coreErrorToActionResult()
 
           contributors <- secureContainer.datasetManager
             .getContributors(dataset)
             .map(_.map(ContributorDTO(_)))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           notification = if (body.success) {
             logger.info(s"Publish complete for dataset ${dataset.nodeId}")
@@ -3373,7 +3364,7 @@ class DataSetsController(
               body.error
             )
           }
-          _ <- sendNotification(notification).coreErrorToActionResult
+          _ <- sendNotification(notification).coreErrorToActionResult()
 
           _ <- if (body.success) for {
             publishedDatasetId <- body.publishedDatasetId
@@ -3385,7 +3376,7 @@ class DataSetsController(
             //find all the files with a state of pending and mark them as Uploaded
             _ <- secureContainer.packageManager
               .markFilesInPendingStateAsUploaded(dataset = dataset)
-              .coreErrorToActionResult
+              .coreErrorToActionResult()
 
             _ <- publicationStatus.publicationType match {
               case PublicationType.Embargo =>
@@ -3438,7 +3429,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetPublicationStatus] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[Int]("id")
 
           _ <- checkOrErrorT(isServiceClaim(request))(
@@ -3447,11 +3438,11 @@ class DataSetsController(
 
           dataset <- secureContainer.datasetManager
             .get(datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           publicationLog <- secureContainer.datasetPublicationStatusManager
             .getLogByDataset(dataset.id)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- DataSetPublishingHelper
             .validatePublicationStateTransition(
@@ -3461,7 +3452,7 @@ class DataSetsController(
               PublicationType.Release
             )
             .toEitherT[Future]
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- DataSetPublishingHelper
             .sendReleaseRequest(
@@ -3471,7 +3462,7 @@ class DataSetsController(
               publishClient,
               sendNotification
             )(ec, system, jwtConfig)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.datasetPublicationStatusManager
             .create(
@@ -3481,7 +3472,7 @@ class DataSetsController(
               comments = None,
               embargoReleaseDate = None // TODO: fill this in?
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           response <- secureContainer.datasetPublicationStatusManager
             .create(
@@ -3491,7 +3482,7 @@ class DataSetsController(
               comments = None,
               embargoReleaseDate = None // TODO: fill this in?
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield response
 
@@ -3512,20 +3503,20 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[DatasetPreviewerDTO]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
 
           dataset <- secureContainer.datasetManager
             .getByAnyId(datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.AddPeople))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           previewersAndUsers <- secureContainer.datasetPreviewManager
             .getPreviewers(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield
           previewersAndUsers.map {
@@ -3554,16 +3545,16 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
 
           dataset <- secureContainer.datasetManager
             .getByAnyId(datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.AddPeople))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           grantPreviewAccessRequest <- extractOrErrorT[
             GrantPreviewAccessRequest
@@ -3571,15 +3562,15 @@ class DataSetsController(
 
           user <- secureContainer.userManager
             .get(grantPreviewAccessRequest.userId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           /*  _ <- secureContainer.datasetManager
             .canShareWithUser(user)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
            */
           _ <- secureContainer.datasetPreviewManager
             .grantAccess(dataset, user)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           discoverDatasetId <- DataSetPublishingHelper
             .getPublishedStatus(
@@ -3589,7 +3580,7 @@ class DataSetsController(
               secureContainer.user
             )
             .map(_.publishedDatasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- DataSetPublishingHelper.emailPreviewerEmbargoAccessAccepted(
             insecureContainer,
@@ -3623,16 +3614,16 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
 
           dataset <- secureContainer.datasetManager
             .getByAnyId(datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.AddPeople))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           removePreviewAccesRequest <- extractOrErrorT[
             RemovePreviewAccessRequest
@@ -3640,11 +3631,11 @@ class DataSetsController(
 
           user <- secureContainer.userManager
             .get(removePreviewAccesRequest.userId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           removed <- secureContainer.datasetPreviewManager
             .removeAccess(dataset, user)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           // Only send email to user if this was a pending request
           _ <- removed match {
@@ -3679,8 +3670,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           _ <- checkOrErrorT(secureContainer.user.isSuperAdmin)(
             Forbidden("Must be superadmin to request a preview")
           )
@@ -3691,11 +3681,11 @@ class DataSetsController(
 
           dataset <- secureContainer.datasetManager
             .get(previewAccessRequest.datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           datasetPublicationLog <- secureContainer.datasetPublicationStatusManager
             .getLogByDataset(dataset.id)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           lastCompletedPublicationType = datasetPublicationLog
             .find(_.publicationStatus in PublicationStatus.Completed)
@@ -3711,7 +3701,7 @@ class DataSetsController(
 
           user <- secureContainer.userManager
             .get(previewAccessRequest.userId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           // Check that the user signed the use agreement for the dataset
           _ <- (
@@ -3723,11 +3713,11 @@ class DataSetsController(
               for {
                 dataUseAgreement <- secureContainer.dataUseAgreementManager
                   .get(datasetAgreement)
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
 
                 _ <- secureContainer.datasetPreviewManager
                   .requestAccess(dataset, user, Some(dataUseAgreement))
-                  .coreErrorToActionResult
+                  .coreErrorToActionResult()
               } yield ()
 
             case (Some(datasetAgreement), _) =>
@@ -3737,20 +3727,20 @@ class DataSetsController(
                     s"Missing or invalid dataUseAgreementId - must sign data use agreement $datasetAgreement"
                   ): CoreError
                 )
-                .orBadRequest
+                .orBadRequest()
             case _ =>
               secureContainer.datasetPreviewManager
                 .requestAccess(dataset, user, None)
-                .coreErrorToActionResult
+                .coreErrorToActionResult()
           }
 
           owner <- secureContainer.datasetManager
             .getOwner(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           managers <- secureContainer.datasetManager
             .getManagers(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- DataSetPublishingHelper.emailManagersEmbargoAccessRequested(
             insecureContainer,
@@ -3779,23 +3769,23 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Option[DataUseAgreementDTO]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[ExternalId]("id")
 
           dataset <- secureContainer.datasetManager
             .getByExternalIdWithMaxRole(datasetId)
             .map(_._1)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewPeopleAndRoles))(
               dataset
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           dataUseAgreement <- dataset.dataUseAgreementId
             .traverse(secureContainer.dataUseAgreementManager.get(_))
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield dataUseAgreement.map(DataUseAgreementDTO(_))
 
@@ -3814,14 +3804,8 @@ class DataSetsController(
     response: GetLatestDoiResponse
   ): Either[CoreError, DoiDTO] = {
     response match {
-      case GetLatestDoiResponse.OK(dto) => {
-        dto.as[DoiDTO] match {
-          case Right(decodedDoi) =>
-            Right(decodedDoi)
-          case Left(decodingFailure) =>
-            Left(ParseError(decodingFailure))
-        }
-      }
+      case GetLatestDoiResponse.OK(dto) =>
+        Right(dto)
       case GetLatestDoiResponse.NotFound(e) =>
         Left(domain.NotFound(e))
       case GetLatestDoiResponse.Forbidden(e) =>
@@ -3839,14 +3823,8 @@ class DataSetsController(
     response: CreateDraftDoiResponse
   ): Either[CoreError, DoiDTO] = {
     response match {
-      case CreateDraftDoiResponse.Created(dto) => {
-        dto.as[DoiDTO] match {
-          case Right(decodedDoi) =>
-            Right(decodedDoi)
-          case Left(decodingFailure) =>
-            Left(ParseError(decodingFailure))
-        }
-      }
+      case CreateDraftDoiResponse.Created(dto) =>
+        Right(dto)
       case CreateDraftDoiResponse.BadRequest(e) =>
         Left(PredicateError(e))
       case CreateDraftDoiResponse.Forbidden(e) =>
@@ -3879,11 +3857,10 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, DatasetBannerDTO] = for {
         datasetId <- paramT[String]("id")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(
@@ -3892,17 +3869,17 @@ class DataSetsController(
               DatasetPermission.EditDatasetDescription
             )
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         fileItem <- fileParams.get("banner").orBadRequest().toEitherT[Future]
 
         oldAsset <- secureContainer.datasetAssetsManager
           .getBanner(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         bannerAsset <- secureContainer.datasetAssetsManager
           .createOrUpdateBanner(
@@ -3920,7 +3897,7 @@ class DataSetsController(
                 .map(_ => asset),
             asset => datasetAssetClient.deleteAsset(asset).map(_ => asset)
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(
@@ -3930,17 +3907,17 @@ class DataSetsController(
               newBanner = Some(bannerAsset.s3Url)
             )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         bannerUrl <- datasetAssetClient
           .generatePresignedUrl(bannerAsset, bannerTTL)
           .leftMap[CoreError](e => ExceptionError(new Exception(e)))
           .toEitherT[Future]
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield DatasetBannerDTO(Some(bannerUrl))
 
@@ -3958,19 +3935,18 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, DatasetBannerDTO] = for {
         datasetId <- paramT[String]("id")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         bannerAsset <- secureContainer.datasetAssetsManager
           .getBanner(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Generate a presigned URL for the banner S3 asset, if it exists
         bannerUrl <- bannerAsset
@@ -3978,7 +3954,7 @@ class DataSetsController(
           .sequence
           .leftMap[CoreError](e => ExceptionError(new Exception(e)))
           .toEitherT[Future]
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield DatasetBannerDTO(bannerUrl)
 
@@ -3999,11 +3975,10 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, Unit] = for {
         datasetId <- paramT[String]("id")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(
@@ -4012,15 +3987,15 @@ class DataSetsController(
               DatasetPermission.EditDatasetDescription
             )
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         oldReadmeAsset <- secureContainer.datasetAssetsManager
           .getReadme(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkIfMatchTimestamp("readme", oldReadmeAsset.map(_.etag))
 
@@ -4028,7 +4003,7 @@ class DataSetsController(
           .traverse(datasetAssetClient.downloadAsset(_))
           .leftMap[CoreError](e => ExceptionError(new Exception(e)))
           .toEitherT[Future]
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         body <- extractOrErrorT[DatasetReadmeDTO](parsedBody)
 
@@ -4045,7 +4020,7 @@ class DataSetsController(
                 IOUtils.toInputStream(body.readme, "utf-8")
               )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(
@@ -4055,20 +4030,20 @@ class DataSetsController(
               newReadme = Some(body.readme)
             )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updatedDataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Refresh to get new ETag timestamp
         updatedReadme <- secureContainer.datasetAssetsManager
           .getReadme(updatedDataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- setETagHeader(updatedReadme.map(_.etag))
 
@@ -4088,19 +4063,18 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, DatasetReadmeDTO] = for {
         datasetId <- paramT[String]("id")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         readmeAsset <- secureContainer.datasetAssetsManager
           .getReadme(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // If the readme has not been created, return the empty string
         readme <- readmeAsset
@@ -4108,7 +4082,7 @@ class DataSetsController(
           .getOrElse(Right(""))
           .leftMap[CoreError](e => ExceptionError(new Exception(e)))
           .toEitherT[Future]
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- setETagHeader(readmeAsset.map(_.etag))
 
@@ -4133,11 +4107,10 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, Unit] = for {
         datasetId <- paramT[String]("id")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(
@@ -4146,15 +4119,15 @@ class DataSetsController(
               DatasetPermission.EditDatasetChangelog
             )
           )(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         oldChangelogAsset <- secureContainer.datasetAssetsManager
           .getChangelog(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- checkIfMatchTimestamp("changelog", oldChangelogAsset.map(_.etag))
 
@@ -4162,7 +4135,7 @@ class DataSetsController(
           .traverse(datasetAssetClient.downloadAsset(_))
           .leftMap[CoreError](e => ExceptionError(new Exception(e)))
           .toEitherT[Future]
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         body <- extractOrErrorT[DatasetChangelogDTO](parsedBody)
 
@@ -4179,7 +4152,7 @@ class DataSetsController(
                 IOUtils.toInputStream(body.changelog, "utf-8")
               )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.changelogManager
           .logEvent(
@@ -4189,20 +4162,20 @@ class DataSetsController(
               newChangelog = Some(body.changelog)
             )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         updatedDataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Refresh to get new ETag timestamp
         updatedChangelog <- secureContainer.datasetAssetsManager
           .getChangelog(updatedDataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- setETagHeader(updatedChangelog.map(_.etag))
 
@@ -4222,19 +4195,18 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, DatasetChangelogDTO] = for {
         datasetId <- paramT[String]("id")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         changelogAsset <- secureContainer.datasetAssetsManager
           .getChangelog(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // If the changelog has not been created, return the empty string
         changelog <- changelogAsset
@@ -4242,7 +4214,7 @@ class DataSetsController(
           .getOrElse(Right(""))
           .leftMap[CoreError](e => ExceptionError(new Exception(e)))
           .toEitherT[Future]
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         _ <- setETagHeader(changelogAsset.map(_.etag))
 
@@ -4268,22 +4240,22 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, PaginatedStatusLogEntries] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewPeopleAndRoles))(
               dataset
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
           offset <- paramT[Int]("offset", default = DatasetsDefaultOffset)
           statusLogEntriesAndCount <- secureContainer.datasetManager
             .getStatusLog(dataset, limit, offset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           (statusLogEntries, logEntriesCount) = statusLogEntriesAndCount
 
@@ -4313,19 +4285,19 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetIgnoreFilesDTO] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           ignoreFiles <- secureContainer.datasetManager
             .getIgnoreFiles(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield DatasetIgnoreFilesDTO(dataset.id, ignoreFiles)
 
       override val is = result.value.map(OkResult(_))
@@ -4348,11 +4320,11 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetIgnoreFilesDTO] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           ignoreFiles <- extractOrErrorT[Seq[DatasetIgnoreFileDTO]](parsedBody)
             .map(_.map(x => DatasetIgnoreFile(dataset.id, x.fileName)))
 
@@ -4363,11 +4335,11 @@ class DataSetsController(
                 DatasetPermission.EditDatasetDescription
               )
             )(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           updatedIgnoreFiles <- secureContainer.datasetManager
             .setIgnoreFiles(dataset, ignoreFiles)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.changelogManager
             .logEvent(
@@ -4375,11 +4347,11 @@ class DataSetsController(
               ChangelogEventDetail
                 .UpdateIgnoreFiles(totalCount = updatedIgnoreFiles.length)
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           _ <- secureContainer.datasetManager
             .touchUpdatedAtTimestamp(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
         } yield DatasetIgnoreFilesDTO(dataset.id, updatedIgnoreFiles)
 
@@ -4422,7 +4394,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, PaginatedPublishedDatasets] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           organization = secureContainer.organization
           user = secureContainer.user
           storageServiceClient = secureContainer.storageManager
@@ -4459,7 +4431,7 @@ class DataSetsController(
               (orderBy, orderByDirection),
               textSearch
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           // Out of this list, get datasets that the user can access in the platform
           userDatasetsAndStatuses <- secureContainer.datasetManager
@@ -4471,7 +4443,7 @@ class DataSetsController(
                   .flatMap(_.sourceDatasetId)
               )
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           datasetDtos <- datasetDTOs(
             userDatasetsAndStatuses,
@@ -4487,14 +4459,14 @@ class DataSetsController(
             ),
             system,
             jwtConfig
-          ).map(_.map(dto => (dto.content.intId, dto)).toMap).orError
+          ).map(_.map(dto => (dto.content.intId, dto)).toMap).orError()
 
           // Aggregate all requested and granted embargo preview requests for
           // this user to merge with the list of published datasets.
           embargoPreviewAccess <- secureContainer.datasetPreviewManager
             .forUser(secureContainer.user)
             .map(_.map(p => (p.datasetId, p.embargoAccess)).toMap)
-            .orError
+            .orError()
 
           datasetsAndPublishedDatasets = publishedDatasetsForOrganization.datasets
             .map(publishedDataset => {
@@ -4526,7 +4498,7 @@ class DataSetsController(
             )
             .log(traceId)
             .toEitherT
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield
           PaginatedPublishedDatasets(
             limit,
@@ -4559,8 +4531,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ChangelogPage] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
           cursor <- optParamT[ChangelogEventGroupCursor]("cursor")
@@ -4570,11 +4541,11 @@ class DataSetsController(
 
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           eventGroupsAndCursor <- secureContainer.changelogManager
             .getTimeline(
@@ -4585,7 +4556,7 @@ class DataSetsController(
               startDate = startDate,
               userId = userId
             )
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           (eventGroups, cursor) = eventGroupsAndCursor
 
@@ -4639,23 +4610,22 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ChangelogEventPage] =
         for {
-          secureContainer <- getSecureContainer
-
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
           cursor <- paramT[ChangelogEventCursor]("cursor")
 
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
 
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           eventsAndCursor <- secureContainer.changelogManager
             .getEvents(dataset, limit = limit, cursor = cursor)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           (events, cursor) = eventsAndCursor
 
@@ -4683,8 +4653,7 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Unit] = for {
         datasetId <- paramT[String]("id")
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         // Prevent sending custom events from __sandbox__
         _ <- assertNotDemoOrganization(secureContainer)
 
@@ -4694,12 +4663,12 @@ class DataSetsController(
         // Get the associated dataset
         dataset <- secureContainer.datasetManager
           .getByNodeId(datasetId)
-          .orNotFound
+          .orNotFound()
 
         // Ensure the user has permissions to trigger custom events
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.TriggerCustomEvents))(dataset)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         // Log the event in the changelog and send to integrations
         _ <- secureContainer.changelogManager
@@ -4710,7 +4679,7 @@ class DataSetsController(
               message = customEventRequest.message
             )
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ()
 
@@ -4731,17 +4700,17 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[DatasetIntegration]] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ViewWebhooks))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           datasetIntegrations <- secureContainer.datasetManager
             .getIntegrations(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield datasetIntegrations
       override val is = result.value.map(OkResult(_))
     }
@@ -4761,24 +4730,24 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DatasetIntegration] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           webhookId <- paramT[Int]("webhookId")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ManageWebhooks))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           webhook <- secureContainer.webhookManager
             .getForIntegration(webhookId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           integrationUser <- secureContainer.userManager
             .get(webhook.integrationUserId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           datasetIntegration <- secureContainer.datasetManager
             .enableWebhook(dataset, webhook, integrationUser)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield datasetIntegration
       override val is = result.value.map(OkResult(_))
     }
@@ -4799,24 +4768,24 @@ class DataSetsController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Int] =
         for {
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
           webhookId <- paramT[Int]("webhookId")
           dataset <- secureContainer.datasetManager
             .getByNodeId(datasetId)
-            .orNotFound
+            .orNotFound()
           _ <- secureContainer
             .authorizeDataset(Set(DatasetPermission.ManageWebhooks))(dataset)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           webhook <- secureContainer.webhookManager
             .getForIntegration(webhookId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           integrationUser <- secureContainer.userManager
             .get(webhook.integrationUserId)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
           deletedRowCount <- secureContainer.datasetManager
             .disableWebhook(dataset, webhook, integrationUser)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
         } yield deletedRowCount
       override val is = result.value.map(OkResult(_))
     }
@@ -4833,10 +4802,10 @@ class DataSetsController(
     for {
       demoOrganization <- secureContainer.organizationManager
         .isDemo(secureContainer.organization.id)
-        .coreErrorToActionResult
+        .coreErrorToActionResult()
 
       _ <- checkOrErrorT(!demoOrganization)(
         InvalidAction("Demo user cannot share datasets."): CoreError
-      ).coreErrorToActionResult
+      ).coreErrorToActionResult()
     } yield ()
 }

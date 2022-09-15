@@ -239,13 +239,13 @@ trait AuthenticatedController
         case Some(organizationNodeId) =>
           insecureContainer.organizationManager
             .getByNodeId(organizationNodeId)
-            .orError
+            .orError()
         case None =>
           getOrganizationIntId(claim, request) match {
             case Some(organizationIntId) =>
               insecureContainer.organizationManager
                 .get(organizationIntId)
-                .orError
+                .orError()
             case None =>
               EitherT.left(
                 Future(
@@ -308,7 +308,7 @@ trait AuthenticatedController
 
               _ <- validateJwt(request, organization.id).toEitherT[Future]
 
-            } yield secureContainerBuilder(User.serviceUser, organization)
+            } yield secureContainerBuilder(User.serviceUser(), organization)
         }
       }
 
@@ -345,7 +345,7 @@ trait AuthenticatedController
 
               _ <- validateJwt(request, organization.id).toEitherT[Future]
 
-            } yield secureContainerBuilder(User.serviceUser, organization)
+            } yield secureContainerBuilder(User.serviceUser(), organization)
         }
       }
 
@@ -365,7 +365,7 @@ trait AuthenticatedController
       .map(TraceId(_))
       .toRight(MissingTraceId: CoreError)
       .toEitherT[Future]
-      .coreErrorToActionResult
+      .coreErrorToActionResult()
   }
 
   def tryGetTraceId(

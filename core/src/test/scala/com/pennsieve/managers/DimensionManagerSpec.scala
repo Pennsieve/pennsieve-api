@@ -25,8 +25,7 @@ import com.pennsieve.models.{
   DimensionProperties,
   Package
 }
-import com.pennsieve.test.helpers.EitherValue._
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -62,7 +61,7 @@ class DimensionManagerSpec extends BaseManagerSpec {
 
     // delete
     manager.delete(dimension, `package`).await.value
-    manager.get(dimension.id, `package`).await should be('left)
+    manager.get(dimension.id, `package`).await should be(Symbol("left"))
   }
 
   "DimensionManager" should "be able to perform all batch dimension operations" in {

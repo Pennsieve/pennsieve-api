@@ -19,9 +19,9 @@ package com.pennsieve.managers
 import com.pennsieve.domain.CoreError
 import com.pennsieve.managers.DatasetManager.{ OrderByColumn, OrderByDirection }
 import com.pennsieve.models._
-import com.pennsieve.test.helpers.EitherValue._
+import org.scalatest.EitherValues._
 import org.scalatest.OptionValues._
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

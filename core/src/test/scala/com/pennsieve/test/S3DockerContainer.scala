@@ -46,7 +46,7 @@ final class S3DockerContainerImpl
   def mappedPort(): Int = super.mappedPort(S3DockerContainer.port)
   val accessKey: String = S3DockerContainer.accessKey
   val secretKey: String = S3DockerContainer.secretKey
-  def endpointUrl: String = s"http://${containerIpAddress}:${mappedPort}"
+  def endpointUrl: String = s"http://${containerIpAddress}:${mappedPort()}"
 
   def apply(): GenericContainer = this
 

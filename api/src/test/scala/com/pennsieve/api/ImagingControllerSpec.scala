@@ -26,7 +26,6 @@ import com.pennsieve.models.{
   Package
 }
 import com.pennsieve.models.PackageState.READY
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.models.PackageType
 import org.json4s._
 import org.json4s.jackson.JsonMethods._

@@ -31,18 +31,20 @@ import com.pennsieve.timeseries.{ AnnotationAggregateWindowResult, Integer }
 import com.pennsieve.helpers.TimeSeriesHelper
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.{ Slide, TimeSeries }
-import com.pennsieve.test.helpers.EitherValue._
 import com.github.tminglei.slickpg.Range
 import org.json4s.jackson.Serialization.write
 import org.scalatest.OptionValues._
-import org.scalatest.{ BeforeAndAfterEach, FlatSpec, Matchers }
+import org.scalatest.EitherValues._
+import org.scalatest.BeforeAndAfterEach
 import com.pennsieve.dtos.PagedResponse
 import com.pennsieve.traits.PostgresProfile.api._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.collection.SortedSet
 
 class TimeSeriesControllerAnnotationSpecs
-    extends FlatSpec
+    extends AnyFlatSpec
     with ApiSuite
     with Matchers
     with BeforeAndAfterEach {
@@ -478,7 +480,7 @@ class TimeSeriesControllerAnnotationSpecs
       val end = (parsedBody \ "annotation" \ "end").extract[Long]
 
       val expected = TimeSeriesHelper.resetAnnotationStartTime(
-        packageStartTime.right.get
+        packageStartTime.value
       )(annotation)
 
       start should be(expected.start)
@@ -595,15 +597,13 @@ class TimeSeriesControllerAnnotationSpecs
           None
         )(secureContainer.timeSeriesManager)
         .await
-        .right
-        .get
+        .value
     }
 
     val packageStartTime = TimeSeriesHelper
       .getPackageStartTime(timeseriesPackage, secureContainer)
       .await
-      .right
-      .get
+      .value
 
     get(
       s"/${timeseriesPackage.nodeId}/layers/${layer.id}/annotations?start=0&end=40&layerName=testLayer&channelIds=$channelOneNodeId&startAtEpoch=true",

@@ -28,7 +28,7 @@ import akka.stream._
 import akka.testkit.TestKitBase
 import cats.data._
 import cats.implicits._
-import com.pennsieve.akka.http.EitherValue._
+import org.scalatest.EitherValues._
 import com.pennsieve.db.DatasetsMapper
 import com.pennsieve.managers.{
   DatasetManager,

@@ -157,7 +157,7 @@ package object utilities {
       .toUpperCase
 
   /**
-    * Returns an Option wrapped trimmed version of [[optionalStr]] if present, otherwise None
+    * Returns an Option wrapped trimmed version of {@code optionalStr} if present, otherwise None
     * @param optionalStr
     * @return either trimmed, non-empty Some or None
     */

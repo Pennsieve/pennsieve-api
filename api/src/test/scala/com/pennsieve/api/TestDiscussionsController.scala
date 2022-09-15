@@ -45,18 +45,17 @@ class TestDiscussionsController extends BaseApiTest {
     )
   }
 
-  override def beforeEach() {
+  override def beforeEach(): Unit = {
     super.beforeEach()
     val discussionMgr = secureContainer.discussionManager
 
-    discussion = discussionMgr.create(personal, None).await.right.value
+    discussion = discussionMgr.create(personal, None).await.value
 
     discussionMgr.createComment("hello!", loggedInUser, discussion).await
     discussionMgr.createComment("how are you?", loggedInUser, discussion).await
     comment = discussionMgr
       .createComment("Fine, thanks.", loggedInUser, discussion)
       .await
-      .right
       .value
   }
 
@@ -106,12 +105,10 @@ class TestDiscussionsController extends BaseApiTest {
     val layer = annotationManager
       .createLayer(home, "home folder", "red")
       .await
-      .right
       .value
     val annotation = annotationManager
       .create(loggedInUser, layer, "this is the thing", Nil, Nil)
       .await
-      .right
       .value
     val createReq = write(
       CreateCommentRequest(
@@ -151,15 +148,13 @@ class TestDiscussionsController extends BaseApiTest {
     val layer = annotationManager
       .createLayer(home, "home folder", "red")
       .await
-      .right
       .value
     val annotation = annotationManager
       .create(loggedInUser, layer, "this is the thing", Nil, Nil)
       .await
-      .right
       .value
     val discussion =
-      discussionManager.create(home, Some(annotation)).await.right.value
+      discussionManager.create(home, Some(annotation)).await.value
 
     delete(
       s"/${discussion.id}",
@@ -198,7 +193,6 @@ class TestDiscussionsController extends BaseApiTest {
       val upd = secureContainer.discussionManager
         .getComment(comment.id)
         .await
-        .right
         .value
 
       assert(upd.message == newmsg)

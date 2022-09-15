@@ -38,6 +38,7 @@ import slick.dbio.{ DBIOAction, NoStream }
 import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.collection.compat._
 
 class DiscussionManager(organization: Organization, db: Database) {
 
@@ -184,7 +185,9 @@ class DiscussionManager(organization: Organization, db: Database) {
     }.map { items =>
       items
         .groupBy(_._1)
+        .view
         .mapValues(_.map { case (_, cs) => cs })
+        .toMap // toMap is for Scala 2.13
     }
   }
 

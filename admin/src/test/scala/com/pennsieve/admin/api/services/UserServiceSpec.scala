@@ -22,7 +22,6 @@ import cats.syntax.option._
 import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.models.{ DBPermission, User, UserInvite }
 import com.pennsieve.models.DBPermission.Owner
-import com.pennsieve.test.helpers.EitherValue._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.java8.time._
@@ -58,7 +57,7 @@ class UserServiceSpec extends AdminServiceSpec {
         assert(invites.map(_.email).contains(email))
 
         val createdInvite: Seq[UserInvite] =
-          testDIContainer.userInviteManager.getByEmail(email).await.right.value
+          testDIContainer.userInviteManager.getByEmail(email).await.value
         assert(createdInvite.head.email == email)
 
         assert(
@@ -91,7 +90,6 @@ class UserServiceSpec extends AdminServiceSpec {
         val createdInvite: Seq[UserInvite] = testDIContainer.userInviteManager
           .getByEmail(ownerEmail)
           .await
-          .right
           .value
         assert(createdInvite.head.permission == Owner)
         assert(createdInvite.head.email == ownerEmail)

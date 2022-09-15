@@ -49,7 +49,7 @@ final class SQSDockerContainerImpl
       waitStrategy = Some(SQSDockerContainer.waitStrategy)
     ) {
   val region: String = SQSDockerContainer.region
-  def containerHost: String = s"${containerIpAddress}:${mappedPort}"
+  def containerHost: String = s"${containerIpAddress}:${mappedPort()}"
   def mappedPort(): Int = mappedPort(SQSDockerContainer.port)
   def httpHost(): String = s"http://${containerHost}"
   def testQueueUrl(): String = s"http://${containerHost}/queue/test"
@@ -61,16 +61,16 @@ final class SQSDockerContainerImpl
 
   override def config: Config =
     super.config
-      .withValue("sqs.host", ConfigValueFactory.fromAnyRef(httpHost))
-      .withValue("sqs.queue", ConfigValueFactory.fromAnyRef(testQueueUrl))
+      .withValue("sqs.host", ConfigValueFactory.fromAnyRef(httpHost()))
+      .withValue("sqs.queue", ConfigValueFactory.fromAnyRef(testQueueUrl()))
       .withValue("sqs.region", ConfigValueFactory.fromAnyRef(region))
       .withValue(
         "sqs.notifications_queue",
-        ConfigValueFactory.fromAnyRef(notificationsQueueUrl)
+        ConfigValueFactory.fromAnyRef(notificationsQueueUrl())
       )
       .withValue(
         "pennsieve.uploads.queue",
-        ConfigValueFactory.fromAnyRef(uploadsQueueUrl)
+        ConfigValueFactory.fromAnyRef(uploadsQueueUrl())
       )
 }
 

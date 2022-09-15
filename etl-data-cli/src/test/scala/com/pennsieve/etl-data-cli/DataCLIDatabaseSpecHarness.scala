@@ -17,7 +17,6 @@
 package com.pennsieve.etl.`data-cli`
 
 import java.util.UUID
-
 import com.pennsieve.db._
 import com.pennsieve.managers.DatasetStatusManager
 import com.pennsieve.models.{
@@ -29,11 +28,13 @@ import com.pennsieve.models.{
   PackageType
 }
 import com.pennsieve.traits.PostgresProfile.api._
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 trait DataCLIDatabaseSpecHarness
-    extends FlatSpec
+    extends AnyFlatSpec
     with DataCLISpecHarness
     with Matchers {
 
@@ -48,7 +49,7 @@ trait DataCLIDatabaseSpecHarness
     val status = new DatasetStatusManager(dataCLIContainer.db, organization)
       .create("Test")
       .await
-      .right
+      .toOption
       .get
 
     val dataset = Dataset(

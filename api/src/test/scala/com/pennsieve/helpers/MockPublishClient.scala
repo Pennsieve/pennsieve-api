@@ -50,8 +50,8 @@ class MockPublishClient(
 
   def clear(): Unit = {
     nextGetStatusValue = None
-    publishRequests.clear
-    releaseRequests.clear
+    publishRequests.clear()
+    releaseRequests.clear()
   }
 
   private var nextGetStatusValue: Option[PublishStatus] = None

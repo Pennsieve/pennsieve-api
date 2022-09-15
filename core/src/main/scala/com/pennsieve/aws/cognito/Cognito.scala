@@ -43,7 +43,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
 }
 
 import java.util.UUID
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.compat.java8.OptionConverters._

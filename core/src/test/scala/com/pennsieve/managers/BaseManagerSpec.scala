@@ -16,8 +16,6 @@
 
 package com.pennsieve.managers
 
-import com.pennsieve.aws.LocalAWSCredentialsProviderV2
-import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNS, SNS, SNSClient }
 import com.pennsieve.models.{
@@ -47,14 +45,11 @@ import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.db._
 import com.pennsieve.models.FileObjectType.Source
 import com.pennsieve.test._
-import com.pennsieve.test.helpers._
-import com.pennsieve.test.helpers.EitherValue._
+import com.pennsieve.test.helpers.{ TestDatabase, TestableOrganizationManager }
 import org.scalatest._
-import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sns.SnsAsyncClient
+import org.scalatest.EitherValues._
+import org.scalatest.flatspec.AnyFlatSpec
 
-import java.net.URI
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
@@ -487,8 +482,7 @@ trait ManagerSpec
     contributorsManager(organization, creatingUser)
       .create(firstName, lastName, email, middleInitial, degree, orcid, userId)
       .await
-      .right
-      .get
+      .value
   }
 
   def createWebhook(
@@ -522,9 +516,8 @@ trait ManagerSpec
         integrationUser
       )
       .await
-      .right
-      .get
+      .value
   }
 }
 
-class BaseManagerSpec extends FlatSpec with ManagerSpec
+class BaseManagerSpec extends AnyFlatSpec with ManagerSpec

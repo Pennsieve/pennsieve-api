@@ -63,7 +63,6 @@ import com.pennsieve.models.PackageType.Collection
 import com.pennsieve.models.PublishStatus.{ PublishFailed, PublishSucceeded }
 import com.pennsieve.test.{ LocalstackDockerContainer, _ }
 import com.pennsieve.test.helpers._
-import com.pennsieve.test.helpers.EitherValue._
 import com.pennsieve.traits.TimeSeriesDBContainer
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import enumeratum._
@@ -79,8 +78,9 @@ import com.typesafe.scalalogging.LazyLogging
 import net.ceedubs.ficus.Ficus.{ stringValueReader, toFicusConfig }
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.json4s.jackson.JsonMethods._
-import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, FunSuite }
+import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach }
 import org.scalatest.EitherValues._
+import org.scalatest.funsuite.AnyFunSuite
 import org.scalatra.test.scalatest._
 import org.scalatra.test.HttpComponentsClientResponse
 
@@ -475,10 +475,10 @@ trait ApiSuite
       loggedInUser,
       loggedInOrganization,
       cognito = CognitoSession
-        .API(CognitoId.TokenPoolId.randomId, Instant.now().plusSeconds(10))
+        .API(CognitoId.TokenPoolId.randomId(), Instant.now().plusSeconds(10))
     )(jwtConfig, insecureContainer.db, ec)
 
-    secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.right.value
+    secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.value
 
     defaultDatasetStatus = secureContainer.db
       .run(secureContainer.datasetStatusManager.getDefaultStatus)
@@ -498,7 +498,6 @@ trait ApiSuite
     home = packageManager
       .create("Home", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
-      .right
       .value
 
     personal = packageManager
@@ -511,7 +510,6 @@ trait ApiSuite
         None
       )
       .await
-      .right
       .value
 
     // This will check to see if an organization of sandbox already exists, and if so, uses that
@@ -729,4 +727,4 @@ trait ApiSuite
   }
 }
 
-trait BaseApiTest extends FunSuite with ApiSuite
+trait BaseApiTest extends AnyFunSuite with ApiSuite

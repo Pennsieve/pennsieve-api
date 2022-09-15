@@ -40,6 +40,7 @@ import com.pennsieve.models.{
 import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.collection.compat._
 
 object FileManager {
 
@@ -433,13 +434,17 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
           )
           .result
       )
-      .map(_.groupBy(_.packageId).mapValues(files => {
-        if (files.size == 1) {
-          files.headOption
-        } else {
-          None
-        }
-      }))
+      .map(
+        _.groupBy(_.packageId).view
+          .mapValues(files => {
+            if (files.size == 1) {
+              files.headOption
+            } else {
+              None
+            }
+          })
+          .toMap
+      ) // toMap for Scala 2.13
   }
 
   /** Fetches all unprocessed sources in the given package.

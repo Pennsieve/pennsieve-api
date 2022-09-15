@@ -19,20 +19,22 @@ package com.pennsieve.aws.cognito
 import com.auth0.jwk.{ Jwk, JwkProvider }
 import io.circe.Decoder
 import io.circe.generic.decoding.DerivedDecoder.deriveDecoder
-import org.scalatest.{ FlatSpec, Matchers }
 import pdi.jwt.{ JwtAlgorithm, JwtCirce }
 import software.amazon.awssdk.regions.Region
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.JWK
 import com.pennsieve.models.CognitoId
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.EitherValues._
 
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.util.UUID
 import java.security.interfaces.{ RSAPrivateKey, RSAPublicKey }
 import java.time.Instant
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class MockJwkProvider() extends JwkProvider {
 
@@ -67,8 +69,7 @@ class MockJwkProvider() extends JwkProvider {
     val jwkValues =
       io.circe.parser
         .decode[Map[String, String]](nimbusJwk.toPublicJWK.toJSONString)
-        .right
-        .get
+        .value
         .asJava
         .asInstanceOf[java.util.Map[String, Object]]
 
@@ -110,7 +111,7 @@ class MockJwkProvider() extends JwkProvider {
   )
 }
 
-class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
+class CognitoJWTAuthenticatorSpec extends AnyFlatSpec with Matchers {
 
   val pennsieveUserId: String = "0f14d0ab-9605-4a62-a9e4-5ed26688389b"
   val cognitoPoolId: String = "12345"
@@ -173,10 +174,10 @@ class CognitoJWTAuthenticatorSpec extends FlatSpec with Matchers {
       CognitoJWTAuthenticator.validateJwt(validToken)
 
     tokenValidatorResponse.isRight should be(true)
-    tokenValidatorResponse.right.get.id.toString should be(
+    tokenValidatorResponse.value.id.toString should be(
       UUID.fromString(pennsieveUserId).toString
     )
-    tokenValidatorResponse.right.get.expiresAt should be(
+    tokenValidatorResponse.value.expiresAt should be(
       Instant.ofEpochSecond(validTokenTime)
     )
   }

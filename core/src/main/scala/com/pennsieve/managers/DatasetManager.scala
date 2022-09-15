@@ -596,6 +596,56 @@ class DatasetManager(
   def validShareId(id: String): Boolean =
     NodeCodes.nodeIdIsOneOf(validShareableNodeCodes, id)
 
+  def generateAddCollaboratorQueriesMapper(
+    dataset: Dataset,
+    validIdsToShareWithMap: Map[String, Int]
+  )(
+    codeIdPair: (String, Set[String])
+  )(implicit
+    ec: ExecutionContext
+  ): Set[DBIO[String]] =
+    codeIdPair match {
+      case (NodeCodes.userCode, shareeIds) =>
+        shareeIds.map(
+          nodeId =>
+            datasetUser
+              .+=(
+                DatasetUser(
+                  dataset.id,
+                  validIdsToShareWithMap(nodeId),
+                  DBPermission.Delete,
+                  Some(Role.Editor)
+                )
+              )
+              .map(_ => nodeId)
+        )
+      case (NodeCodes.teamCode, shareeIds) =>
+        shareeIds.map(
+          nodeId =>
+            datasetTeam
+              .+=(
+                DatasetTeam(
+                  dataset.id,
+                  validIdsToShareWithMap(nodeId),
+                  DBPermission.Delete,
+                  Some(Role.Editor)
+                )
+              )
+              .map(_ => nodeId)
+        )
+      case (NodeCodes.organizationCode, _) =>
+        Set {
+          datasetsMapper
+            .setOrganizationRole(dataset.id, Some(Role.Editor))
+            .map(_ => organization.nodeId)
+        }
+
+      case (_, ids) =>
+        Set {
+          DBIO.failed(new RuntimeException(ids.toString))
+        }
+    }
+
   def addCollaborators(
     dataset: Dataset,
     collaboratorIds: Set[String]
@@ -623,48 +673,15 @@ class DatasetManager(
         .intersect(validIdsToShareWith)
         .diff(currentSharees)
 
+      addQueriesMapper = generateAddCollaboratorQueriesMapper(
+        dataset,
+        validIdsToShareWithMap
+      )(_)
+
       addQueries: List[DBIO[String]] = idsToShareTo
         .groupBy(NodeCodes.extractNodeCodeFromId)
         .toList
-        .flatMap[DBIO[String], List[DBIO[String]]] {
-          case (NodeCodes.userCode, shareeIds) =>
-            shareeIds.map { nodeId =>
-              datasetUser
-                .+=(
-                  DatasetUser(
-                    dataset.id,
-                    validIdsToShareWithMap(nodeId),
-                    DBPermission.Delete,
-                    Some(Role.Editor)
-                  )
-                )
-                .map(_ => nodeId)
-            }
-          case (NodeCodes.teamCode, shareeIds) =>
-            shareeIds.map { nodeId =>
-              datasetTeam
-                .+=(
-                  DatasetTeam(
-                    dataset.id,
-                    validIdsToShareWithMap(nodeId),
-                    DBPermission.Delete,
-                    Some(Role.Editor)
-                  )
-                )
-                .map(_ => nodeId)
-            }
-          case (NodeCodes.organizationCode, _) =>
-            Set {
-              datasetsMapper
-                .setOrganizationRole(dataset.id, Some(Role.Editor))
-                .map(_ => organization.nodeId)
-            }
-
-          case (_, ids) =>
-            Set {
-              DBIO.failed(new RuntimeException(ids.toString))
-            }
-        }
+        .flatMap(addQueriesMapper)
 
       idsShared <- db.run(DBIO.sequence(addQueries)).toEitherT
 
@@ -861,7 +878,7 @@ class DatasetManager(
           .headOption
       )
       .whenNone[CoreError](NotFound(s"user ${user.id}"))
-      .map(_ => Unit)
+      .map(_ => ())
 
   def addUserCollaborator(
     dataset: Dataset,

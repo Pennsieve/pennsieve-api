@@ -34,6 +34,7 @@ import com.pennsieve.traits.PostgresProfile.api._
 
 import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.collection.compat._
 
 class WebhookManager(
   val db: PostgresProfile.api.Database,
@@ -309,6 +310,7 @@ class WebhookManager(
       .map { results =>
         results
           .groupBy(_._1)
+          .view
           .mapValues(_.map(_._2 match {
             case Some(p: WebhookEventType) => p.eventName
             case _ => null
@@ -340,6 +342,7 @@ class WebhookManager(
           results
             .filter(_._1.id === id)
             .groupBy(_._1)
+            .view
             .mapValues(_.map(_._2 match {
               case Some(p: WebhookEventType) => p.eventName
               case _ => null

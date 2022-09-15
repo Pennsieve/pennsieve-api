@@ -18,8 +18,7 @@ package com.pennsieve.managers
 
 import com.pennsieve.models.{ Channel, PackageType }
 import com.pennsieve.models.Package
-import com.pennsieve.test.helpers.EitherValue._
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.EitherValues._
 import scala.collection.SortedSet
 import scala.concurrent.ExecutionContext.Implicits.global

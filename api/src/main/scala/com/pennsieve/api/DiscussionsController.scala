@@ -67,7 +67,7 @@ class DiscussionsController(
 ) extends ScalatraServlet
     with AuthenticatedController {
 
-  override val swaggerTag: String = "Discussions"
+  override val pennsieveSwaggerTag: String = "Discussions"
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
@@ -80,22 +80,22 @@ class DiscussionsController(
   get("/package/:id", operation(getDiscussionOperation)) {
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         packageId <- paramT[String]("id")
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
-          .orForbidden
+          .orForbidden()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ViewDiscussionComments))(pkg)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        comments <- secureContainer.discussionManager.find(pkg).orError
+        comments <- secureContainer.discussionManager.find(pkg).orError()
         users <- secureContainer.discussionManager
           .findUsersForDiscussions(comments.keys.toList)
-          .orError
+          .orError()
 
         _ <- auditLogger
           .message()
@@ -106,7 +106,7 @@ class DiscussionsController(
           .append("discussions", comments.toList.map(_._1.id.toString): _*)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield {
         val commentMap = comments.map { case (k, v) => (k.id, v.toList) }
         val userIdMap = users.map(u => u.id -> u.nodeId).toMap
@@ -123,9 +123,9 @@ class DiscussionsController(
                 )
           )
           .toMap
-        val commentedToMap = commentMap.mapValues(
-          comments => comments.map(CommentDTO(_, userIdMap))
-        )
+        val commentedToMap = commentMap.view
+          .mapValues(comments => comments.map(CommentDTO(_, userIdMap)))
+          .toMap
         val discussionDTOs = comments.keys.toList.map(DiscussionDTO(_))
 
         DiscussionsResponse(commentedToMap, discussionDTOs, Some(userNameMap))
@@ -161,26 +161,26 @@ class DiscussionsController(
 
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(req.packageId)
-          .orNotFound
+          .orNotFound()
         (pkg, dataset) = packageAndDataset
 
         _ <- secureContainer.datasetManager
           .assertNotLocked(pkg.datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ManageDiscussionComments))(
             pkg
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         annotation <- req.annotationId
           .traverse(secureContainer.annotationManager.get(_))
-          .orNotFound
+          .orNotFound()
         tsannotation <- req.timeSeriesAnnotationId
           .traverse(
             insecureContainer.timeSeriesAnnotationManager
@@ -191,14 +191,14 @@ class DiscussionsController(
                 )
               )
           )
-          .orNotFound
+          .orNotFound()
         discussion <- req.discussionId match {
           case Some(discussionId) =>
-            secureContainer.discussionManager.get(discussionId).orNotFound
+            secureContainer.discussionManager.get(discussionId).orNotFound()
           case None =>
             secureContainer.discussionManager
               .create(pkg, annotation, tsannotation)
-              .orError
+              .orError()
         }
 
         token = JwtAuthenticator.generateServiceToken(
@@ -209,7 +209,7 @@ class DiscussionsController(
 
         comment <- secureContainer.discussionManager
           .createComment(req.message, secureContainer.user, discussion)
-          .orError
+          .orError()
         _ <- req.mentions
           .traverse(uids => {
             secureContainer.userManager
@@ -224,7 +224,7 @@ class DiscussionsController(
                   )
               )
           })
-          .orError
+          .orError()
 
         _ <- auditLogger
           .message()
@@ -235,7 +235,7 @@ class DiscussionsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield
         CommentResponse(
@@ -258,29 +258,29 @@ class DiscussionsController(
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Int] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         discussionId <- paramT[Int]("discussionId")
         commentId <- paramT[Int]("commentId")
         discussion <- secureContainer.discussionManager
           .get(discussionId)
-          .orNotFound
+          .orNotFound()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetById(discussion.packageId)
-          .orForbidden
+          .orForbidden()
         (pkg, dataset) = packageAndDataset
         _ <- secureContainer.datasetManager
           .assertNotLocked(pkg.datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ManageDiscussionComments))(
             pkg
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         comment <- secureContainer.discussionManager
           .getComment(commentId)
-          .orNotFound
+          .orNotFound()
 
         _ <- checkOrErrorT(
           comment.creatorId == secureContainer.user.id || secureContainer.user.isSuperAdmin
@@ -295,11 +295,11 @@ class DiscussionsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         deleted <- secureContainer.discussionManager
           .deleteComment(comment)
-          .orError
+          .orError()
       } yield deleted
 
       override val is = result.value.map(OkResult)
@@ -315,27 +315,29 @@ class DiscussionsController(
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Int] = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         discussionId <- paramT[Int]("discussionId")
 
         discussion <- secureContainer.discussionManager
           .get(discussionId)
-          .orNotFound
+          .orNotFound()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetById(discussion.packageId)
-          .orForbidden
+          .orForbidden()
         (pkg, dataset) = packageAndDataset
         _ <- secureContainer.datasetManager
           .assertNotLocked(pkg.datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer
           .authorizePackageId(Set(DatasetPermission.ManageDiscussionComments))(
             discussion.packageId
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
-        deleted <- secureContainer.discussionManager.delete(discussion).orError
+        deleted <- secureContainer.discussionManager
+          .delete(discussion)
+          .orError()
 
         _ <- auditLogger
           .message()
@@ -346,7 +348,7 @@ class DiscussionsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield deleted
       override val is = result.value.map(OkResult)
@@ -367,36 +369,36 @@ class DiscussionsController(
 
     new AsyncResult {
       val result = for {
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         user = secureContainer.user
         discussionId <- paramT[Int]("discussionId")
         commentId <- paramT[Int]("commentId")
         discussion <- secureContainer.discussionManager
           .get(discussionId)
-          .orNotFound
+          .orNotFound()
         packageAndDataset <- secureContainer.packageManager
           .getPackageAndDatasetById(discussion.packageId)
-          .orForbidden
+          .orForbidden()
         (pkg, dataset) = packageAndDataset
         _ <- secureContainer.datasetManager
           .assertNotLocked(pkg.datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
         _ <- secureContainer
           .authorizePackage(Set(DatasetPermission.ManageDiscussionComments))(
             pkg
           )
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         comment <- secureContainer.discussionManager
           .getComment(commentId)
-          .orNotFound
+          .orNotFound()
         _ <- checkOrErrorT(
           comment.creatorId == secureContainer.user.id || secureContainer.user.isSuperAdmin
         )(Forbidden("not your comment!"))
         _ <- secureContainer.discussionManager
           .updateComment(comment.copy(message = req.message))
-          .orError
+          .orError()
         _ <- auditLogger
           .message()
           .append("discussion", discussionId.toString)
@@ -406,7 +408,7 @@ class DiscussionsController(
           .append("package-node-id", pkg.nodeId)
           .log(traceId)
           .toEitherT
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
       } yield
         CommentResponse(
           CommentDTO(comment, Map(user.id -> user.nodeId)),

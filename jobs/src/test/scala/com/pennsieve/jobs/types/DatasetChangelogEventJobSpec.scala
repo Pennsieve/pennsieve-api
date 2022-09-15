@@ -34,13 +34,16 @@ import com.pennsieve.models.{
 }
 import com.typesafe.config.{ ConfigFactory, ConfigValueFactory }
 import io.circe.parser._
-import org.scalatest.{ BeforeAndAfterAll, FlatSpec, Matchers }
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.EitherValues._
 
 import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class DatasetChangelogEventJobSpec
-    extends FlatSpec
+    extends AnyFlatSpec
     with SpecHelper
     with Matchers
     with TestKitBase
@@ -90,7 +93,7 @@ class DatasetChangelogEventJobSpec
     |""".stripMargin
     val p1 = decode[BackgroundJob](messageV1)
     p1.isRight shouldBe (true)
-    val job1 = p1.right.get.asInstanceOf[DatasetChangelogEventJob]
+    val job1 = p1.value.asInstanceOf[DatasetChangelogEventJob]
     job1.events shouldBe (None)
     job1.eventType.isDefined shouldBe (true)
     job1.eventDetail.isDefined shouldBe (true)
@@ -113,7 +116,7 @@ class DatasetChangelogEventJobSpec
        |""".stripMargin
     val p2 = decode[BackgroundJob](messageV2)
     p2.isRight shouldBe (true)
-    val job2 = p2.right.get.asInstanceOf[DatasetChangelogEventJob]
+    val job2 = p2.value.asInstanceOf[DatasetChangelogEventJob]
     job2.events.get.length shouldBe (2)
     job2.eventType shouldBe (None)
     job2.eventDetail shouldBe (None)
@@ -140,7 +143,7 @@ class DatasetChangelogEventJobSpec
       |""".stripMargin
     val m = decode[BackgroundJob](message)
     val dcle: DatasetChangelogEventJob =
-      m.right.get.asInstanceOf[DatasetChangelogEventJob]
+      m.value.asInstanceOf[DatasetChangelogEventJob]
 
     val datasetChangelogEventRunner =
       new DatasetChangelogEvent(insecureContainer, "event-integration")
@@ -160,8 +163,7 @@ class DatasetChangelogEventJobSpec
         )
       )
       .await
-      .right
-      .get
+      .value
     createEvents.length shouldBe (1)
     createEvents.head.eventType shouldBe (ChangelogEventName.CREATE_PACKAGE)
     createEvents.head.detail shouldBe (ChangelogEventDetail
@@ -180,8 +182,7 @@ class DatasetChangelogEventJobSpec
         )
       )
       .await
-      .right
-      .get
+      .value
     deleteEvents.length shouldBe (1)
     deleteEvents.head.eventType shouldBe (ChangelogEventName.DELETE_PACKAGE)
     deleteEvents.head.detail shouldBe (ChangelogEventDetail
@@ -204,7 +205,7 @@ class DatasetChangelogEventJobSpec
        |""".stripMargin
     val m = decode[BackgroundJob](message)
     val dcle: DatasetChangelogEventJob =
-      m.right.get.asInstanceOf[DatasetChangelogEventJob]
+      m.value.asInstanceOf[DatasetChangelogEventJob]
     val datasetChangelogEventRunner =
       new DatasetChangelogEvent(
         insecureContainer,

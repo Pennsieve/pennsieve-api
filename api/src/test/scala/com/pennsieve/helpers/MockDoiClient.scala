@@ -53,6 +53,7 @@ class MockDoiClient(
       doi = doi,
       title = body.title,
       url = Some(s"https://doi.org/$doi"),
+      publisher = "my publisher",
       createdAt = Some("4/18/2019"),
       publicationYear = body.publicationYear,
       state = Some(DoiState.Draft)
@@ -75,7 +76,7 @@ class MockDoiClient(
   ): EitherT[Future, Either[Throwable, HttpResponse], CreateDraftDoiResponse] = {
     EitherT.rightT[Future, Either[Throwable, HttpResponse]](
       CreateDraftDoiResponse
-        .Created(createMockDoi(organizationId, datasetId, body).asJson)
+        .Created(createMockDoi(organizationId, datasetId, body))
     )
   }
 
@@ -85,7 +86,7 @@ class MockDoiClient(
     headers: List[HttpHeader]
   ): EitherT[Future, Either[Throwable, HttpResponse], GetLatestDoiResponse] = {
     val result = getMockDoi(organizationId, datasetId) match {
-      case Some(doi) => GetLatestDoiResponse.OK(doi.asJson)
+      case Some(doi) => GetLatestDoiResponse.OK(doi)
       case None =>
         GetLatestDoiResponse.NotFound(
           s"doi for organizationId=$organizationId datasetId=$datasetId"
@@ -107,16 +108,16 @@ class MockDoiClient(
             doi =>
               doi match {
                 case "10.21397/jili-ef5r" => // Hardcoded for tests
-                  CitationDTO(
+                  CitationDto(
                     status = 200,
                     doi = doi,
                     citation = Some("A citation")
                   )
 
-                case _ => CitationDTO(status = 404, doi = doi, citation = None)
+                case _ => CitationDto(status = 404, doi = doi, citation = None)
               }
           )
-          .toIndexedSeq
+          .toVector
       )
     )
   }

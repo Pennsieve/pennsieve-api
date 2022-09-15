@@ -35,6 +35,7 @@ import org.postgresql.util.PSQLException
 import slick.dbio.{ DBIOAction, Effect, NoStream }
 import slick.sql.FixedSqlAction
 
+import scala.collection.compat._
 import scala.concurrent.{ ExecutionContext, Future }
 
 class AnnotationManager(organization: Organization, db: Database) {
@@ -141,7 +142,7 @@ class AnnotationManager(organization: Organization, db: Database) {
   ): EitherT[Future, CoreError, Int] =
     run {
       for {
-        _ <- discussions
+        deletedDiscussionCount <- discussions
           .filter(_.annotationId === annotation.id)
           .delete
         deleteAnnotation <- annotations.filter(_.id === annotation.id).delete
@@ -173,7 +174,9 @@ class AnnotationManager(organization: Organization, db: Database) {
     }.map { results =>
       results
         .groupBy(_._1)
+        .view
         .mapValues(values => values.flatMap(_._2))
+        .toMap // toMap may show as redundant, but is for Scala 2.13
     }
 
   def findLayers(

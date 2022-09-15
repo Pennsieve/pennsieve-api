@@ -40,7 +40,7 @@ class InternalDataSetsController(
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
-  override val swaggerTag = "DataSetsInternal"
+  override val pennsieveSwaggerTag = "DataSetsInternal"
 
   val touchDataSetOperation: OperationBuilder = (apiOperation[Unit](
     "touchDataSet"
@@ -56,11 +56,10 @@ class InternalDataSetsController(
       val result: EitherT[Future, ActionResult, Unit] = for {
         datasetId <- paramT[Int]("id")
 
-        secureContainer <- getSecureContainer
-
+        secureContainer <- getSecureContainer()
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(datasetId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
       } yield ()
 

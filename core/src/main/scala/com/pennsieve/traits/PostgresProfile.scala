@@ -145,19 +145,19 @@ trait PostgresProfile
     implicit val countHashMapMapper =
       MappedColumnType.base[Map[String, Long], Json](
         counts => counts.asJson,
-        json => json.as[Map[String, Long]].right.get
+        json => json.as[Map[String, Long]].toOption.get
       )
 
     implicit val packagePropertyMapper =
       MappedColumnType.base[List[ModelProperty], Json](
         properties => properties.asJson,
-        json => json.as[List[ModelProperty]].right.get
+        json => json.as[List[ModelProperty]].toOption.get
       )
 
     implicit val annotationPathElementMapper =
       MappedColumnType.base[List[PathElement], Json](
         elements => elements.asJson,
-        json => json.as[List[PathElement]].right.get
+        json => json.as[List[PathElement]].toOption.get
       )
 
     implicit val annotationDataMapper =
@@ -206,7 +206,7 @@ trait PostgresProfile
     implicit val orcidAuthorizationMapper =
       MappedColumnType.base[OrcidAuthorization, Json](
         orcidAuthorization => orcidAuthorization.asJson,
-        jsonString => jsonString.as[OrcidAuthorization].right.get
+        jsonString => jsonString.as[OrcidAuthorization].toOption.get
       )
 
     implicit val datasetStatusMapper =
@@ -224,7 +224,7 @@ trait PostgresProfile
     implicit val fileChecksumMapper =
       MappedColumnType.base[FileChecksum, Json](
         fileChecksum => fileChecksum.asJson,
-        jsonString => jsonString.as[FileChecksum].right.get
+        jsonString => jsonString.as[FileChecksum].toOption.get
       )
 
     implicit val licenseMapper: JdbcType[License] with BaseTypedType[License] =

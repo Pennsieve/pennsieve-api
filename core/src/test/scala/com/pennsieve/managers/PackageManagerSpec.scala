@@ -25,7 +25,7 @@ import com.pennsieve.models.{ CollectionUpload, Package, PackageType }
 import com.pennsieve.models.PackageType._
 import com.pennsieve.traits.PostgresProfile.api._
 import org.postgresql.util.PSQLException
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.EitherValues._
 import org.scalatest.enablers.Messaging.messagingNatureOfThrowable
 import java.util.UUID
@@ -56,7 +56,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     val child =
       createPackage(user = user, parent = Some(parent), dataset = dataset)
 
-    assert(parent == pm.get(child.parentId.get).await.right.value)
+    assert(parent == pm.get(child.parentId.get).await.value)
   }
 
   "updating a package's name" should "succeed" in {
@@ -66,9 +66,9 @@ class PackageManagerSpec extends BaseManagerSpec {
     val p = createPackage(user = user, dataset = dataset)
     val pm = packageManager(user = user)
 
-    val updated = pm.update(p.copy(name = "Updated Name")).await.right.value
+    val updated = pm.update(p.copy(name = "Updated Name")).await.value
 
-    assert(pm.get(p.id).await.right.value.name == updated.name)
+    assert(pm.get(p.id).await.value.name == updated.name)
   }
 
   "updating package with the same name" should "succeed" in {
@@ -78,9 +78,9 @@ class PackageManagerSpec extends BaseManagerSpec {
     val p = createPackage(user = user, dataset = dataset)
     val pm = packageManager(user = user)
 
-    pm.update(p).await.right.value
+    pm.update(p).await.value
 
-    assert(pm.get(p.id).await.right.value.name == p.name)
+    assert(pm.get(p.id).await.value.name == p.name)
   }
 
   "updating a package's name" should "succeed with duplicate names between collection and package" in {
@@ -104,9 +104,9 @@ class PackageManagerSpec extends BaseManagerSpec {
     )
     val pm = packageManager(user = user)
 
-    val updated = pm.update(pkg.copy(name = name)).await.right.value
+    val updated = pm.update(pkg.copy(name = name)).await.value
 
-    assert(pm.get(pkg.id).await.right.value.name == name)
+    assert(pm.get(pkg.id).await.value.name == name)
   }
 
   "updating a package's name" should "fail with duplicate names between packages" in {
@@ -680,7 +680,7 @@ class PackageManagerSpec extends BaseManagerSpec {
       createPackage(user = user, parent = Some(parentTwo), dataset = dataset)
 
     val pm = packageManager(user = user)
-    val result = pm.ancestors(grandChildOne).await.right.value
+    val result = pm.ancestors(grandChildOne).await.value
 
     result should equal(List(parent, childOne))
     result should contain noneOf (childTwo, childThree, childFour, grandChildTwo, grandChildThree, grandChildFour, parentTwo)
@@ -697,14 +697,12 @@ class PackageManagerSpec extends BaseManagerSpec {
     val packageStorageBefore = storageMnger
       .getStorage(spackages, List(p.id))
       .await
-      .right
       .value
       .get(p.id)
       .flatten
     val datasetStorageBefore = storageMnger
       .getStorage(sdatasets, List(dataset.id))
       .await
-      .right
       .value
       .get(dataset.id)
       .flatten
@@ -716,14 +714,12 @@ class PackageManagerSpec extends BaseManagerSpec {
     val packageStorageAfter = storageMnger
       .getStorage(spackages, List(p.id))
       .await
-      .right
       .value
       .get(p.id)
       .flatten
     val datasetStorageAfter = storageMnger
       .getStorage(sdatasets, List(dataset.id))
       .await
-      .right
       .value
       .get(dataset.id)
       .flatten
@@ -782,14 +778,12 @@ class PackageManagerSpec extends BaseManagerSpec {
     val packageStorageBefore = storageMnger
       .getStorage(spackages, List(parent.id))
       .await
-      .right
       .value
       .get(parent.id)
       .flatten
     val datasetStorageBefore = storageMnger
       .getStorage(sdatasets, List(dataset.id))
       .await
-      .right
       .value
       .get(dataset.id)
       .flatten
@@ -801,14 +795,12 @@ class PackageManagerSpec extends BaseManagerSpec {
     val packageStorageAfter = storageMnger
       .getStorage(spackages, List(parent.id))
       .await
-      .right
       .value
       .get(parent.id)
       .flatten
     val datasetStorageAfter = storageMnger
       .getStorage(sdatasets, List(dataset.id))
       .await
-      .right
       .value
       .get(dataset.id)
       .flatten
@@ -844,7 +836,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     ).toEither
 
     assert(result.isLeft)
-    assert(result.left.get.isInstanceOf[PSQLException])
+    assert(result.left.value.isInstanceOf[PSQLException])
 
   }
 
@@ -1079,7 +1071,7 @@ class PackageManagerSpec extends BaseManagerSpec {
       importId = Some(importId)
     )
 
-    pm.getByImportId(dataset, importId).await.right.get.id shouldBe pkg.id
+    pm.getByImportId(dataset, importId).await.value.id shouldBe pkg.id
   }
 
   "getPackagesPageWithFiles" should "return source files per package" in {
@@ -1094,7 +1086,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     val result1 =
       pm.getPackagesPageWithFiles(dataset, None, 5, None, None).await
 
-    result1.right.get.map(_._2) shouldBe Vector(Seq(file, otherFile))
+    result1.value.map(_._2) shouldBe Vector(Seq(file, otherFile))
   }
 
 }
