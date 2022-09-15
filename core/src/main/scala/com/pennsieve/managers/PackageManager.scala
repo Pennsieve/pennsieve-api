@@ -1074,6 +1074,6 @@ class PackageManager(datasetManager: DatasetManager) {
         """
           .as[PackageHierarchy]
       }
-      .map(_.to[Seq])
+      .map(_.to(Seq))
       .toEitherT
 }

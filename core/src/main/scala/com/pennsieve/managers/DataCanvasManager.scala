@@ -385,7 +385,6 @@ class DataCanvasManager(
           .filter(_.dataCanvasId === dataCanvasId)
           .result
       )
-      .map(_.to[Seq])
       .toEitherT
 
   def getFolder(
