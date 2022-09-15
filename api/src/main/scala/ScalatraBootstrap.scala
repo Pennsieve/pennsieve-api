@@ -172,6 +172,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       val dataCanvasController = new DataCanvasController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
+        bootstrapHelper.objectStore,
         system,
         ec
       )

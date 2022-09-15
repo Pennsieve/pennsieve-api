@@ -17,9 +17,17 @@
 package com.pennsieve.api
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import com.pennsieve.dtos.DataCanvasDTO
-import com.pennsieve.helpers.{ DataCanvasTestMixin, DataSetTestMixin }
-import com.pennsieve.models.DataCanvasFolderPath
+import com.pennsieve.dtos.{
+  DataCanvasDTO,
+  DownloadManifestDTO,
+  DownloadRequest
+}
+import com.pennsieve.helpers.{
+  DataCanvasTestMixin,
+  DataSetTestMixin,
+  MockObjectStore
+}
+import com.pennsieve.models.{ DataCanvasFolderPath, FileType, PackageType }
 
 import scala.concurrent.Future
 import org.json4s.jackson.Serialization.{ read, write }
@@ -49,6 +57,7 @@ class TestDataCanvasController
       new DataCanvasController(
         insecureContainer,
         secureContainerBuilder,
+        new MockObjectStore("test.avi"),
         system,
         system.dispatcher
       ),
@@ -965,6 +974,66 @@ class TestDataCanvasController
     ) {
       status should equal(204)
     }
+  }
+
+  /**
+    * Download manifest
+    */
+  test("download manifest for simple package and canvas structures") {
+    // create a dataset
+    val dataset = createDataSet("dataset for download manifest")
+    // create 3 packages with files
+    val package1 = createPackage(dataset, "1.csv", `type` = PackageType.CSV)
+    val package2 = createPackage(dataset, "2.csv", `type` = PackageType.CSV)
+    val package3 = createPackage(dataset, "3.csv", `type` = PackageType.CSV)
+    val file1 = createFile("1.csv", dataset, package1)
+    val file2 = createFile("2.csv", dataset, package2)
+    val file3 = createFile("3.csv", dataset, package3)
+    // create a canvas
+    val canvas = createDataCanvas(
+      "data-canvas for download manifest",
+      "data-canvas for download manifest"
+    )
+    // create some folders
+    val folder1 = createFolder(canvas.id, "folder-1")
+    val folder2 = createFolder(canvas.id, "folder-2")
+    val folder3a = createFolder(canvas.id, "complete")
+    val folder3b = createFolder(canvas.id, "folder-3", Some(folder3a.id))
+    // link each package to a canvas folder
+    attachPackage(canvas, folder1, dataset, package1)
+    attachPackage(canvas, folder2, dataset, package2)
+    attachPackage(canvas, folder3b, dataset, package3)
+
+    val downloadRequest =
+      write(DownloadRequest(nodeIds = List(canvas.nodeId)))
+
+    // get the download manifest
+    postJson(
+      "/download-manifest",
+      downloadRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+
+      val result: DownloadManifestDTO = parsedBody
+        .extract[DownloadManifestDTO]
+
+      result.data.length should equal(3)
+    }
+  }
+
+  // TODO: write test for simple package structure and complex canvas structure
+  ignore(
+    "download manifest for simple package structure and complex canvas structure"
+  ) {
+    0 should equal(0)
+  }
+
+  // TODO: write test for complex package structure and complex canvas structure
+  ignore(
+    "download manifest for complex package structure and complex canvas structure"
+  ) {
+    0 should equal(0)
   }
 
 }

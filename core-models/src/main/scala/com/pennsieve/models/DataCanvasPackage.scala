@@ -20,8 +20,9 @@ final case class DataCanvasPackage(
   organizationId: Int,
   packageId: Int,
   datasetId: Int,
-  dataCanvasFolderId: Int
+  dataCanvasFolderId: Int,
+  dataCanvasId: Int
 ) {
   override def toString: String =
-    s"DataCanvasPackage(organizationId: ${organizationId}, datasetId: ${datasetId}, packageId: ${packageId}, dataCanvasFolderId: ${dataCanvasFolderId})"
+    s"DataCanvasPackage(organizationId: ${organizationId}, datasetId: ${datasetId}, packageId: ${packageId}, dataCanvasId: ${dataCanvasId}, dataCanvasFolderId: ${dataCanvasFolderId})"
 }

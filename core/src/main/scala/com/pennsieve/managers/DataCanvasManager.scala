@@ -37,8 +37,10 @@ import com.pennsieve.domain.{
 import com.pennsieve.models.{
   DBPermission,
   DataCanvas,
+  DataCanvasContent,
   DataCanvasFolder,
   DataCanvasFolderPath,
+  DataCanvasFoldersAndPackages,
   DataCanvasPackage,
   DataCanvasUser,
   NodeCodes,
@@ -101,6 +103,7 @@ class DataCanvasManager(
     name: String,
     description: String,
     userId: Int = actor.id,
+    nodeId: String = NodeCodes.generateId(NodeCodes.dataCanvasCode),
     isPublic: Option[Boolean] = None,
     role: Option[String] = None,
     statusId: Option[Int] = None,
@@ -108,7 +111,7 @@ class DataCanvasManager(
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, DataCanvas] = {
-    val nodeId = NodeCodes.generateId(NodeCodes.dataCanvasCode)
+    //val nodeId = NodeCodes.generateId(NodeCodes.dataCanvasCode)
 
     for {
       _ <- FutureEitherHelpers.assert(name.trim.nonEmpty)(
@@ -306,10 +309,11 @@ class DataCanvasManager(
 
       attachedDataCanvasPackage = for {
         dataCanvasPackage <- (dataCanvasPackageMapper returning dataCanvasPackageMapper) += DataCanvasPackage(
-          dataCanvasFolderId = folderId,
-          datasetId = datasetId,
-          packageId = packageId,
-          organizationId = organizationId
+          organizationId,
+          packageId,
+          datasetId,
+          folderId,
+          dataCanvasId
         )
       } yield dataCanvasPackage
 
@@ -371,22 +375,18 @@ class DataCanvasManager(
         }
     } yield true
 
-//  def getPackages(
-//    dataCanvasId: Int
-//  )(implicit
-//    ec: ExecutionContext
-//  ): EitherT[Future, CoreError, Seq[Package]] = {
-//    val query = dataCanvasPackageMapper
-//      .filter(_.dataCanvasId === dataCanvasId)
-//      .join(packagesMapper)
-//      .on(_.packageId === _.id)
-//      .map {
-//        case (_, pkg) => pkg
-//      }
-//      .result
-//
-//    db.run(query).toEitherT
-//  }
+  def getPackages(
+    dataCanvasId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DataCanvasPackage]] =
+    db.run(
+        dataCanvasPackageMapper
+          .filter(_.dataCanvasId === dataCanvasId)
+          .result
+      )
+      .map(_.to[Seq])
+      .toEitherT
 
   def getFolder(
     canvasId: Int,
@@ -424,7 +424,7 @@ class DataCanvasManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Vector[DataCanvasFolderPath]] = {
     implicit val getFolderResult = GetResult(
-      r => DataCanvasFolderPath(r.<<, r.<<, r.<<, r.<<, r.<<)
+      r => DataCanvasFolderPath(r.<<, r.<<, r.<<, r.<<, r.<<, r <<)
     )
     val query =
       sql"""
@@ -434,7 +434,8 @@ class DataCanvasManager(
                  id,
                  parent_id,
                  name,
-                 cast('' as varchar(255)) as path
+                 cast('' as varchar(255)) as path,
+                 ARRAY[]::VARCHAR[] AS name_path
           FROM "#${organization.schemaId}".datacanvas_folder
           WHERE "#${organization.schemaId}".datacanvas_folder.datacanvas_id = #${canvasId}
             and "#${organization.schemaId}".datacanvas_folder.parent_id is null
@@ -444,7 +445,8 @@ class DataCanvasManager(
                  t.id,
                  t.parent_id,
                  t.name,
-                 CAST(concat_ws('/', r.path, t.name) as varchar(255)) as path
+                 CAST(concat_ws('/', r.path, t.name) as varchar(255)) as path,
+                 (r.name_path || t.name)::VARCHAR[] AS name_path
           FROM "#${organization.schemaId}".datacanvas_folder t
           JOIN datacanvas_folder_tree r ON t.parent_id = r.id
         )

@@ -16,14 +16,13 @@
 
 package com.pennsieve.models
 
-case class DataCanvasFolderPath(
-  level: Int,
-  id: Int,
-  parentId: Int,
-  name: String,
-  path: String,
-  pathNames: Seq[String]
-) {
-  override def toString: String =
-    s"DataCanvasFolderPath(level: ${level}, id: ${id}, parentId: ${parentId}, name: ${name}, path: ${path}, pathNames: ${pathNames})"
-}
+import java.time.ZonedDateTime
+
+case class DataCanvasFoldersAndPackages(
+  dataCanvasId: Int,
+  folderId: Int,
+  folderName: String,
+  organizationId: Int,
+  datasetid: Int,
+  packageId: Int
+)

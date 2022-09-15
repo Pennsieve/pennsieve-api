@@ -16,14 +16,12 @@
 
 package com.pennsieve.models
 
-case class DataCanvasFolderPath(
-  level: Int,
-  id: Int,
-  parentId: Int,
-  name: String,
-  path: String,
-  pathNames: Seq[String]
-) {
-  override def toString: String =
-    s"DataCanvasFolderPath(level: ${level}, id: ${id}, parentId: ${parentId}, name: ${name}, path: ${path}, pathNames: ${pathNames})"
-}
+case class DataCanvasContent(
+  filePath: String,
+  fileName: String,
+  fileSize: Int,
+  packageNodeId: String,
+  packageName: String,
+  s3Bucket: String,
+  s3Key: String
+)

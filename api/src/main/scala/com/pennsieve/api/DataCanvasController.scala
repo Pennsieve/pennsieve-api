@@ -33,6 +33,8 @@ import com.pennsieve.dtos.{
   DataCanvasDTO,
   DataCanvasFolderDTO,
   DownloadManifestDTO,
+  DownloadManifestEntry,
+  DownloadManifestHeader,
   DownloadRequest,
   PackageDTO
 }
@@ -40,6 +42,7 @@ import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
 }
+import com.pennsieve.helpers.ObjectStore
 import com.pennsieve.helpers.ResultHandlers.{
   CreatedResult,
   NoContentResult,
@@ -50,8 +53,10 @@ import com.pennsieve.models.{
   DataCanvasFolderPath,
   DataCanvasPackage,
   Package,
-  Role
+  Role,
+  Utilities
 }
+import org.joda.time.DateTime
 import org.json4s.{ JNothing, JValue }
 import org.scalatra.{ ActionResult, AsyncResult, BadRequest, ScalatraServlet }
 import org.scalatra.swagger.Swagger
@@ -91,6 +96,7 @@ case class MoveDataCanvasFolder(oldParent: Int, newParent: Int)
 class DataCanvasController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
+  objectStore: ObjectStore,
   implicit
   val system: ActorSystem,
   asyncExecutor: ExecutionContext
@@ -929,33 +935,151 @@ class DataCanvasController(
   //
   // generate download manifest
   //
-  post(
-    "/download-manifest",
-    operation(
-      apiOperation[DownloadManifestDTO]("generateDownloadManifest")
-        summary "generate a manifest for downloading the data-canvas content"
-        parameters (bodyParam[DownloadRequest])("body")
-          .description(
-            "nodeIds: the data-canvas node id (will only process first one), fileIds: ignored"
-          )
-    )
-  ) {
+  /*
+  API: /datacanvas/download-manifest
+  - get parameter: canvas node id (path or body?)
+  x get Secure Container
+  x get DataCanvas
+  x get DataCanvas Folder Paths
+  x create folderPathMap = Map -> [folderId, List[DataCanvasFolderPath]]
+  x database migration: add datacanvas_id to datacanvas_packages table
+  x get DataCanvas Packages by dataCanvas id (new manager/mapper functions)
+  x orgPackageFolderMap = group by organization, packageId => Map -> [(organization, packageId), List[folderId]]
+      > this will tell us where a package is going (the DataCanvas folder path)
+  x orgPackageList = group by organization => Map -> [organizationId, Map -> List[packageId]]
+      > this is the list of packages (by organization) that are attached to the data-canvas
+      > and represents the list of packages/files that we will query for in getPackageHierarchy()
+  - foreach organizationId in orgPackageList {
+      packageHierarchy <- PackageManager.getPackageHierarchy(organizationId, List[packageId])
+    }
+  - join packageHierarchy with orgPackageFolderMap
+    > this will result in the 'full path' for where a package/file will be in the download
+    > assumption is that is the package has children, and there is a path, it will be retained
+  - emit a DownloadManifestEntry for each entry in the join
+  - generate DownloadManifestDTO (should be ok to do it as we are now)
+   */
+//  post(
+//    "/download-manifest",
+//    operation(
+//      apiOperation[DownloadManifestDTO]("generateDownloadManifest")
+//        summary "generate a manifest for downloading the data-canvas content"
+//        parameter bodyParam[DownloadRequest]("body")
+//          .description(
+//            "nodeIds: the data-canvas node id (will only process first one), fileIds: ignored"
+//          )
+//    )
+//  )
+
+  val downloadManifestOperation = (apiOperation[DownloadManifestDTO](
+    "download-manifest"
+  )
+    summary "returns the tree structure, including signed s3 urls and the corresponding paths that will make up an archive to download"
+    parameter bodyParam[DownloadRequest]("body")
+      .description(
+        "nodeIds: packages to include in the download, fileIds: optional, only return the provided files"
+      ))
+
+  post("/download-manifest", operation(downloadManifestOperation)) {
     new AsyncResult {
-      val result: EitherT[Future, ActionResult, Done /*DownloadManifestDTO*/ ] =
+      val result: EitherT[Future, ActionResult, DownloadManifestDTO] =
         for {
           secureContainer <- getSecureContainer
           body <- extractOrErrorT[DownloadRequest](parsedBody)
           nodeId = body.nodeIds.head
 
-          _ <- secureContainer.dataCanvasManager
+          canvas <- secureContainer.dataCanvasManager
             .getByNodeId(nodeId)
             .coreErrorToActionResult
 
-          // get folders & packages
-          // format result
+          folderPaths <- secureContainer.dataCanvasManager
+            .getFolderPaths(canvas.id)
+            .coreErrorToActionResult
 
-        } yield Done
-      override val is = result.value.map(OkResult)
+          folderPathMap = folderPaths.map(path => path.id -> path).toMap
+
+          canvasPackages <- secureContainer.dataCanvasManager
+            .getPackages(canvas.id)
+            .coreErrorToActionResult
+
+          orgPackageFolderMap = canvasPackages.groupBy { i =>
+            (i.organizationId, i.packageId)
+          }
+
+          orgPackageList = canvasPackages.groupBy { i =>
+            i.organizationId
+          }
+
+          orgId = secureContainer.organization.id
+
+          packageIds = orgPackageList
+            .getOrElse(orgId, List())
+            .map(_.packageId)
+            .toList
+
+          packageHierarchy <- secureContainer.packageManager
+            .getPackageHierarchyForOrg(orgId, packageIds)
+            .coreErrorToActionResult
+
+          (datasetIds, rootNodeIds, downloadResponse) = packageHierarchy
+            .foldLeft(
+              (
+                Set.empty[Int],
+                Set.empty[String],
+                DownloadManifestDTO(
+                  DownloadManifestHeader(0, 0L),
+                  List.empty[DownloadManifestEntry]
+                )
+              )
+            ) {
+              case ((datasetIds, rootNodeIds, downloadResponse), p) => {
+                val canvasFolderPathNames = {
+                  orgPackageFolderMap.get((orgId, p.packageId)) match {
+                    case Some(dcp) =>
+                      folderPathMap.get(dcp.head.dataCanvasFolderId) match {
+                        case Some(dcfp) => dcfp.pathNames.toList
+                        case None => List[String]()
+                      }
+                    case None => List[String]()
+                  }
+                }
+                val packagePathNames =
+                  if (p.packageFileCount === 1)
+                    p.packageNamePath.toList
+                  else p.packageNamePath.toList :+ p.packageName
+                val newEntry: DownloadManifestEntry = DownloadManifestEntry(
+                  nodeId = p.nodeId,
+                  fileName = p.fileName,
+                  packageName = p.packageName,
+                  path = canvasFolderPathNames ++ packagePathNames,
+                  url = objectStore
+                    .getPresignedUrl(
+                      p.s3Bucket,
+                      p.s3Key,
+                      DateTime.now.plusMinutes(180).toDate
+                    )
+                    .right
+                    .get,
+                  size = p.size,
+                  fileExtension = Utilities.getFullExtension(p.s3Key)
+                )
+                (
+                  datasetIds + p.datasetId,
+                  rootNodeIds + p.nodeIdPath.headOption
+                    .getOrElse(p.nodeId),
+                  DownloadManifestDTO(
+                    DownloadManifestHeader(
+                      downloadResponse.header.count + 1,
+                      downloadResponse.header.size + p.size
+                    ),
+                    downloadResponse.data :+ newEntry
+                  )
+                )
+              }
+            }
+
+        } yield downloadResponse
+
+      override val is = result.value.map(CreatedResult)
     }
   }
 }
