@@ -20,6 +20,7 @@ import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 
 case class DataCanvasPackageDTO(
+  dataCanvasId: Int,
   dataCanvasFolderId: Int,
   organizationId: Int,
   datasetId: Int,
