@@ -935,41 +935,6 @@ class DataCanvasController(
   //
   // generate download manifest
   //
-  /*
-  API: /datacanvas/download-manifest
-  - get parameter: canvas node id (path or body?)
-  x get Secure Container
-  x get DataCanvas
-  x get DataCanvas Folder Paths
-  x create folderPathMap = Map -> [folderId, List[DataCanvasFolderPath]]
-  x database migration: add datacanvas_id to datacanvas_packages table
-  x get DataCanvas Packages by dataCanvas id (new manager/mapper functions)
-  x orgPackageFolderMap = group by organization, packageId => Map -> [(organization, packageId), List[folderId]]
-      > this will tell us where a package is going (the DataCanvas folder path)
-  x orgPackageList = group by organization => Map -> [organizationId, Map -> List[packageId]]
-      > this is the list of packages (by organization) that are attached to the data-canvas
-      > and represents the list of packages/files that we will query for in getPackageHierarchy()
-  - foreach organizationId in orgPackageList {
-      packageHierarchy <- PackageManager.getPackageHierarchy(organizationId, List[packageId])
-    }
-  - join packageHierarchy with orgPackageFolderMap
-    > this will result in the 'full path' for where a package/file will be in the download
-    > assumption is that is the package has children, and there is a path, it will be retained
-  - emit a DownloadManifestEntry for each entry in the join
-  - generate DownloadManifestDTO (should be ok to do it as we are now)
-   */
-//  post(
-//    "/download-manifest",
-//    operation(
-//      apiOperation[DownloadManifestDTO]("generateDownloadManifest")
-//        summary "generate a manifest for downloading the data-canvas content"
-//        parameter bodyParam[DownloadRequest]("body")
-//          .description(
-//            "nodeIds: the data-canvas node id (will only process first one), fileIds: ignored"
-//          )
-//    )
-//  )
-
   val downloadManifestOperation = (apiOperation[DownloadManifestDTO](
     "download-manifest"
   )
