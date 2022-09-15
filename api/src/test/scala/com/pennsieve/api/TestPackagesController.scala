@@ -37,7 +37,8 @@ import com.pennsieve.helpers.{
   DataSetTestMixin,
   MockAuditLogger,
   MockObjectStore,
-  MockUrlShortenerClient
+  MockUrlShortenerClient,
+  PackagesTestMixin
 }
 import com.pennsieve.managers.{ FileManager, PackageManager }
 import com.pennsieve.models.PackageState.{
@@ -71,7 +72,10 @@ import org.scalatest.OptionValues._
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future }
 
-class TestPackagesController extends BaseApiTest with DataSetTestMixin {
+class TestPackagesController
+    extends BaseApiTest
+    with DataSetTestMixin
+    with PackagesTestMixin {
 
   implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
     Future.successful(HttpResponse())
@@ -2395,45 +2399,6 @@ class TestPackagesController extends BaseApiTest with DataSetTestMixin {
       compact(render(json \ "content" \\ "name")) should not include ("Source File")
       compact(render(json \ "content" \\ "name")) should not include ("Source File Two")
     }
-  }
-
-  // download-manifest tests
-  def createTestDownloadPackage(
-    name: String,
-    parent: Option[Package] = None,
-    packageType: PackageType = PackageType.Collection,
-    dataset: Dataset = dataset,
-    user: User = loggedInUser,
-    packageManager: PackageManager = packageManager
-  ): Package = {
-    packageManager
-      .create(name, packageType, READY, dataset, Some(user.id), parent)
-      .await
-      .right
-      .value
-  }
-
-  def createTestDownloadFile(
-    fileName: String,
-    pkg: Package,
-    objectType: FileObjectType = FileObjectType.Source,
-    processingState: FileProcessingState = FileProcessingState.Unprocessed,
-    fileManager: FileManager = fileManager
-  ): File = {
-    fileManager
-      .create(
-        fileName,
-        FileType.PDF,
-        pkg,
-        "s3bucketName",
-        fileName,
-        objectType = objectType,
-        processingState = processingState,
-        size = 10
-      )
-      .await
-      .right
-      .value
   }
 
   test("download-manifest produces a manifest for a simple package") {
