@@ -149,6 +149,7 @@ def generatePublishContainerStep(String service, String sbt, String imageTag, cr
                 case 'api':
                     (images, tag) = [[service], imageTag]
                     dockerPrefix = '+' // just need + for api since it's the only 2.13 container for now
+                    break
                 default:
                     (images, tag) = [[service], imageTag]
                     dockerPrefix = ''
