@@ -134,23 +134,30 @@ def generatePublishContainerStep(String service, String sbt, String imageTag, cr
 
             // Handle exceptions to standard service deploys
             // discover-publish and uploads-consumer utilize multiple containers
-            def images, tag, buildPath
+            def images, tag, buildPath, dockerPrefix
             switch(service) {
                 case 'discover-publish':
                     (images, tag) = [[service, 'discover-pgdump-postgres'], imageTag]
                     buildPath = 'discover-publish/'
+                    dockerPrefix = ''
                     break
                 case 'uploads-consumer':
                     (images, tag) = [[service, 'clamd'], imageTag]
                     buildPath = 'uploads-consumer/clamd/'
+                    dockerPrefix = ''
+                    break
+                case 'api':
+                    (images, tag) = [[service], imageTag]
+                    dockerPrefix = '+' // just need + for api since it's the only 2.13 container for now
                     break
                 default:
                     (images, tag) = [[service], imageTag]
+                    dockerPrefix = ''
                     break
             }
 
             withCredentials([creds]) {
-                sh "${sbt} clean pullRemoteCache ${service}/docker"
+                sh "${sbt} clean +pullRemoteCache ${dockerPrefix}${service}/docker"
             }
 
             for (image in images) {
