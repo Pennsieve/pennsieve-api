@@ -103,7 +103,6 @@ ThisBuild / circeVersion := circe212Version
 lazy val circeDerivationVersion = SettingKey[String]("circeDerivationVersion")
 lazy val circeDerivation212Version = "0.11.0-M3"
 lazy val circeDerivation213Version = "0.13.0-M5"
-ThisBuild / circeDerivationVersion := circeDerivation212Version
 
 lazy val ficusVersion = SettingKey[String]("ficusVersion")
 lazy val ficus212Version = "1.4.0"
@@ -338,7 +337,7 @@ lazy val apiSettings = Seq(
   excludeDependencies ++= unwantedDependencies :+ ExclusionRule(
     "javax.ws.rs",
     "jsr311-api"
-  ),
+  )
 )
 
 // core settings
