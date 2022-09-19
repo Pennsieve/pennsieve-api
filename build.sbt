@@ -27,7 +27,7 @@ lazy val scala212 = "2.12.11"
 lazy val scala213 = "2.13.8"
 lazy val supportedScalaVersions = List(scala212, scala213)
 
-ThisBuild / scalaVersion := scala212
+ThisBuild / scalaVersion := scala213
 ThisBuild / organization := "com.pennsieve"
 ThisBuild / organizationName := "University of Pennsylvania"
 ThisBuild / licenses := List(
@@ -98,7 +98,6 @@ ThisBuild / catsVersion := cats212Version
 lazy val circeVersion = SettingKey[String]("circeVersion")
 lazy val circe212Version = "0.11.1"
 lazy val circe213Version = "0.14.1"
-ThisBuild / circeVersion := circe212Version
 
 lazy val circeDerivationVersion = SettingKey[String]("circeDerivationVersion")
 lazy val circeDerivation212Version = "0.11.0-M3"
@@ -279,7 +278,6 @@ lazy val coreApiSharedSettings = Seq(
 // API settings
 lazy val apiSettings = Seq(
   name := "pennsieve-api",
-  scalaVersion := scala213,
   containerPort := 5000,
   Jetty / javaOptions ++= Seq(
     "-Xdebug",
@@ -411,6 +409,7 @@ lazy val coreSettings = Seq(
 // jobs settings
 lazy val jobsSettings = Seq(
   name := "jobs",
+  scalaVersion := scala212,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
     "com.pennsieve" %% "timeseries-core" % timeseriesCoreVersion,
@@ -452,6 +451,7 @@ lazy val jobsSettings = Seq(
 
 lazy val adminSettings = Seq(
   name := "admin",
+  scalaVersion := scala212,
   publishTo := publishToNexus.value,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
@@ -482,6 +482,7 @@ lazy val adminSettings = Seq(
 lazy val authorizationServiceSettings = Seq(
   name := "authorization-service",
   publishTo := publishToNexus.value,
+  scalaVersion := scala212,
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
     "com.iheart" %% "ficus" % ficusVersion.value,
@@ -603,6 +604,7 @@ lazy val migrationsSettings = Seq(
 
 lazy val unusedOrganizationMigrationSettings = Seq(
   name := "unused-organization-migration",
+  scalaVersion := scala212,
   libraryDependencies ++= Seq(),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {
@@ -621,6 +623,7 @@ lazy val unusedOrganizationMigrationSettings = Seq(
 
 lazy val inviteCognitoUserSettings = Seq(
   name := "invite-cognito-user",
+  scalaVersion := scala212,
   libraryDependencies ++= Seq(),
   excludeDependencies ++= unwantedDependencies,
   run / fork := true,
@@ -638,6 +641,7 @@ lazy val inviteCognitoUserSettings = Seq(
 
 lazy val etlDataCLISettings = Seq(
   name := "etl-data-cli",
+  scalaVersion := scala212,
   libraryDependencies ++= Seq(
     "com.github.scopt" %% "scopt" % "3.7.0",
     "io.circe" %% "circe-java8" % circeVersion.value
@@ -669,6 +673,7 @@ lazy val etlDataCLISettings = Seq(
 
 lazy val uploadsConsumerSettings = Seq(
   name := "uploads-consumer",
+  scalaVersion := scala212,
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
     "com.typesafe.akka" %% "akka-stream-contrib" % akkaStreamContribVersion,
@@ -689,6 +694,10 @@ lazy val uploadsConsumerSettings = Seq(
 
 lazy val bfAkkaSettings = Seq(
   name := "bf-akka",
+  crossScalaVersions := supportedScalaVersions,
+  akkaVersion := getVersion(scalaVersion.value, akka212Version, akka213Version),
+  circeVersion := getVersion(scalaVersion.value, circe212Version, circe213Version),
+  catsVersion := getVersion(scalaVersion.value, cats212Version, cats213Version),
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "utilities" % utilitiesVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion.value,
@@ -787,6 +796,7 @@ lazy val bfAwsSettings = Seq(
 
 lazy val discoverPublishSettings = Seq(
   name := "discover-publish",
+  scalaVersion := scala212,
   libraryDependencies ++= Seq(
     "com.lightbend.akka" %% "akka-stream-alpakka-s3" % alpakkaVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
@@ -812,6 +822,7 @@ lazy val discoverPublishSettings = Seq(
 lazy val organizationStorageMigrationSettings =
   Seq(
     name := "organization-storage-migration",
+    scalaVersion := scala212,
     excludeDependencies ++= unwantedDependencies,
     docker / dockerfile := {
       val artifact: File = assembly.value
