@@ -993,4 +993,87 @@ class PackageManager(datasetManager: DatasetManager) {
       }
       .map(_.to(Seq))
       .toEitherT
+
+  def getPackageHierarchyForOrg(
+    orgId: Int,
+    packageIds: List[Int]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[PackageHierarchy]] =
+    db.run {
+
+        sql"""
+              WITH RECURSIVE parents AS (
+                SELECT
+                  id,
+                  parent_id,
+                  dataset_id,
+                  name,
+                  type,
+                  node_id,
+                  size,
+                  state,
+                  ARRAY[]::VARCHAR[] AS node_id_path,
+                  ARRAY[]::VARCHAR[] AS name_path
+                FROM
+                  "#${orgId}".packages
+                WHERE
+                  id = any($packageIds)
+                UNION
+                SELECT
+                  children.id,
+                  children.parent_id,
+                  children.dataset_id,
+                  children.name,
+                  children.type,
+                  children.node_id,
+                  children.size,
+                  children.state,
+                  (parents.node_id_path || parents.node_id)::VARCHAR[] AS node_id_path,
+                  (parents.name_path || parents.name)::VARCHAR[] AS name_path
+                FROM
+                  "#${orgId}".packages children
+                INNER JOIN parents ON
+                  parents.id = children.parent_id
+              )
+
+              SELECT
+                parents.dataset_id,
+                parents.node_id_path AS node_id_path,
+                parents.id AS package_id,
+                parents.node_id,
+                parents.type AS package_type,
+                parents.state AS package_state,
+                parents.name_path AS package_name_path,
+                parents.name AS package_name,
+                f_count.package_file_count,
+                f.id AS file_id,
+                f.name AS file_name,
+                f.size,
+                f.file_type,
+                f.s3_bucket,
+                f.s3_key
+              FROM
+                parents
+              JOIN "#${orgId}".files f ON
+                f.package_id = parents.id
+              JOIN (
+                SELECT
+                  package_id,
+                  count(*) AS package_file_count
+                FROM
+                  "#${orgId}".files
+                  GROUP BY package_id
+              ) AS f_count ON f_count.package_id = parents.id
+              WHERE
+                type != ${Collection.entryName}
+              AND
+                parents.state != ${PackageState.DELETING.entryName}
+              AND
+                f.object_type = ${FileObjectType.Source.entryName}
+        """
+          .as[PackageHierarchy]
+      }
+      .map(_.to(Seq))
+      .toEitherT
 }

@@ -14,22 +14,15 @@
  * limitations under the License.
  */
 
-package com.pennsieve.dtos
+package com.pennsieve.models
 
-import io.circe.{ Decoder, Encoder }
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import java.time.ZonedDateTime
 
-case class DataCanvasPackageDTO(
+case class DataCanvasFoldersAndPackages(
   dataCanvasId: Int,
-  dataCanvasFolderId: Int,
+  folderId: Int,
+  folderName: String,
   organizationId: Int,
-  datasetId: Int,
+  datasetid: Int,
   packageId: Int
 )
-
-object DataCanvasPackageDTO {
-  implicit val encoder: Encoder[DataCanvasPackageDTO] =
-    deriveEncoder[DataCanvasPackageDTO]
-  implicit val decoder: Decoder[DataCanvasPackageDTO] =
-    deriveDecoder[DataCanvasPackageDTO]
-}

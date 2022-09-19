@@ -26,7 +26,10 @@ final case class DataCanvasFolder(
   nodeId: String,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   updatedAt: ZonedDateTime = ZonedDateTime.now()
-)
+) {
+  override def toString: String =
+    s"DataCanvasFolder(id: ${id}, parentId: ${parentId}, dataCanvasId: ${dataCanvasId}, name: ${name}, nodeId: ${nodeId}, createdAt: ${createdAt}, updatedAt: ${updatedAt})"
+}
 
 object DataCanvasFolder {
   val tupled = (this.apply _).tupled

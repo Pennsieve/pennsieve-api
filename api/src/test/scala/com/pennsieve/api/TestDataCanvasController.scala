@@ -17,8 +17,17 @@
 package com.pennsieve.api
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import com.pennsieve.dtos.DataCanvasDTO
-import com.pennsieve.helpers.{ DataCanvasTestMixin, DataSetTestMixin }
+import com.pennsieve.dtos.{
+  DataCanvasDTO,
+  DownloadManifestDTO,
+  DownloadRequest
+}
+import com.pennsieve.helpers.{
+  DataCanvasTestMixin,
+  DataSetTestMixin,
+  MockObjectStore
+}
+import com.pennsieve.models.{ DataCanvasFolderPath, FileType, PackageType }
 
 import scala.concurrent.Future
 import org.json4s.jackson.Serialization.{ read, write }
@@ -29,6 +38,8 @@ import scala.util.Random
 //   1. create with empty name
 //   2. create with duplicate name
 //   3. update with empty name
+
+// TODO: write a test for assign DataCanvas owner on create
 
 class TestDataCanvasController
     extends BaseApiTest
@@ -46,6 +57,7 @@ class TestDataCanvasController
       new DataCanvasController(
         insecureContainer,
         secureContainerBuilder,
+        new MockObjectStore("test.avi"),
         system,
         system.dispatcher
       ),
@@ -57,8 +69,6 @@ class TestDataCanvasController
   override def afterEach(): Unit = {
     super.afterEach()
   }
-
-  // TODO: write a test for assign DataCanvas owner on create
 
   /**
     * GET tests (read)
@@ -252,8 +262,8 @@ class TestDataCanvasController
     )
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = "test: update requires authentication UPDATED",
-        description = "test: update requires authentication UPDATED"
+        name = Some("test: update requires authentication UPDATED"),
+        description = Some("test: update requires authentication UPDATED")
       )
     )
 
@@ -269,8 +279,8 @@ class TestDataCanvasController
     )
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = "test: update an existing data-canvas UPDATED",
-        description = "test: update an existing data-canvas UPDATED"
+        name = Some("test: update an existing data-canvas UPDATED"),
+        description = Some("test: update an existing data-canvas UPDATED")
       )
     )
 
@@ -286,8 +296,8 @@ class TestDataCanvasController
   test("update a non-existent data-canvas should fail") {
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = randomString(),
-        description = "test: update an existing data-canvas UPDATED"
+        name = Some(randomString()),
+        description = Some("test: update an existing data-canvas UPDATED")
       )
     )
 
@@ -307,8 +317,8 @@ class TestDataCanvasController
     )
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = randomString(256),
-        description = "test: update an existing data-canvas UPDATED"
+        name = Some(randomString(256)),
+        description = Some("test: update an existing data-canvas UPDATED")
       )
     )
 
@@ -329,8 +339,8 @@ class TestDataCanvasController
     // update the data-canvas to make it publicly visible
     val updateDataCanvasRequest = write(
       UpdateDataCanvasRequest(
-        name = "test: update an existing data-canvas UPDATED",
-        description = "test: update an existing data-canvas UPDATED",
+        name = Some("test: update an existing data-canvas UPDATED"),
+        description = Some("test: update an existing data-canvas UPDATED"),
         isPublic = Some(true)
       )
     )
@@ -346,6 +356,17 @@ class TestDataCanvasController
         .extract[DataCanvasDTO]
 
       result.isPublic shouldBe true
+    }
+  }
+
+  test("update data-canvas name and description are optional") {
+    val canvas = createDataCanvas()
+    putJson(
+      s"/${canvas.id}",
+      write(UpdateDataCanvasRequest()),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
     }
   }
 
@@ -425,6 +446,25 @@ class TestDataCanvasController
       headers = authorizationHeader(externalJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
+    }
+  }
+
+  test(
+    "public get all publicly available data-canvas for the user's organization"
+  ) {
+    createDataCanvas(isPublic = true)
+    createDataCanvas(isPublic = false)
+    val orgNodeId = loggedInOrganization.nodeId
+
+    get(
+      s"/get/organization/${orgNodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val result: List[DataCanvasDTO] = parsedBody
+        .extract[List[DataCanvasDTO]]
+      result.length should equal(1)
     }
   }
 
@@ -738,6 +778,26 @@ class TestDataCanvasController
     }
   }
 
+  test("folder get paths should return entire folder structure") {
+    val canvas = createDataCanvas()
+    val researchFolder = createFolder(canvas.id, "research")
+    val phase1Folder =
+      createFolder(canvas.id, "phase1", Some(researchFolder.id))
+    val phase2Folder =
+      createFolder(canvas.id, "phase2", Some(researchFolder.id))
+
+    get(
+      s"/${canvas.id}/folder/paths",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val result: List[DataCanvasFolderPath] = parsedBody
+        .extract[List[DataCanvasFolderPath]]
+      result.length should equal(4)
+    }
+  }
+
   /**
     * Package tests
     */
@@ -914,6 +974,66 @@ class TestDataCanvasController
     ) {
       status should equal(204)
     }
+  }
+
+  /**
+    * Download manifest
+    */
+  test("download manifest for simple package and canvas structures") {
+    // create a dataset
+    val dataset = createDataSet("dataset for download manifest")
+    // create 3 packages with files
+    val package1 = createPackage(dataset, "1.csv", `type` = PackageType.CSV)
+    val package2 = createPackage(dataset, "2.csv", `type` = PackageType.CSV)
+    val package3 = createPackage(dataset, "3.csv", `type` = PackageType.CSV)
+    val file1 = createFile("1.csv", dataset, package1)
+    val file2 = createFile("2.csv", dataset, package2)
+    val file3 = createFile("3.csv", dataset, package3)
+    // create a canvas
+    val canvas = createDataCanvas(
+      "data-canvas for download manifest",
+      "data-canvas for download manifest"
+    )
+    // create some folders
+    val folder1 = createFolder(canvas.id, "folder-1")
+    val folder2 = createFolder(canvas.id, "folder-2")
+    val folder3a = createFolder(canvas.id, "complete")
+    val folder3b = createFolder(canvas.id, "folder-3", Some(folder3a.id))
+    // link each package to a canvas folder
+    attachPackage(canvas, folder1, dataset, package1)
+    attachPackage(canvas, folder2, dataset, package2)
+    attachPackage(canvas, folder3b, dataset, package3)
+
+    val downloadRequest =
+      write(DownloadRequest(nodeIds = List(canvas.nodeId)))
+
+    // get the download manifest
+    postJson(
+      "/download-manifest",
+      downloadRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+
+      val result: DownloadManifestDTO = parsedBody
+        .extract[DownloadManifestDTO]
+
+      result.data.length should equal(3)
+    }
+  }
+
+  // TODO: write test for simple package structure and complex canvas structure
+  ignore(
+    "download manifest for simple package structure and complex canvas structure"
+  ) {
+    0 should equal(0)
+  }
+
+  // TODO: write test for complex package structure and complex canvas structure
+  ignore(
+    "download manifest for complex package structure and complex canvas structure"
+  ) {
+    0 should equal(0)
   }
 
 }

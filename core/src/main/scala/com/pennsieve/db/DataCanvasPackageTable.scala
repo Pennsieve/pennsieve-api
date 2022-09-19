@@ -29,9 +29,10 @@ final class DataCanvasPackageTable(schema: String, tag: Tag)
   def organizationId: Rep[Int] = column[Int]("organization_id")
   def packageId: Rep[Int] = column[Int]("package_id")
   def datasetId: Rep[Int] = column[Int]("dataset_id")
+  def dataCanvasId: Rep[Int] = column[Int]("datacanvas_id")
 
   def * =
-    (dataCanvasFolderId, organizationId, packageId, datasetId)
+    (organizationId, packageId, datasetId, dataCanvasFolderId, dataCanvasId)
       .mapTo[DataCanvasPackage]
 }
 

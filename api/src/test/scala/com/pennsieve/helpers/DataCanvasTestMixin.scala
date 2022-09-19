@@ -22,10 +22,16 @@ import com.pennsieve.models.{
   DataCanvas,
   DataCanvasFolder,
   Dataset,
+  FileObjectType,
+  FileProcessingState,
+  FileState,
+  FileType,
+  NodeCodes,
   Organization,
   Package
 }
 
+import java.util.UUID
 import scala.util.Random
 
 trait DataCanvasTestMixin extends DataSetTestMixin {
@@ -54,10 +60,17 @@ trait DataCanvasTestMixin extends DataSetTestMixin {
     name: String = randomString(32),
     description: String = randomString(64),
     isPublic: Boolean = false,
-    container: SecureAPIContainer = secureContainer
+    container: SecureAPIContainer = secureContainer,
+    nodeId: Option[String] = None
   ): DataCanvas =
     container.dataCanvasManager
-      .create(name, description, isPublic = Some(isPublic))
+      .create(
+        name,
+        description,
+        isPublic = Some(isPublic),
+        nodeId =
+          nodeId.getOrElse(NodeCodes.generateId(NodeCodes.dataCanvasCode))
+      )
       .await match {
       case Left(error) => throw error
       case Right(value) => value
@@ -114,6 +127,25 @@ trait DataCanvasTestMixin extends DataSetTestMixin {
   def getAll(container: SecureAPIContainer = secureContainer): Seq[DataCanvas] =
     container.dataCanvasManager
       .getAll()
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
+
+  def createFile(name: String, dataset: Dataset, `package`: Package) =
+    fileManager
+      .create(
+        name = name,
+        `type` = FileType.CSV,
+        `package` = `package`,
+        s3Bucket = "test-data-bucket",
+        s3Key = s"${dataset.id}/${UUID.randomUUID().toString}/${name}",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        size = 1024,
+        fileChecksum = None,
+        uploadedState = Some(FileState.UPLOADED)
+      )
       .await match {
       case Left(error) => throw error
       case Right(value) => value

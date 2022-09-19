@@ -14,22 +14,14 @@
  * limitations under the License.
  */
 
-package com.pennsieve.dtos
+package com.pennsieve.models
 
-import io.circe.{ Decoder, Encoder }
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-
-case class DataCanvasPackageDTO(
-  dataCanvasId: Int,
-  dataCanvasFolderId: Int,
-  organizationId: Int,
-  datasetId: Int,
-  packageId: Int
+case class DataCanvasContent(
+  filePath: String,
+  fileName: String,
+  fileSize: Int,
+  packageNodeId: String,
+  packageName: String,
+  s3Bucket: String,
+  s3Key: String
 )
-
-object DataCanvasPackageDTO {
-  implicit val encoder: Encoder[DataCanvasPackageDTO] =
-    deriveEncoder[DataCanvasPackageDTO]
-  implicit val decoder: Decoder[DataCanvasPackageDTO] =
-    deriveDecoder[DataCanvasPackageDTO]
-}

@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
-package com.pennsieve.dtos
+package com.pennsieve.models
 
-import io.circe.{ Decoder, Encoder }
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-
-case class DataCanvasPackageDTO(
-  dataCanvasId: Int,
-  dataCanvasFolderId: Int,
-  organizationId: Int,
-  datasetId: Int,
-  packageId: Int
-)
-
-object DataCanvasPackageDTO {
-  implicit val encoder: Encoder[DataCanvasPackageDTO] =
-    deriveEncoder[DataCanvasPackageDTO]
-  implicit val decoder: Decoder[DataCanvasPackageDTO] =
-    deriveDecoder[DataCanvasPackageDTO]
+case class DataCanvasFolderPath(
+  level: Int,
+  id: Int,
+  parentId: Int,
+  name: String,
+  path: String,
+  pathNames: Seq[String]
+) {
+  override def toString: String =
+    s"DataCanvasFolderPath(level: ${level}, id: ${id}, parentId: ${parentId}, name: ${name}, path: ${path}, pathNames: ${pathNames})"
 }
