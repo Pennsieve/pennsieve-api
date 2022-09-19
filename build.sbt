@@ -142,7 +142,7 @@ lazy val jobSchedulingServiceClientVersion = "6-3251c91"
 lazy val serviceUtilitiesVersion = "8-9751ee3"
 lazy val discoverServiceClientVersion = "36-32664eb"
 lazy val doiServiceClientVersion = "12-756107b"
-lazy val timeseriesCoreVersion = "4-d8f62a4"
+lazy val timeseriesCoreVersion = "6-487b00c"
 lazy val commonsIoVersion = "2.6"
 
 lazy val enumeratumVersion = SettingKey[String]("enumeratumVersion")
