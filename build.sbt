@@ -78,6 +78,12 @@ ThisBuild / akkaHttpVersion := akkaHttp212Version
 
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
+
+lazy val swaggerAkkaHttpVersion = SettingKey[String]("swaggerAkkaHttpVersion")
+lazy val swaggerAkkaHttp212Version = "0.14.0"
+lazy val swaggerAkkaHttp213Version = "1.4.0"
+ThisBuild / swaggerAkkaHttpVersion := swaggerAkkaHttp212Version
+
 lazy val auditMiddlewareVersion = "1.0.2"
 lazy val authMiddlewareVersion = "5.1.3"
 
@@ -97,6 +103,7 @@ ThisBuild / circeVersion := circe212Version
 lazy val circeDerivationVersion = SettingKey[String]("circeDerivationVersion")
 lazy val circeDerivation212Version = "0.11.0-M3"
 lazy val circeDerivation213Version = "0.13.0-M5"
+ThisBuild / circeDerivationVersion := circeDerivation212Version
 
 lazy val ficusVersion = SettingKey[String]("ficusVersion")
 lazy val ficus212Version = "1.4.0"
@@ -449,7 +456,7 @@ lazy val adminSettings = Seq(
   publishTo := publishToNexus.value,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
-    "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.14.0",
+    "com.github.swagger-akka-http" %% "swagger-akka-http" % swaggerAkkaHttpVersion.value,
     "com.iheart" %% "ficus" % ficusVersion.value,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
     "io.circe" %% "circe-java8" % circeVersion.value,
@@ -526,18 +533,43 @@ lazy val bfAkkaHttpSettings = Seq(
   publishTo := publishToNexus.value,
   Test / publishArtifact := true,
   publishMavenStyle := true,
+  crossScalaVersions := supportedScalaVersions,
+  ficusVersion := getVersion(
+    scalaVersion.value,
+    ficus212Version,
+    ficus213Version
+  ),
+  akkaVersion := getVersion(scalaVersion.value, akka212Version, akka213Version),
+  akkaHttpVersion := getVersion(
+    scalaVersion.value,
+    akkaHttp212Version,
+    akkaHttp213Version
+  ),
+  circeVersion := getVersion(
+    scalaVersion.value,
+    circe212Version,
+    circe213Version
+  ),
+  swaggerAkkaHttpVersion := getVersion(
+    scalaVersion.value,
+    swaggerAkkaHttp212Version,
+    swaggerAkkaHttp213Version
+  ),
   scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
-    "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.14.0",
+    "com.github.swagger-akka-http" %% "swagger-akka-http" % swaggerAkkaHttpVersion.value,
     "com.iheart" %% "ficus" % ficusVersion.value,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion.value,
     "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion.value,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
-    "io.circe" %% "circe-java8" % circeVersion.value,
     // testing deps
     "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion.value % Test
+  ),
+  libraryDependencies ++= handle212OnlyDependency(
+    scalaVersion.value,
+    "io.circe" %% "circe-java8" % circeVersion.value
   )
 )
 
