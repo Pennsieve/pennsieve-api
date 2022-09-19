@@ -43,7 +43,7 @@ trait WebServer {
   val host: String = config.getOrElse[String]("host", "0.0.0.0")
 
   def startServer(): Unit = {
-    Http().newServerAt(host, port).bindFlow(routes)
+    Http().bindAndHandle(routes, host, port)
     println(s"Server online at http://$host:$port")
   }
 }
