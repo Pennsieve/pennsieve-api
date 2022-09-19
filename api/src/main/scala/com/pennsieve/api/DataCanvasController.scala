@@ -18,11 +18,23 @@ package com.pennsieve.api
 
 import akka.Done
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.HttpResponse
 import cats.implicits._
 import cats.data.EitherT
 import com.pennsieve.core.utilities.{ checkOrError, checkOrErrorT }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
-import com.pennsieve.domain.{ CoreError, PredicateError, UnauthorizedError }
+import com.pennsieve.discover.client.definitions.FileTreeWithOrgPage
+import com.pennsieve.discover.client.file.{
+  GetFileFromSourcePackageIdResponse,
+  FileClient => DiscoverClient
+}
+import com.pennsieve.domain.{
+  CoreError,
+  NotFound,
+  PredicateError,
+  ServiceError,
+  UnauthorizedError
+}
 import com.pennsieve.dtos.Builders.{
   dataCanvasDTO,
   dataCanvasFolderDTO,
@@ -62,12 +74,7 @@ import org.scalatra.{ ActionResult, AsyncResult, BadRequest, ScalatraServlet }
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-
-// TODO:
-//   1. do we need to deal with locking of data-canvases?
-//   2. check authorization (see: secureContainer.authorizeDataset)
-//   2. we should emit ChangeLog events
-//   3. extract and utilize traceIds
+import scala.concurrent.duration._
 
 case class CreateDataCanvasRequest(
   name: String,
@@ -83,11 +90,9 @@ case class UpdateDataCanvasRequest(
   status: Option[String] = None
 )
 
-case class AttachPackageRequest(
-  datasetId: Int,
-  packageId: Int,
-  organizationId: Option[Int]
-)
+case class AttachPackageRequest(packageId: String, isPublic: Boolean = true)
+
+case class AttachPackageResponse(packageId: String, isPublic: Boolean = true)
 
 case class CreateDataCanvasFolder(name: String, parent: Option[Int])
 case class RenameDataCanvasFolder(oldName: String, newName: String)
@@ -97,6 +102,7 @@ class DataCanvasController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
   objectStore: ObjectStore,
+  discoverFileClient: DiscoverClient,
   implicit
   val system: ActorSystem,
   asyncExecutor: ExecutionContext
@@ -113,6 +119,25 @@ class DataCanvasController(
     def hasField(childString: String): Boolean =
       (value \ childString) != JNothing
   }
+
+  /**
+    * Handle errors from the Guardrail client.
+    *
+    * These are either HTTP responses that are not documented in the Swagger
+    * file, or the error thrown by a failed Future during the request.
+    */
+  private def handleGuardrailError(
+    implicit
+    /* ec: ExecutionContext, */
+    system: ActorSystem
+  ): Either[Throwable, HttpResponse] => Future[CoreError] =
+    _.fold(
+      error => Future.successful(ServiceError(error.toString)),
+      resp =>
+        resp.entity.toStrict(1.second).map { entity =>
+          ServiceError(s"HTTP ${resp.status}: ${entity.data.utf8String}")
+        }
+    )
 
   //
   // DataCanvas operations
@@ -702,6 +727,12 @@ class DataCanvasController(
   // Package operations
   //
 
+  case class PackageLookupResult(
+    datasetId: Option[Int],
+    packageId: Option[Int],
+    packageNodeId: Option[String]
+  )
+
   /**
     * attach a Package to a DataCanvas
     */
@@ -709,56 +740,87 @@ class DataCanvasController(
   post(
     "/:canvasId/folder/:folderId/package",
     operation(
-      apiOperation[PackageDTO]("addPackageToDataCanvas")
+      apiOperation[AttachPackageResponse]("addPackageToDataCanvas")
         summary "add a package to a data-canvas"
         parameters (
-          pathParam[Int]("canvasId").description("data-canvas id"),
-          pathParam[Int]("folderId").description("folder id"),
+          pathParam[String]("canvasId").description("data-canvas node id"),
+          pathParam[String]("folderId").description("folder node id"),
           bodyParam[AttachPackageRequest]("body")
             .description("package to attach to data-canvas")
       )
     )
   ) {
     new AsyncResult {
-      val result: EitherT[Future, ActionResult, PackageDTO] = for {
-        canvasId <- paramT[Int]("canvasId")
-        folderId <- paramT[Int]("folderId")
+      val result: EitherT[Future, ActionResult, AttachPackageResponse] = for {
+        canvasId <- paramT[String]("canvasId")
+        folderId <- paramT[String]("folderId")
         body <- extractOrErrorT[AttachPackageRequest](parsedBody)
         secureContainer <- getSecureContainer()
+        organization = secureContainer.organization
 
         canvas <- secureContainer.dataCanvasManager
-          .getById(canvasId)
+          .getByNodeId(canvasId)
           .orNotFound()
 
         folder <- secureContainer.dataCanvasManager
-          .getFolder(canvasId, folderId)
+          .getFolderByNodeId(folderId)
           .orNotFound()
 
-        dataset <- secureContainer.datasetManager
-          .get(body.datasetId)
-          .orNotFound()
+        packageLookupResult <- body.isPublic match {
+          case true =>
+            secureContainer.packageManager
+              .getByNodeId(body.packageId)
+              .orNotFound()
+              .map(
+                pkg =>
+                  PackageLookupResult(Some(pkg.datasetId), Some(pkg.id), None)
+              )
+          case false =>
+            discoverFileClient
+              .getFileFromSourcePackageId(body.packageId)
+              .leftSemiflatMap(handleGuardrailError)
+              .flatMap {
+                _.fold[EitherT[Future, CoreError, FileTreeWithOrgPage]](
+                  handleOK = response => EitherT.pure(response),
+                  handleNotFound = msg => EitherT.leftT(NotFound(msg))
+                )
+              }
+              .coreErrorToActionResult()
+              .map { _ =>
+                PackageLookupResult(None, None, Some(body.packageId))
+              }
+        }
 
-        pkg <- secureContainer.packageManager
-          .get(body.packageId)
-          .orNotFound()
+        response <- body.isPublic match {
+          case true =>
+            for {
+              _ <- secureContainer.dataCanvasManager
+                .attachPackage(
+                  canvas.id,
+                  folder.id,
+                  packageLookupResult.datasetId.get,
+                  packageLookupResult.packageId.get,
+                  organization.id
+                )
+                .orBadRequest()
+            } yield
+              AttachPackageResponse(
+                packageId = body.packageId,
+                isPublic = body.isPublic
+              )
+          case false =>
+            for {
+              _ <- secureContainer.dataCanvasManager
+                .attachPublicPackage(canvas.id, folder.id, body.packageId)
+                .orBadRequest()
+            } yield
+              AttachPackageResponse(
+                packageId = body.packageId,
+                isPublic = body.isPublic
+              )
+        }
 
-        organization <- secureContainer.organizationManager
-          .get(body.organizationId.getOrElse(secureContainer.organization.id))
-          .orNotFound()
-
-        _ <- secureContainer.dataCanvasManager
-          .attachPackage(
-            canvas.id,
-            folder.id,
-            dataset.id,
-            pkg.id,
-            organization.id
-          )
-          .orBadRequest()
-
-        dto <- packageDTO(pkg, dataset)(asyncExecutor, secureContainer)
-          .orError()
-      } yield dto
+      } yield response
 
       override val is = result.value.map(CreatedResult(_))
     }
@@ -767,6 +829,10 @@ class DataCanvasController(
   /**
     * detach a Package from a DataCanvas
     */
+  // TODO: refactor - change :canvasId, :folderId, :packageId to type String (node ids)
+  // TODO: refactor - canvas and folder lookup by node id
+  // TODO: figure out how to handle Private vs. Public packages
+  // TODO: maybe we need to try removing from both tables?
   delete(
     "/:canvasId/folder/:folderId/package/:packageId",
     operation(
@@ -823,115 +889,6 @@ class DataCanvasController(
       override val is = result.value.map(NoContentResult)
     }
   }
-
-  /**
-    * attach a list of Packages to a DataCanvas
-    */
-  // TODO: return a list of PackageDTO
-//  post(
-//    "/:canvasId/folder/:folderId/packages",
-//    operation(
-//      apiOperation[Done]("addPackagesToDataCanvas")
-//        summary "add multiple packages to a data-canvas"
-//        parameters (
-//          pathParam[Int]("canvasId").description("data-canvas id"),
-//          pathParam[Int]("folderId").description("data-canvas folder id"),
-//          bodyParam[List[AttachPackageRequest]]("body")
-//            .description("packages to attach to data-canvas")
-//      )
-//    )
-//  ) {
-//    new AsyncResult {
-//      val result: EitherT[Future, ActionResult, Done] = for {
-//        canvasId <- paramT[Int]("canvasId")
-//        folderId <- paramT[Int]("folderId")
-//        packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
-//        secureContainer <- getSecureContainer()
-//
-//        canvas <- secureContainer.dataCanvasManager
-//          .getById(canvasId)
-//          .coreErrorToActionResult()
-//
-//        folder <- secureContainer.dataCanvasManager
-//          .getFolder(canvas.id, folderId)
-//          .orBadRequest()
-//
-//        _ = packages.map { p =>
-//          for {
-//            dataset <- secureContainer.datasetManager
-//              .get(p.datasetId)
-//              .coreErrorToActionResult()
-//
-//            organization <- secureContainer.organizationManager
-//              .get(p.organizationId.getOrElse(secureContainer.organization.id))
-//              .coreErrorToActionResult()
-//
-//            pkg <- secureContainer.packageManager
-//              .get(p.packageId)
-//              .coreErrorToActionResult()
-//
-//            dataCanvasPackage <- secureContainer.dataCanvasManager
-//              .attachPackage(
-//                canvas.id,
-//                folder.id,
-//                dataset.id,
-//                pkg.id,
-//                organization.id
-//              )
-//              .orBadRequest()
-//
-//          } yield dataCanvasPackage
-//        }
-//      } yield Done
-//
-//      override val is = result.value.map(OkResult(_))
-//    }
-//  }
-
-  /**
-    * remove a list of packages from a DataCanvas
-    */
-//  delete(
-//    "/:canvasId/folder/:folderId/packages",
-//    operation(
-//      apiOperation[Done]("detachPackagesFromDataCanvas")
-//        summary "remove a list of packages from a data-canvas"
-//        parameters (
-//          pathParam[Int]("canvasId").description("data-canvas id"),
-//          pathParam[Int]("folderId").description("data-canvas folder id"),
-//          bodyParam[List[AttachPackageRequest]]("body")
-//            .description("packages to detach from data-canvas")
-//      )
-//    )
-//  ) {
-//    new AsyncResult {
-//      val result: EitherT[Future, ActionResult, Done] = for {
-//        canvasId <- paramT[Int]("canvasId")
-//        folderId <- paramT[Int]("folderId")
-//        packages <- extractOrErrorT[List[AttachPackageRequest]](parsedBody)
-//        secureContainer <- getSecureContainer()
-//
-//        _ <- secureContainer.dataCanvasManager
-//          .getById(canvasId)
-//          .coreErrorToActionResult()
-//
-//        _ = packages.map { `package` =>
-//          for {
-//            dataCanvasPackage <- secureContainer.dataCanvasManager
-//              .getPackage(canvasId, `package`.packageId)
-//              .orNotFound()
-//
-////            _ <- secureContainer.dataCanvasManager
-////              .detachPackage(dataCanvasPackage)
-////              .orBadRequest()
-//
-//          } yield dataCanvasPackage
-//        }
-//
-//      } yield Done
-//      override val is = result.value.map(NoContentResult)
-//    }
-//  }
 
   //
   // generate download manifest

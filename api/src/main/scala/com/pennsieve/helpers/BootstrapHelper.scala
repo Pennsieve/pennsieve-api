@@ -73,6 +73,7 @@ import java.util.concurrent.TimeUnit
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.blackfynn.clients.{ AntiSpamChallengeClient, RecaptchaClient }
 import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
+import com.pennsieve.discover.client.file.FileClient
 import org.apache.http.ssl.SSLContexts
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 
@@ -186,6 +187,12 @@ trait BaseBootstrapHelper {
     val host = config.as[String]("pennsieve.discover_service.host")
     val client = new SingleHttpResponder().responder
     SearchClient.httpClient(client, host)
+  }
+
+  lazy val discoverFileClient: FileClient = {
+    val host = config.as[String]("pennsieve.discover_service.host")
+    val client = new SingleHttpResponder().responder
+    FileClient.httpClient(client, host)
   }
 
   lazy val doiClient: DoiClient = {

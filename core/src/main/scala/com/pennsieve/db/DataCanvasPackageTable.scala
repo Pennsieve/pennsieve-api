@@ -16,7 +16,12 @@
 
 package com.pennsieve.db
 
-import com.pennsieve.models.{ DataCanvasPackage, Organization, User }
+import com.pennsieve.models.{
+  DataCanvasPackage,
+  DataCanvasPublicPackage,
+  Organization,
+  User
+}
 import com.pennsieve.traits.PostgresProfile.api._
 import slick.lifted.Tag
 
@@ -69,4 +74,57 @@ class DataCanvasPackageMapper(val organization: Organization)
       .filter(_.dataCanvasFolderId === dataCanvasFolderId)
       .filter(_.datasetId === datasetId)
       .filter(_.packageId === packageId)
+}
+
+final class DataCanvasPublicPackageTable(schema: String, tag: Tag)
+    extends Table[DataCanvasPublicPackage](
+      tag,
+      Some(schema),
+      "datacanvas_public_package"
+    ) {
+
+  def dataCanvasId: Rep[Int] = column[Int]("datacanvas_id")
+  def dataCanvasFolderId: Rep[Int] = column[Int]("datacanvas_folder_id")
+  def packageNodeId: Rep[String] = column[String]("package_node_id")
+
+  def * =
+    (dataCanvasId, dataCanvasFolderId, packageNodeId)
+      .mapTo[DataCanvasPublicPackage]
+}
+
+class DataCanvasPublicPackageMapper(val organization: Organization)
+    extends TableQuery(
+      new DataCanvasPublicPackageTable(organization.schemaId, _)
+    ) {
+
+  def isLocked(
+    dataCanvasPublicPackage: DataCanvasPublicPackage,
+    user: User
+  )(implicit
+    executionContext: ExecutionContext
+  ): DBIO[Boolean] =
+    this
+      .get(
+        dataCanvasPublicPackage.dataCanvasId,
+        dataCanvasPublicPackage.dataCanvasFolderId,
+        dataCanvasPublicPackage.packageNodeId
+      )
+      .map {
+        case _ =>
+          true
+      }
+      .take(1)
+      .result
+      .headOption
+      .map(_.getOrElse(false))
+
+  def get(
+    dataCanvasId: Int,
+    dataCanvasFolderId: Int,
+    packageNodeId: String
+  ): Query[DataCanvasPublicPackageTable, DataCanvasPublicPackage, Seq] =
+    this
+      .filter(_.dataCanvasId === dataCanvasId)
+      .filter(_.dataCanvasFolderId === dataCanvasFolderId)
+      .filter(_.packageNodeId === packageNodeId)
 }

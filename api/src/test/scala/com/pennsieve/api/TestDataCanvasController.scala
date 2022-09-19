@@ -801,20 +801,24 @@ class TestDataCanvasController
   /**
     * Package tests
     */
+  // TODO: refactor all package attach/detach requests
+  // TODO: refactor - URL parameters :canvasId and :folderId are type String (node ids)
+  // TODO: adopt case class AttachPackageRequest(packageId: String, isPublic: Boolean = true)
+  // TODO: test - attach private package
+  // TODO: test - attach public package (how do we mock the Discover File Client?)
+
   test("package attach requires authentication") {
     val dataset = createDataSet("a test dataset")
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = pkg.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
+    val attachPackageRequest =
+      write(AttachPackageRequest(packageId = pkg.nodeId, isPublic = false))
 
-    postJson(s"/${canvas.id}/folder/${folder.id}/package", attachPackageRequest) {
+    postJson(
+      s"/${canvas.nodeId}/folder/${folder.nodeId}/package",
+      attachPackageRequest
+    ) {
       status should equal(401)
     }
   }
@@ -824,34 +828,11 @@ class TestDataCanvasController
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
-      AttachPackageRequest(datasetId = dataset.id, packageId = pkg.id, None)
-    )
+    val attachPackageRequest =
+      write(AttachPackageRequest(packageId = pkg.nodeId, isPublic = false))
 
     postJson(
-      s"/${canvas.id}/folder/${folder.id}/package",
-      attachPackageRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(201)
-    }
-  }
-
-  test("package attach succeeds when an organization is specified") {
-    val dataset = createDataSet("a test dataset")
-    val pkg = createPackage(dataset, "a test package")
-    val canvas = createDataCanvas()
-    val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = pkg.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
-
-    postJson(
-      s"/${canvas.id}/folder/${folder.id}/package",
+      s"/${canvas.nodeId}/folder/${folder.nodeId}/package",
       attachPackageRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
@@ -861,26 +842,23 @@ class TestDataCanvasController
 
   test("package detach requires authentication") {
     val dataset = createDataSet("a test dataset")
-    val `package` = createPackage(dataset, "a test package")
+    val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = `package`.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
+    val attachPackageRequest =
+      write(AttachPackageRequest(packageId = pkg.nodeId, isPublic = false))
 
+    // attach the package
     postJson(
-      s"/${canvas.id}/folder/${folder.id}/package",
+      s"/${canvas.nodeId}/folder/${folder.nodeId}/package",
       attachPackageRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
     }
 
-    delete(s"/${canvas.id}/folder/${folder.id}/package/${`package`.id}") {
+    // detach the package
+    delete(s"/${canvas.nodeId}/folder/${folder.nodeId}/package/${pkg.nodeId}") {
       status should equal(401)
     }
   }
@@ -888,19 +866,15 @@ class TestDataCanvasController
   // TODO: figure out why this tests fails
   ignore("package detach from data-canvas") {
     val dataset = createDataSet("a test dataset")
-    val `package` = createPackage(dataset, "a test package")
+    val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = `package`.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
+    val attachPackageRequest =
+      write(AttachPackageRequest(packageId = pkg.nodeId, isPublic = false))
 
+    // attach the package
     postJson(
-      s"/${canvas.id}/folder/${folder.id}/package",
+      s"/${canvas.nodeId}/folder/${folder.nodeId}/package",
       attachPackageRequest,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
@@ -908,68 +882,7 @@ class TestDataCanvasController
     }
 
     delete(
-      s"/${canvas.id}/folder/${folder.id}/package/${`package`.id}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(204)
-    }
-  }
-
-  /**
-    * List of Packages operations
-    */
-  ignore("package list is attached to a data-canvas folder") {
-    val dataset = createDataSet(randomString())
-    val package1 = createPackage(dataset, randomString())
-    val package2 = createPackage(dataset, randomString())
-    val canvas = createDataCanvas()
-    val folder = createFolder(canvas.id)
-
-    val attachPackagesRequest = write(
-      List(
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = package1.id,
-          organizationId = Some(loggedInOrganization.id)
-        ),
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = package2.id,
-          organizationId = Some(loggedInOrganization.id)
-        )
-      )
-    )
-
-    postJson(
-      s"/${canvas.id}/folder/${folder.id}/packages",
-      attachPackagesRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(201)
-    }
-  }
-
-  ignore("package list is detached from a data-canvas folder") {
-    val (canvas, folder, dataset, packages) = setupCanvas(numberOfPackages = 3)
-
-    val detachPackagesRequest = write(
-      List(
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = packages(0).id,
-          organizationId = Some(loggedInOrganization.id)
-        ),
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = packages(1).id,
-          organizationId = Some(loggedInOrganization.id)
-        )
-      )
-    )
-
-    deleteJson(
-      s"/${canvas.id}/folder/${folder.id}/packages",
-      detachPackagesRequest,
+      s"/${canvas.nodeId}/folder/${folder.nodeId}/package/${pkg.nodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(204)
@@ -1033,6 +946,16 @@ class TestDataCanvasController
   ignore(
     "download manifest for complex package structure and complex canvas structure"
   ) {
+    0 should equal(0)
+  }
+
+  // TODO: write test for canvas with only public packages
+  ignore("download manifest for canvas with only public packages") {
+    0 should equal(0)
+  }
+
+  // TODO: write test for canvas with both public and private packages
+  ignore("download manifest for canvas with both public and private packages") {
     0 should equal(0)
   }
 

@@ -26,3 +26,12 @@ final case class DataCanvasPackage(
   override def toString: String =
     s"DataCanvasPackage(organizationId: ${organizationId}, datasetId: ${datasetId}, packageId: ${packageId}, dataCanvasId: ${dataCanvasId}, dataCanvasFolderId: ${dataCanvasFolderId})"
 }
+
+final case class DataCanvasPublicPackage(
+  dataCanvasId: Int,
+  dataCanvasFolderId: Int,
+  packageNodeId: String
+) {
+  override def toString: String =
+    s"DataCanvasPublicPackage(dataCanvasId: ${dataCanvasId}, dataCanvasFolderId: ${dataCanvasFolderId}, packageNodeId: ${packageNodeId})"
+}

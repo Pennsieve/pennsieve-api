@@ -24,6 +24,7 @@ import com.pennsieve.db.{
   DataCanvasFolderMapper,
   DataCanvasMapper,
   DataCanvasPackageMapper,
+  DataCanvasPublicPackageMapper,
   DataCanvasUserMapper,
   PackagesMapper
 }
@@ -42,6 +43,7 @@ import com.pennsieve.models.{
   DataCanvasFolderPath,
   DataCanvasFoldersAndPackages,
   DataCanvasPackage,
+  DataCanvasPublicPackage,
   DataCanvasUser,
   NodeCodes,
   Organization,
@@ -78,6 +80,9 @@ class DataCanvasManager(
     organization
   )
   val dataCanvasPackageMapper = new DataCanvasPackageMapper(organization)
+  val dataCanvasPublicPackageMapper = new DataCanvasPublicPackageMapper(
+    organization
+  )
   val dataCanvasFolderMapper = new DataCanvasFolderMapper(organization)
 
   val datasetStatusManager: DatasetStatusManager =
@@ -324,6 +329,31 @@ class DataCanvasManager(
     } yield dataCanvasPackage
   }
 
+  def attachPublicPackage(
+    canvasId: Int,
+    folderId: Int,
+    packageId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvasPublicPackage] = {
+    for {
+      _ <- getById(canvasId)
+
+      attachedDataCanvasPublicPackage = for {
+        dataCanvasPublicPackage <- (dataCanvasPublicPackageMapper returning dataCanvasPublicPackageMapper) += DataCanvasPublicPackage(
+          canvasId,
+          folderId,
+          packageId
+        )
+      } yield dataCanvasPublicPackage
+
+      dataCanvasPublicPackage <- db
+        .run(attachedDataCanvasPublicPackage.transactionally)
+        .toEitherT
+
+    } yield dataCanvasPublicPackage
+  }
+
   def getPackage(
     folderId: Int,
     packageId: Int,
@@ -396,6 +426,19 @@ class DataCanvasManager(
     val query = dataCanvasFolderMapper
       .filter(_.id === folderId)
       .filter(_.dataCanvasId === canvasId)
+      .result
+      .head
+
+    db.run(query).toEitherT
+  }
+
+  def getFolderByNodeId(
+    folderId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataCanvasFolder] = {
+    val query = dataCanvasFolderMapper
+      .filter(_.nodeId === folderId)
       .result
       .head
 
