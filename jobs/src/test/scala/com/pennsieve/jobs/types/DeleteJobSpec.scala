@@ -38,12 +38,12 @@ import com.pennsieve.models.{ DatasetState, NodeCodes, PackageState, User }
 import com.pennsieve.streaming.{ LookupResultRow, RangeLookUp }
 import com.pennsieve.test._
 import com.github.tminglei.slickpg.Range
+import com.pennsieve.test.helpers.EitherBePropertyMatchers
 import com.typesafe.config.{ Config, ConfigFactory }
 import org.apache.commons.io.IOUtils
 import org.scalatest.EitherValues._
 import org.scalatest._
 import org.scalatest.flatspec.FixtureAnyFlatSpec
-import org.scalatest.matchers.{ BePropertyMatchResult, BePropertyMatcher }
 import org.scalatest.matchers.should.Matchers
 import scalikejdbc.ConnectionPool
 import scalikejdbc.scalatest.AutoRollback
@@ -109,10 +109,6 @@ class MockModelServiceClient extends ModelServiceV2Client {
   }
 }
 
-class LeftBePropertyMatcher[A, B] extends BePropertyMatcher[Either[A, B]] {
-  def apply(e: Either[A, B]) = BePropertyMatchResult(e.isLeft, "left")
-}
-
 class DeleteJobSpec
     extends FixtureAnyFlatSpec
     with SpecHelper
@@ -122,7 +118,8 @@ class DeleteJobSpec
     with BeforeAndAfterAll
     with ManagerSpec
     with S3DockerContainer
-    with AutoRollback {
+    with AutoRollback
+    with EitherBePropertyMatchers {
 
   def config: Config = {
     ConfigFactory
@@ -168,8 +165,6 @@ class DeleteJobSpec
     color = "red",
     url = ""
   )
-
-  val left = new LeftBePropertyMatcher[CoreError, AnyRef]
 
   override def afterStart(): Unit = {
     super.afterStart()

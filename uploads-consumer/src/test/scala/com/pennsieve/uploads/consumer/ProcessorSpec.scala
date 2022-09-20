@@ -19,7 +19,6 @@ package com.pennsieve.uploads.consumer
 import com.pennsieve.models._
 import org.scalatest.EitherValues._
 import io.circe.syntax._
-import io.circe.java8.time._
 
 import java.util.UUID
 import software.amazon.awssdk.services.sqs.model.{ Message => SQSMessage }

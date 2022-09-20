@@ -104,7 +104,7 @@ trait UploadsConsumerSpecHarness
     )
   }
 
-  override def afterEach: Unit = {
+  override def afterEach(): Unit = {
     consumerContainer.db.run(clearOrganizationSchema(organization.id)).await
     super.afterEach()
   }
@@ -178,7 +178,7 @@ trait UploadsConsumerSpecHarness
       )
   }
 
-  override def afterAll: Unit = {
+  override def afterAll(): Unit = {
     consumerContainer.db.close()
     consumerContainer.sns.asInstanceOf[SNS].client.close()
     consumerContainer.sqs.client.close()

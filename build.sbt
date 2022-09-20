@@ -598,7 +598,6 @@ lazy val migrationsSettings = Seq(
 
 lazy val unusedOrganizationMigrationSettings = Seq(
   name := "unused-organization-migration",
-  scalaVersion := scala212,
   libraryDependencies ++= Seq(),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {
@@ -664,7 +663,6 @@ lazy val etlDataCLISettings = Seq(
 
 lazy val uploadsConsumerSettings = Seq(
   name := "uploads-consumer",
-  scalaVersion := scala212,
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
     "com.typesafe.akka" %% "akka-stream-contrib" % akkaStreamContribVersion,
@@ -812,7 +810,6 @@ lazy val discoverPublishSettings = Seq(
 lazy val organizationStorageMigrationSettings =
   Seq(
     name := "organization-storage-migration",
-    scalaVersion := scala212,
     excludeDependencies ++= unwantedDependencies,
     docker / dockerfile := {
       val artifact: File = assembly.value

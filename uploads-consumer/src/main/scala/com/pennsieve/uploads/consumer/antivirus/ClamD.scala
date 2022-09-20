@@ -68,7 +68,7 @@ class ClamD(host: String, port: Int) {
 
       val buffer: Array[Byte] = new Array[Byte](CHUNK_SIZE)
 
-      Stream.continually(input.read(buffer)).takeWhile(_ != -1).foreach {
+      LazyList.continually(input.read(buffer)).takeWhile(_ != -1).foreach {
         length =>
           // stream a CHUNK_SIZE worth of contents to clamd
           val outputBuffer: Array[Byte] =
