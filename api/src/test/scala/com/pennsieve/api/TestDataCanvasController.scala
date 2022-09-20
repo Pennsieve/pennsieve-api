@@ -16,21 +16,13 @@
 
 package com.pennsieve.api
 
-import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import com.pennsieve.dtos.{
-  DataCanvasDTO,
-  DownloadManifestDTO,
-  DownloadRequest
-}
-import com.pennsieve.helpers.{
-  DataCanvasTestMixin,
-  DataSetTestMixin,
-  MockObjectStore
-}
-import com.pennsieve.models.{ DataCanvasFolderPath, FileType, PackageType }
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import com.pennsieve.dtos.{DataCanvasDTO, DownloadManifestDTO, DownloadRequest}
+import com.pennsieve.helpers.{DataCanvasTestMixin, DataSetTestMixin, MockDiscoverFileClient, MockObjectStore}
+import com.pennsieve.models.{DataCanvasFolderPath, FileType, PackageType}
 
 import scala.concurrent.Future
-import org.json4s.jackson.Serialization.{ read, write }
+import org.json4s.jackson.Serialization.{read, write}
 
 import scala.util.Random
 
@@ -58,6 +50,7 @@ class TestDataCanvasController
         insecureContainer,
         secureContainerBuilder,
         new MockObjectStore("test.avi"),
+        new MockDiscoverFileClient(),
         system,
         system.dispatcher
       ),
