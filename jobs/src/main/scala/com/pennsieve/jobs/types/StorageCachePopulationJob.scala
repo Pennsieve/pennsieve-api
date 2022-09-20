@@ -103,7 +103,7 @@ class StorageCachePopulationJob(
       s"Caching storage for dataset ${dataset.name} with id ${dataset.id}"
     )(StorageCacheContext(organization.id))
 
-    db.run(for {
+    val dbAction = for {
       _ <- packageStorageMapper.refreshPackageStorage(dataset)
 
       // Set the storage of the dataset to be the sum of sizes of packages at
@@ -118,7 +118,9 @@ class StorageCachePopulationJob(
         .map(_.getOrElse(0L))
 
       _ <- datasetStorageMapper.setDataset(dataset.id, datasetSize)
-    } yield ())
+    } yield ()
+
+    db.run(dbAction)
   }
 
   def run(

@@ -76,7 +76,7 @@ import scalikejdbc.{ AutoSession, DBSession }
 
 import java.time.Instant
 import java.time.temporal.ChronoField
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.SortedSet
 import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
@@ -412,10 +412,10 @@ class DeleteJob(
   ): List[String] = {
     def getNextList(listing: ObjectListing): Seq[S3ObjectSummary] =
       if (listing.isTruncated)
-        listing.getObjectSummaries.asScala ++ getNextList(
+        listing.getObjectSummaries.asScala.toSeq ++ getNextList(
           amazonS3.listNextBatchOfObjects(listing)
         )
-      else listing.getObjectSummaries.asScala
+      else listing.getObjectSummaries.asScala.toSeq
 
     getNextList(amazonS3.listObjects(bucket, directoryId))
       .map(_.getKey)
@@ -442,7 +442,7 @@ class DeleteJob(
             .map(_.getKey)
           S3DeleteResult(
             bucket = bucket,
-            deletedKeys = deletedIds,
+            deletedKeys = deletedIds.toSeq,
             notDeletedKeys = Seq.empty
           )
         } catch {
@@ -451,8 +451,8 @@ class DeleteJob(
               .map(_.getKey)
             S3DeleteResult(
               bucket = bucket,
-              deletedKeys = deletedIds,
-              notDeletedKeys = ex.getErrors.asScala
+              deletedKeys = deletedIds.toSeq,
+              notDeletedKeys = ex.getErrors.asScala.toSeq
             )
         }
       }
@@ -473,7 +473,7 @@ class DeleteJob(
     flow1: Flow[In, Out, M1],
     flow2: Flow[In, Out, M2]
   )(
-    combineMat: (M1, M2) ⇒ Mat
+    combineMat: (M1, M2) => Mat
   ): Flow[In, Out, Mat] = Flow.fromGraph {
     GraphDSL.create(flow1, flow2)(combineMat) { implicit builder => (f1, f2) =>
       import GraphDSL.Implicits._

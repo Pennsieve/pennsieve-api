@@ -91,7 +91,7 @@ lazy val awsV2Version = "2.15.58"
 lazy val catsVersion = SettingKey[String]("catsVersion")
 lazy val cats212Version = "1.1.0"
 lazy val cats213Version = "2.6.1"
-ThisBuild / catsVersion := cats212Version
+ThisBuild / catsVersion := cats213Version
 
 lazy val circeVersion = SettingKey[String]("circeVersion")
 lazy val circe212Version = "0.11.1"
@@ -118,7 +118,6 @@ lazy val scalatraVersion = "2.7.1" //"2.6.5"//"2.8.2"
 lazy val scalatestVersion = SettingKey[String]("scalatestVersion")
 lazy val scalatest212Version = "3.0.3"
 lazy val scalatest213Version = "3.2.11"
-ThisBuild / scalatestVersion := scalatest212Version
 
 lazy val scalikejdbcVersion = "3.5.0"
 
@@ -407,7 +406,7 @@ lazy val coreSettings = Seq(
 // jobs settings
 lazy val jobsSettings = Seq(
   name := "jobs",
-  scalaVersion := scala212,
+  scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
     "com.pennsieve" %% "timeseries-core" % timeseriesCoreVersion,
@@ -418,7 +417,6 @@ lazy val jobsSettings = Seq(
     "io.circe" %% "circe-core" % circeVersion.value,
     "io.circe" %% "circe-generic" % circeVersion.value,
     "io.circe" %% "circe-parser" % circeVersion.value,
-    "io.circe" %% "circe-java8" % circeVersion.value,
     "org.typelevel" %% "cats-core" % catsVersion.value,
     // testing deps
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test,

@@ -127,11 +127,14 @@ class DatasetChangelogEvent(
     val eventDetails: Either[DecodingFailure, List[
       (ChangelogEventDetail, Option[ZonedDateTime])
     ]] =
-      job.listEvents.map { e: EventInstance =>
-        e.eventDetail
-          .as[ChangelogEventDetail](ChangelogEventDetail.decoder(e.eventType))
-          .map(ed => (ed, e.timestamp))
-      }.sequence
+      job
+        .listEvents()
+        .map { e: EventInstance =>
+          e.eventDetail
+            .as[ChangelogEventDetail](ChangelogEventDetail.decoder(e.eventType))
+            .map(ed => (ed, e.timestamp))
+        }
+        .sequence
 
     for {
       context <- (eventDetails match {
@@ -147,7 +150,7 @@ class DatasetChangelogEvent(
               )
             ](
               JSONParseFailException(
-                json = job.listEvents.toString(),
+                json = job.listEvents().toString(),
                 error = err.message
               ): JobException
             )
