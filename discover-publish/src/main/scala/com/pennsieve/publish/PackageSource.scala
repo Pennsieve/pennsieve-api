@@ -17,15 +17,14 @@
 package com.pennsieve.publish
 
 import akka.NotUsed
-import akka.stream.scaladsl.{ Source }
-
+import akka.stream.scaladsl.Source
 import cats.data._
 import cats.implicits._
+import com.pennsieve.models.Package
+import com.pennsieve.publish.models.PackagePath
 
-import com.pennsieve.models.{ Package }
-import com.pennsieve.publish.models.{ PackagePath }
-
-import scala.collection.mutable.{ ArrayStack }
+import scala.collection.mutable
+import scala.collection.mutable.Stack
 import scala.concurrent.{ ExecutionContext, Future }
 
 /**
@@ -74,7 +73,7 @@ object PackagesSource {
     if (state.stack.isEmpty)
       Future.successful(None) // Done. Shutdown the stream
     else {
-      val (parent, path) = state.stack.pop
+      val (parent, path) = state.stack.pop()
       container.packageManager
         .children(Some(parent), container.dataset)
         .map(
@@ -94,10 +93,10 @@ object PackagesSource {
   /**
     * Accumulator state for unfold traversal
     */
-  case class UnfoldState(stack: ArrayStack[PackagePath])
+  case class UnfoldState(stack: Stack[PackagePath])
 
   object UnfoldState {
     def apply(packages: List[Package]): UnfoldState =
-      UnfoldState(new ArrayStack() ++ packages.map(pkg => (pkg, Seq[String]())))
+      UnfoldState(new Stack() ++ packages.map(pkg => (pkg, Seq[String]())))
   }
 }

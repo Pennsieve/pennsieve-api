@@ -791,7 +791,6 @@ lazy val bfAwsSettings = Seq(
 
 lazy val discoverPublishSettings = Seq(
   name := "discover-publish",
-  scalaVersion := scala212,
   libraryDependencies ++= Seq(
     "com.lightbend.akka" %% "akka-stream-alpakka-s3" % alpakkaVersion,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
