@@ -113,7 +113,7 @@ object Main extends App {
         "30"
       )
     ).run()
-  sys.addShutdownHook(pennTunnel.destroy)
+  sys.addShutdownHook(pennTunnel.destroy())
 
   Thread.sleep(1000)
   if (!pennTunnel.isAlive())

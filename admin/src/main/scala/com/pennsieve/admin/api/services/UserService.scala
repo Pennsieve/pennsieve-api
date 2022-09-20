@@ -32,7 +32,6 @@ import com.pennsieve.models.UserInvite
 import com.pennsieve.models.DBPermission.{ Delete, Owner }
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.java8.time._
 import io.circe.{ Decoder, Encoder, Json }
 import io.circe.syntax._
 import io.swagger.annotations._

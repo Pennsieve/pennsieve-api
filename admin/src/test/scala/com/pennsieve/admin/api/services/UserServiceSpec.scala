@@ -24,7 +24,6 @@ import com.pennsieve.models.{ DBPermission, User, UserInvite }
 import com.pennsieve.models.DBPermission.Owner
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.java8.time._
 import io.circe.syntax._
 import org.scalatest.EitherValues._
 

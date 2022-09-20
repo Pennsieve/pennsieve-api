@@ -63,18 +63,16 @@ ThisBuild / Test / fork := true
 lazy val akkaVersion = SettingKey[String]("akkaVersion")
 lazy val akka212Version = "2.6.5"
 lazy val akka213Version = "2.6.8"
-ThisBuild / akkaVersion := akka212Version
+ThisBuild / akkaVersion := akka213Version
 
 lazy val akkaCirceVersion = SettingKey[String]("akkaCirceVersion")
 lazy val akkaCirce212Version = "1.27.0"
 lazy val akkaCirce213Version = "1.39.2"
-// Uncomment this if 'akkaCirceVersion' gets used outside of core-clients
-//ThisBuild / akkaCirceVersion := akkaCirce212Version
 
 lazy val akkaHttpVersion = SettingKey[String]("akkaHttpVersion")
 lazy val akkaHttp212Version = "10.1.11"
 lazy val akkaHttp213Version = "10.2.7"
-ThisBuild / akkaHttpVersion := akkaHttp212Version
+ThisBuild / akkaHttpVersion := akkaHttp213Version
 
 lazy val akkaStreamContribVersion = "0.11"
 lazy val alpakkaVersion = "2.0.2"
@@ -82,7 +80,7 @@ lazy val alpakkaVersion = "2.0.2"
 lazy val swaggerAkkaHttpVersion = SettingKey[String]("swaggerAkkaHttpVersion")
 lazy val swaggerAkkaHttp212Version = "0.14.0"
 lazy val swaggerAkkaHttp213Version = "1.4.0"
-ThisBuild / swaggerAkkaHttpVersion := swaggerAkkaHttp212Version
+ThisBuild / swaggerAkkaHttpVersion := swaggerAkkaHttp213Version
 
 lazy val auditMiddlewareVersion = "1.0.2"
 lazy val authMiddlewareVersion = "5.1.3"
@@ -451,14 +449,13 @@ lazy val jobsSettings = Seq(
 
 lazy val adminSettings = Seq(
   name := "admin",
-  scalaVersion := scala212,
   publishTo := publishToNexus.value,
+  scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
     "com.github.swagger-akka-http" %% "swagger-akka-http" % swaggerAkkaHttpVersion.value,
     "com.iheart" %% "ficus" % ficusVersion.value,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
-    "io.circe" %% "circe-java8" % circeVersion.value,
     // needed to work correctly on JVM9+ -- this should be moved to bf-akka-http once all bf-akka-http users use JVM9+
     "javax.xml.bind" % "jaxb-api" % "2.2.8",
     // testing deps
@@ -623,7 +620,6 @@ lazy val unusedOrganizationMigrationSettings = Seq(
 
 lazy val inviteCognitoUserSettings = Seq(
   name := "invite-cognito-user",
-  scalaVersion := scala212,
   libraryDependencies ++= Seq(),
   excludeDependencies ++= unwantedDependencies,
   run / fork := true,

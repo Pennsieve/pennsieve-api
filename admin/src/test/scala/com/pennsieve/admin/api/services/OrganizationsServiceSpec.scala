@@ -53,14 +53,13 @@ import akka.testkit.TestKitBase
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import com.pennsieve.auth.middleware.{ Jwt, OrganizationId }
 import com.pennsieve.clients._
-import io.circe.java8.time._
 import io.circe.syntax._
 import io.circe.parser._
 import shapeless.syntax.inject._
 import org.scalatest.OptionValues._
 import org.scalatest.EitherValues._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._
@@ -319,8 +318,10 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
 
           import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
-          responseAs[Subscription] should have('status (PendingSubscription))
-          responseAs[Subscription] should have('type (Some("Trial")))
+          responseAs[Subscription] should have(
+            Symbol("status")(PendingSubscription)
+          )
+          responseAs[Subscription] should have(Symbol("type")(Some("Trial")))
         }
       }
     }
@@ -506,11 +507,15 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
 
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
-        responseAs[Subscription] should have('status (ConfirmedSubscription))
         responseAs[Subscription] should have(
-          'acceptedForOrganization (Some("Organization One"))
+          Symbol("status")(ConfirmedSubscription)
         )
-        responseAs[Subscription] should have('acceptedBy (Some("owner")))
+        responseAs[Subscription] should have(
+          Symbol("acceptedForOrganization")(Some("Organization One"))
+        )
+        responseAs[Subscription] should have(
+          Symbol("acceptedBy")(Some("owner"))
+        )
       }
     }
 
@@ -532,9 +537,13 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
           status shouldEqual OK
           import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
-          responseAs[Subscription] should have('status (PendingSubscription))
-          responseAs[Subscription] should have('acceptedForOrganization (None))
-          responseAs[Subscription] should have('acceptedBy (None))
+          responseAs[Subscription] should have(
+            Symbol("status")(PendingSubscription)
+          )
+          responseAs[Subscription] should have(
+            Symbol("acceptedForOrganization")(None)
+          )
+          responseAs[Subscription] should have(Symbol("acceptedBy")(None))
         }
 
       }
@@ -551,12 +560,16 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         status shouldEqual OK
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
-        responseAs[Subscription] should have('status (ConfirmedSubscription))
-        responseAs[Subscription] should have('type (None))
         responseAs[Subscription] should have(
-          'acceptedForOrganization (Some("Organization One"))
+          Symbol("status")(ConfirmedSubscription)
         )
-        responseAs[Subscription] should have('acceptedBy (Some("owner")))
+        responseAs[Subscription] should have(Symbol("type")(None))
+        responseAs[Subscription] should have(
+          Symbol("acceptedForOrganization")(Some("Organization One"))
+        )
+        responseAs[Subscription] should have(
+          Symbol("acceptedBy")(Some("owner"))
+        )
       }
 
       val payload = SetSubscriptionType(isTrial = true).asJson
@@ -572,12 +585,16 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
 
         import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
-        responseAs[Subscription] should have('status (ConfirmedSubscription))
-        responseAs[Subscription] should have('type (Some("Trial")))
         responseAs[Subscription] should have(
-          'acceptedForOrganization (Some("Organization One"))
+          Symbol("status")(ConfirmedSubscription)
         )
-        responseAs[Subscription] should have('acceptedBy (Some("owner")))
+        responseAs[Subscription] should have(Symbol("type")(Some("Trial")))
+        responseAs[Subscription] should have(
+          Symbol("acceptedForOrganization")(Some("Organization One"))
+        )
+        responseAs[Subscription] should have(
+          Symbol("acceptedBy")(Some("owner"))
+        )
       }
     }
 
