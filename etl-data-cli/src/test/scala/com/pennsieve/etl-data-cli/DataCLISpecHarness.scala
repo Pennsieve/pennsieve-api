@@ -63,7 +63,7 @@ trait DataCLISpecHarness
     )
   }
 
-  override def afterEach: Unit = {
+  override def afterEach(): Unit = {
     dataCLIContainer.db.run(clearOrganizationSchema(organization.id)).await
     super.afterEach()
   }

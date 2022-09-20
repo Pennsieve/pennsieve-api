@@ -23,7 +23,6 @@ import com.pennsieve.models.{ ModelProperty, Organization, Package }
 import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.parser.decode
 import io.circe.syntax._
-import io.circe.java8.time._
 import cats.implicits._
 import java.io.{ FileWriter, File => JavaFile }
 
@@ -108,7 +107,7 @@ object SetPackageProperties {
   def decodeProperties(file: JavaFile): Future[List[ModelProperty]] = {
     val parsed = for {
       source <- Try { Source.fromFile(file) }.toEither
-      decoded <- decode[List[ModelProperty]](source.getLines.mkString(""))
+      decoded <- decode[List[ModelProperty]](source.getLines().mkString(""))
       _ <- Try { source.close() }.toEither
     } yield decoded
 

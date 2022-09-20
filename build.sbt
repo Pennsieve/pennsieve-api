@@ -636,10 +636,8 @@ lazy val inviteCognitoUserSettings = Seq(
 
 lazy val etlDataCLISettings = Seq(
   name := "etl-data-cli",
-  scalaVersion := scala212,
   libraryDependencies ++= Seq(
-    "com.github.scopt" %% "scopt" % "3.7.0",
-    "io.circe" %% "circe-java8" % circeVersion.value
+    "com.github.scopt" %% "scopt" % "3.7.1",
   ),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {

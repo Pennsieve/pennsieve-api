@@ -139,7 +139,7 @@ object CreateAsset extends LazyLogging {
   def decodeAssetInfo(file: JavaFile): Future[AssetInfo] = {
     val parsed = for {
       source <- Try { Source.fromFile(file) }.toEither
-      decoded <- decode[AssetInfo](source.getLines.mkString(""))
+      decoded <- decode[AssetInfo](source.getLines().mkString(""))
       _ <- Try { source.close() }.toEither
     } yield decoded
 

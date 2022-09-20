@@ -20,6 +20,7 @@ import com.pennsieve.aws.ssm.{
   AWSSimpleSystemsManagementContainer,
   LocalSimpleSystemsManagerContainer
 }
+import com.pennsieve.etl.`data-cli`.ConfigBuilder.AbstractConfigContainer
 import com.pennsieve.utilities.{ Container => ConfigContainer }
 import com.typesafe.config.ConfigFactory
 import net.ceedubs.ficus.Ficus._
@@ -37,10 +38,10 @@ class ConfigSpec extends AnyFlatSpec with Matchers {
 
     val ssmContainer =
       if (isLocal) {
-        new { val config = baseConfig } with ConfigContainer
+        new AbstractConfigContainer(baseConfig)
         with LocalSimpleSystemsManagerContainer
       } else {
-        new { val config = baseConfig } with ConfigContainer
+        new AbstractConfigContainer(baseConfig)
         with AWSSimpleSystemsManagementContainer
       }
 
