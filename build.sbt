@@ -479,12 +479,11 @@ lazy val adminSettings = Seq(
 lazy val authorizationServiceSettings = Seq(
   name := "authorization-service",
   publishTo := publishToNexus.value,
-  scalaVersion := scala212,
+  scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
     "com.iheart" %% "ficus" % ficusVersion.value,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
-    "io.circe" %% "circe-java8" % circeVersion.value,
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
     // testing deps
     "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
