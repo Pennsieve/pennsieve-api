@@ -34,8 +34,10 @@ object OrcidAuthorization {
 
   implicit val customConfig: Configuration =
     Configuration.default.withSnakeCaseMemberNames.withDefaults
-  implicit val snakyEncoder: Encoder[OrcidAuthorization] = deriveEncoder
-  implicit val snakyDecoder: Decoder[OrcidAuthorization] = deriveDecoder
+  implicit val snakyEncoder: Encoder[OrcidAuthorization] =
+    deriveConfiguredEncoder
+  implicit val snakyDecoder: Decoder[OrcidAuthorization] =
+    deriveConfiguredDecoder
 }
 
 final object OrcidIdentityProvider {

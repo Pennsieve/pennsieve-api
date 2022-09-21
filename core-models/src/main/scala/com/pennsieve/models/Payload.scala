@@ -36,7 +36,7 @@ object Payload {
     Configuration.default withDiscriminator discriminator
 
   implicit def encoder: Encoder[Payload] =
-    deriveEncoder[Payload]
+    deriveConfiguredEncoder[Payload]
       .mapJson(_ mapObject (_ remove discriminator))
 
   implicit def decoder: Decoder[Payload] =
@@ -60,8 +60,8 @@ object Upload {
   implicit val configuration: Configuration =
     Configuration.default
 
-  implicit val encoder: Encoder[Upload] = deriveEncoder[Upload]
-  implicit val decoder: Decoder[Upload] = deriveDecoder[Upload]
+  implicit val encoder: Encoder[Upload] = deriveConfiguredEncoder[Upload]
+  implicit val decoder: Decoder[Upload] = deriveConfiguredDecoder[Upload]
 }
 
 sealed trait Workflow extends Payload
@@ -71,7 +71,7 @@ object Workflow {
   implicit val configuration: Configuration =
     Configuration.default
 
-  implicit val encoder: Encoder[Workflow] = deriveEncoder[Workflow]
+  implicit val encoder: Encoder[Workflow] = deriveConfiguredEncoder[Workflow]
   implicit val decoder: Decoder[Workflow] = List[Decoder[Workflow]](
     Decoder[ETLAppendWorkflow].widen,
     Decoder[ETLExportWorkflow].widen,
@@ -98,8 +98,10 @@ object ETLWorkflow {
   implicit val configuration: Configuration =
     Configuration.default
 
-  implicit val encoder: Encoder[ETLWorkflow] = deriveEncoder[ETLWorkflow]
-  implicit val decoder: Decoder[ETLWorkflow] = deriveDecoder[ETLWorkflow]
+  implicit val encoder: Encoder[ETLWorkflow] =
+    deriveConfiguredEncoder[ETLWorkflow]
+  implicit val decoder: Decoder[ETLWorkflow] =
+    deriveConfiguredDecoder[ETLWorkflow]
 }
 
 final case class ETLAppendWorkflow(
@@ -122,9 +124,9 @@ object ETLAppendWorkflow {
     Configuration.default
 
   implicit val encoder: Encoder[ETLAppendWorkflow] =
-    deriveEncoder[ETLAppendWorkflow]
+    deriveConfiguredEncoder[ETLAppendWorkflow]
   implicit val decoder: Decoder[ETLAppendWorkflow] =
-    deriveDecoder[ETLAppendWorkflow]
+    deriveConfiguredDecoder[ETLAppendWorkflow]
 }
 
 /**
@@ -152,7 +154,7 @@ object ETLExportWorkflow {
     Configuration.default
 
   implicit val encoder: Encoder[ETLExportWorkflow] =
-    deriveEncoder[ETLExportWorkflow]
+    deriveConfiguredEncoder[ETLExportWorkflow]
   implicit val decoder: Decoder[ETLExportWorkflow] =
-    deriveDecoder[ETLExportWorkflow]
+    deriveConfiguredDecoder[ETLExportWorkflow]
 }

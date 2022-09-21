@@ -24,7 +24,7 @@ import scala.concurrent.Promise
 class AsyncHandler[Request <: AmazonWebServiceRequest, Result]
     extends AWSAsyncHandler[Request, Result] {
 
-  val promise: Promise[Result] = Promise[Result]
+  val promise: Promise[Result] = Promise[Result]()
 
   override def onError(exception: Exception): Unit = {
     promise.failure(exception)

@@ -17,7 +17,10 @@
 package com.pennsieve.models
 
 import io.circe.generic.extras.Configuration
-import io.circe.generic.extras.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.generic.extras.semiauto.{
+  deriveConfiguredDecoder,
+  deriveConfiguredEncoder
+}
 import io.circe.{ Decoder, Encoder }
 
 case class Manifest(
@@ -35,7 +38,10 @@ object Manifest {
     Configuration.default.withDiscriminator(discriminator)
 
   implicit val encodeManifest: Encoder[Manifest] =
-    deriveEncoder[Manifest].mapJson(_ mapObject (_ remove discriminator))
+    deriveConfiguredEncoder[Manifest].mapJson(
+      _ mapObject (_ remove discriminator)
+    )
 
-  implicit val decodeManifest: Decoder[Manifest] = deriveDecoder[Manifest]
+  implicit val decodeManifest: Decoder[Manifest] =
+    deriveConfiguredDecoder[Manifest]
 }
