@@ -115,9 +115,7 @@ lazy val jettyVersion = "9.1.3.v20140225"
 lazy val postgresVersion = "42.1.4"
 lazy val scalatraVersion = "2.7.1" //"2.6.5"//"2.8.2"
 
-lazy val scalatestVersion = SettingKey[String]("scalatestVersion")
-lazy val scalatest212Version = "3.0.3"
-lazy val scalatest213Version = "3.2.11"
+lazy val scalatestVersion = "3.2.11"
 
 lazy val scalikejdbcVersion = "3.5.0"
 
@@ -237,7 +235,6 @@ lazy val coreApiSharedSettings = Seq(
     json4s213Version
   ),
   akkaVersion := getVersion(scalaVersion.value, akka212Version, akka213Version),
-  scalatestVersion := scalatest213Version,
   slickPgVersion := getVersion(
     scalaVersion.value,
     slickPg212Version,
@@ -265,7 +262,7 @@ lazy val coreApiSharedSettings = Seq(
     "com.rms.miu" %% "slick-cats" % slickCatsVersion.value,
     // Testing deps
     "com.dimafeng" %% "testcontainers-scala" % testContainersVersion % Test,
-    "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
+    "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
     "org.scalikejdbc" %% "scalikejdbc-test" % scalikejdbcVersion % Test
   ),
@@ -406,7 +403,6 @@ lazy val coreSettings = Seq(
 // jobs settings
 lazy val jobsSettings = Seq(
   name := "jobs",
-  scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
     "com.pennsieve" %% "timeseries-core" % timeseriesCoreVersion,
@@ -421,7 +417,7 @@ lazy val jobsSettings = Seq(
     // testing deps
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test,
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
-    "org.scalatest" %% "scalatest" % scalatestVersion.value % Test
+    "org.scalatest" %% "scalatest" % scalatestVersion % Test
   ),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {
@@ -448,7 +444,6 @@ lazy val jobsSettings = Seq(
 lazy val adminSettings = Seq(
   name := "admin",
   publishTo := publishToNexus.value,
-  scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
     "com.github.swagger-akka-http" %% "swagger-akka-http" % swaggerAkkaHttpVersion.value,
@@ -457,7 +452,7 @@ lazy val adminSettings = Seq(
     // needed to work correctly on JVM9+ -- this should be moved to bf-akka-http once all bf-akka-http users use JVM9+
     "javax.xml.bind" % "jaxb-api" % "2.2.8",
     // testing deps
-    "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
+    "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion.value % Test
   ),
@@ -477,14 +472,13 @@ lazy val adminSettings = Seq(
 lazy val authorizationServiceSettings = Seq(
   name := "authorization-service",
   publishTo := publishToNexus.value,
-  scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
     "com.iheart" %% "ficus" % ficusVersion.value,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion.value,
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
     // testing deps
-    "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
+    "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion.value % Test,
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test,
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion.value % Test
@@ -549,7 +543,6 @@ lazy val bfAkkaHttpSettings = Seq(
     swaggerAkkaHttp212Version,
     swaggerAkkaHttp213Version
   ),
-  scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
     "com.github.swagger-akka-http" %% "swagger-akka-http" % swaggerAkkaHttpVersion.value,
     "com.iheart" %% "ficus" % ficusVersion.value,
@@ -558,7 +551,7 @@ lazy val bfAkkaHttpSettings = Seq(
     "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion.value,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion.value,
     // testing deps
-    "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
+    "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion.value % Test
   ),
   libraryDependencies ++= handle212OnlyDependency(
@@ -750,7 +743,6 @@ lazy val coreModelsSettings = Seq(
     circeDerivation212Version,
     circeDerivation213Version
   ),
-  scalatestVersion := scalatest213Version,
   libraryDependencies ++= Seq(
     "commons-io" % "commons-io" % commonsIoVersion,
     "com.beachape" %% "enumeratum" % enumeratumVersion.value,
@@ -760,7 +752,7 @@ lazy val coreModelsSettings = Seq(
     "io.circe" %% "circe-shapes" % circeVersion.value,
     "io.circe" %% "circe-derivation" % circeDerivationVersion.value,
     "io.circe" %% "circe-parser" % circeVersion.value,
-    "org.scalatest" %% "scalatest" % scalatestVersion.value % Test,
+    "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.google.guava" % "guava" % "29.0-jre"
   ),
   libraryDependencies ++= handle212OnlyDependency(
