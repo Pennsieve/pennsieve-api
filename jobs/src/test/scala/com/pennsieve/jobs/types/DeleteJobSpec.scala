@@ -38,6 +38,7 @@ import com.pennsieve.models.{ DatasetState, NodeCodes, PackageState, User }
 import com.pennsieve.streaming.{ LookupResultRow, RangeLookUp }
 import com.pennsieve.test._
 import com.github.tminglei.slickpg.Range
+import com.pennsieve.test.helpers.EitherBePropertyMatchers
 import com.typesafe.config.{ Config, ConfigFactory }
 import org.apache.commons.io.IOUtils
 import org.scalatest.EitherValues._
@@ -47,7 +48,7 @@ import org.scalatest.matchers.should.Matchers
 import scalikejdbc.ConnectionPool
 import scalikejdbc.scalatest.AutoRollback
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.SortedSet
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ ExecutionContextExecutor, Future }
@@ -91,7 +92,7 @@ class MockModelServiceClient extends ModelServiceV2Client {
 
   def queueFailureResponse(error: JobException) = responses += Left(error)
 
-  def clearResponses() = responses.clear
+  def clearResponses() = responses.clear()
 
   override def deleteDataset[B: ToBearer](
     token: B,
@@ -117,7 +118,8 @@ class DeleteJobSpec
     with BeforeAndAfterAll
     with ManagerSpec
     with S3DockerContainer
-    with AutoRollback {
+    with AutoRollback
+    with EitherBePropertyMatchers {
 
   def config: Config = {
     ConfigFactory
@@ -170,7 +172,7 @@ class DeleteJobSpec
     // Tabular database connection
     Class.forName("org.postgresql.Driver")
     ConnectionPool.singleton(
-      postgresContainer.jdbcUrl,
+      postgresContainer.jdbcUrl(),
       postgresContainer.user,
       postgresContainer.password
     )
@@ -237,6 +239,7 @@ class DeleteJobSpec
     s3.listObjectsV2(bucket)
       .getObjectSummaries()
       .asScala
+      .toSeq
 
   behavior of "DeleteJob"
 
@@ -277,10 +280,10 @@ class DeleteJobSpec
 
     // make sure item is removed from the database
     val pm = packageManager(user = user)
-    pm.get(slidePackage.id).await should be('left)
+    pm.get(slidePackage.id).await should be a (left)
 
     val fm = fileManager(user = user)
-    fm.get(file.id, slidePackage).await should be('left)
+    fm.get(file.id, slidePackage).await should be a (left)
 
     // make sure item is not in s3
     s3.listObjects(dataBucketName).getObjectSummaries.asScala.size should be(0)
@@ -314,7 +317,7 @@ class DeleteJobSpec
 
     // make sure item is removed from the database
     val pm = packageManager(user = user)
-    pm.get(externalPackage.id).await should be('left)
+    pm.get(externalPackage.id).await should be a (left)
 
     // The associated external file should be gone too:
     val result = externalFileManager(testOrganization, loggedInUser)
@@ -354,7 +357,7 @@ class DeleteJobSpec
     assert(deleteJob.creditDeleteJob(msg).await.isRight)
 
     val pm = packageManager(user = user)
-    pm.get(slidePackage.id).await should be('left)
+    pm.get(slidePackage.id).await should be a (left)
   }
 
   // test aperio file type
@@ -403,11 +406,11 @@ class DeleteJobSpec
 
     // make sure item is removed from the database
     val pm = packageManager(user = user)
-    pm.get(parent.id).await should be('left)
-    pm.get(slidePackage.id).await should be('left)
+    pm.get(parent.id).await should be a (left)
+    pm.get(slidePackage.id).await should be a (left)
 
     val fm = fileManager(organization = testOrganization, user = user)
-    fm.get(file.id, slidePackage).await should be('left)
+    fm.get(file.id, slidePackage).await should be a (left)
 
     // make sure item is not in s3
     s3.listObjects(dataBucketName).getObjectSummaries.asScala.size should be(0)
@@ -490,11 +493,11 @@ class DeleteJobSpec
 
     // expect data in all systems to be gone
     val pm = packageManager(user = user)
-    pm.get(timeseriesPackage.id).await should be('left)
-    tm.getChannel(channel.id, timeseriesPackage).await should be('left)
+    pm.get(timeseriesPackage.id).await should be a (left)
+    tm.getChannel(channel.id, timeseriesPackage).await should be a (left)
 
     val fm = fileManager(organization = testOrganization, user = user)
-    fm.get(file.id, timeseriesPackage).await should be('left)
+    fm.get(file.id, timeseriesPackage).await should be a (left)
 
     rangeLookup.get(channel.nodeId).size should be(0)
     diContainer.layerManager.getBy(layer.id).await should not be defined
@@ -611,13 +614,13 @@ class DeleteJobSpec
 
     // make sure item is removed from the database
 
-    pm.get(slidePackage.id).await should be('left)
-    pm.get(parent.id).await should be('left)
+    pm.get(slidePackage.id).await should be a (left)
+    pm.get(parent.id).await should be a (left)
 
-    dm.get(dataset.id).await should be('left)
+    dm.get(dataset.id).await should be a (left)
 
     val fm = fileManager(organization = testOrganization, user = user)
-    fm.get(file.id, slidePackage).await should be('left)
+    fm.get(file.id, slidePackage).await should be a (left)
 
     assert(
       datasetAssetsManager.getDatasetAssets(dataset.id).await == Right(List())
@@ -685,7 +688,7 @@ class DeleteJobSpec
 
     val deleteJobResult = deleteJob.deleteDatasetJobWithResult(job).await
     assert(deleteJobResult.isLeft)
-    val err = deleteJobResult.left.get
+    val err = deleteJobResult.left.value
     err.getMessage should be("service not reachable")
   }
 }

@@ -49,6 +49,12 @@ object ConfigBuilder extends ConfigBuilderTrait {
     s"${environment}-pennsieve-postgres-user" -> "postgres.user"
   )
 
+  // Early initializers deprecated in Scala 2.13 and removed in Scala 3. This class
+  // can be replaced by giving com.pennsieve.utilities.Container a trait parameter once
+  // we move to Scala 3. https://docs.scala-lang.org/scala3/guides/migration/incompat-dropped-features.html#early-initializer
+  abstract class AbstractConfigContainer(val config: Config)
+      extends ConfigContainer
+
   def build(
     baseConfig: Config
   )(implicit
@@ -60,10 +66,10 @@ object ConfigBuilder extends ConfigBuilderTrait {
 
     val ssmContainer: SimpleSystemsManagementContainer =
       if (isLocal) {
-        new { val config = baseConfig } with ConfigContainer
+        new AbstractConfigContainer(baseConfig)
         with LocalSimpleSystemsManagerContainer
       } else {
-        new { val config = baseConfig } with ConfigContainer
+        new AbstractConfigContainer(baseConfig)
         with AWSSimpleSystemsManagementContainer
       }
 

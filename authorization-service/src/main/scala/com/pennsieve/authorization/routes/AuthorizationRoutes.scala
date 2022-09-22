@@ -89,10 +89,10 @@ class AuthorizationRoutes(
 
   def authorization: Route =
     (pathEndOrSingleSlash & get & parameters(
-      'organization_id
+      Symbol("organization_id")
         .as[String]
         .?, // Either an organization ID (integer) or a node ID ("N:organization:123-456...")
-      'dataset_id
+      Symbol("dataset_id")
         .as[String]
         .? // Either a dataset ID (integer) or a node ID ("N:dataset:123-456...")
     )) { (organizationId, datasetId) =>
@@ -136,42 +136,43 @@ class AuthorizationRoutes(
     }
 
   def switchOrganization: Route =
-    (path("switch-organization") & parameters('organization_id.as[String]) & put) {
-      (organizationId) =>
-        val result: Future[UserDTO] = for {
+    (path("switch-organization") & parameters(
+      Symbol("organization_id").as[String]
+    ) & put) { (organizationId) =>
+      val result: Future[UserDTO] = for {
 
-          // Only users logged in from the browser / user pool can switch organizations
-          _ <- cognitoPayload.map(_.id.asUserPoolId) match {
-            case Some(Right(_)) => Future.successful(())
-            case _ => Future.failed(NonBrowserSession)
-          }
-          organizationToSwitchTo <- getOrganization(user, organizationId)
-
-          updatedUser <- updateUserPreferredOrganization(
-            user,
-            organizationToSwitchTo
-          )
-
-          userDTO <- Builders
-            .userDTO(updatedUser, storage = None)(
-              container.organizationManager,
-              container.pennsieveTermsOfServiceManager,
-              container.customTermsOfServiceManager,
-              executionContext
-            )
-            .value
-            .flatMap {
-              case Right(dto) => Future.successful(dto)
-              case Left(error) => Future.failed(error)
-            }
-        } yield userDTO
-
-        onComplete(result) {
-          case Success(userDTO) =>
-            complete((OK, userDTO))
-
-          case Failure(exception) => complete(exception.toResponse)
+        // Only users logged in from the browser / user pool can switch organizations
+        _ <- cognitoPayload.map(_.id.asUserPoolId) match {
+          case Some(Right(_)) => Future.successful(())
+          case _ => Future.failed(NonBrowserSession)
         }
+        organizationToSwitchTo <- getOrganization(user, organizationId)
+
+        updatedUser <- updateUserPreferredOrganization(
+          user,
+          organizationToSwitchTo
+        )
+
+        userDTO <- Builders
+          .userDTO(updatedUser, storage = None)(
+            container.organizationManager,
+            container.pennsieveTermsOfServiceManager,
+            container.customTermsOfServiceManager,
+            executionContext
+          )
+          .value
+          .flatMap {
+            case Right(dto) => Future.successful(dto)
+            case Left(error) => Future.failed(error)
+          }
+      } yield userDTO
+
+      onComplete(result) {
+        case Success(userDTO) =>
+          complete((OK, userDTO))
+
+        case Failure(exception) => complete(exception.toResponse)
+      }
     }
 
   case class ReadmeJwtContent(name: String, email: String, apiKey: String)

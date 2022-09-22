@@ -85,34 +85,6 @@ object CopyS3ObjectsFlow extends LazyLogging {
   def toUrl(copyAction: CopyAction): String =
     s"s3://${copyAction.toBucket}/${copyAction.copyToKey}"
 
-  val fiveMegabytes: Long = 5 * 1024 * 1024
-
-  def multipartCopy(
-    copyAction: CopyAction
-  )(implicit
-    container: PublishContainer,
-    ec: ExecutionContext,
-    system: ActorSystem
-  ) = {
-    val multipartCopyFuture = Future {
-      container.s3
-        .multipartCopy(
-          copyAction.file.s3Bucket,
-          copyAction.file.s3Key,
-          copyAction.toBucket,
-          copyAction.copyToKey,
-          multipartChunkSize = fiveMegabytes,
-          multipartCopyLimit = fiveMegabytes,
-          isRequesterPays = true
-        )
-        .fold(throw _, _ => copyAction)
-    }
-    logFutureResult(multipartCopyFuture)
-
-    multipartCopyFuture
-
-  }
-
   private def logFutureResult(
     future: Future[CopyAction]
   )(implicit

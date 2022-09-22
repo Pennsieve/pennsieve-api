@@ -23,7 +23,6 @@ import com.pennsieve.models.Organization
 import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.parser.decode
 import io.circe.syntax._
-import io.circe.java8.time._
 import cats.implicits._
 import java.io.{ FileWriter, File => JavaFile }
 

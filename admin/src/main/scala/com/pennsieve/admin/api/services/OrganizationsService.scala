@@ -141,7 +141,7 @@ class OrganizationsService(
   )
   def getOrganizations: Route =
     (pathEnd & get) {
-      complete(container.organizationManager.getAll)
+      complete(container.organizationManager.getAll())
     }
 
   @ApiOperation(
@@ -819,7 +819,7 @@ class OrganizationsService(
   )
   def uploadCustomTermsOfService: Route =
     (pathPrefix(Segment) & path("custom-terms-of-service") & parameters(
-      'isNewVersion ? false
+      Symbol("isNewVersion") ? false
     ) & put) { (organizationNodeId, isNewVersion) => ctx =>
       {
         val result = for {

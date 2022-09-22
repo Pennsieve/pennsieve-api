@@ -112,7 +112,7 @@ class UnusedOrganizationMigrationContainer(
       db.run(
         sql"""SELECT tablename FROM pg_tables WHERE schemaname = '#${organization.schemaId}' AND tablename <> 'schema_version' """
           .as[String]
-          .map(_.to[Seq])
+          .map(_.to(Seq))
       )
 
     for {

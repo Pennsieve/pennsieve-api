@@ -29,7 +29,6 @@ import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.parser.decode
 import io.circe.syntax._
-import io.circe.java8.time._
 
 import java.io.{ FileWriter, File => JavaFile }
 
@@ -219,7 +218,7 @@ object SetChannel {
   def decodeChannelInfo(file: JavaFile): Future[ChannelInfo] = {
     val parsed = for {
       source <- Try { Source.fromFile(file) }.toEither
-      decoded <- decode[ChannelInfo](source.getLines.mkString(""))
+      decoded <- decode[ChannelInfo](source.getLines().mkString(""))
       _ <- Try { source.close() }.toEither
     } yield decoded
 

@@ -14,24 +14,18 @@
  * limitations under the License.
  */
 
-package com.pennsieve.aws
+package com.pennsieve.test.helpers
+import org.scalatest.matchers.{ BePropertyMatchResult, BePropertyMatcher }
 
-import com.amazonaws.AmazonWebServiceRequest
-import com.amazonaws.handlers.{ AsyncHandler => AWSAsyncHandler }
+trait EitherBePropertyMatchers {
 
-import scala.concurrent.Promise
-
-class AsyncHandler[Request <: AmazonWebServiceRequest, Result]
-    extends AWSAsyncHandler[Request, Result] {
-
-  val promise: Promise[Result] = Promise[Result]()
-
-  override def onError(exception: Exception): Unit = {
-    promise.failure(exception)
+  val left = new BePropertyMatcher[Either[AnyRef, AnyRef]] {
+    override def apply(e: Either[AnyRef, AnyRef]): BePropertyMatchResult =
+      BePropertyMatchResult(e.isLeft, "left")
   }
-
-  override def onSuccess(request: Request, result: Result): Unit = {
-    promise.success(result)
+  val right = new BePropertyMatcher[Either[AnyRef, AnyRef]] {
+    override def apply(e: Either[AnyRef, AnyRef]): BePropertyMatchResult =
+      BePropertyMatchResult(e.isRight, "right")
   }
 
 }

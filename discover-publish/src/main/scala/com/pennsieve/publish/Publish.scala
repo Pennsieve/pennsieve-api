@@ -280,7 +280,7 @@ object Publish extends StrictLogging {
     * remove the field entirely.
     */
   def dropNullPrinter(json: Json): String =
-    Printer.spaces2.copy(dropNullValues = true).pretty(json)
+    Printer.spaces2.copy(dropNullValues = true).print(json)
 
   /**
     * Copy the dataset's banner image to the public assets bucket, and

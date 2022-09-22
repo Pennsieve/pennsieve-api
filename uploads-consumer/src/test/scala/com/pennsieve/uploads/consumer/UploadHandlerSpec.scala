@@ -19,7 +19,6 @@ package com.pennsieve.uploads.consumer
 import java.io._
 import java.util.UUID
 import java.util.concurrent.locks._
-
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.{
   CopyObjectRequest,
@@ -61,6 +60,7 @@ import com.pennsieve.models.{
   Upload
 }
 import com.pennsieve.service.utilities.ContextLogger
+import com.pennsieve.test.helpers.EitherBePropertyMatchers
 import org.scalatest.EitherValues._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.uploads.consumer.antivirus._
@@ -70,7 +70,9 @@ import net.ceedubs.ficus.Ficus._
 
 import scala.concurrent.duration._
 
-class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
+class UploadHandlerSpec
+    extends UploadsConsumerDatabaseSpecHarness
+    with EitherBePropertyMatchers {
 
   var dataset: Dataset = _
   val log: ContextLogger = new ContextLogger()
@@ -121,7 +123,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       // test uploaded file was deleted
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, uploadKey) should be('left)
+        .getObject(consumerContainer.uploadsBucket, uploadKey) should be(left)
 
       // test source was created
       val sourceFiles = getFiles(`package`)
@@ -165,7 +167,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       // test uploaded file was deleted
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, uploadKey) should be('left)
+        .getObject(consumerContainer.uploadsBucket, uploadKey) should be(left)
 
       // test source was created
       val sourceFiles = getFiles(`package`)
@@ -239,14 +241,12 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       runHandler(jobId, payload).value should equal(Clean)
 
       // test file was copied to storage bucket
-      consumerContainer.s3.getObject(
-        consumerContainer.storageBucket,
-        storageKey
-      ) should be('right)
+      consumerContainer.s3
+        .getObject(consumerContainer.storageBucket, storageKey) should be(right)
 
       // test uploaded file was deleted
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, uploadKey) should be('left)
+        .getObject(consumerContainer.uploadsBucket, uploadKey) should be(left)
 
       // test source was created
       getFiles(`package`).map(_.s3Key) should contain theSameElementsAs Seq(
@@ -282,7 +282,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       // test uploaded file was deleted
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, uploadKey) should be('left)
+        .getObject(consumerContainer.uploadsBucket, uploadKey) should be(left)
 
       // test source was created
       getFiles(`package`).map(_.s3Key) should contain theSameElementsAs Seq(
@@ -293,7 +293,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       consumerContainer.s3.getObject(
         consumerContainer.etlBucket,
         UploadHandler.manifestKey(jobId)
-      ) should be('left)
+      ) should be(left)
 
       // test package is still UNAVAILABLE
       getPackage(`package`.id).state should be(PackageState.UNAVAILABLE)
@@ -359,7 +359,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       // test uploaded file was deleted
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, uploadKey) should be('left)
+        .getObject(consumerContainer.uploadsBucket, uploadKey) should be(left)
 
       // only one set of sources was created
       val sourceFiles = getFiles(`package`)
@@ -454,9 +454,9 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       // test uploaded files were deleted
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, upload1Key) should be('left)
+        .getObject(consumerContainer.uploadsBucket, upload1Key) should be(left)
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, upload2Key) should be('left)
+        .getObject(consumerContainer.uploadsBucket, upload2Key) should be(left)
 
       // only one pair of sources was created
       getFiles(`package`).map(_.s3Key) should contain theSameElementsAs Seq(
@@ -654,11 +654,11 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       // file was not copied to regular storage bucket
       consumerContainer.s3
-        .getObject(consumerContainer.storageBucket, storageKey) should be('left)
+        .getObject(consumerContainer.storageBucket, storageKey) should be(left)
 
       // test uploaded file was deleted
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, uploadKey) should be('left)
+        .getObject(consumerContainer.uploadsBucket, uploadKey) should be(left)
 
       // test source was created
       getFiles(`package`).map(f => (f.s3Bucket, f.s3Key)) should contain theSameElementsAs Seq(
@@ -690,11 +690,11 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
 
       // test file was not copied to storage bucket
       consumerContainer.s3
-        .getObject(consumerContainer.storageBucket, storageKey) should be('left)
+        .getObject(consumerContainer.storageBucket, storageKey) should be(left)
 
       // test uploaded file was deleted
       consumerContainer.s3
-        .getObject(consumerContainer.uploadsBucket, uploadKey) should be('left)
+        .getObject(consumerContainer.uploadsBucket, uploadKey) should be(left)
 
       // test source was not created
       getFiles(`package`).map(_.s3Key) should be(empty)
@@ -705,7 +705,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
       consumerContainer.s3.getObject(
         consumerContainer.etlBucket,
         UploadHandler.manifestKey(jobId)
-      ) should be('left)
+      ) should be(left)
     }
 
     "ignore a file that has already been moved" in {
@@ -764,7 +764,7 @@ class UploadHandlerSpec extends UploadsConsumerDatabaseSpecHarness {
           upload
         )
 
-      runHandler(jobId, payload) should be('left)
+      runHandler(jobId, payload) should be(left)
     }
   }
 

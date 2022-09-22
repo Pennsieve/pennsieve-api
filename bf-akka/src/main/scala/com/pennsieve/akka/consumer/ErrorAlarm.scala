@@ -20,7 +20,6 @@ import java.io.{ PrintWriter, StringWriter }
 import java.time.OffsetDateTime
 
 import software.amazon.awssdk.services.sqs.model.Message
-import io.circe.java8.time.JavaTimeEncoders
 import io.circe.{ Encoder, Json }
 
 case class ErrorAlarm(
@@ -32,7 +31,7 @@ case class ErrorAlarm(
   val newStateValue: String = "ALARM"
 }
 
-object ErrorAlarm extends JavaTimeEncoders {
+object ErrorAlarm {
 
   def throwableToString(exception: Throwable): String = {
     val sw = new StringWriter
@@ -50,7 +49,9 @@ object ErrorAlarm extends JavaTimeEncoders {
     Json.obj(
       "AlarmName" -> Json.fromString(errorAlert.name),
       "NewStateValue" -> Json.fromString(errorAlert.newStateValue),
-      "StateChangeTime" -> encodeOffsetDateTime(errorAlert.stateChangeTime),
+      "StateChangeTime" -> Encoder.encodeOffsetDateTime(
+        errorAlert.stateChangeTime
+      ),
       "AlarmDescription" -> Json.fromString(errorAlert.description),
       "state_message" -> Json.fromString(errorAlert.description)
     )

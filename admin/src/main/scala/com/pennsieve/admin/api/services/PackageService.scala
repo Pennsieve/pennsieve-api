@@ -31,7 +31,6 @@ import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.admin.api.Settings
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import io.circe.java8.time._
 import io.circe.syntax._
 import io.swagger.annotations._
 import io.swagger.annotations.{ Authorization => SwaggerAuthorization }

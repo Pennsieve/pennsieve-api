@@ -111,7 +111,7 @@ object Processor {
     val sqs: SQS = container.sqs
 
     RunnableGraph
-      .fromGraph(GraphDSL.create(killswitch) {
+      .fromGraph(GraphDSL.createGraph(killswitch) {
         implicit builder: GraphDSL.Builder[UniqueKillSwitch] => kill =>
           val settings = SqsSourceSettings()
             .withWaitTime(20.seconds)

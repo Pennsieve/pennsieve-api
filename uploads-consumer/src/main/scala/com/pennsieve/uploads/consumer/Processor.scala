@@ -122,7 +122,7 @@ object Processor {
 
     RunnableGraph
       .fromGraph {
-        GraphDSL.create(ProcessorUtilities.killswitch, ackSink)(Keep.both) {
+        GraphDSL.createGraph(ProcessorUtilities.killswitch, ackSink)(Keep.both) {
           implicit builder: GraphDSL.Builder[
             (UniqueKillSwitch, Future[Done])
           ] => (kill, ack) =>

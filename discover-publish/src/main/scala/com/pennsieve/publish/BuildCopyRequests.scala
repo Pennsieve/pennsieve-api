@@ -72,7 +72,7 @@ object BuildCopyRequests {
       .map(sourceFiles => {
         Source(
           buildCopyActions(pkg, parentPath, sourceFiles)
-            .to[collection.immutable.Seq]
+            .to(collection.immutable.Seq)
             .filterNot(
               copyAction =>
                 ignoreFiles.contains(FilenameUtils.getName(copyAction.fileKey))

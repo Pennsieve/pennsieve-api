@@ -94,7 +94,7 @@ class Router(
           withoutSizeLimit(routes)
         )
 
-      case "prod" | "prod" =>
+      case "prod" =>
         withoutSizeLimit(routes)
 
       case env =>

@@ -46,7 +46,11 @@ class TestUnusedOrganizationMigration
   ): UnusedOrganizationMigrationContainer =
     new UnusedOrganizationMigrationContainer(config, dryRun = false)
 
-  def setPreferredOrg(db: Database, user: User, organization: Organization) {
+  def setPreferredOrg(
+    db: Database,
+    user: User,
+    organization: Organization
+  ): Unit = {
     val updateUserPreferredOrg = (for {
       u <- UserMapper if u.id === user.id
     } yield u.preferredOrganizationId).update(Some(organization.id))
