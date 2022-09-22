@@ -273,15 +273,15 @@ class DataCanvasController(
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[DataCanvasDTO]] = for {
         orgNodeId <- paramT[String]("orgNodeId")
-        secureContainer <- getSecureContainer
+        secureContainer <- getSecureContainer()
 
         organization <- secureContainer.organizationManager
           .getByNodeId(orgNodeId)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         response <- secureContainer.allDataCanvasesViewManager
           .getForOrganization(organization.id, isPublic = true)
-          .coreErrorToActionResult
+          .coreErrorToActionResult()
 
         datacanvases = response.map(x => x._2)
 
@@ -290,7 +290,7 @@ class DataCanvasController(
           secureContainer,
           system,
           jwtConfig
-        ).coreErrorToActionResult
+        ).coreErrorToActionResult()
 
       } yield dtos
 
@@ -708,7 +708,7 @@ class DataCanvasController(
       val result: EitherT[Future, ActionResult, List[DataCanvasFolderPath]] =
         for {
           canvasId <- paramT[Int]("canvasId")
-          secureContainer <- getSecureContainer
+          secureContainer <- getSecureContainer()
 
           canvas <- secureContainer.dataCanvasManager
             .getById(canvasId)
@@ -916,13 +916,13 @@ class DataCanvasController(
 
           folderPaths <- secureContainer.dataCanvasManager
             .getFolderPaths(canvas.id)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           folderPathMap = folderPaths.map(path => path.id -> path).toMap
 
           canvasPackages <- secureContainer.dataCanvasManager
             .getPackages(canvas.id)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           orgPackageFolderMap = canvasPackages.groupBy { i =>
             (i.organizationId, i.packageId)
@@ -941,7 +941,7 @@ class DataCanvasController(
 
           packageHierarchy <- secureContainer.packageManager
             .getPackageHierarchyForOrg(orgId, packageIds)
-            .coreErrorToActionResult
+            .coreErrorToActionResult()
 
           (datasetIds, rootNodeIds, downloadResponse) = packageHierarchy
             .foldLeft(
@@ -980,7 +980,7 @@ class DataCanvasController(
                       p.s3Key,
                       DateTime.now.plusMinutes(180).toDate
                     )
-                    .right
+                    .toOption
                     .get,
                   size = p.size,
                   fileExtension = Utilities.getFullExtension(p.s3Key)
