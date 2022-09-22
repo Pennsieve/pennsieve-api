@@ -768,14 +768,6 @@ class DataCanvasController(
 
         packageLookupResult <- body.isPublic match {
           case true =>
-            secureContainer.packageManager
-              .getByNodeId(body.packageId)
-              .orNotFound()
-              .map(
-                pkg =>
-                  PackageLookupResult(Some(pkg.datasetId), Some(pkg.id), None)
-              )
-          case false =>
             discoverFileClient
               .getFileFromSourcePackageId(body.packageId)
               .leftSemiflatMap(handleGuardrailError)
@@ -789,19 +781,21 @@ class DataCanvasController(
               .map { _ =>
                 PackageLookupResult(None, None, Some(body.packageId))
               }
+          case false =>
+            secureContainer.packageManager
+              .getByNodeId(body.packageId)
+              .orNotFound()
+              .map(
+                pkg =>
+                  PackageLookupResult(Some(pkg.datasetId), Some(pkg.id), None)
+              )
         }
 
         response <- body.isPublic match {
           case true =>
             for {
               _ <- secureContainer.dataCanvasManager
-                .attachPackage(
-                  canvas.id,
-                  folder.id,
-                  packageLookupResult.datasetId.get,
-                  packageLookupResult.packageId.get,
-                  organization.id
-                )
+                .attachPublicPackage(canvas.id, folder.id, body.packageId)
                 .orBadRequest()
             } yield
               AttachPackageResponse(
@@ -811,7 +805,13 @@ class DataCanvasController(
           case false =>
             for {
               _ <- secureContainer.dataCanvasManager
-                .attachPublicPackage(canvas.id, folder.id, body.packageId)
+                .attachPackage(
+                  canvas.id,
+                  folder.id,
+                  packageLookupResult.datasetId.get,
+                  packageLookupResult.packageId.get,
+                  organization.id
+                )
                 .orBadRequest()
             } yield
               AttachPackageResponse(

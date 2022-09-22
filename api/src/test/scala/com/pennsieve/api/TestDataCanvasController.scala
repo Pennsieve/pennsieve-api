@@ -16,13 +16,22 @@
 
 package com.pennsieve.api
 
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import com.pennsieve.dtos.{DataCanvasDTO, DownloadManifestDTO, DownloadRequest}
-import com.pennsieve.helpers.{DataCanvasTestMixin, DataSetTestMixin, MockDiscoverFileClient, MockObjectStore}
-import com.pennsieve.models.{DataCanvasFolderPath, FileType, PackageType}
+import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import com.pennsieve.dtos.{
+  DataCanvasDTO,
+  DownloadManifestDTO,
+  DownloadRequest
+}
+import com.pennsieve.helpers.{
+  DataCanvasTestMixin,
+  DataSetTestMixin,
+  MockDiscoverFileClient,
+  MockObjectStore
+}
+import com.pennsieve.models.{ DataCanvasFolderPath, FileType, PackageType }
 
 import scala.concurrent.Future
-import org.json4s.jackson.Serialization.{read, write}
+import org.json4s.jackson.Serialization.{ read, write }
 
 import scala.util.Random
 
@@ -816,7 +825,7 @@ class TestDataCanvasController
     }
   }
 
-  test("package attach succeeds when no organization is specified") {
+  test("package attach to data-canvas") {
     val dataset = createDataSet("a test dataset")
     val pkg = createPackage(dataset, "a test package")
     val canvas = createDataCanvas()
