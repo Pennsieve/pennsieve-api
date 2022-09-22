@@ -400,7 +400,7 @@ class DeleteJob(
         deleteChildrenSource,
         deleteChannelsSource,
         deletePackageFilesSource
-      )(Concat.apply)
+      )(Concat.apply(_))
     }
   }
 
@@ -475,15 +475,16 @@ class DeleteJob(
   )(
     combineMat: (M1, M2) => Mat
   ): Flow[In, Out, Mat] = Flow.fromGraph {
-    GraphDSL.create(flow1, flow2)(combineMat) { implicit builder => (f1, f2) =>
-      import GraphDSL.Implicits._
-      val bcast = builder.add(Broadcast[In](2))
-      val merge = builder.add(Merge[Out](2))
+    GraphDSL.createGraph(flow1, flow2)(combineMat) {
+      implicit builder => (f1, f2) =>
+        import GraphDSL.Implicits._
+        val bcast = builder.add(Broadcast[In](2))
+        val merge = builder.add(Merge[Out](2))
 
-      bcast ~> f1 ~> merge
-      bcast ~> f2 ~> merge
+        bcast ~> f1 ~> merge
+        bcast ~> f2 ~> merge
 
-      FlowShape(bcast.in, merge.out)
+        FlowShape(bcast.in, merge.out)
     }
   }
 
@@ -522,7 +523,7 @@ class DeleteJob(
                 RangeLookUpResult(channel.nodeId, lookups, deletedRows)
             )
 
-          Source.combine(s3Deletes, rangesDelete)(Concat.apply)
+          Source.combine(s3Deletes, rangesDelete)(Concat.apply(_))
         case Failure(error) =>
           log.tierNoContext.error(error.getMessage)
           Source.single(ThrowableResult(error.getMessage))
@@ -594,7 +595,7 @@ class DeleteJob(
       val timeSeriesDelete =
         Source.future(timeseriesDeleteResults).mapConcat(identity)
 
-      Source.combine(timeSeriesDelete, deletePackage)(Concat.apply)
+      Source.combine(timeSeriesDelete, deletePackage)(Concat.apply(_))
     }
 
   def deleteFlow(

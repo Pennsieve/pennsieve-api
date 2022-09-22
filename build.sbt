@@ -51,14 +51,14 @@ ThisBuild / scalafmtOnCompile := true
 // Run tests in a separate JVM to prevent resource leaks.
 ThisBuild / Test / fork := true
 
-lazy val akkaVersion = "2.6.8"
+lazy val akkaVersion = "2.6.19"
 lazy val akkaCirceVersion = "1.39.2"
-lazy val akkaHttpVersion = "10.2.7"
+lazy val akkaHttpVersion = "10.2.9"
 lazy val akkaStreamContribVersion = "0.11"
-lazy val alpakkaVersion = "2.0.2"
-lazy val swaggerAkkaHttpVersion = "1.4.0"
+lazy val alpakkaVersion = "4.0.0"
+lazy val swaggerAkkaHttpVersion = "1.5.2"
 
-lazy val auditMiddlewareVersion = "1.0.2"
+lazy val auditMiddlewareVersion = "1.0.3"
 lazy val authMiddlewareVersion = "5.1.3"
 
 lazy val awsVersion = "1.11.931"
@@ -93,7 +93,7 @@ lazy val slickCatsVersion = "0.10.4"
 lazy val testContainersVersion = "0.40.1"
 lazy val utilitiesVersion = "4-55953e4"
 lazy val jobSchedulingServiceClientVersion = "6-3251c91"
-lazy val serviceUtilitiesVersion = "8-9751ee3"
+lazy val serviceUtilitiesVersion = "9-b838dd9"
 lazy val discoverServiceClientVersion = "36-32664eb"
 lazy val doiServiceClientVersion = "12-756107b"
 lazy val timeseriesCoreVersion = "6-487b00c"
@@ -105,7 +105,7 @@ lazy val unwantedDependencies = Seq(
   ExclusionRule("commons-logging", "commons-logging"),
   // Drop core-models pulled in as a transitive dependency by clients
   ExclusionRule("com.pennsieve", "core-models_2.13"),
-  ExclusionRule("com.typesafe.akka", "akka-protobuf-v3_2.13")
+  ExclusionRule("com.typesafe.akka",  "akka-protobuf-v3_2.13")
 )
 
 import sbtassembly.MergeStrategy
@@ -167,7 +167,6 @@ lazy val commonSettings = Seq(
     "org.postgresql" % "postgresql" % postgresVersion,
     "com.typesafe.slick" %% "slick" % slickVersion,
     "com.typesafe.slick" %% "slick-hikaricp" % slickVersion,
-    "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1"
   ),
   excludeDependencies ++= unwantedDependencies
 )
