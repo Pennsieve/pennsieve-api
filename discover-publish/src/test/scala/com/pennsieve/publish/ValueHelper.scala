@@ -16,15 +16,23 @@
 
 package com.pennsieve.publish
 import com.pennsieve.aws.s3.S3
-import com.pennsieve.managers.DatasetStatusManager
+import com.pennsieve.managers.{ DatasetStatusManager, FileManager }
 import com.pennsieve.models.{
   Dataset,
   DatasetAsset,
   DatasetState,
   DatasetStatus,
   Doi,
+  File,
+  FileObjectType,
+  FileProcessingState,
+  FileState,
+  FileType,
   NodeCodes,
   Organization,
+  Package,
+  PackageState,
+  PackageType,
   PublishedCollection,
   PublishedContributor,
   PublishedExternalPublication,
@@ -41,9 +49,30 @@ import scala.concurrent.ExecutionContext
 import scala.util.Random
 
 trait ValueHelper extends Matchers {
+  val sourceBucket = "test-source-bucket"
+  val publishBucket = "test-publish-bucket"
+  val embargoBucket = "test-embargo-bucket"
+  val assetBucket = "test-asset-bucket"
+  val assetKeyPrefix = "dataset-assets"
+  val testKey = "100/10/"
+  val copyChunkSize = 5242880
+  val copyParallelism = 5
+  val testDoi: String = "10.38492/234.7"
 
   val sampleOrganization: Organization =
     Organization("N:organization:32352", "Test org", "test-org", id = 5)
+
+  val ownerUser: User =
+    User(
+      nodeId = " N:user:02a6e643-2f6c-4597-a9fe-b75f12a2ad32",
+      "",
+      firstName = "Shigeru",
+      middleInitial = None,
+      lastName = "Miyamoto",
+      degree = None,
+      id = 1
+    )
+
   val contributor: PublishedContributor =
     PublishedContributor(
       first_name = "John",
@@ -52,14 +81,17 @@ trait ValueHelper extends Matchers {
       degree = None,
       orcid = Some("0000-0003-8769-1234")
     )
+
   val collection: PublishedCollection = PublishedCollection(
     "My awesome collection"
   )
+
   val externalPublication: PublishedExternalPublication =
     PublishedExternalPublication(
       Doi("10.26275/t6j6-77pu"),
       Some(RelationshipType.References)
     )
+
   def generateRandomString(size: Int = 10): String =
     Random.alphanumeric.filter(_.isLetter).take(size).mkString
 
@@ -149,7 +181,7 @@ trait ValueHelper extends Matchers {
     databaseContainer: InsecureDatabaseContainer,
     dataset: Dataset,
     name: String,
-    assetBucket: String,
+    assetBucket: String = assetBucket,
     content: String = generateRandomString(),
     s3: Option[S3] = None
   )(implicit
@@ -169,7 +201,7 @@ trait ValueHelper extends Matchers {
   def addBannerAndReadme(
     databaseContainer: InsecureDatabaseContainer,
     dataset: Dataset,
-    assetBucket: String,
+    assetBucket: String = assetBucket,
     s3: Option[S3] = None
   )(implicit
     executionContext: ExecutionContext
@@ -223,14 +255,77 @@ trait ValueHelper extends Matchers {
   def createDatasetWithAssets(
     databaseContainer: InsecureDatabaseContainer,
     name: String = generateRandomString(),
-    bucket: String,
+    assetBucket: String = assetBucket,
     description: Option[String] = Some("description"),
     s3: Option[S3] = None
   )(implicit
     executionContext: ExecutionContext
   ): Dataset = {
     val d = createDataset(databaseContainer, name, description)
-    addBannerAndReadme(databaseContainer, d, bucket, s3)
+    addBannerAndReadme(databaseContainer, d, assetBucket, s3)
+  }
+
+  def createPackageInDb(
+    databaseContainer: InsecureDatabaseContainer,
+    user: User,
+    name: String = generateRandomString(),
+    nodeId: String = NodeCodes.generateId(NodeCodes.packageCode),
+    `type`: PackageType = PackageType.Text,
+    state: PackageState = PackageState.READY,
+    dataset: Dataset,
+    parent: Option[Package] = None
+  ): Package = {
+    val packagesMapper = databaseContainer.packagesMapper
+    databaseContainer.db
+      .run(
+        (packagesMapper returning packagesMapper) += Package(
+          nodeId = nodeId,
+          name = name,
+          `type` = `type`,
+          datasetId = dataset.id,
+          state = state,
+          ownerId = Some(user.id),
+          parentId = parent.map(_.id)
+        )
+      )
+      .await
+  }
+
+  def createFileS3Optional(
+    fileManager: FileManager,
+    `package`: Package,
+    name: String = generateRandomString(),
+    s3Bucket: String = sourceBucket,
+    s3Key: String = "key/" + generateRandomString() + ".txt",
+    fileType: FileType = FileType.Text,
+    objectType: FileObjectType = FileObjectType.Source,
+    processingState: FileProcessingState = FileProcessingState.Processed,
+    size: Long = 0,
+    content: String = generateRandomString(),
+    uploadedState: Option[FileState] = None,
+    s3: Option[S3] = None
+  )(implicit
+    executionContext: ExecutionContext
+  ): File = {
+    val file = fileManager
+      .create(
+        name,
+        fileType,
+        `package`,
+        s3Bucket,
+        s3Key,
+        objectType,
+        processingState,
+        size,
+        uploadedState = uploadedState
+      )
+      .await match {
+      case Right(x) => x
+      case Left(e) => throw e
+    }
+
+    s3.foreach(createS3File(_, file.s3Bucket, file.s3Key, content = content))
+    file
   }
 
 }

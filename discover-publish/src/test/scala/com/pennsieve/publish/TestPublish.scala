@@ -77,15 +77,6 @@ class TestPublish
   implicit var system: ActorSystem = _
   implicit var executionContext: ExecutionContext = _
 
-  val sourceBucket = "test-source-bucket"
-  val publishBucket = "test-publish-bucket"
-  val embargoBucket = "test-embargo-bucket"
-  val assetBucket = "test-asset-bucket"
-  val assetKeyPrefix = "dataset-assets"
-  val testKey = "100/10/"
-  val copyChunkSize = 5242880
-  val copyParallelism = 5
-
   implicit var s3: S3 = _
   var bucket: Bucket = _
 
@@ -93,7 +84,6 @@ class TestPublish
 
   var testDataset: Dataset = _
   var testUser: User = _
-  val testDoi: String = "10.38492/234.7"
 
   val owner: PublishedContributor =
     PublishedContributor(
@@ -102,17 +92,6 @@ class TestPublish
       last_name = "Miyamoto",
       degree = None,
       orcid = Some("0000-0001-0221-1986")
-    )
-  val ownerUser: User =
-    User(
-      nodeId = " N:user:02a6e643-2f6c-4597-a9fe-b75f12a2ad32",
-      "",
-      firstName = "Shigeru",
-      middleInitial = None,
-      lastName = "Miyamoto",
-      degree = None,
-      "",
-      id = 1
     )
 
   var config: Config = _
@@ -184,7 +163,6 @@ class TestPublish
     testUser = createUser(databaseContainer)
     testDataset = createDatasetWithAssets(
       databaseContainer = databaseContainer,
-      bucket = assetBucket,
       s3 = Some(s3)
     )
 
@@ -1387,14 +1365,14 @@ class TestPublish
     */
   def deleteBucket(bucket: String): Assertion = {
     listBucket(bucket)
-      .map(o => s3.deleteObject(bucket, o.getKey()).isRight shouldBe true)
+      .map(o => s3.deleteObject(bucket, o.getKey).isRight shouldBe true)
     s3.deleteBucket(bucket).isRight shouldBe true
   }
 
   def listBucket(bucket: String): mutable.Seq[S3ObjectSummary] =
     s3.client
       .listObjectsV2(bucket)
-      .getObjectSummaries()
+      .getObjectSummaries
       .asScala
 
   /**
@@ -1470,27 +1448,20 @@ class TestPublish
     state: PackageState = PackageState.READY,
     dataset: Dataset = testDataset,
     parent: Option[Package] = None
-  ): Package = {
-    val packagesMapper = databaseContainer.packagesMapper
-    databaseContainer.db
-      .run(
-        (packagesMapper returning packagesMapper) += Package(
-          nodeId = nodeId,
-          name = name,
-          `type` = `type`,
-          datasetId = dataset.id,
-          state = state,
-          ownerId = Some(user.id),
-          parentId = parent.map(_.id)
-        )
-      )
-      .await
-  }
+  ): Package =
+    createPackageInDb(
+      databaseContainer,
+      user,
+      name,
+      nodeId,
+      `type`,
+      state,
+      dataset,
+      parent
+    )
 
   def createFile(
     `package`: Package,
-    organization: Organization = testOrganization,
-    user: User = testUser,
     name: String = generateRandomString(),
     s3Bucket: String = sourceBucket,
     s3Key: String = "key/" + generateRandomString() + ".txt",
@@ -1502,27 +1473,21 @@ class TestPublish
     uploadedState: Option[FileState] = None
   )(implicit
     publishContainer: PublishContainer
-  ): File = {
-    val file = publishContainer.fileManager
-      .create(
-        name,
-        fileType,
-        `package`,
-        s3Bucket,
-        s3Key,
-        objectType,
-        processingState,
-        size,
-        uploadedState = uploadedState
-      )
-      .await match {
-      case Right(x) => x
-      case Left(e) => throw e
-    }
-
-    createS3File(s3, file.s3Bucket, file.s3Key, content = content)
-    file
-  }
+  ): File =
+    createFileS3Optional(
+      publishContainer.fileManager,
+      `package`,
+      name,
+      s3Bucket,
+      s3Key,
+      fileType,
+      objectType,
+      processingState,
+      size,
+      content,
+      uploadedState,
+      Some(s3)
+    )
 
   def s3FilesExistUnderKey(
     s3Bucket: String,

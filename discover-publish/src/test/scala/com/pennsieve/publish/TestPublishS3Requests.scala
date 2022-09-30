@@ -21,7 +21,6 @@ import com.amazonaws.services.s3.model.{
   CopyObjectRequest,
   CopyObjectResult,
   DeleteObjectRequest,
-  GetObjectMetadataRequest,
   GetObjectRequest,
   ObjectMetadata,
   PutObjectRequest,
@@ -35,6 +34,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import io.circe.syntax._
 import com.pennsieve.aws.s3.S3
 import com.pennsieve.clients.S3DatasetAssetClient
+import com.pennsieve.managers.FileManager
 import com.pennsieve.models.{
   Dataset,
   FileManifest,
@@ -82,8 +82,7 @@ class TestPublishS3Requests
     with EitherBePropertyMatchers {
 
   val testOrganization: Organization = sampleOrganization
-  val publishBucket = "publish-bucket"
-  val assetBucket = "asset-bucket"
+
   val listObjectsV2ResponseBody: String =
     """<?xml version="1.0" encoding="UTF-8"?>
                                     |<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
@@ -100,6 +99,37 @@ class TestPublishS3Requests
                                     |        <StorageClass>STANDARD</StorageClass>
                                     |    </Contents>
                                     |</ListBucketResult>""".stripMargin
+  val publishAssetResult: PublishAssetResult = PublishAssetResult(
+    externalIdToPackagePath = Map.empty,
+    packageManifests = Nil,
+    bannerKey = Publish.BANNER_FILENAME,
+    bannerManifest = FileManifest(
+      Publish.BANNER_FILENAME,
+      "a/b",
+      0,
+      FileType.PNG,
+      None,
+      Some(UUID.randomUUID)
+    ),
+    readmeKey = Publish.README_FILENAME,
+    readmeManifest = FileManifest(
+      Publish.README_FILENAME,
+      "a/b",
+      0,
+      FileType.Markdown,
+      None,
+      Some(UUID.randomUUID)
+    ),
+    changelogKey = "changelog.md",
+    changelogManifest = FileManifest(
+      "changelog.md",
+      "a/b",
+      0,
+      FileType.Markdown,
+      None,
+      Some(UUID.randomUUID)
+    )
+  )
 
   implicit var system: ActorSystem = _
   implicit var executionContext: ExecutionContext = _
@@ -108,7 +138,6 @@ class TestPublishS3Requests
   var databaseContainer: InsecureDatabaseContainer = _
   var mockAmazonS3: AmazonS3 = _
   var publishContainer: PublishContainer = _
-  var publishAssetResult: PublishAssetResult = _
   var mockServerClient: MockServerClient = _
   var testUser: User = _
   var testDataset: Dataset = _
@@ -145,28 +174,25 @@ class TestPublishS3Requests
     val testS3 = new S3(mockAmazonS3)
 
     testUser = createUser(databaseContainer)
-    testDataset = createDatasetWithAssets(
-      databaseContainer = databaseContainer,
-      bucket = assetBucket
-    )
+    testDataset = createDatasetWithAssets(databaseContainer = databaseContainer)
 
     publishContainer = PublishContainer(
       config = config,
       s3 = testS3,
       s3Bucket = publishBucket,
       s3AssetBucket = assetBucket,
-      s3Key = "key",
-      s3AssetKeyPrefix = "asset-key-prefix",
-      s3CopyChunkSize = 1024,
-      s3CopyChunkParallelism = 1,
-      s3CopyFileParallelism = 1,
-      doi = "doi",
+      s3Key = testKey,
+      s3AssetKeyPrefix = assetKeyPrefix,
+      s3CopyChunkSize = copyChunkSize,
+      s3CopyChunkParallelism = copyParallelism,
+      s3CopyFileParallelism = copyParallelism,
+      doi = testDoi,
       dataset = testDataset,
       publishedDatasetId = 100,
       version = 10,
       organization = testOrganization,
-      user = newUser(),
-      userOrcid = "user-orcid",
+      user = ownerUser,
+      userOrcid = "0000-0001-0221-1986",
       datasetRole = Some(Role.Owner),
       contributors = List(contributor),
       collections = List(collection),
@@ -174,37 +200,7 @@ class TestPublishS3Requests
       datasetAssetClient = new S3DatasetAssetClient(testS3, assetBucket)
     )
 
-    publishAssetResult = PublishAssetResult(
-      externalIdToPackagePath = Map.empty,
-      packageManifests = Nil,
-      bannerKey = Publish.BANNER_FILENAME,
-      bannerManifest = FileManifest(
-        Publish.BANNER_FILENAME,
-        "a/b",
-        0,
-        FileType.PNG,
-        None,
-        Some(UUID.randomUUID)
-      ),
-      readmeKey = Publish.README_FILENAME,
-      readmeManifest = FileManifest(
-        Publish.README_FILENAME,
-        "a/b",
-        0,
-        FileType.Markdown,
-        None,
-        Some(UUID.randomUUID)
-      ),
-      changelogKey = "changelog.md",
-      changelogManifest = FileManifest(
-        "changelog.md",
-        "a/b",
-        0,
-        FileType.Markdown,
-        None,
-        Some(UUID.randomUUID)
-      )
-    )
+    addPackagesToDataset(databaseContainer, publishContainer.fileManager)
 
   }
 
@@ -283,10 +279,7 @@ class TestPublishS3Requests
         .finalizeDataset(publishContainer)
         .await should be a right
 
-      val akkaRequests: Seq[HttpRequest] =
-        mockServerClient.retrieveRecordedRequests(request()).toSeq
-
-      forAll(akkaRequests) {
+      forAll(retrieveMockServerRequests(request())) {
         _.containsHeader("x-amz-request-payer", "requester") should be(true)
       }
       forAll(getObjectCapture.values.filter(_.getBucketName == publishBucket)) {
@@ -305,6 +298,14 @@ class TestPublishS3Requests
   "Publish.publishAssets" should {
     "include requestor pays in all requests for publish bucket to AWS" in {
 
+      val akkaStartMultipartRequests: HttpRequest =
+        akkaStartMultipartExpectation()
+
+      //Not capturing requests since these are not against publish bucket
+      mockServerClient
+        .when(request().withMethod("HEAD").withPath(s"/$sourceBucket/.*"))
+        .respond(response.withStatusCode(200))
+
       val copyObjectCapture = CaptureAll[CopyObjectRequest]()
       val putObjectCapture = CaptureAll[PutObjectRequest]()
 
@@ -318,7 +319,7 @@ class TestPublishS3Requests
         .putObject(_: PutObjectRequest))
         .expects(capture(putObjectCapture))
 
-      // We don't check these because they read from the asset bucket, not publish.
+      // We don't capture these requests because they read from the asset bucket, not publish.
       (mockAmazonS3
         .getObjectMetadata(_: String, _: String))
         .expects(where { (b: String, _: String) =>
@@ -331,7 +332,7 @@ class TestPublishS3Requests
           response
         }
 
-      Publish.publishAssets(publishContainer).await should be a right
+      Publish.publishAssets(publishContainer).await should be a left
 
       forAll(
         copyObjectCapture.values
@@ -342,7 +343,86 @@ class TestPublishS3Requests
         _.isRequesterPays should be(true)
       }
 
+      forAll(retrieveMockServerRequests(akkaStartMultipartRequests)) {
+        _.containsHeader("x-amz-request-payer", "requester") should be(true)
+      }
+
     }
   }
 
+  private def akkaStartMultipartExpectation(): HttpRequest = {
+    val responseXml =
+      s"""<?xml version="1.0" encoding="UTF-8"?>
+                     |            <InitiateMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+                     |              <Bucket>$publishBucket</Bucket>
+                     |              <Key>example-object</Key>
+                     |              <UploadId>VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5tMnRzIHVwbG9hZA</UploadId>
+                     |            </InitiateMultipartUploadResult>""".stripMargin
+    val akkaStartMultipartRequests = request()
+      .withMethod("POST")
+      .withPath(s"/$publishBucket/.*")
+      .withQueryStringParameter("uploads")
+
+    mockServerClient
+      .when(akkaStartMultipartRequests)
+      .respond(
+        response
+          .withStatusCode(200)
+          .withContentType(MediaType.APPLICATION_XML)
+          .withBody(responseXml)
+      )
+
+    akkaStartMultipartRequests
+  }
+  private def retrieveMockServerRequests(
+    requestMatcher: HttpRequest
+  ): Seq[HttpRequest] =
+    mockServerClient.retrieveRecordedRequests(requestMatcher).toSeq
+
+  private def addPackagesToDataset(
+    databaseContainer: InsecureDatabaseContainer,
+    fileManager: FileManager
+  ): Unit = {
+// Add files to the dataset
+    val pkg1 = createPackageInDb(
+      databaseContainer,
+      testUser,
+      dataset = testDataset,
+      name = "pkg1"
+    )
+    createFileS3Optional(
+      fileManager,
+      pkg1,
+      name = "file1",
+      s3Key = "key/file.txt",
+      content = "data data",
+      size = 1234
+    )
+
+    // Package with multiple file sources
+    val pkg2 = createPackageInDb(
+      databaseContainer,
+      testUser,
+      dataset = testDataset,
+      name = "pkg2"
+    )
+    createFileS3Optional(
+      fileManager,
+      pkg2,
+      name = "file2",
+      s3Key = "key/file2.dcm",
+      content = "atad atad",
+      size = 2222,
+      fileType = FileType.DICOM
+    )
+    createFileS3Optional(
+      fileManager,
+      pkg2,
+      name = "file3",
+      s3Key = "key/file3.dcm",
+      content = "double data",
+      size = 3333,
+      fileType = FileType.DICOM
+    )
+  }
 }
