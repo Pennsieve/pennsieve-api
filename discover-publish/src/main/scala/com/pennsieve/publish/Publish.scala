@@ -196,14 +196,22 @@ object Publish extends StrictLogging {
       _ = logger.info(s"Deleting temporary file: $PUBLISH_ASSETS_FILENAME")
 
       _ <- container.s3
-        .deleteObject(container.s3Bucket, publishedAssetsKey(container))
+        .deleteObject(
+          container.s3Bucket,
+          publishedAssetsKey(container),
+          isRequestorPays = true
+        )
         .toEitherT[Future]
         .leftMap[CoreError](t => ExceptionError(new Exception(t)))
 
       _ = logger.info(s"Deleting temporary file: $GRAPH_ASSETS_FILENAME")
 
       _ <- container.s3
-        .deleteObject(container.s3Bucket, graphManifestKey(container))
+        .deleteObject(
+          container.s3Bucket,
+          graphManifestKey(container),
+          isRequestorPays = true
+        )
         .toEitherT[Future]
         .leftMap[CoreError](t => ExceptionError(new Exception(t)))
     } yield ()

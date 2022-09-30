@@ -18,8 +18,12 @@ package com.pennsieve.publish
 import akka.actor.ActorSystem
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.{
+  CopyObjectRequest,
+  CopyObjectResult,
   DeleteObjectRequest,
+  GetObjectMetadataRequest,
   GetObjectRequest,
+  ObjectMetadata,
   PutObjectRequest,
   S3Object,
   S3ObjectInputStream
@@ -30,7 +34,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import io.circe.syntax._
 import com.pennsieve.aws.s3.S3
-import com.pennsieve.clients.{ DatasetAssetClient, S3DatasetAssetClient }
+import com.pennsieve.clients.S3DatasetAssetClient
 import com.pennsieve.models.{
   Dataset,
   FileManifest,
@@ -40,9 +44,8 @@ import com.pennsieve.models.{
   User
 }
 import com.pennsieve.publish.models.{ ExportedGraphResult, PublishAssetResult }
-import com.pennsieve.test.PersistantTestContainers
-import com.pennsieve.test.helpers.AwaitableImplicits.toAwaitable
-import com.pennsieve.test.helpers.EitherBePropertyMatchers
+import com.pennsieve.test.{ PersistantTestContainers, PostgresDockerContainer }
+import com.pennsieve.test.helpers.{ EitherBePropertyMatchers, TestDatabase }
 import com.typesafe.config.{ Config, ConfigFactory }
 import org.apache.http.client.methods.HttpRequestBase
 import org.mockserver.client.MockServerClient
@@ -52,35 +55,63 @@ import org.mockserver.model.HttpResponse.response
 import org.scalamock.matchers.ArgCapture.CaptureAll
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach }
 import org.scalatest.Inspectors._
-import scala.jdk.CollectionConverters._
 
 import java.util.UUID
 import scala.concurrent.ExecutionContext
 
+/**
+  * This class is testing that all S3 requests for the publish bucket
+  * are setting the requestor pays header.
+  *
+  * Publishing accesses S3 two ways: 1) using our own S3 which wraps an AmazonS3 and 2) using Akka's Alpakka library
+  * For 1) we use a ScalaMock in place of a real AmazonS3 and capture the requests.
+  * For 2) there is no client to mock, so we use MockServer to mock the S3 backend and
+  * again check all requests sent for the desired header.
+  */
 class TestPublishS3Requests
     extends AnyWordSpec
     with Matchers
-    with MockServerDockerContainer
     with PersistantTestContainers
+    with MockServerDockerContainer
+    with PostgresDockerContainer
+    with TestDatabase
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with MockFactory
     with ValueHelper
     with EitherBePropertyMatchers {
 
-  val testDataset: Dataset = newDataset()
   val testOrganization: Organization = sampleOrganization
   val publishBucket = "publish-bucket"
   val assetBucket = "asset-bucket"
+  val listObjectsV2ResponseBody: String =
+    """<?xml version="1.0" encoding="UTF-8"?>
+                                    |<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+                                    |    <Name>bucket</Name>
+                                    |    <Prefix/>
+                                    |    <KeyCount>205</KeyCount>
+                                    |    <MaxKeys>1000</MaxKeys>
+                                    |    <IsTruncated>false</IsTruncated>
+                                    |    <Contents>
+                                    |        <Key>my-image.jpg</Key>
+                                    |        <LastModified>2009-10-12T17:50:30.000Z</LastModified>
+                                    |        <ETag>"fba9dede5f27731c9771645a39863328"</ETag>
+                                    |        <Size>434234</Size>
+                                    |        <StorageClass>STANDARD</StorageClass>
+                                    |    </Contents>
+                                    |</ListBucketResult>""".stripMargin
 
   implicit var system: ActorSystem = _
   implicit var executionContext: ExecutionContext = _
 
   var config: Config = _
+  var databaseContainer: InsecureDatabaseContainer = _
   var mockAmazonS3: AmazonS3 = _
-  var publishMetadata: PublishContainerConfig = _
+  var publishContainer: PublishContainer = _
   var publishAssetResult: PublishAssetResult = _
   var mockServerClient: MockServerClient = _
+  var testUser: User = _
+  var testDataset: Dataset = _
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -89,12 +120,22 @@ class TestPublishS3Requests
     // actor system, or as S3Settings that are attached to every graph
     config = ConfigFactory
       .empty()
+      .withFallback(postgresContainer.config)
       .withFallback(mockServerContainer.config)
       .withFallback(ConfigFactory.load())
 
     system = ActorSystem("discover-publish", config)
     executionContext = system.dispatcher
-
+    /*
+     * Since PublishContainer is scoped to an organization, and requires a
+     * user-actor, use a simple database container to set up initial conditions.
+     */
+    databaseContainer = InsecureDatabaseContainer(config, testOrganization)
+    databaseContainer.db.run(createSchema(testOrganization.id.toString)).await
+    migrateOrganizationSchema(
+      testOrganization.id,
+      databaseContainer.postgresDatabase
+    )
     mockServerClient = mockServerContainer.mockServerClient
 
   }
@@ -103,29 +144,35 @@ class TestPublishS3Requests
     mockAmazonS3 = mock[AmazonS3]
     val testS3 = new S3(mockAmazonS3)
 
-    publishMetadata = new PublishContainerConfig {
-      def s3: S3 = testS3
-      def s3Bucket = publishBucket
-      def s3AssetBucket: String = assetBucket
-      def s3Key = "key"
-      def s3AssetKeyPrefix = "asset-key-prefix"
-      def s3CopyChunkSize = 1024
-      def s3CopyChunkParallelism = 1
-      def s3CopyFileParallelism = 1
-      def doi = "doi"
-      def dataset: Dataset = testDataset
-      def publishedDatasetId = 100
-      def version = 10
-      def organization: Organization = testOrganization
-      def user: User = newUser()
-      def userOrcid = "user-orcid"
-      def datasetRole: Option[Role] = Some(Role.Owner)
-      def contributors = List(contributor)
-      def collections = List(collection)
-      def externalPublications = List(externalPublication)
-      def datasetAssetClient: DatasetAssetClient =
-        new S3DatasetAssetClient(testS3, assetBucket)
-    }
+    testUser = createUser(databaseContainer)
+    testDataset = createDatasetWithAssets(
+      databaseContainer = databaseContainer,
+      bucket = assetBucket
+    )
+
+    publishContainer = PublishContainer(
+      config = config,
+      s3 = testS3,
+      s3Bucket = publishBucket,
+      s3AssetBucket = assetBucket,
+      s3Key = "key",
+      s3AssetKeyPrefix = "asset-key-prefix",
+      s3CopyChunkSize = 1024,
+      s3CopyChunkParallelism = 1,
+      s3CopyFileParallelism = 1,
+      doi = "doi",
+      dataset = testDataset,
+      publishedDatasetId = 100,
+      version = 10,
+      organization = testOrganization,
+      user = newUser(),
+      userOrcid = "user-orcid",
+      datasetRole = Some(Role.Owner),
+      contributors = List(contributor),
+      collections = List(collection),
+      externalPublications = List(externalPublication),
+      datasetAssetClient = new S3DatasetAssetClient(testS3, assetBucket)
+    )
 
     publishAssetResult = PublishAssetResult(
       externalIdToPackagePath = Map.empty,
@@ -163,9 +210,11 @@ class TestPublishS3Requests
 
   override def afterEach(): Unit = {
     mockServerClient.clear(request(), ClearType.LOG)
+    publishContainer.db.close()
   }
 
   override def afterAll(): Unit = {
+    databaseContainer.db.close()
     system.terminate()
   }
 
@@ -182,34 +231,20 @@ class TestPublishS3Requests
     s3Object
   }
 
-  "finalizeDataset" should {
+  "Publish.finalizeDataset" should {
     "include requester pays on all AWS S3 requests" in {
 
       mockServerClient
         .when(
           request()
             .withMethod("GET")
-            .withPath(s"/${publishBucket}")
+            .withPath(s"/$publishBucket")
         )
         .respond(
           response()
             .withStatusCode(200)
             .withContentType(MediaType.APPLICATION_XML)
-            .withBody("""<?xml version="1.0" encoding="UTF-8"?>
-                |<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-                |    <Name>bucket</Name>
-                |    <Prefix/>
-                |    <KeyCount>205</KeyCount>
-                |    <MaxKeys>1000</MaxKeys>
-                |    <IsTruncated>false</IsTruncated>
-                |    <Contents>
-                |        <Key>my-image.jpg</Key>
-                |        <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                |        <ETag>"fba9dede5f27731c9771645a39863328"</ETag>
-                |        <Size>434234</Size>
-                |        <StorageClass>STANDARD</StorageClass>
-                |    </Contents>
-                |</ListBucketResult>""".stripMargin)
+            .withBody(listObjectsV2ResponseBody)
         )
 
       val publishAssetResultObject =
@@ -234,12 +269,18 @@ class TestPublishS3Requests
           } else fail(s"Unexpected get object key: ${r.getKey}")
         }
 
-      (mockAmazonS3.putObject(_: PutObjectRequest)).expects(*).twice()
+      (mockAmazonS3
+        .putObject(_: PutObjectRequest))
+        .expects(capture(putObjectCapture))
+        .twice()
 
-      (mockAmazonS3.deleteObject(_: DeleteObjectRequest)).expects(*).twice()
+      (mockAmazonS3
+        .deleteObject(_: DeleteObjectRequest))
+        .expects(capture(deleteObjectCapture))
+        .twice()
 
       Publish
-        .finalizeDataset(publishMetadata)
+        .finalizeDataset(publishContainer)
         .await should be a right
 
       val akkaRequests: Seq[HttpRequest] =
@@ -248,9 +289,58 @@ class TestPublishS3Requests
       forAll(akkaRequests) {
         _.containsHeader("x-amz-request-payer", "requester") should be(true)
       }
-      forAll(getObjectCapture.values) { _.isRequesterPays should be(true) }
-      forAll(putObjectCapture.values) { _.isRequesterPays should be(true) }
-      forAll(deleteObjectCapture.values) { _.isRequesterPays should be(true) }
+      forAll(getObjectCapture.values.filter(_.getBucketName == publishBucket)) {
+        _.isRequesterPays should be(true)
+      }
+      forAll(putObjectCapture.values.filter(_.getBucketName == publishBucket)) {
+        _.isRequesterPays should be(true)
+      }
+      forAll(
+        deleteObjectCapture.values.filter(_.getBucketName == publishBucket)
+      ) { _.isRequesterPays should be(true) }
+
+    }
+  }
+
+  "Publish.publishAssets" should {
+    "include requestor pays in all requests for publish bucket to AWS" in {
+
+      val copyObjectCapture = CaptureAll[CopyObjectRequest]()
+      val putObjectCapture = CaptureAll[PutObjectRequest]()
+
+      (mockAmazonS3
+        .copyObject(_: CopyObjectRequest))
+        .expects(capture(copyObjectCapture))
+        .repeated(6)
+        .returning(new CopyObjectResult())
+
+      (mockAmazonS3
+        .putObject(_: PutObjectRequest))
+        .expects(capture(putObjectCapture))
+
+      // We don't check these because they read from the asset bucket, not publish.
+      (mockAmazonS3
+        .getObjectMetadata(_: String, _: String))
+        .expects(where { (b: String, _: String) =>
+          b == assetBucket
+        })
+        .repeat(3)
+        .onCall { _ =>
+          val response = new ObjectMetadata()
+          response.setContentLength(201)
+          response
+        }
+
+      Publish.publishAssets(publishContainer).await should be a right
+
+      forAll(
+        copyObjectCapture.values
+          .filter(_.getDestinationBucketName == publishBucket)
+      ) { _.isRequesterPays should be(true) }
+
+      forAll(putObjectCapture.values.filter(_.getBucketName == publishBucket)) {
+        _.isRequesterPays should be(true)
+      }
 
     }
   }

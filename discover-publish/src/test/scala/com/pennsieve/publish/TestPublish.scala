@@ -19,22 +19,15 @@ package com.pennsieve.publish
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.TestSink
 import akka.actor.ActorSystem
-import akka.dispatch.MessageDispatcher
-import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.{ Sink, Source }
-import cats.data.{ EitherT, Kleisli, NonEmptyList }
+import cats.data.EitherT
 
-import java.util.UUID
 import cats.implicits._
-import com.amazonaws.services.s3.AmazonS3ClientBuilder
-import com.amazonaws.auth.{ AWSStaticCredentialsProvider, BasicAWSCredentials }
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.model.{ Bucket, S3ObjectSummary }
 import com.pennsieve.clients.{ DatasetAssetClient, S3DatasetAssetClient }
 import com.pennsieve.aws.s3.S3
 import com.pennsieve.core.utilities._
 import com.pennsieve.domain.{ CoreError, ServiceError }
-import com.pennsieve.managers.DatasetStatusManager
 import com.pennsieve.models._
 import com.pennsieve.publish.models.CopyAction
 import com.pennsieve.test._
@@ -42,8 +35,7 @@ import com.pennsieve.test.helpers._
 import org.scalatest.EitherValues._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.Container
-import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
-import io.circe.Json
+import com.typesafe.config.{ Config, ConfigFactory }
 import io.circe.parser.decode
 import io.circe.syntax._
 
@@ -56,9 +48,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Random, Try }
+import scala.util.Try
 import java.io.InputStream
-import scala.collection.immutable
 
 case class InsecureDatabaseContainer(config: Config, organization: Organization)
     extends Container
@@ -190,8 +181,12 @@ class TestPublish
     s3.createBucket(assetBucket).isRight shouldBe true
     s3.createBucket(sourceBucket).isRight shouldBe true
 
-    testUser = createUser()
-    testDataset = addBannerAndReadme(createDataset())
+    testUser = createUser(databaseContainer)
+    testDataset = createDatasetWithAssets(
+      databaseContainer = databaseContainer,
+      bucket = assetBucket,
+      s3 = Some(s3)
+    )
 
     publishContainer = {
       PublishContainer(
@@ -549,10 +544,10 @@ class TestPublish
 
     "ensure that prefix deletion works as expected" in {
 
-      createS3File(embargoBucket, s"2/11/foo")
-      createS3File(embargoBucket, s"2/11/bar")
-      createS3File(embargoBucket, s"2/11/sub/baz")
-      createS3File(embargoBucket, s"2/11/another-key/quux")
+      createS3File(s3, embargoBucket, s"2/11/foo")
+      createS3File(s3, embargoBucket, s"2/11/bar")
+      createS3File(s3, embargoBucket, s"2/11/sub/baz")
+      createS3File(s3, embargoBucket, s"2/11/another-key/quux")
 
       // Make sure deletion doesn't happen for partial prefix keys:
       s3.deleteObjectsByPrefix(embargoBucket, "2/1")
@@ -604,10 +599,12 @@ class TestPublish
 
       // seed the publish bucket:
       createS3File(
+        s3,
         publishBucket,
         s"${testKey}/delete-prefix-key/delete-file.txt"
       )
       createS3File(
+        s3,
         publishBucket,
         s"${testKey}/some-other-prefix/sub-key/another-file.txt"
       )
@@ -783,10 +780,12 @@ class TestPublish
 
       // seed the embargo bucket:
       createS3File(
+        s3,
         embargoBucket,
         s"${testKey}/delete-prefix-key/delete-file.txt"
       )
       createS3File(
+        s3,
         embargoBucket,
         s"${testKey}/some-other-prefix/sub-key/another-file.txt"
       )
@@ -1371,13 +1370,13 @@ class TestPublish
     "compute total storage under the publish dataset key" in {
       Publish.computeTotalSize(publishContainer).await.value shouldBe 0
 
-      createS3File(publishBucket, testKey + "a", "a")
-      createS3File(publishBucket, testKey + "b", "bb")
-      createS3File(publishBucket, testKey + "c/c", "ccc")
+      createS3File(s3, publishBucket, testKey + "a", "a")
+      createS3File(s3, publishBucket, testKey + "b", "bb")
+      createS3File(s3, publishBucket, testKey + "c/c", "ccc")
 
       Publish.computeTotalSize(publishContainer).await.value shouldBe 6
 
-      createS3File(publishBucket, "another-key/nested", "dddddd")
+      createS3File(s3, publishBucket, "another-key/nested", "dddddd")
 
       Publish.computeTotalSize(publishContainer).await.value shouldBe 6
     }
@@ -1463,41 +1462,6 @@ class TestPublish
       .await
       .value
 
-  def createDatasetStatus(
-    displayName: String = generateRandomString()
-  ): DatasetStatus =
-    new DatasetStatusManager(
-      databaseContainer.db,
-      databaseContainer.organization
-    ).create(displayName).await.value
-
-  def createDataset(
-    name: String = generateRandomString(),
-    description: Option[String] = Some("description")
-  ): Dataset = {
-    val datasetsMapper = databaseContainer.datasetsMapper
-
-    val status = createDatasetStatus()
-    databaseContainer.db
-      .run(
-        (datasetsMapper returning datasetsMapper) += newDataset(
-          name = name,
-          statusId = status.id,
-          description
-        )
-      )
-      .await
-  }
-
-  def createUser(
-    email: String = s"test+${generateRandomString()}@pennsieve.org",
-    isSuperAdmin: Boolean = false
-  ): User =
-    databaseContainer.userManager
-      .create(newUser(email = email, isSuperAdmin = isSuperAdmin))
-      .await
-      .value
-
   def createPackage(
     user: User,
     name: String = generateRandomString(),
@@ -1556,17 +1520,9 @@ class TestPublish
       case Left(e) => throw e
     }
 
-    createS3File(file.s3Bucket, file.s3Key, content = content)
+    createS3File(s3, file.s3Bucket, file.s3Key, content = content)
     file
   }
-
-  // Generate random content
-  def createS3File(
-    s3Bucket: String,
-    s3Key: String,
-    content: String = generateRandomString()
-  ): Assertion =
-    s3.putObject(s3Bucket, s3Key, content).isRight shouldBe true
 
   def s3FilesExistUnderKey(
     s3Bucket: String,
@@ -1588,58 +1544,4 @@ class TestPublish
       .size() > 0
   }
 
-  def createAsset(
-    dataset: Dataset,
-    name: String,
-    bucket: String = assetBucket,
-    content: String = generateRandomString()
-  ): DatasetAsset = {
-    val asset: DatasetAsset = databaseContainer.db
-      .run(
-        databaseContainer.datasetAssetsManager
-          .createQuery(name, dataset, bucket)
-      )
-      .await
-
-    createS3File(asset.s3Bucket, asset.s3Key, content)
-    asset
-  }
-
-  def addBannerAndReadme(dataset: Dataset = testDataset): Dataset = {
-    val banner =
-      createAsset(
-        dataset,
-        name = "some-image-with-any-name.jpg",
-        content = "banner-data"
-      )
-    val readme =
-      createAsset(
-        dataset,
-        name = Publish.README_FILENAME,
-        content = "readme-data"
-      )
-    val changelog =
-      createAsset(
-        dataset,
-        name = Publish.CHANGELOG_FILENAME,
-        content = "changelog-data"
-      )
-
-    val updatedDataset =
-      dataset.copy(
-        bannerId = Some(banner.id),
-        readmeId = Some(readme.id),
-        changelogId = Some(changelog.id)
-      )
-
-    databaseContainer.db
-      .run(
-        databaseContainer.datasetsMapper
-          .filter(_.id === dataset.id)
-          .update(updatedDataset)
-      )
-      .await
-
-    updatedDataset
-  }
 }

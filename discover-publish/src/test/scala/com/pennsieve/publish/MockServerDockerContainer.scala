@@ -22,6 +22,10 @@ import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 import org.mockserver.client.MockServerClient
 
+//TODO Factor out the S3/Alpakka specific stuff
+// and move this (and the relevant dependencies)
+// to the appropriate place in core/test
+// to make this available to mock any service.
 object MockServerDockerContainer {
   val port: Int = 1080
   val accessKey: String = "access-key"
@@ -29,6 +33,11 @@ object MockServerDockerContainer {
   val healthCheckPath = "/mockServer/healthCheck"
 }
 
+/**
+  * The config override means this is useful for mocking S3 for
+  * Akka's Alpkka S3 module. In that library all S3 access is down through static
+  * methods, so we cannot swap in a mocked S3 client.
+  */
 final class MockServerDockerContainerImpl
     extends DockerContainer(
       dockerImage = s"mockserver/mockserver:5.14.0",
@@ -45,8 +54,7 @@ final class MockServerDockerContainerImpl
   def mappedPort(): Int = super.mappedPort(MockServerDockerContainer.port)
   val accessKey: String = MockServerDockerContainer.accessKey
   val secretKey: String = MockServerDockerContainer.secretKey
-  def url: String = s"http://${containerIpAddress}"
-  def endpointUrl: String = s"${url}:${mappedPort()}"
+  def endpointUrl: String = s"http://${containerIpAddress}:${mappedPort()}"
 
   def apply(): GenericContainer = this
 
