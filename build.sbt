@@ -105,7 +105,7 @@ lazy val unwantedDependencies = Seq(
   ExclusionRule("commons-logging", "commons-logging"),
   // Drop core-models pulled in as a transitive dependency by clients
   ExclusionRule("com.pennsieve", "core-models_2.13"),
-  ExclusionRule("com.typesafe.akka",  "akka-protobuf-v3_2.13")
+  ExclusionRule("com.typesafe.akka", "akka-protobuf-v3_2.13")
 )
 
 import sbtassembly.MergeStrategy
@@ -151,7 +151,7 @@ lazy val commonSettings = Seq(
     "-language:postfixOps",
     "-language:implicitConversions",
     "-feature",
-    "-deprecation",
+    "-deprecation"
   ),
   assembly / test := {},
   libraryDependencies ++= Seq(
@@ -166,7 +166,7 @@ lazy val commonSettings = Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
     "org.postgresql" % "postgresql" % postgresVersion,
     "com.typesafe.slick" %% "slick" % slickVersion,
-    "com.typesafe.slick" %% "slick-hikaricp" % slickVersion,
+    "com.typesafe.slick" %% "slick-hikaricp" % slickVersion
   ),
   excludeDependencies ++= unwantedDependencies
 )
@@ -441,7 +441,7 @@ lazy val bfAkkaHttpSettings = Seq(
     // testing deps
     "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
-  ),
+  )
 )
 
 lazy val migrationsSettings = Seq(
@@ -504,9 +504,7 @@ lazy val inviteCognitoUserSettings = Seq(
 
 lazy val etlDataCLISettings = Seq(
   name := "etl-data-cli",
-  libraryDependencies ++= Seq(
-    "com.github.scopt" %% "scopt" % "3.7.1",
-  ),
+  libraryDependencies ++= Seq("com.github.scopt" %% "scopt" % "3.7.1"),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {
     val artifact: File = assembly.value
@@ -595,7 +593,7 @@ lazy val coreModelsSettings = Seq(
     "io.circe" %% "circe-parser" % circeVersion,
     "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.google.guava" % "guava" % "29.0-jre"
-  ),
+  )
 )
 
 lazy val bfAwsSettings = Seq(
@@ -620,7 +618,9 @@ lazy val discoverPublishSettings = Seq(
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test
+    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
+    "org.scalamock" %% "scalamock" % "5.2.0" % Test,
+    "org.mock-server" % "mockserver-client-java-no-dependencies" % "5.14.0" % Test
   ),
   excludeDependencies ++= unwantedDependencies,
   docker / dockerfile := {

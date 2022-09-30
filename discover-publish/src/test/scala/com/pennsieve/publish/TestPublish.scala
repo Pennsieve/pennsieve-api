@@ -79,7 +79,8 @@ class TestPublish
     with PostgresDockerContainer
     with TestDatabase
     with BeforeAndAfterEach
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with ValueHelper {
   self: Suite =>
 
   implicit var system: ActorSystem = _
@@ -97,27 +98,12 @@ class TestPublish
   implicit var s3: S3 = _
   var bucket: Bucket = _
 
-  val testOrganization: Organization =
-    Organization("N:organization:32352", "Test org", "test-org", id = 5)
+  val testOrganization: Organization = sampleOrganization
+
   var testDataset: Dataset = _
   var testUser: User = _
   val testDoi: String = "10.38492/234.7"
-  val contributor: PublishedContributor =
-    PublishedContributor(
-      first_name = "John",
-      middle_initial = Some("G"),
-      last_name = "Malkovich",
-      degree = None,
-      orcid = Some("0000-0003-8769-1234")
-    )
-  val collection: PublishedCollection = PublishedCollection(
-    "My awesome collection"
-  )
-  val externalPublication: PublishedExternalPublication =
-    PublishedExternalPublication(
-      Doi("10.26275/t6j6-77pu"),
-      Some(RelationshipType.References)
-    )
+
   val owner: PublishedContributor =
     PublishedContributor(
       first_name = "Shigeru",
@@ -1494,12 +1480,10 @@ class TestPublish
     val status = createDatasetStatus()
     databaseContainer.db
       .run(
-        (datasetsMapper returning datasetsMapper) += Dataset(
-          NodeCodes.generateId(NodeCodes.dataSetCode),
-          name,
-          DatasetState.READY,
-          description = description,
-          statusId = status.id
+        (datasetsMapper returning datasetsMapper) += newDataset(
+          name = name,
+          statusId = status.id,
+          description
         )
       )
       .await
@@ -1510,17 +1494,7 @@ class TestPublish
     isSuperAdmin: Boolean = false
   ): User =
     databaseContainer.userManager
-      .create(
-        User(
-          nodeId = NodeCodes.generateId(NodeCodes.userCode),
-          email = email,
-          firstName = "Test",
-          middleInitial = None,
-          lastName = "User",
-          degree = None,
-          isSuperAdmin = isSuperAdmin
-        )
-      )
+      .create(newUser(email = email, isSuperAdmin = isSuperAdmin))
       .await
       .value
 
@@ -1613,9 +1587,6 @@ class TestPublish
       .getObjectSummaries
       .size() > 0
   }
-
-  def generateRandomString(size: Int = 10): String =
-    Random.alphanumeric.filter(_.isLetter).take(size).mkString
 
   def createAsset(
     dataset: Dataset,
