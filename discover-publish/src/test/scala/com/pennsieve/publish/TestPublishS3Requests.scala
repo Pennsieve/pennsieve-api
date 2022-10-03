@@ -44,12 +44,18 @@ import com.pennsieve.models.{
   User
 }
 import com.pennsieve.publish.models.{ ExportedGraphResult, PublishAssetResult }
+import com.pennsieve.publish.utils.joinKeys
 import com.pennsieve.test.{ PersistantTestContainers, PostgresDockerContainer }
 import com.pennsieve.test.helpers.{ EitherBePropertyMatchers, TestDatabase }
 import com.typesafe.config.{ Config, ConfigFactory }
 import org.apache.http.client.methods.HttpRequestBase
 import org.mockserver.client.MockServerClient
-import org.mockserver.model.{ ClearType, HttpRequest, MediaType }
+import org.mockserver.model.{
+  ClearType,
+  HttpRequest,
+  MediaType,
+  RequestDefinition
+}
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import org.scalamock.matchers.ArgCapture.CaptureAll
@@ -141,6 +147,25 @@ class TestPublishS3Requests
   var mockServerClient: MockServerClient = _
   var testUser: User = _
   var testDataset: Dataset = _
+  var datasetFileInfos: Vector[DatasetFileInfo] = _
+
+  class DatasetFileInfo(
+    val sourceKey: String,
+    val size: Long,
+    var uploadId: String = null,
+    val packageName: Option[String] = None // leave as None if only one file in package
+  ) {
+    //This is brittle and will break these  tests if we start using a different format for publish keys.
+    def targetKey: String =
+      joinKeys(
+        Seq(
+          publishContainer.s3Key,
+          "files",
+          packageName.getOrElse(""),
+          sourceKey.split('/').last
+        )
+      )
+  }
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -200,7 +225,8 @@ class TestPublishS3Requests
       datasetAssetClient = new S3DatasetAssetClient(testS3, assetBucket)
     )
 
-    addPackagesToDataset(databaseContainer, publishContainer.fileManager)
+    datasetFileInfos =
+      addPackagesToDataset(databaseContainer, publishContainer.fileManager)
 
   }
 
@@ -298,13 +324,15 @@ class TestPublishS3Requests
   "Publish.publishAssets" should {
     "include requestor pays in all requests for publish bucket to AWS" in {
 
-      val akkaStartMultipartRequests: HttpRequest =
+      val akkaStartMultipartRequests: Vector[HttpRequest] =
         akkaStartMultipartExpectation()
 
-      //Not capturing requests since these are not against publish bucket
-      mockServerClient
-        .when(request().withMethod("HEAD").withPath(s"/$sourceBucket/.*"))
-        .respond(response.withStatusCode(200))
+      akkaSourceHeadExpectation()
+
+      val akkaCopyPartRequests: Vector[HttpRequest] = akkaCopyPartExpectation()
+
+      val akkaCompleteMultipartRequests: Vector[HttpRequest] =
+        akkaCompleteMultipartExpectation()
 
       val copyObjectCapture = CaptureAll[CopyObjectRequest]()
       val putObjectCapture = CaptureAll[PutObjectRequest]()
@@ -332,7 +360,7 @@ class TestPublishS3Requests
           response
         }
 
-      Publish.publishAssets(publishContainer).await should be a left
+      Publish.publishAssets(publishContainer).await should be a right
 
       forAll(
         copyObjectCapture.values
@@ -343,46 +371,137 @@ class TestPublishS3Requests
         _.isRequesterPays should be(true)
       }
 
-      forAll(retrieveMockServerRequests(akkaStartMultipartRequests)) {
-        _.containsHeader("x-amz-request-payer", "requester") should be(true)
-      }
+      assertAkkaRequestsAreRequestorPays(akkaStartMultipartRequests)
+      assertAkkaRequestsAreRequestorPays(akkaCopyPartRequests)
+      assertAkkaRequestsAreRequestorPays(akkaCompleteMultipartRequests)
 
     }
   }
 
-  private def akkaStartMultipartExpectation(): HttpRequest = {
-    val responseXml =
-      s"""<?xml version="1.0" encoding="UTF-8"?>
-                     |            <InitiateMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-                     |              <Bucket>$publishBucket</Bucket>
-                     |              <Key>example-object</Key>
-                     |              <UploadId>VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5tMnRzIHVwbG9hZA</UploadId>
-                     |            </InitiateMultipartUploadResult>""".stripMargin
-    val akkaStartMultipartRequests = request()
-      .withMethod("POST")
-      .withPath(s"/$publishBucket/.*")
-      .withQueryStringParameter("uploads")
-
-    mockServerClient
-      .when(akkaStartMultipartRequests)
-      .respond(
-        response
-          .withStatusCode(200)
-          .withContentType(MediaType.APPLICATION_XML)
-          .withBody(responseXml)
-      )
-
-    akkaStartMultipartRequests
+  private def assertAkkaRequestsAreRequestorPays(
+    requests: Seq[RequestDefinition]
+  ): Unit = forAll(retrieveMockServerRequests(requests)) {
+    _.containsHeader("x-amz-request-payer", "requester") should be(true)
   }
+
+  //Nothing returned since we don't need to capture these requests:
+  // they are for the source, not publish bucket.
+  private def akkaSourceHeadExpectation(): Unit =
+    for (fileInfo <- datasetFileInfos)
+      yield {
+        val requestMatcher = request()
+          .withMethod("HEAD")
+          .withPath(s"/$sourceBucket/${fileInfo.sourceKey}")
+
+        mockServerClient
+          .when(requestMatcher)
+          .respond(
+            response
+              .withStatusCode(200)
+              .withHeader("content-length", fileInfo.size.toString)
+          )
+
+      }
+
+  private def akkaStartMultipartExpectation(): Vector[HttpRequest] =
+    for (fileInfo <- datasetFileInfos)
+      yield {
+        fileInfo.uploadId = generateRandomString()
+        val requestMatcher = request()
+          .withMethod("POST")
+          .withPath(s"/$publishBucket/${fileInfo.targetKey}")
+          .withQueryStringParameter("uploads")
+        mockServerClient
+          .when(requestMatcher)
+          .respond(
+            response
+              .withStatusCode(200)
+              .withContentType(MediaType.APPLICATION_XML)
+              .withBody(
+                s"""<?xml version="1.0" encoding="UTF-8"?>
+                               |            <InitiateMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+                               |              <Bucket>$publishBucket</Bucket>
+                               |              <Key>${fileInfo.targetKey}</Key>
+                               |              <UploadId>${fileInfo.uploadId}</UploadId>
+                               |            </InitiateMultipartUploadResult>""".stripMargin
+              )
+          )
+
+        requestMatcher
+
+      }
+
+  private def akkaCopyPartExpectation(): Vector[HttpRequest] =
+    for (fileInfo <- datasetFileInfos)
+      yield {
+        fileInfo.uploadId = generateRandomString()
+        val requestMatcher = request()
+          .withMethod("PUT")
+          .withPath(s"/$publishBucket/${fileInfo.targetKey}")
+          .withQueryStringParameter("partNumber")
+          .withQueryStringParameter("uploadId")
+        mockServerClient
+          .when(requestMatcher)
+          .respond(
+            response
+              .withStatusCode(200)
+              .withBody(s"""<CopyPartResult>
+                          |   <LastModified>2011-04-11T20:34:56.000Z</LastModified>
+                          |   <ETag>"${generateRandomString()}"</ETag>
+                          |</CopyPartResult>""".stripMargin)
+          )
+
+        requestMatcher
+
+      }
+  private def akkaCompleteMultipartExpectation(): Vector[HttpRequest] =
+    for (fileInfo <- datasetFileInfos)
+      yield {
+        fileInfo.uploadId = generateRandomString()
+        val requestMatcher = request()
+          .withMethod("POST")
+          .withPath(s"/$publishBucket/${fileInfo.targetKey}")
+          .withQueryStringParameter("uploadId")
+        mockServerClient
+          .when(requestMatcher)
+          .respond(
+            response
+              .withStatusCode(200)
+              .withContentType(MediaType.APPLICATION_XML)
+              .withBody(s"""<?xml version="1.0" encoding="UTF-8"?>
+                   |            <CompleteMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+                   |             <Location>https://$publishBucket.s3.amazonaws.com/${fileInfo.targetKey}</Location>
+                   |             <Bucket>$publishBucket</Bucket>
+                   |             <Key>${fileInfo.targetKey}</Key>
+                   |             <ETag>"${generateRandomString()}"</ETag>
+                   |            </CompleteMultipartUploadResult>""".stripMargin)
+          )
+
+        requestMatcher
+
+      }
+
   private def retrieveMockServerRequests(
-    requestMatcher: HttpRequest
+    requestMatcher: RequestDefinition
   ): Seq[HttpRequest] =
     mockServerClient.retrieveRecordedRequests(requestMatcher).toSeq
+
+  private def retrieveMockServerRequests(
+    requestMatchers: Seq[RequestDefinition]
+  ): Seq[HttpRequest] = {
+    requestMatchers.flatMap(mockServerClient.retrieveRecordedRequests(_))
+  }
 
   private def addPackagesToDataset(
     databaseContainer: InsecureDatabaseContainer,
     fileManager: FileManager
-  ): Unit = {
+  ): Vector[DatasetFileInfo] = {
+
+    val fileInfos = Vector(
+      new DatasetFileInfo("key/pkg1.txt", 1234),
+      new DatasetFileInfo("key/file2.dcm", 2222, packageName = Some("pkg2")),
+      new DatasetFileInfo("key/file3.dcm", 3333, packageName = Some("pkg2"))
+    )
 // Add files to the dataset
     val pkg1 = createPackageInDb(
       databaseContainer,
@@ -394,9 +513,9 @@ class TestPublishS3Requests
       fileManager,
       pkg1,
       name = "file1",
-      s3Key = "key/file.txt",
+      s3Key = fileInfos(0).sourceKey,
       content = "data data",
-      size = 1234
+      size = fileInfos(0).size
     )
 
     // Package with multiple file sources
@@ -410,19 +529,20 @@ class TestPublishS3Requests
       fileManager,
       pkg2,
       name = "file2",
-      s3Key = "key/file2.dcm",
+      s3Key = fileInfos(1).sourceKey,
       content = "atad atad",
-      size = 2222,
+      size = fileInfos(1).size,
       fileType = FileType.DICOM
     )
     createFileS3Optional(
       fileManager,
       pkg2,
       name = "file3",
-      s3Key = "key/file3.dcm",
+      s3Key = fileInfos(2).sourceKey,
       content = "double data",
-      size = 3333,
+      size = fileInfos(2).size,
       fileType = FileType.DICOM
     )
+    fileInfos
   }
 }
