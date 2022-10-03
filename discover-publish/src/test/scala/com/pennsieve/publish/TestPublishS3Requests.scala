@@ -89,22 +89,6 @@ class TestPublishS3Requests
 
   val testOrganization: Organization = sampleOrganization
 
-  val listObjectsV2ResponseBody: String =
-    """<?xml version="1.0" encoding="UTF-8"?>
-                                    |<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-                                    |    <Name>bucket</Name>
-                                    |    <Prefix/>
-                                    |    <KeyCount>205</KeyCount>
-                                    |    <MaxKeys>1000</MaxKeys>
-                                    |    <IsTruncated>false</IsTruncated>
-                                    |    <Contents>
-                                    |        <Key>my-image.jpg</Key>
-                                    |        <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                                    |        <ETag>"fba9dede5f27731c9771645a39863328"</ETag>
-                                    |        <Size>434234</Size>
-                                    |        <StorageClass>STANDARD</StorageClass>
-                                    |    </Contents>
-                                    |</ListBucketResult>""".stripMargin
   val publishAssetResult: PublishAssetResult = PublishAssetResult(
     externalIdToPackagePath = Map.empty,
     packageManifests = Nil,
@@ -256,19 +240,7 @@ class TestPublishS3Requests
   "Publish.finalizeDataset" should {
     "include requester pays on all AWS S3 requests" in {
 
-      mockServerClient
-        .when(
-          request()
-            .withMethod("GET")
-            .withPath(s"/$publishBucket")
-        )
-        .respond(
-          response()
-            .withStatusCode(200)
-            .withContentType(MediaType.APPLICATION_XML)
-            .withBody(listObjectsV2ResponseBody)
-        )
-
+      val akkaListObjectsRequests = akkaListObjectsExpectation()
       val publishAssetResultObject =
         mockS3Object(publishAssetResult.asJson.toString)
 
@@ -305,9 +277,7 @@ class TestPublishS3Requests
         .finalizeDataset(publishContainer)
         .await should be a right
 
-      forAll(retrieveMockServerRequests(request())) {
-        _.containsHeader("x-amz-request-payer", "requester") should be(true)
-      }
+      assertAkkaRequestsAreRequestorPays(akkaListObjectsRequests)
       forAll(getObjectCapture.values.filter(_.getBucketName == publishBucket)) {
         _.isRequesterPays should be(true)
       }
@@ -382,6 +352,39 @@ class TestPublishS3Requests
     requests: Seq[RequestDefinition]
   ): Unit = forAll(retrieveMockServerRequests(requests)) {
     _.containsHeader("x-amz-request-payer", "requester") should be(true)
+  }
+
+  private def akkaListObjectsExpectation(): Vector[HttpRequest] = {
+    val requestMatcher = request()
+      .withMethod("GET")
+      .withPath(s"/$publishBucket")
+
+    mockServerClient
+      .when(requestMatcher)
+      .respond(
+        response()
+          .withStatusCode(200)
+          .withContentType(MediaType.APPLICATION_XML)
+          .withBody(
+            """<?xml version="1.0" encoding="UTF-8"?>
+                              |<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+                              |    <Name>bucket</Name>
+                              |    <Prefix/>
+                              |    <KeyCount>205</KeyCount>
+                              |    <MaxKeys>1000</MaxKeys>
+                              |    <IsTruncated>false</IsTruncated>
+                              |    <Contents>
+                              |        <Key>my-image.jpg</Key>
+                              |        <LastModified>2009-10-12T17:50:30.000Z</LastModified>
+                              |        <ETag>"fba9dede5f27731c9771645a39863328"</ETag>
+                              |        <Size>434234</Size>
+                              |        <StorageClass>STANDARD</StorageClass>
+                              |    </Contents>
+                              |</ListBucketResult>""".stripMargin
+          )
+      )
+    Vector(requestMatcher)
+
   }
 
   //Nothing returned since we don't need to capture these requests:
@@ -480,11 +483,6 @@ class TestPublishS3Requests
         requestMatcher
 
       }
-
-  private def retrieveMockServerRequests(
-    requestMatcher: RequestDefinition
-  ): Seq[HttpRequest] =
-    mockServerClient.retrieveRecordedRequests(requestMatcher).toSeq
 
   private def retrieveMockServerRequests(
     requestMatchers: Seq[RequestDefinition]
