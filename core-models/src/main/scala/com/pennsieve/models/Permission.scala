@@ -32,8 +32,8 @@ sealed trait Permission
 
   import com.pennsieve.models.Permission.{
     Administer,
-    Collaborate,
     Delete,
+    Guest,
     Owner,
     Read,
     Write
@@ -41,7 +41,7 @@ sealed trait Permission
 
   def toBitmap: Int = {
     this match {
-      case Collaborate => 1
+      case Guest => 1
       case Read => 2
       case Write => 4
       case Delete => 8
@@ -59,7 +59,7 @@ object Permission extends Enum[Permission] with CirceEnum[Permission] {
 
   val values: immutable.IndexedSeq[Permission] = findValues
 
-  case object Collaborate extends Permission
+  case object Guest extends Permission
   case object Read extends Permission
   case object Write extends Permission
   case object Delete extends Permission
@@ -68,11 +68,11 @@ object Permission extends Enum[Permission] with CirceEnum[Permission] {
 
   // this SortedSet is in order from least permission to highest. See fromBitmap below
   val allPermission =
-    SortedSet(Collaborate, Read, Write, Delete, Administer, Owner)
+    SortedSet(Guest, Read, Write, Delete, Administer, Owner)
 
   def fromBitmap(value: Int): Option[Permission] = {
     value match {
-      case 1 => Some(Collaborate)
+      case 1 => Some(Guest)
       case 2 => Some(Read)
       case 4 => Some(Write)
       case 8 => Some(Delete)

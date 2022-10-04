@@ -56,7 +56,7 @@ object DBPermission
   val values: immutable.IndexedSeq[DBPermission] = findValues
 
   case object NoPermission extends DBPermission(0)
-  case object Collaborate extends DBPermission(1)
+  case object Guest extends DBPermission(1)
   case object Read extends DBPermission(2)
   case object Write extends DBPermission(4)
   case object Delete extends DBPermission(8)
@@ -65,7 +65,7 @@ object DBPermission
 
   // this SortedSet is in order from least permission to highest. See fromBitmap below
   val allPermission =
-    SortedSet(Collaborate, Read, Write, Delete, Administer, Owner)
+    SortedSet(Guest, Read, Write, Delete, Administer, Owner)
 
   val maxPermission: DBPermission = allPermission.max
 
