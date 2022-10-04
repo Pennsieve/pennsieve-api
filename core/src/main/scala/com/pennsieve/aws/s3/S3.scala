@@ -58,7 +58,7 @@ trait S3Trait {
   def getObject(
     bucket: String,
     key: String,
-    isRequestorPays: Boolean
+    isRequesterPays: Boolean
   ): Either[Throwable, S3Object]
 
   def getObjectMetadata(s3URI: AmazonS3URI): Either[Throwable, ObjectMetadata]
@@ -75,7 +75,7 @@ trait S3Trait {
   def deleteObject(
     bucket: String,
     key: String,
-    isRequestorPays: Boolean
+    isRequesterPays: Boolean
   ): Either[Throwable, Unit]
 
   def deleteObject(bucket: String, key: String): Either[Throwable, Unit] =
@@ -254,10 +254,10 @@ class S3(val client: AmazonS3) extends S3Trait {
   def getObject(
     bucket: String,
     key: String,
-    isRequestorPays: Boolean
+    isRequesterPays: Boolean
   ): Either[Throwable, S3Object] =
     Either.catchNonFatal {
-      client.getObject(new GetObjectRequest(bucket, key, isRequestorPays))
+      client.getObject(new GetObjectRequest(bucket, key, isRequesterPays))
     }
 
   def getObjectMetadata(s3URI: AmazonS3URI): Either[Throwable, ObjectMetadata] =
@@ -283,11 +283,11 @@ class S3(val client: AmazonS3) extends S3Trait {
   def deleteObject(
     bucket: String,
     key: String,
-    isRequestorPays: Boolean
+    isRequesterPays: Boolean
   ): Either[Throwable, Unit] =
     Either.catchNonFatal {
       val request =
-        new DeleteObjectRequest(bucket, key).withRequesterPays(isRequestorPays)
+        new DeleteObjectRequest(bucket, key).withRequesterPays(isRequesterPays)
       client.deleteObject(request)
     }
 

@@ -199,7 +199,7 @@ object Publish extends StrictLogging {
         .deleteObject(
           container.s3Bucket,
           publishedAssetsKey(container),
-          isRequestorPays = true
+          isRequesterPays = true
         )
         .toEitherT[Future]
         .leftMap[CoreError](t => ExceptionError(new Exception(t)))
@@ -210,7 +210,7 @@ object Publish extends StrictLogging {
         .deleteObject(
           container.s3Bucket,
           graphManifestKey(container),
-          isRequestorPays = true
+          isRequesterPays = true
         )
         .toEitherT[Future]
         .leftMap[CoreError](t => ExceptionError(new Exception(t)))

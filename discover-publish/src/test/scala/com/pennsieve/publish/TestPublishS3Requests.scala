@@ -67,7 +67,7 @@ import scala.concurrent.ExecutionContext
 
 /**
   * This class is testing that all S3 requests for the publish bucket
-  * are setting the requestor pays header.
+  * are setting the requester pays header.
   *
   * Publishing accesses S3 two ways: 1) using our own S3 which wraps an AmazonS3 and 2) using Akka's Alpakka library
   * For 1) we use a ScalaMock in place of a real AmazonS3 and capture the requests.
@@ -277,7 +277,7 @@ class TestPublishS3Requests
         .finalizeDataset(publishContainer)
         .await should be a right
 
-      assertAkkaRequestsAreRequestorPays(akkaListObjectsRequests)
+      assertAkkaRequestsAreRequesterPays(akkaListObjectsRequests)
       forAll(getObjectCapture.values.filter(_.getBucketName == publishBucket)) {
         _.isRequesterPays should be(true)
       }
@@ -292,7 +292,7 @@ class TestPublishS3Requests
   }
 
   "Publish.publishAssets" should {
-    "include requestor pays in all requests for publish bucket to AWS" in {
+    "include requester pays in all requests for publish bucket to AWS" in {
 
       val akkaStartMultipartRequests: Vector[HttpRequest] =
         akkaStartMultipartExpectation()
@@ -341,14 +341,14 @@ class TestPublishS3Requests
         _.isRequesterPays should be(true)
       }
 
-      assertAkkaRequestsAreRequestorPays(akkaStartMultipartRequests)
-      assertAkkaRequestsAreRequestorPays(akkaCopyPartRequests)
-      assertAkkaRequestsAreRequestorPays(akkaCompleteMultipartRequests)
+      assertAkkaRequestsAreRequesterPays(akkaStartMultipartRequests)
+      assertAkkaRequestsAreRequesterPays(akkaCopyPartRequests)
+      assertAkkaRequestsAreRequesterPays(akkaCompleteMultipartRequests)
 
     }
   }
 
-  private def assertAkkaRequestsAreRequestorPays(
+  private def assertAkkaRequestsAreRequesterPays(
     requests: Seq[RequestDefinition]
   ): Unit = forAll(retrieveMockServerRequests(requests)) {
     _.containsHeader("x-amz-request-payer", "requester") should be(true)
