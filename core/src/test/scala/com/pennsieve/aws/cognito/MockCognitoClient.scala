@@ -103,6 +103,13 @@ class MockCognito() extends CognitoClient {
     Future.successful(())
   }
 
+  def hasExternalUserLink(
+    username: String,
+    providerName: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = Future.successful(true)
+
   def unlinkExternalUser(
     providerName: String,
     attributeName: String,

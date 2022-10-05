@@ -30,6 +30,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDeleteUserRequest,
   AdminDisableProviderForUserRequest,
   AdminDisableUserRequest,
+  AdminGetUserRequest,
   AdminInitiateAuthRequest,
   AdminSetUserPasswordRequest,
   AdminUpdateUserAttributesRequest,
@@ -79,6 +80,13 @@ trait CognitoClient {
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
+
+  def hasExternalUserLink(
+    username: String,
+    providerName: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
 
   def unlinkExternalUser(
     providerName: String,
@@ -295,6 +303,32 @@ class Cognito(
         Future.successful(())
 
     } yield cognitoId
+  }
+
+  def hasExternalUserLink(
+    username: String,
+    providerName: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    // lookup user
+    val request = AdminGetUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .build()
+
+    for {
+      attributes <- client
+        .adminGetUser(request)
+        .toScala
+        .map(response => response.userAttributes())
+
+      result = attributes.asScala.toList
+        .map(_.name().equals("identities"))
+        .foldLeft(false)(_ || _)
+
+    } yield result
   }
 
   /**
