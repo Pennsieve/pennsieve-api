@@ -27,8 +27,10 @@ import com.amazonaws.services.s3.model.{
   CopyObjectResult,
   CopyPartRequest,
   CopyPartResult,
+  DeleteObjectRequest,
   GeneratePresignedUrlRequest,
   GetObjectMetadataRequest,
+  GetObjectRequest,
   HeadBucketRequest,
   HeadBucketResult,
   InitiateMultipartUploadRequest,
@@ -53,6 +55,12 @@ trait S3Trait {
 
   def getObject(bucket: String, key: String): Either[Throwable, S3Object]
 
+  def getObject(
+    bucket: String,
+    key: String,
+    isRequesterPays: Boolean
+  ): Either[Throwable, S3Object]
+
   def getObjectMetadata(s3URI: AmazonS3URI): Either[Throwable, ObjectMetadata]
 
   def getObjectMetadata(
@@ -64,7 +72,14 @@ trait S3Trait {
     request: GetObjectMetadataRequest
   ): Either[Throwable, ObjectMetadata]
 
-  def deleteObject(bucket: String, key: String): Either[Throwable, Unit]
+  def deleteObject(
+    bucket: String,
+    key: String,
+    isRequesterPays: Boolean
+  ): Either[Throwable, Unit]
+
+  def deleteObject(bucket: String, key: String): Either[Throwable, Unit] =
+    deleteObject(bucket, key, false)
 
   def deleteObject(o: S3Object): Either[Throwable, Unit] =
     deleteObject(o.getBucketName, o.getKey)
@@ -231,11 +246,18 @@ trait S3Trait {
 class S3(val client: AmazonS3) extends S3Trait {
 
   def getObject(s3URI: AmazonS3URI): Either[Throwable, S3Object] =
-    Either.catchNonFatal(client.getObject(s3URI.getBucket, s3URI.getKey))
+    getObject(s3URI.getBucket, s3URI.getKey, false)
 
   def getObject(bucket: String, key: String): Either[Throwable, S3Object] =
+    getObject(bucket, key, false)
+
+  def getObject(
+    bucket: String,
+    key: String,
+    isRequesterPays: Boolean
+  ): Either[Throwable, S3Object] =
     Either.catchNonFatal {
-      client.getObject(bucket, key)
+      client.getObject(new GetObjectRequest(bucket, key, isRequesterPays))
     }
 
   def getObjectMetadata(s3URI: AmazonS3URI): Either[Throwable, ObjectMetadata] =
@@ -258,9 +280,15 @@ class S3(val client: AmazonS3) extends S3Trait {
       client.getObjectMetadata(request)
     }
 
-  def deleteObject(bucket: String, key: String): Either[Throwable, Unit] =
+  def deleteObject(
+    bucket: String,
+    key: String,
+    isRequesterPays: Boolean
+  ): Either[Throwable, Unit] =
     Either.catchNonFatal {
-      client.deleteObject(bucket, key)
+      val request =
+        new DeleteObjectRequest(bucket, key).withRequesterPays(isRequesterPays)
+      client.deleteObject(request)
     }
 
   def deleteObjectsByPrefix(
