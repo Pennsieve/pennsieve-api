@@ -294,10 +294,7 @@ class S3(val client: AmazonS3) extends S3Trait {
   ): Either[Throwable, Unit] =
     Either.catchNonFatal {
       if (!isRequesterPays) {
-        val request =
-          new DeleteObjectRequest(bucket, key)
-            .withRequesterPays(isRequesterPays)
-        client.deleteObject(request)
+        client.deleteObject(bucket, key)
       } else {
         val request = new DeleteObjectsRequest(bucket)
           .withKeys(key)
