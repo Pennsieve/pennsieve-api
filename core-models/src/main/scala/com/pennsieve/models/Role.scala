@@ -39,12 +39,13 @@ object Role extends Enum[Role] with CirceEnum[Role] {
 
   val values: immutable.IndexedSeq[Role] = findValues
 
+  case object Guest extends Role
   case object Viewer extends Role
   case object Editor extends Role
   case object Manager extends Role
   case object Owner extends Role
 
-  val ordering = List(Viewer, Editor, Manager, Owner)
+  val ordering = List(Guest, Viewer, Editor, Manager, Owner)
 
   val maxRole = Some(ordering.last)
 }

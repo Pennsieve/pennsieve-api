@@ -40,6 +40,7 @@ sealed abstract class DBPermission(val value: Int)
     case DBPermission.Owner => Some(Role.Owner)
     case DBPermission.Administer => Some(Role.Manager)
     case DBPermission.Delete => Some(Role.Editor)
+    case DBPermission.Guest => Some(Role.Guest)
     case DBPermission.NoPermission => None
     case _ => Some(Role.Viewer)
   }
