@@ -584,19 +584,29 @@ class UserController(
           .toEitherT
           .coreErrorToActionResult()
 
-        _ <- cognitoClient
-          .unlinkExternalUser(
-            OrcidIdentityProvider.name,
-            OrcidIdentityProvider.attributeNameForUnlink,
-            orcidId
-          )
+        hasExternalUserLink <- cognitoClient
+          .hasExternalUserLink(loggedInUser.email, OrcidIdentityProvider.name)
           .toEitherT
           .coreErrorToActionResult()
 
-        _ <- cognitoClient
-          .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
-          .toEitherT
-          .coreErrorToActionResult()
+        _ <- hasExternalUserLink match {
+          case true =>
+            cognitoClient
+              .unlinkExternalUser(
+                OrcidIdentityProvider.name,
+                OrcidIdentityProvider.attributeNameForUnlink,
+                orcidId
+              )
+              .toEitherT
+              .coreErrorToActionResult()
+
+            cognitoClient
+              .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
+              .toEitherT
+              .coreErrorToActionResult()
+          case false =>
+            Future.successful(()).toEitherT.coreErrorToActionResult()
+        }
 
         updatedUser = loggedInUser.copy(orcidAuthorization = None)
         _ <- secureContainer.userManager.update(updatedUser).orError()
