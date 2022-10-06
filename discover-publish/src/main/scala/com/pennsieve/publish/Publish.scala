@@ -194,7 +194,7 @@ object Publish extends StrictLogging {
       )
 
       _ = logger.info(
-        s"Deleting temporary files: $PUBLISH_ASSETS_FILENAME ,$GRAPH_ASSETS_FILENAME"
+        s"Deleting temporary files: $PUBLISH_ASSETS_FILENAME, $GRAPH_ASSETS_FILENAME"
       )
 
       _ <- container.s3

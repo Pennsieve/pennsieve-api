@@ -304,7 +304,7 @@ class S3(val client: AmazonS3) extends S3Trait {
     isRequesterPays: Boolean = false
   ): Either[Throwable, Unit] =
     Either.catchNonFatal {
-      require(keys.length <= 1000)
+      require(keys.length <= 1000, s"number of keys must be <= 1000: ${keys.length}")
       val request = new DeleteObjectsRequest(bucket)
         .withKeys(keys: _*)
         .withRequesterPays(isRequesterPays)
