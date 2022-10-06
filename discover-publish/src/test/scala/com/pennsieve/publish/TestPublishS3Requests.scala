@@ -21,6 +21,7 @@ import com.amazonaws.services.s3.model.{
   CopyObjectRequest,
   CopyObjectResult,
   DeleteObjectRequest,
+  DeleteObjectsRequest,
   GetObjectRequest,
   ObjectMetadata,
   PutObjectRequest,
@@ -249,7 +250,7 @@ class TestPublishS3Requests
 
       val getObjectCapture = CaptureAll[GetObjectRequest]()
       val putObjectCapture = CaptureAll[PutObjectRequest]()
-      val deleteObjectCapture = CaptureAll[DeleteObjectRequest]()
+      val deleteObjectsCapture = CaptureAll[DeleteObjectsRequest]()
 
       (mockAmazonS3
         .getObject(_: GetObjectRequest))
@@ -269,9 +270,8 @@ class TestPublishS3Requests
         .twice()
 
       (mockAmazonS3
-        .deleteObject(_: DeleteObjectRequest))
-        .expects(capture(deleteObjectCapture))
-        .twice()
+        .deleteObjects(_: DeleteObjectsRequest))
+        .expects(capture(deleteObjectsCapture))
 
       Publish
         .finalizeDataset(publishContainer)
@@ -285,7 +285,7 @@ class TestPublishS3Requests
         _.isRequesterPays should be(true)
       }
       forAll(
-        deleteObjectCapture.values.filter(_.getBucketName == publishBucket)
+        deleteObjectsCapture.values.filter(_.getBucketName == publishBucket)
       ) { _.isRequesterPays should be(true) }
 
     }
