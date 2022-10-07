@@ -28,6 +28,7 @@ import com.amazonaws.services.s3.model.{
   CopyPartRequest,
   CopyPartResult,
   DeleteObjectRequest,
+  DeleteObjectsRequest,
   GeneratePresignedUrlRequest,
   GetObjectMetadataRequest,
   GetObjectRequest,
@@ -83,6 +84,12 @@ trait S3Trait {
 
   def deleteObject(o: S3Object): Either[Throwable, Unit] =
     deleteObject(o.getBucketName, o.getKey)
+
+  def deleteObjectsByKeys(
+    bucket: String,
+    keys: Seq[String],
+    isRequesterPays: Boolean = false
+  ): Either[Throwable, Unit]
 
   def copyObject(
     request: CopyObjectRequest
@@ -286,9 +293,30 @@ class S3(val client: AmazonS3) extends S3Trait {
     isRequesterPays: Boolean
   ): Either[Throwable, Unit] =
     Either.catchNonFatal {
-      val request =
-        new DeleteObjectRequest(bucket, key).withRequesterPays(isRequesterPays)
-      client.deleteObject(request)
+      if (!isRequesterPays) {
+        client.deleteObject(bucket, key)
+      } else {
+        val request = new DeleteObjectsRequest(bucket)
+          .withKeys(key)
+          .withRequesterPays(isRequesterPays)
+        client.deleteObjects(request)
+      }
+    }
+
+  def deleteObjectsByKeys(
+    bucket: String,
+    keys: Seq[String],
+    isRequesterPays: Boolean = false
+  ): Either[Throwable, Unit] =
+    Either.catchNonFatal {
+      require(
+        keys.length <= 1000,
+        s"number of keys must be <= 1000: ${keys.length}"
+      )
+      val request = new DeleteObjectsRequest(bucket)
+        .withKeys(keys: _*)
+        .withRequesterPays(isRequesterPays)
+      client.deleteObjects(request)
     }
 
   def deleteObjectsByPrefix(
