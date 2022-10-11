@@ -939,7 +939,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 400
       (parsedBody \ "message")
-        .extract[String] shouldBe ("invalid parameter withRole: must be one of Vector(viewer, editor, manager, owner)")
+        .extract[String] shouldBe ("invalid parameter withRole: must be one of Vector(guest, viewer, editor, manager, owner)")
     }
 
     get(
