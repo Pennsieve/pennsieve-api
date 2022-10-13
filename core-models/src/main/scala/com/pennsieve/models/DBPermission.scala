@@ -75,6 +75,7 @@ object DBPermission
     case Some(Role.Manager) => DBPermission.Administer
     case Some(Role.Editor) => DBPermission.Delete
     case Some(Role.Viewer) => DBPermission.Read
+    case Some(Role.Guest) => DBPermission.Guest
     case None => DBPermission.NoPermission
   }
 }
