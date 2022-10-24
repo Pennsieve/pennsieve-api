@@ -391,17 +391,23 @@ class DatasetsMapper(val organization: Organization)
       .result
 
   def datasetRoleMap(
+    guest: Boolean = false
+  )(
     implicit
     ec: ExecutionContext
-  ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] =
+  ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] = {
+
     this
       .map(datasetTable => datasetTable.id -> datasetTable.role)
+      .filter(_ => guest)
       .distinct
       .result
       .map(_.toMap)
+  }
 
   def maxRoles(
-    userId: Int
+    userId: Int,
+    guest: Boolean = false
   )(implicit
     datasetUserMapper: DatasetUserMapper,
     datasetTeamsMapper: DatasetTeamMapper,
