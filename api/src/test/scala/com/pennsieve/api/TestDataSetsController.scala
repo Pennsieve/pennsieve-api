@@ -9540,4 +9540,49 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
 
   }
+
+  test(
+    "guest user is not permitted access to datasets shared to workspace users"
+  ) {
+    // create a dataset
+    val dataset = createDataSet("workspace-shared-dataset")
+    // grant Delete permission to all workspace users
+    val updated =
+      updateDataset(dataset.copy(permission = Some(DBPermission.Delete)))
+
+    get("/", headers = authorizationHeader(guestJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      val result: List[DataSetDTO] = parsedBody
+        .extract[List[DataSetDTO]]
+      result.length should equal(0)
+    }
+  }
+
+  test("guest user should have access to their own dataset") {
+    // create a dataset
+    val dataset1 = createDataSet("workspace-shared-dataset")
+    // grant Delete permission to all workspace users
+    val updated1 =
+      updateDataset(dataset1.copy(permission = Some(DBPermission.Delete)))
+    // create guest-owned dataset
+    val dataset2 =
+      createDataSet("guest-user-dataset", container = secureContainerGuest)
+    val updated2 =
+      updateDataset(dataset2.copy(permission = Some(DBPermission.Delete)))
+
+    get("/", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      val result: List[DataSetDTO] = parsedBody
+        .extract[List[DataSetDTO]]
+      result.length should equal(2) // not 3?
+    }
+
+    get("/", headers = authorizationHeader(guestJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      val result: List[DataSetDTO] = parsedBody
+        .extract[List[DataSetDTO]]
+      result.length should equal(1)
+    }
+  }
+
 }
