@@ -391,24 +391,27 @@ class DatasetsMapper(val organization: Organization)
       .result
 
   def datasetRoleMap(
-    implicit
+    guest: Boolean = false
+  )(implicit
     ec: ExecutionContext
   ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] =
     this
       .map(datasetTable => datasetTable.id -> datasetTable.role)
+      .filter(_._1 > 0 && !guest)
       .distinct
       .result
       .map(_.toMap)
 
   def maxRoles(
-    userId: Int
+    userId: Int,
+    guest: Boolean = false
   )(implicit
     datasetUserMapper: DatasetUserMapper,
     datasetTeamsMapper: DatasetTeamMapper,
     ec: ExecutionContext
-  ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] =
+  ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] = {
     for {
-      datasetRoles <- this.datasetRoleMap
+      datasetRoles <- this.datasetRoleMap(guest)
       datasetTeamRoles <- datasetTeamsMapper.maxRoles(userId)
       datasetUserRoles <- datasetUserMapper.maxRoles(userId)
     } yield
@@ -417,6 +420,7 @@ class DatasetsMapper(val organization: Organization)
         .map {
           case (datasetId, roleGroups) => datasetId -> roleGroups.map(_._2).max
         }
+  }
 
   def datasetWithRole(
     userId: Int,

@@ -83,6 +83,19 @@ trait DataSetTestMixin {
       case Right(value) => value
     }
 
+  def updateDataset(
+    dataset: Dataset,
+    container: SecureAPIContainer = secureContainer
+  )(implicit
+    ec: ExecutionContext
+  ): Dataset =
+    container.datasetManager
+      .update(dataset)
+      .await match {
+      case Left(error) => throw error
+      case Right(value) => value
+    }
+
   def createDataUseAgreement(
     name: String,
     body: String
