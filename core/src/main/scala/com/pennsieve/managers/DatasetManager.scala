@@ -151,6 +151,9 @@ class DatasetManager(
   val datasetIgnoreFiles: DatasetIgnoreFilesMapper =
     new DatasetIgnoreFilesMapper(organization)
 
+  val organizationManager: OrganizationManager =
+    new OrganizationManager(db)
+
   def isLocked(
     dataset: Dataset
   )(implicit
@@ -374,7 +377,17 @@ class DatasetManager(
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Seq[DatasetAndStatus]] =
-    db.run(datasetsMapper.find(user, Some(withRole), datasetIds)).toEitherT
+    for {
+      userPermission <- organizationManager.getUserPermission(
+        organization,
+        user
+      )
+      result <- db
+        .run(
+          datasetsMapper.find(user, userPermission, Some(withRole), datasetIds)
+        )
+        .toEitherT
+    } yield result
 
   def getStatusLog(
     dataset: Dataset,
