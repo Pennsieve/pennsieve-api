@@ -1539,4 +1539,20 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       )
     }
   }
+
+  test("non-guest user organization isGuest should be false") {
+    get(s"", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      body should include(loggedInOrganization.nodeId)
+      body should include("\"isGuest\":false")
+    }
+  }
+
+  test("guest user organization isGuest should be true") {
+    get(s"", headers = authorizationHeader(guestJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      body should include(loggedInOrganization.nodeId)
+      body should include("\"isGuest\":true")
+    }
+  }
 }
