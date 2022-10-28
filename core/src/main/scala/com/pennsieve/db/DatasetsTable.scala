@@ -225,6 +225,7 @@ class DatasetsMapper(val organization: Organization)
     */
   def find(
     user: User,
+    userPermission: Option[DBPermission],
     withRole: Option[Role],
     datasetIds: Option[List[Int]]
   )(implicit
@@ -232,7 +233,8 @@ class DatasetsMapper(val organization: Organization)
     datasetTeam: DatasetTeamMapper,
     ec: ExecutionContext
   ): DBIOAction[Seq[DatasetAndStatus], NoStream, Effect.Read with Effect.Read] = {
-    maxRoles(user.id).flatMap { roleMap =>
+    val permission = userPermission.getOrElse(DBPermission.Guest)
+    maxRoles(user.id, permission == DBPermission.Guest).flatMap { roleMap =>
       val datasetIdsByRole = roleMap
         .filter {
           case (_, role) => role >= withRole
