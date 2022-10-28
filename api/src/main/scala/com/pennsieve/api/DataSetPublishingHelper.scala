@@ -32,6 +32,7 @@ import com.pennsieve.core.utilities.{
   JwtAuthenticator
 }
 import com.pennsieve.discover.client.definitions.{
+  BucketConfig,
   DatasetPublishStatus,
   DatasetsPage,
   InternalCollection,
@@ -41,7 +42,8 @@ import com.pennsieve.discover.client.definitions.{
   PublicDatasetDto,
   PublishRequest,
   ReleaseRequest,
-  ReviseRequest
+  ReviseRequest,
+  UnpublishRequest
 }
 import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.discover.client.search.SearchClient
@@ -92,6 +94,19 @@ case object DataSetPublishingHelper extends LazyLogging {
     val format = new java.text.SimpleDateFormat("MM/dd/yyyy")
     format.format(new java.util.Date())
   }
+
+  private def resolveBucketConfig(
+    organization: Organization
+  ): Option[BucketConfig] =
+    (organization.publishBucket, organization.embargoBucket) match {
+      case (Some(publish), Some(embargo)) =>
+        Some(BucketConfig(publish, embargo))
+      case (None, None) => None
+      case _ =>
+        throw new IllegalStateException(
+          s"organizations must supply both publish and embargo buckets or neither: ${organization.name}."
+        )
+    }
 
   def uniqueEmails(owner: User, otherEmails: Seq[String]): List[String] = {
     (otherEmails :+ owner.email).toSet.toList.filter(!_.trim.isEmpty)
@@ -918,8 +933,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         ownerOrcid = ownerOrcid,
         organizationNodeId = organization.nodeId,
         organizationName = organization.name,
-        publishBucket = organization.publishBucket,
-        embargoBucket = organization.embargoBucket,
+        bucketConfig = resolveBucketConfig(organization),
         datasetNodeId = dataset.nodeId,
         collections =
           Some(collections.map(_.into[InternalCollection].transform).toVector),
@@ -1141,6 +1155,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         .unpublish(
           organization.id,
           dataset.id,
+          UnpublishRequest(resolveBucketConfig(organization)),
           getTokenHeaders(organization, dataset)
         )
         .leftSemiflatMap(handleGuardrailError)
@@ -1203,7 +1218,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         .release(
           organization.id,
           dataset.id,
-          ReleaseRequest(organization.publishBucket),
+          ReleaseRequest(resolveBucketConfig(organization)),
           getTokenHeaders(organization, dataset)
         )
         .leftSemiflatMap(handleGuardrailError)
