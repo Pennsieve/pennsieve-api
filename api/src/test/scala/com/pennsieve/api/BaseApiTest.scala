@@ -688,6 +688,10 @@ trait ApiSuite
   def traceIdHeader(id: String = requestTraceId): Map[String, String] =
     Map(AuditLogger.TRACE_ID_HEADER -> id)
 
+  def contentTypeHeader(
+    contentType: String = "application/json"
+  ): Map[String, String] = Map("Content-type" -> contentType)
+
   def jwtServiceAuthorizationHeader(
     organization: Organization,
     dataset: Option[Dataset] = None
