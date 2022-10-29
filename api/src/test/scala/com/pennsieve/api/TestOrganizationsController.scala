@@ -1555,4 +1555,24 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       body should include("\"isGuest\":true")
     }
   }
+
+  test("non-guest user can see organization owner and admin lists") {
+    get(s"", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      println(s"Test >>> body: ${body}")
+      status should equal(200)
+      body should include(loggedInOrganization.nodeId)
+      body shouldNot include("\"owners\":[]")
+    }
+  }
+
+  test("guest user cannot see organization owner and admin list") {
+    get(s"", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      println(s"Test >>> body: ${body}")
+      status should equal(200)
+      body should include(loggedInOrganization.nodeId)
+      body should include("\"owners\":[]")
+      body should include("\"administrators\":[]")
+    }
+  }
+
 }
