@@ -348,10 +348,22 @@ class OrganizationsController(
           secureContainer <- getSecureContainer()
           traceId <- getTraceId(request)
           user = secureContainer.user
+          organization = secureContainer.organization
 
-          includeAdmins <- param[Boolean]("includeAdmins")
+          userPermission <- secureContainer.organizationManager
+            .getUserPermission(organization, user)
+            .coreErrorToActionResult()
+
+          // is the user a guest? a guest should not be able to see admins
+          guest = userPermission.getOrElse(DBPermission.Guest) == DBPermission.Guest
+
+          // by default we will include the list of admins
+          requestToIncludeAdmins <- param[Boolean]("includeAdmins")
             .orElse(Right(true))
             .toEitherT[Future]
+
+          // in order to see the admins, the request must not be from guest
+          includeAdmins = !guest && requestToIncludeAdmins
 
           //note insecure for performance reasons
           //this is OK because we fetch the organization securely, so we should also be allowed to access the organization details
