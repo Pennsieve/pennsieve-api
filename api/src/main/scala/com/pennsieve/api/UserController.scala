@@ -59,7 +59,7 @@ case class UpdateUserRequest(
   url: Option[String],
   email: Option[String],
   color: Option[String],
-  userRequestedChange: Option[Boolean]
+  userRequestedChange: Option[Boolean] = None
 )
 
 case class UserMergeRequest(

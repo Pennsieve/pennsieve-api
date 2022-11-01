@@ -182,7 +182,8 @@ class TestUsersController extends BaseApiTest {
         organization = Some(loggedInOrganization.nodeId),
         url = Some("newurl"),
         email = None,
-        color = None
+        color = None,
+        userRequestedChange = None
       )
     )
 
@@ -220,7 +221,8 @@ class TestUsersController extends BaseApiTest {
         organization = Some(loggedInOrganization.nodeId),
         url = Some(beforeUser.url),
         email = Some(updatedEmail),
-        color = Some(beforeUser.color)
+        color = Some(beforeUser.color),
+        userRequestedChange = None
       )
     )
 
