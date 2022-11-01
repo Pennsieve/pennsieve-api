@@ -11,7 +11,8 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
       "Type": "Task",
       "Resource": "${data.terraform_remote_state.discover_s3clean_lambda.outputs.lambda_function_arn}",
       "Parameters": {
-        "s3_bucket.$": "$.s3_bucket",
+        "publish_bucket.$": "$.publish_bucket",
+        "embargo_bucket.$": "$.embargo_bucket",
         "s3_key_prefix.$": "$.s3_publish_key"
       },
       "Retry": [
@@ -337,7 +338,8 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
       "Type": "Task",
       "Resource": "${data.terraform_remote_state.discover_s3clean_lambda.outputs.lambda_function_arn}",
       "Parameters": {
-        "s3_bucket.$": "$.s3_bucket",
+        "publish_bucket.$": "$.publish_bucket",
+        "embargo_bucket.$": "$.embargo_bucket",
         "s3_key_prefix.$": "$.s3_publish_key"
       },
       "Retry": [
