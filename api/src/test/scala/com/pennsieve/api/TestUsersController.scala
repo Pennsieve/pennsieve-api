@@ -28,7 +28,7 @@ import com.pennsieve.dtos.{
 }
 import com.pennsieve.helpers.{ MockAuditLogger, OrcidClient }
 import com.pennsieve.models.DBPermission.Delete
-import com.pennsieve.models.{ DateVersion, Degree, OrcidAuthorization }
+import com.pennsieve.models.{ DateVersion, Degree, OrcidAuthorization, User }
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 
@@ -68,6 +68,23 @@ class TestUsersController extends BaseApiTest {
 
   val mockCognito: MockCognito =
     new MockCognito()
+
+  def updateRequestFromUser(
+    user: User,
+    userRequestedChange: Option[Boolean] = None
+  ): UpdateUserRequest =
+    UpdateUserRequest(
+      firstName = Some(user.firstName),
+      lastName = Some(user.lastName),
+      middleInitial = user.middleInitial,
+      degree = Some(user.degree.getOrElse("").toString),
+      credential = Some(user.credential),
+      organization = None,
+      url = Some(user.url),
+      email = Some(user.email),
+      color = Some(user.color),
+      userRequestedChange = userRequestedChange
+    )
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -463,6 +480,34 @@ class TestUsersController extends BaseApiTest {
       headers = jwtUserAuthorizationHeader(loggedInOrganization)
     ) {
       status shouldEqual 403
+    }
+  }
+
+  test("change email request must provide a different address") {
+    val updateUserRequest =
+      updateRequestFromUser(loggedInUser).copy(userRequestedChange = Some(true))
+
+    putJson(
+      "/email",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader(),
+      body = write(updateUserRequest)
+    ) {
+      status should equal(400)
+    }
+  }
+
+  test("change email request succeeds when a new address is provided") {
+    val updateUserRequest = updateRequestFromUser(loggedInUser).copy(
+      email = Some("new-email@somewhere.org"),
+      userRequestedChange = Some(true)
+    )
+
+    putJson(
+      "/email",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader(),
+      body = write(updateUserRequest)
+    ) {
+      status should equal(200)
     }
   }
 
