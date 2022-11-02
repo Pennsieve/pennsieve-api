@@ -20,6 +20,7 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.email.Email
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.domain.StorageAggregation.susers
@@ -57,7 +58,8 @@ case class UpdateUserRequest(
   organization: Option[String],
   url: Option[String],
   email: Option[String],
-  color: Option[String]
+  color: Option[String],
+  userRequestedChange: Option[Boolean] = None
 )
 
 case class UserMergeRequest(
@@ -335,13 +337,21 @@ class UserController(
         secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         loggedInUser = secureContainer.user
+        oldEmail = loggedInUser.email
+        newEmail = userToSave.email.getOrElse(loggedInUser.email)
+        userRequestedChange = userToSave.userRequestedChange.getOrElse(false)
+        transactionId = java.util.UUID.randomUUID().toString
 
-        // first update Pennsieve User
-        updatedEmail = userToSave.email.getOrElse(loggedInUser.email)
+        // make sure old email and new email are different
+        _ <- {
+          FutureEitherHelpers.assert(!oldEmail.equals(newEmail))(
+            BadRequest("old and new email addresses are the same")
+          )
+        }
 
         storageServiceClient = secureContainer.storageManager
         newUser <- insecureContainer.userManager
-          .updateEmail(loggedInUser, updatedEmail)
+          .updateEmail(loggedInUser, newEmail)
           .orError()
         storageMap <- storageServiceClient
           .getStorage(susers, List(newUser.id))
@@ -358,13 +368,58 @@ class UserController(
 
         // then update Cognito User
         _ <- cognitoClient
-          .updateUserAttribute(
+          .updateUserAttributes(
             loggedInUser.cognitoId.get.toString,
-            "email",
-            newUser.email
+            Map("email" -> newUser.email, "email_verified" -> "true")
           )
           .toEitherT
           .coreErrorToActionResult()
+
+        // TODO: add to email-changed audit trail (user.id, transactionId, oldEmail, newEmail)(implicit: id, createdAt, updatedAt)
+
+        // send 'email changed' messages to old and new email addresses
+        // TODO: figure out how to pass in `domain`
+        messageToOld = insecureContainer.messageTemplates
+          .emailAddressChanged(
+            previousEmailAddress = oldEmail,
+            currentEmailAddress = newEmail,
+            transactionNumber = transactionId,
+            emailAddress = oldEmail
+          )
+
+        messageToNew = insecureContainer.messageTemplates
+          .emailAddressChanged(
+            previousEmailAddress = oldEmail,
+            currentEmailAddress = newEmail,
+            transactionNumber = transactionId,
+            emailAddress = newEmail
+          )
+
+        _ = userRequestedChange match {
+          case true =>
+            insecureContainer.emailer
+              .sendEmail(
+                to = Email(oldEmail),
+                from = Settings.support_email,
+                message = messageToOld,
+                subject = s"Your email address has changed"
+              )
+              .leftMap(error => InternalServerError(error.getMessage))
+              .toEitherT[Future]
+
+            insecureContainer.emailer
+              .sendEmail(
+                to = Email(newEmail),
+                from = Settings.support_email,
+                message = messageToNew,
+                subject = s"Your email address has changed"
+              )
+              .leftMap(error => InternalServerError(error.getMessage))
+              .toEitherT[Future]
+
+          case false =>
+            Future.successful(()).toEitherT.coreErrorToActionResult()
+        }
 
         _ <- auditLogger
           .message()

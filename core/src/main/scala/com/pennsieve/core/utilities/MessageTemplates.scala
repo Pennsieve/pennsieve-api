@@ -251,4 +251,17 @@ class MessageTemplates(
       managerName = manager.fullName,
       emailAddress = emailAddress
     )
+
+  def emailAddressChanged(
+    previousEmailAddress: String,
+    currentEmailAddress: String,
+    transactionNumber: String,
+    emailAddress: String
+  ): String =
+    GeneratedMessageTemplates.emailAddressChanged(
+      previousEmailAddress = previousEmailAddress,
+      currentEmailAddress = currentEmailAddress,
+      transactionNumber = transactionNumber,
+      emailAddress = emailAddress
+    )
 }

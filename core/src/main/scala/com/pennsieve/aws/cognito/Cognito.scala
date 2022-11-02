@@ -123,6 +123,13 @@ trait CognitoClient {
     ec: ExecutionContext
   ): Future[Boolean]
 
+  def updateUserAttributes(
+    username: String,
+    attributes: Map[String, String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
+
   def authenticateUser(
     username: String,
     password: String
@@ -472,6 +479,43 @@ class Cognito(
           .value(attributeValue)
           .build()
       )
+      .build()
+
+    for {
+      cognitoResponse <- client
+        .adminUpdateUserAttributes(request)
+        .toScala
+
+      response <- cognitoResponse.sdkHttpResponse().statusCode() match {
+        case 200 => Future.successful(true)
+        case 400 => Future.failed(Error(extractErrorResponse(cognitoResponse)))
+      }
+    } yield response
+  }
+
+  def updateUserAttributes(
+    username: String,
+    attributes: Map[String, String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    val userAttributes = attributes
+      .map {
+        case (name, value) =>
+          AttributeType
+            .builder()
+            .name(name)
+            .value(value)
+            .build()
+      }
+      .toSeq
+      .asJava
+
+    val request = AdminUpdateUserAttributesRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .userAttributes(userAttributes)
       .build()
 
     for {

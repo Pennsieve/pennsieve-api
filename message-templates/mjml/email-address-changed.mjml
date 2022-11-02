@@ -1,0 +1,84 @@
+<mjml>
+  <mj-head>
+
+
+    <mj-attributes>
+      <mj-text padding="0" />
+      <mj-button background-color="#5039F7" padding="12px 16px" color="#ffffff" font-size="14px" />
+      <mj-body background-color="#ffffff" />
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif" font-size="16px" line-height="1.5em" />
+      <mj-class name="kicker" font-size="16px" line-height="24px" />
+      <mj-class name="full-section" padding-left="0" padding-right="0" />
+      <mj-class name="copy-section" padding-left="20px" padding-right="20px" text-align="left" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      h1 {
+      font-size: 1.875em;
+      font-weight: 700;
+      line-height: 1.2;
+      margin: 1rem 0;
+      }
+      h2 {
+      font-size: 1.25em;
+      margin: 0;
+      }
+      h3 {
+      font-size: .875em;
+      font-weight: bold;
+      margin: 0;
+      }
+      p {
+      font-size: .875em;
+      margin: 0;
+      line-height: 1.5rem;
+      }
+      .divider {
+      background: #2760ff;
+      height: 4px;
+      width: 33px;
+      .body {
+      overflow: hidden;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="body">
+    <mj-section padding="0">
+      <mj-column>
+        <mj-raw>
+          <picture>
+            <source height="67" width="320" srcset="https://app.pennsieve.net/static/emails/img/Pennsieve-Logo-RGB.png" media="(max-width: 500px)" style="display: block" alt="Pennsieve Logo">
+            <img height="76" width="220" style="padding: 50px 0 20px 0" src="https://app.pennsieve.net/static/emails/img/Pennsieve-Logo-RGB.png" style="display: block" alt="Pennsieve Logo">
+          </picture>
+        </mj-raw>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="full-section" padding-top="0" padding-bottom="20px">
+      <mj-column background-color="#5039F7" padding="18px 20px 35px 20px">
+        <mj-text color="#ffffff" padding="0">
+          <h1>Profile updated</h1>
+          <h2>Your email address has changed</h2>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0">
+	  <p>The email address for your Pennsieve account has changed. The previous email address was ${previousEmailAddress}, and the new email address is ${currentEmailAddress}.</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0">
+	  <p>If you made this change, then no action is required. If you did not make this change or did not authorize this change, then please contact Pennsieve Support by replying to this email and reference transaction number ${transactionNumber}.</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-include path="./footer.mjml" />
+
+  </mj-body>
+</mjml>
