@@ -337,17 +337,14 @@ class UserController(
         secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         loggedInUser = secureContainer.user
-        user = secureContainer.user
-        oldEmail = user.email
+        oldEmail = loggedInUser.email
+        newEmail = userToSave.email.getOrElse(loggedInUser.email)
         userRequestedChange = userToSave.userRequestedChange.getOrElse(false)
         transactionId = java.util.UUID.randomUUID().toString
 
-        // first update Pennsieve User
-        newEmail = userToSave.email.getOrElse(loggedInUser.email)
-
         // make sure old email and new email are different
         _ <- {
-          FutureEitherHelpers.assert(oldEmail != newEmail)(
+          FutureEitherHelpers.assert(!oldEmail.equals(newEmail))(
             BadRequest("old and new email addresses are the same")
           )
         }
@@ -370,12 +367,10 @@ class UserController(
           .orError()
 
         // then update Cognito User
-        // TODO: suppress sending verification code
         _ <- cognitoClient
-          .updateUserAttribute(
+          .updateUserAttributes(
             loggedInUser.cognitoId.get.toString,
-            "email",
-            newUser.email
+            Map("email" -> newUser.email, "email_verified" -> "true")
           )
           .toEitherT
           .coreErrorToActionResult()
