@@ -160,6 +160,19 @@ class MockCognito() extends CognitoClient {
     Future.successful(true)
   }
 
+  def updateUserAttributes(
+    username: String,
+    attributes: Map[String, String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    attributes.foreach {
+      case (name, value) =>
+        updatedUserAttributes.append((username, (name, value)))
+    }
+    Future.successful(true)
+  }
+
   def authenticateUser(
     username: String,
     password: String
