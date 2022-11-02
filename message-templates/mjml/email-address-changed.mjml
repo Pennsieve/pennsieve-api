@@ -57,7 +57,7 @@
       <mj-column background-color="#5039F7" padding="18px 20px 35px 20px">
         <mj-text color="#ffffff" padding="0">
           <h1>Profile updated</h1>
-          <h2>Your email address has been changed</h2>
+          <h2>Your email address has changed</h2>
         </mj-text>
       </mj-column>
     </mj-section>
@@ -65,7 +65,7 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
-	  <p>Your email address has been changed. Previous email address ${previousEmailAddress}, new email address ${currentEmailAddress}.</p>
+	  <p>The email address for your Pennsieve account has changed. The previous email address was ${previousEmailAddress}, and the new email address is ${currentEmailAddress}.</p>
         </mj-text>
       </mj-column>
     </mj-section>
@@ -73,15 +73,7 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
-	  <p>If you made this change, then no action is required. If you did not make this change, then please contact <a href="mailto:support@${domain}">Pennsieve Support</a> and reference transaction number ${transactionNumber}.</p>
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <mj-section mj-class="copy-section">
-      <mj-column>
-        <mj-text padding="16px 0">
-          <p>Need help? Contact us at <a href="mailto:support@${domain}">support@${domain}</a> for assistance.</p>
+	  <p>If you made this change, then no action is required. If you did not make this change or did not authorize this change, then please contact Pennsieve Support by replying to this email and reference transaction number ${transactionNumber}.</p>
         </mj-text>
       </mj-column>
     </mj-section>

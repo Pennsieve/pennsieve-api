@@ -381,20 +381,18 @@ class UserController(
         // TODO: figure out how to pass in `domain`
         messageToOld = insecureContainer.messageTemplates
           .emailAddressChanged(
-            oldEmail,
-            newEmail,
-            domain = "",
-            transactionId,
-            oldEmail
+            previousEmailAddress = oldEmail,
+            currentEmailAddress = newEmail,
+            transactionNumber = transactionId,
+            emailAddress = oldEmail
           )
 
         messageToNew = insecureContainer.messageTemplates
           .emailAddressChanged(
-            oldEmail,
-            newEmail,
-            domain = "",
-            transactionId,
-            newEmail
+            previousEmailAddress = oldEmail,
+            currentEmailAddress = newEmail,
+            transactionNumber = transactionId,
+            emailAddress = newEmail
           )
 
         _ = userRequestedChange match {

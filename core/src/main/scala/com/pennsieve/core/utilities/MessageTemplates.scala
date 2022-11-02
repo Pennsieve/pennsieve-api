@@ -255,14 +255,12 @@ class MessageTemplates(
   def emailAddressChanged(
     previousEmailAddress: String,
     currentEmailAddress: String,
-    domain: String,
     transactionNumber: String,
     emailAddress: String
   ): String =
     GeneratedMessageTemplates.emailAddressChanged(
       previousEmailAddress = previousEmailAddress,
       currentEmailAddress = currentEmailAddress,
-      domain = domain,
       transactionNumber = transactionNumber,
       emailAddress = emailAddress
     )
