@@ -340,7 +340,7 @@ class UserController(
         oldEmail = loggedInUser.email
         newEmail = userToSave.email.getOrElse(loggedInUser.email)
         userRequestedChange = userToSave.userRequestedChange.getOrElse(false)
-        transactionId = java.util.UUID.randomUUID().toString
+        transactionId = loggedInUser.cognitoId.get.toString
 
         // make sure old email and new email are different
         _ <- {
@@ -349,6 +349,7 @@ class UserController(
           )
         }
 
+        // update the user in Pennsieve database
         storageServiceClient = secureContainer.storageManager
         newUser <- insecureContainer.userManager
           .updateEmail(loggedInUser, newEmail)
@@ -366,7 +367,7 @@ class UserController(
           )
           .orError()
 
-        // then update Cognito User
+        // update the Cognito User
         _ <- cognitoClient
           .updateUserAttributes(
             loggedInUser.cognitoId.get.toString,
@@ -375,10 +376,7 @@ class UserController(
           .toEitherT
           .coreErrorToActionResult()
 
-        // TODO: add to email-changed audit trail (user.id, transactionId, oldEmail, newEmail)(implicit: id, createdAt, updatedAt)
-
         // send 'email changed' messages to old and new email addresses
-        // TODO: figure out how to pass in `domain`
         messageToOld = insecureContainer.messageTemplates
           .emailAddressChanged(
             previousEmailAddress = oldEmail,
