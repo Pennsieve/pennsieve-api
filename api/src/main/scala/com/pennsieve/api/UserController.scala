@@ -642,16 +642,6 @@ class UserController(
           .toEitherT
           .coreErrorToActionResult()
 
-//        linkedCognitoId <- hasExternalUserLink match {
-//          case true =>
-//            cognitoClient
-//              .getCognitoId(s"orcid_${orcidId}")
-//              .toEitherT
-//              .coreErrorToActionResult()
-//          case false =>
-//            Future.successful("none").toEitherT.coreErrorToActionResult()
-//        }
-
         _ <- hasExternalUserLink match {
           case true =>
             cognitoClient
