@@ -60,6 +60,12 @@ trait CognitoClient {
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId]
 
+  def getCognitoId(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[String]
+
   def resendUserInvite(
     email: Email,
     cognitoId: CognitoId.UserPoolId
@@ -212,6 +218,25 @@ class Cognito(
       else builder.build()
 
     adminCreateUser(request).map(CognitoId.UserPoolId(_))
+  }
+
+  def getCognitoId(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[String] = {
+    val request = AdminGetUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .build()
+
+    for {
+      result <- client
+        .adminGetUser(request)
+        .toScala
+        .map(response => response.username())
+    } yield result
   }
 
   /**

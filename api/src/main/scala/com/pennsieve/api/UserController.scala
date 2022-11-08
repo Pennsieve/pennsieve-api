@@ -652,7 +652,12 @@ class UserController(
               )
               .toEitherT
               .coreErrorToActionResult()
+          case false =>
+            Future.successful(()).toEitherT.coreErrorToActionResult()
+        }
 
+        _ <- hasExternalUserLink match {
+          case true =>
             cognitoClient
               .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
               .toEitherT
