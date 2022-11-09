@@ -612,6 +612,26 @@ class UserController(
     }
   }
 
+  def unlinkOrcidId(email: String, orcidId: String): Future[Unit] =
+    for {
+      _ <- cognitoClient
+        .deleteUserAttributes(
+          email,
+          List(OrcidIdentityProvider.customAttributeName)
+        )
+
+      _ <- cognitoClient
+        .unlinkExternalUser(
+          OrcidIdentityProvider.name,
+          OrcidIdentityProvider.attributeNameForUnlink,
+          orcidId
+        )
+
+      _ <- cognitoClient
+        .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
+
+    } yield ()
+
   val deleteORCIDOperation = (apiOperation[Unit]("deleteORCID")
     summary "delete orcid for the current user")
 
@@ -629,14 +649,6 @@ class UserController(
 
         orcidId = loggedInUser.orcidAuthorization.get.orcid
 
-        _ <- cognitoClient
-          .deleteUserAttributes(
-            loggedInUser.email,
-            List(OrcidIdentityProvider.customAttributeName)
-          )
-          .toEitherT
-          .coreErrorToActionResult()
-
         hasExternalUserLink <- cognitoClient
           .hasExternalUserLink(loggedInUser.email, OrcidIdentityProvider.name)
           .toEitherT
@@ -644,26 +656,13 @@ class UserController(
 
         _ <- hasExternalUserLink match {
           case true =>
-            cognitoClient
-              .unlinkExternalUser(
-                OrcidIdentityProvider.name,
-                OrcidIdentityProvider.attributeNameForUnlink,
-                orcidId
-              )
-              .toEitherT
+            unlinkOrcidId(loggedInUser.email, orcidId).toEitherT
               .coreErrorToActionResult()
           case false =>
-            Future.successful(()).toEitherT.coreErrorToActionResult()
-        }
-
-        _ <- hasExternalUserLink match {
-          case true =>
-            cognitoClient
-              .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
+            Future
+              .successful(())
               .toEitherT
               .coreErrorToActionResult()
-          case false =>
-            Future.successful(()).toEitherT.coreErrorToActionResult()
         }
 
         updatedUser = loggedInUser.copy(orcidAuthorization = None)
