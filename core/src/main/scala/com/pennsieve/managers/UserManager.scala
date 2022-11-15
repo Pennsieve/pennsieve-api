@@ -18,6 +18,7 @@ package com.pennsieve.managers
 
 import cats.data._
 import cats.implicits._
+import com.pennsieve.aws.email.Email
 import com.pennsieve.core.utilities.FutureEitherHelpers.assert
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.core.utilities.checkAndNormalizeInitial
@@ -335,6 +336,38 @@ class UserManager(db: Database) {
         .toEitherT
 
     } yield createdUser
+
+  def createExternalUser(
+    email: String,
+    cognitoId: CognitoId.UserPoolId
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] = {
+    val user = User(
+      nodeId = NodeCodes.generateId(NodeCodes.userCode),
+      email = email,
+      firstName = "???",
+      middleInitial = None,
+      lastName = "???",
+      degree = None,
+      color = "???",
+      cognitoId = Some(cognitoId)
+    )
+
+    for {
+      // TODO: do we need to check any assertions?
+      //    _ <- assert("".equals(user.email))(
+      //      PredicateError("email for integration user must be blank")
+      //    )
+      //    _ <- assert(user.cognitoId.isEmpty)(
+      //      PredicateError("cognito ID for integration user must be blank")
+      //    )
+      createdUser <- db
+        .run(UserMapper.returning(UserMapper) += user.copy(color = randomColor))
+        .toEitherT
+
+    } yield createdUser
+  }
 
   def get(
     id: Int

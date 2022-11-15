@@ -25,6 +25,7 @@ import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
+import com.pennsieve.aws.cognito.CognitoClient
 import com.pennsieve.aws.email.{ Email, SesMessageResult }
 import com.pennsieve.aws.queue.SQSClient
 import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
@@ -289,6 +290,7 @@ class DataSetsController(
   searchClient: SearchClient,
   doiClient: DoiClient,
   datasetAssetClient: DatasetAssetClient,
+  cognitoClient: CognitoClient,
   maxFileUploadSize: Int,
   asyncExecutor: ExecutionContext
 )(implicit
@@ -2002,6 +2004,108 @@ class DataSetsController(
         } yield ()
 
       override val is = result.value.map(OkResult(_))
+    }
+  }
+
+  //
+  // External Collaborators
+  //
+
+  def getExistingUser(
+    email: String,
+    secureContainer: SecureAPIContainer
+  ): EitherT[Future, CoreError, User] =
+    secureContainer.userManager
+      .getByEmail(email)
+
+  def createExternalUser(email: String): EitherT[Future, CoreError, User] =
+    for {
+      cognitoId <- cognitoClient
+        .inviteUser(
+          email = Email(email),
+          suppressEmail = true,
+          verifyEmail = true,
+          invitePath = "invite-external"
+        )
+        .toEitherT
+
+      user <- insecureContainer.userManager
+        .createExternalUser(email, cognitoId)
+
+    } yield user
+
+  val addExternalCollaborator = (apiOperation[Unit]("addExternalCollaborator")
+    summary "add an external user as a collaborator on this dataset"
+    parameter pathParam[String]("nodeId").description("data set node-id")
+    parameter bodyParam[CollaboratorRoleDTO]("body")
+      .description("External User to share this dataset with"))
+
+  put("/:nodeId/collaborators/external", operation(addExternalCollaborator)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Unit] = for {
+        datasetNodeId <- paramT[String]("nodeId")
+        userDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
+        secureContainer <- getSecureContainer()
+        // TODO: do we need to check this assertion?
+        _ <- assertNotDemoOrganization(secureContainer)
+
+        // ensure the invoking user has permission to add a user to the dataset
+        dataset <- secureContainer.datasetManager
+          .getByNodeId(datasetNodeId)
+          .orNotFound()
+
+        _ <- secureContainer
+          .authorizeDataset(
+            Set(DatasetPermission.AddPeople, DatasetPermission.ChangeRoles)
+          )(dataset)
+          .coreErrorToActionResult()
+
+        userExists <- secureContainer.userManager
+          .emailExists(userDto.id)
+          .coreErrorToActionResult()
+
+        user <- userExists match {
+          case true =>
+            getExistingUser(userDto.id, secureContainer)
+              .coreErrorToActionResult()
+          case false =>
+            createExternalUser(userDto.id)
+              .coreErrorToActionResult()
+        }
+
+        _ <- checkOrErrorT(!user.isIntegrationUser)(
+          InvalidAction("Cannot manually add integration users to a dataset"): CoreError
+        ).coreErrorToActionResult()
+
+        // TODO: add the user to the organization with DBPermission = Guest
+
+        oldRole <- secureContainer.datasetManager
+          .addUserCollaborator(dataset, user, userDto.role)
+          .coreErrorToActionResult()
+
+        // TODO: figure out how to get/set a new user's password, so it may be passed into the welcome email
+
+        // TODO: send email to the user (if provided, include custom message)
+        //   - an existing Pennsieve User should get a "you have been invited to collaborate on a dataset" email message
+        //   - a new Pennsieve User should get a "you have been invited to Pennsieve to collaborate on a dataset" email message
+        //   - if this is a new Pennsieve User, then the email should include in the message text and a link to setup their profile
+        //   - this will require that we know the user's password... (it is part of the link)
+
+        _ <- secureContainer.changelogManager
+          .logEvent(
+            dataset,
+            ChangelogEventDetail.UpdatePermission(
+              oldRole = oldRole.oldRole,
+              newRole = userDto.role.some,
+              userId = user.id.some,
+              teamId = None,
+              organizationId = None
+            )
+          )
+          .coreErrorToActionResult()
+
+      } yield ()
+      override val is = result.value.map(OkResult)
     }
   }
 
