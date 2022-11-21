@@ -769,6 +769,16 @@ class SecureOrganizationManager(val db: Database, val actor: User)
       result <- super.addUser(organization, user, permission)
     } yield result
 
+  def addGuestUser(
+    organization: Organization,
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, OrganizationUser] =
+    for {
+      result <- super.addUser(organization, user, DBPermission.Guest)
+    } yield result
+
   def updateUserPermission(
     organization: Organization,
     user: User,
