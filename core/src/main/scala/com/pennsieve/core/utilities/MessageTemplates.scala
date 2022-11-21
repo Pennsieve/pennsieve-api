@@ -264,4 +264,40 @@ class MessageTemplates(
       transactionNumber = transactionNumber,
       emailAddress = emailAddress
     )
+
+  def inviteExternalExistingUserToDataset(
+    emailAddress: String,
+    invitingPerson: String,
+    invitingEmailAddress: String,
+    workspaceName: String,
+    datasetName: String,
+    customMessage: String
+  ): String =
+    GeneratedMessageTemplates.inviteExternalExistingUserToDataset(
+      emailAddress = emailAddress,
+      invitingPerson = invitingPerson,
+      invitingEmailAddress = invitingEmailAddress,
+      workspaceName = workspaceName,
+      datasetName = datasetName,
+      customMessage = customMessage
+    )
+
+  def inviteExternalNewUserToDataset(
+    emailAddress: String,
+    invitingPerson: String,
+    invitingEmailAddress: String,
+    workspaceName: String,
+    datasetName: String,
+    customMessage: String,
+    setupAccountLink: String
+  ): String =
+    GeneratedMessageTemplates.inviteExternalNewUserToDataset(
+      emailAddress = emailAddress,
+      invitingPerson = invitingPerson,
+      invitingEmailAddress = invitingEmailAddress,
+      workspaceName = workspaceName,
+      datasetName = datasetName,
+      customMessage = customMessage,
+      setupAccountLink = setupAccountLink
+    )
 }
