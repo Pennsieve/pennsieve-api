@@ -2046,6 +2046,7 @@ class DataSetsController(
         datasetNodeId <- paramT[String]("nodeId")
         userDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
         secureContainer <- getSecureContainer()
+        invitingUser = secureContainer.user
         // TODO: do we need to check this assertion?
         _ <- assertNotDemoOrganization(secureContainer)
 
@@ -2077,19 +2078,51 @@ class DataSetsController(
           InvalidAction("Cannot manually add integration users to a dataset"): CoreError
         ).coreErrorToActionResult()
 
-        // TODO: add the user to the organization with DBPermission = Guest
+        // add the user to the organization as a Guest
+        _ <- secureContainer.organizationManager
+          .addGuestUser(secureContainer.organization, user)
+          .coreErrorToActionResult()
 
+        // add the user to the dataset with specified role
         oldRole <- secureContainer.datasetManager
           .addUserCollaborator(dataset, user, userDto.role)
           .coreErrorToActionResult()
 
         // TODO: figure out how to get/set a new user's password, so it may be passed into the welcome email
 
-        // TODO: send email to the user (if provided, include custom message)
-        //   - an existing Pennsieve User should get a "you have been invited to collaborate on a dataset" email message
-        //   - a new Pennsieve User should get a "you have been invited to Pennsieve to collaborate on a dataset" email message
-        //   - if this is a new Pennsieve User, then the email should include in the message text and a link to setup their profile
-        //   - this will require that we know the user's password... (it is part of the link)
+        emailMessage = userExists match {
+          case true =>
+            insecureContainer.messageTemplates
+              .inviteExternalExistingUserToDataset(
+                user.email,
+                s"${invitingUser.firstName} ${invitingUser.lastName}",
+                invitingUser.email,
+                secureContainer.organization.name,
+                dataset.name,
+                customMessage = ""
+              )
+          case false =>
+            insecureContainer.messageTemplates
+              .inviteExternalNewUserToDataset(
+                user.email,
+                s"${invitingUser.firstName} ${invitingUser.lastName}",
+                invitingUser.email,
+                secureContainer.organization.name,
+                dataset.name,
+                customMessage = "",
+                setupAccountLink = ""
+              )
+        }
+
+        _ <- insecureContainer.emailer
+          .sendEmail(
+            to = Email(user.email),
+            from = Settings.support_email,
+            message = emailMessage,
+            subject = s"You have been invited to collaborate"
+          )
+          .leftMap(error => InternalServerError(error.getMessage))
+          .toEitherT[Future]
 
         _ <- secureContainer.changelogManager
           .logEvent(
