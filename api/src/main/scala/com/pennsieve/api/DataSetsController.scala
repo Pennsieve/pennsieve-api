@@ -25,7 +25,7 @@ import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
-import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.cognito.{ Cognito, CognitoClient }
 import com.pennsieve.aws.email.{ Email, SesMessageResult }
 import com.pennsieve.aws.queue.SQSClient
 import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
@@ -125,7 +125,11 @@ case class DatasetPermissionResponse(
 )
 
 // Generic role DTO used for add/edit/delete for users and teams
-case class CollaboratorRoleDTO(id: String, role: Role)
+case class CollaboratorRoleDTO(
+  id: String,
+  role: Role,
+  message: Option[String] = None
+)
 
 case class UserCollaboratorRoleDTO(
   id: String,
@@ -2045,6 +2049,7 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, Unit] = for {
         datasetNodeId <- paramT[String]("nodeId")
         userDto <- extractOrErrorT[CollaboratorRoleDTO](parsedBody)
+        customMessage = userDto.message.getOrElse("")
         secureContainer <- getSecureContainer()
         invitingUser = secureContainer.user
         // TODO: do we need to check this assertion?
@@ -2088,8 +2093,26 @@ class DataSetsController(
           .addUserCollaborator(dataset, user, userDto.role)
           .coreErrorToActionResult()
 
-        // TODO: figure out how to get/set a new user's password, so it may be passed into the welcome email
+        // set the new user's password, because we will need to send this in the accept invite link
+        password = Cognito.generatePassword()
+        _ <- userExists match {
+          case false =>
+            cognitoClient
+              .setUserPassword(user.email, password)
+              .toEitherT
+              .coreErrorToActionResult()
+          case true =>
+            Future.successful(true).toEitherT.coreErrorToActionResult()
+        }
 
+        setupAccountLink = userExists match {
+          case false =>
+            s"${Settings.appHost}/invitation/accept/${user.cognitoId.getOrElse("").toString}/${password}"
+          case true =>
+            ""
+        }
+
+        // generate email message
         emailMessage = userExists match {
           case true =>
             insecureContainer.messageTemplates
@@ -2099,7 +2122,7 @@ class DataSetsController(
                 invitingUser.email,
                 secureContainer.organization.name,
                 dataset.name,
-                customMessage = ""
+                customMessage = customMessage
               )
           case false =>
             insecureContainer.messageTemplates
@@ -2109,11 +2132,12 @@ class DataSetsController(
                 invitingUser.email,
                 secureContainer.organization.name,
                 dataset.name,
-                customMessage = "",
-                setupAccountLink = ""
+                customMessage = customMessage,
+                setupAccountLink = setupAccountLink
               )
         }
 
+        // send email message to invited user
         _ <- insecureContainer.emailer
           .sendEmail(
             to = Email(user.email),
@@ -2124,6 +2148,7 @@ class DataSetsController(
           .leftMap(error => InternalServerError(error.getMessage))
           .toEitherT[Future]
 
+        // generate a change log event
         _ <- secureContainer.changelogManager
           .logEvent(
             dataset,
