@@ -165,6 +165,11 @@ object Cognito {
 
   def apply(config: Config): Cognito =
     Cognito(CognitoConfig(config))
+
+  def generatePassword(): String =
+    UUID.randomUUID().toString() + scala.util.Random
+      .shuffle(('A' to 'Z').toList)
+      .head
 }
 
 class Cognito(
@@ -194,7 +199,7 @@ class Cognito(
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
-      .temporaryPassword(UUID.randomUUID().toString() + randomUppercaseChar)
+      .temporaryPassword(Cognito.generatePassword())
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
