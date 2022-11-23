@@ -67,6 +67,8 @@ object Settings {
   val analyticsQueueSize = config.as[Int]("pennsieve.analytics.queue_size")
   val analyticsRateLimit = config.as[Int]("pennsieve.analytics.rate_limit")
 
+  val appHost = config.as[String]("pennsieve.app_host")
+
   val colors: Map[String, String] = config
     .getObject("pennsieve.colors")
     .asScala

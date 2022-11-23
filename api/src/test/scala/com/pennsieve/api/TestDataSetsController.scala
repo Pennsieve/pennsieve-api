@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import cats.implicits._
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.aws.email.LoggingEmailer
 import com.pennsieve.clients.{ MockDatasetAssetClient, MockModelServiceClient }
 import com.pennsieve.db.TeamsMapper
@@ -102,6 +103,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         mockSearchClient,
         new MockDoiClient(),
         mockDatasetAssetClient,
+        new MockCognito,
         maxFileUploadSize,
         system.dispatcher
       ),
