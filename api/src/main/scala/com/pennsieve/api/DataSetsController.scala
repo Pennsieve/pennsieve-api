@@ -2052,7 +2052,7 @@ class DataSetsController(
         customMessage = userDto.message.getOrElse("")
         secureContainer <- getSecureContainer()
         invitingUser = secureContainer.user
-        // TODO: do we need to check this assertion?
+
         _ <- assertNotDemoOrganization(secureContainer)
 
         // ensure the invoking user has permission to add a user to the dataset

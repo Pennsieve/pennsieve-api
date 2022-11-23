@@ -355,13 +355,6 @@ class UserManager(db: Database) {
     )
 
     for {
-      // TODO: do we need to check any assertions?
-      //    _ <- assert("".equals(user.email))(
-      //      PredicateError("email for integration user must be blank")
-      //    )
-      //    _ <- assert(user.cognitoId.isEmpty)(
-      //      PredicateError("cognito ID for integration user must be blank")
-      //    )
       createdUser <- db
         .run(UserMapper.returning(UserMapper) += user.copy(color = randomColor))
         .toEitherT
