@@ -39,7 +39,12 @@ import org.apache.commons.validator.routines.EmailValidator
 import scala.concurrent.{ ExecutionContext, Future }
 
 object OrganizationManager {
-  case class Invite(email: String, firstName: String, lastName: String)
+  case class Invite(
+    email: String,
+    firstName: String,
+    lastName: String,
+    customMessage: Option[String] = None
+  )
 
   def apply(db: Database): OrganizationManager =
     new OrganizationManager(db)
@@ -843,7 +848,8 @@ class SecureOrganizationManager(val db: Database, val actor: User)
             _ <- sendAddedToOrganizationEmail(
               user = foundUser,
               organization = organization,
-              administrator = actor
+              administrator = actor,
+              invite.customMessage
             ).toEitherT[Future]
 
           } yield AddEmailResult.AddedExistingUser(foundUser): AddEmailResult
@@ -857,7 +863,8 @@ class SecureOrganizationManager(val db: Database, val actor: User)
                 firstName = invite.firstName,
                 lastName = invite.lastName,
                 permission = permission,
-                ttl = ttl
+                ttl = ttl,
+                customMessage = invite.customMessage
               )
               .map(AddEmailResult.InvitedNewUser(_): AddEmailResult)
         }
@@ -929,7 +936,8 @@ class SecureOrganizationManager(val db: Database, val actor: User)
   private def sendAddedToOrganizationEmail(
     user: User,
     organization: Organization,
-    administrator: User
+    administrator: User,
+    customMessage: Option[String] = None
   )(implicit
     emailer: Emailer,
     messageTemplates: MessageTemplates
@@ -938,7 +946,12 @@ class SecureOrganizationManager(val db: Database, val actor: User)
       to = Email(user.email),
       from = messageTemplates.supportEmail,
       message = messageTemplates
-        .addedToOrganization(user.email, administrator.fullName, organization),
+        .addedToOrganization(
+          user.email,
+          administrator.fullName,
+          organization,
+          customMessage.getOrElse("")
+        ),
       subject = s"You’ve been added to an organization"
     )
 

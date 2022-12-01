@@ -47,14 +47,16 @@ class MessageTemplates(
   def addedToOrganization(
     emailAddress: String,
     administrator: String,
-    org: Organization
+    org: Organization,
+    customMessage: String
   ): String =
     GeneratedMessageTemplates.addedToOrganization(
       host = host,
       emailAddress = emailAddress,
       organizationName = org.name,
       organizationNodeId = org.nodeId,
-      administrator = administrator
+      administrator = administrator,
+      customMessage = customMessage
     )
 
   def addedToTeam(
