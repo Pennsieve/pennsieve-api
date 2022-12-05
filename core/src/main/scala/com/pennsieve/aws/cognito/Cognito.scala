@@ -55,7 +55,8 @@ trait CognitoClient {
     email: Email,
     suppressEmail: Boolean = false,
     verifyEmail: Boolean = true,
-    invitePath: String = "invite"
+    invitePath: String = "invite",
+    customMessage: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId]
@@ -189,12 +190,11 @@ class Cognito(
     email: Email,
     suppressEmail: Boolean = false,
     verifyEmail: Boolean = true,
-    invitePath: String = "invite"
+    invitePath: String = "invite",
+    customMessage: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
-    val randomUppercaseChar =
-      scala.util.Random.shuffle(('A' to 'Z').toList).head
     val builder = AdminCreateUserRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
@@ -214,6 +214,9 @@ class Cognito(
             .value(verifyEmail.toString())
             .build()
         ).asJava
+      )
+      .clientMetadata(
+        Map("customMessage" -> customMessage.getOrElse("")).asJava
       )
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
 

@@ -65,7 +65,23 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
-          <p>${administrator} has added you to the following organization: ${organizationName}. Datasets shared with this organization are now available to you. Log in to access them:</p>
+          <p>${administrator} has added you to the following organization: ${organizationName}. </p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+        
+    <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0">
+	        <p>${customMessage}</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+        
+    <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0">
+	        <p>Datasets shared with this organization are now available to you. Log in to access them:</p>
         </mj-text>
       </mj-column>
     </mj-section>

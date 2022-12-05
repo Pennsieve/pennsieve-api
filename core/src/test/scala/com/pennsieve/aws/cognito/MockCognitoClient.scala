@@ -65,7 +65,8 @@ class MockCognito() extends CognitoClient {
     email: Email,
     suppressEmail: Boolean = false,
     verifyEmail: Boolean = true,
-    invite_path: String = "invite"
+    invite_path: String = "invite",
+    customMessage: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
