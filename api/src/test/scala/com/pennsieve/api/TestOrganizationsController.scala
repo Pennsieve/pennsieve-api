@@ -1573,4 +1573,16 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("guest user cannot be added to a team") {
+    val team = teamManager.create("NoGuests", loggedInOrganization).await.value
+    val addToTeamRequest = write(AddToTeamRequest(List(guestUser.nodeId)))
+    postJson(
+      s"/${loggedInOrganization.nodeId}/teams/${team.nodeId}/members",
+      addToTeamRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
 }
