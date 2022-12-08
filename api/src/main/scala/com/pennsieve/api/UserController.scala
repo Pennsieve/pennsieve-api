@@ -576,6 +576,7 @@ class UserController(
 
         orcidId = loggedInUser.orcidAuthorization.get.orcid
 
+        //1.) DELETING user attr custom:orcid in cognito
         _ <- cognitoClient
           .deleteUserAttributes(
             loggedInUser.email,
@@ -584,6 +585,8 @@ class UserController(
           .toEitherT
           .coreErrorToActionResult()
 
+          //2.) UNLINKING the external user
+          //NOTE: here we want to check whether the LINK and the EXTERNAL USER exist
         _ <- cognitoClient
           .unlinkExternalUser(
             OrcidIdentityProvider.name,
@@ -593,11 +596,12 @@ class UserController(
           .toEitherT
           .coreErrorToActionResult()
 
+          //3.) DELETING the external user in cognito
         _ <- cognitoClient
           .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
           .toEitherT
           .coreErrorToActionResult()
-
+        //4.) UPDATING user in Pennsieve DB (removing orcid auth)
         updatedUser = loggedInUser.copy(orcidAuthorization = None)
         _ <- secureContainer.userManager.update(updatedUser).orError()
       } yield ()
