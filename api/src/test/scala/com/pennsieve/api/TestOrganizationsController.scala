@@ -602,6 +602,12 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         .await
         .value
 
+    val orgUser =
+      organizationManager
+        .addUser(loggedInOrganization, member, DBPermission.Delete)
+        .await
+        .value
+
     val createReq = write(AddToTeamRequest(List(member.nodeId)))
 
     postJson(
