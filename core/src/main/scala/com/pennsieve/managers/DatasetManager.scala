@@ -1456,12 +1456,13 @@ class DatasetManager(
     publicationTypes: Option[Set[PublicationType]] = None,
     canPublish: Option[Boolean] = None,
     restrictToRole: Boolean = false,
-    collectionId: Option[Int] = None
+    collectionId: Option[Int] = None,
+    isGuest: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Seq[DatasetAndStatus], Long)] = {
 
-    val query = datasetsMapper.maxRoles(actor.id).flatMap {
+    val query = datasetsMapper.maxRoles(actor.id, isGuest).flatMap {
       roleMap: Map[Int, Option[Role]] =>
         {
           val datasetIds: List[Int] = roleMap

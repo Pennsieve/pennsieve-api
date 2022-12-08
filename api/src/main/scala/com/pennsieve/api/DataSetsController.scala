@@ -702,6 +702,13 @@ class DataSetsController(
         for {
           secureContainer <- getSecureContainer()
           storageServiceClient = secureContainer.storageManager
+          userPermission <- secureContainer.organizationManager
+            .getUserPermission(
+              secureContainer.organization,
+              secureContainer.user
+            )
+            .coreErrorToActionResult()
+          isGuest = userPermission.getOrElse(DBPermission.Guest) == DBPermission.Guest
 
           limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
           offset <- paramT[Int]("offset", default = DatasetsDefaultOffset)
@@ -784,7 +791,8 @@ class DataSetsController(
               publicationTypes = publicationTypes,
               canPublish = canPublish,
               restrictToRole = withRole.isDefined || ownerOnly.isDefined,
-              collectionId = collectionId
+              collectionId = collectionId,
+              isGuest
             )
             .coreErrorToActionResult()
 
