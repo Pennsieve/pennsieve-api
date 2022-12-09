@@ -19,13 +19,12 @@ import org.scalatest.matchers.{ BePropertyMatchResult, BePropertyMatcher }
 
 trait EitherBePropertyMatchers {
 
-  val left = new BePropertyMatcher[Either[AnyRef, AnyRef]] {
-    override def apply(e: Either[AnyRef, AnyRef]): BePropertyMatchResult =
-      BePropertyMatchResult(e.isLeft, "left")
-  }
-  val right = new BePropertyMatcher[Either[AnyRef, AnyRef]] {
-    override def apply(e: Either[AnyRef, AnyRef]): BePropertyMatchResult =
-      BePropertyMatchResult(e.isRight, "right")
-  }
+  def left[A, B]: BePropertyMatcher[Either[A, B]] =
+    (objectWithProperty: Either[A, B]) =>
+      BePropertyMatchResult(objectWithProperty.isLeft, "left")
+
+  def right[A, B]: BePropertyMatcher[Either[A, B]] =
+    (objectWithProperty: Either[A, B]) =>
+      BePropertyMatchResult(objectWithProperty.isRight, "right")
 
 }

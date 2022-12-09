@@ -225,6 +225,7 @@ class DatasetsMapper(val organization: Organization)
     */
   def find(
     user: User,
+    userPermission: Option[DBPermission],
     withRole: Option[Role],
     datasetIds: Option[List[Int]]
   )(implicit
@@ -232,7 +233,8 @@ class DatasetsMapper(val organization: Organization)
     datasetTeam: DatasetTeamMapper,
     ec: ExecutionContext
   ): DBIOAction[Seq[DatasetAndStatus], NoStream, Effect.Read with Effect.Read] = {
-    maxRoles(user.id).flatMap { roleMap =>
+    val permission = userPermission.getOrElse(DBPermission.Guest)
+    maxRoles(user.id, permission == DBPermission.Guest).flatMap { roleMap =>
       val datasetIdsByRole = roleMap
         .filter {
           case (_, role) => role >= withRole
@@ -391,24 +393,27 @@ class DatasetsMapper(val organization: Organization)
       .result
 
   def datasetRoleMap(
-    implicit
+    guest: Boolean = false
+  )(implicit
     ec: ExecutionContext
   ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] =
     this
       .map(datasetTable => datasetTable.id -> datasetTable.role)
+      .filter(_._1 > 0 && !guest)
       .distinct
       .result
       .map(_.toMap)
 
   def maxRoles(
-    userId: Int
+    userId: Int,
+    guest: Boolean = false
   )(implicit
     datasetUserMapper: DatasetUserMapper,
     datasetTeamsMapper: DatasetTeamMapper,
     ec: ExecutionContext
-  ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] =
+  ): DBIOAction[Map[Int, Option[Role]], NoStream, Effect.Read] = {
     for {
-      datasetRoles <- this.datasetRoleMap
+      datasetRoles <- this.datasetRoleMap(guest)
       datasetTeamRoles <- datasetTeamsMapper.maxRoles(userId)
       datasetUserRoles <- datasetUserMapper.maxRoles(userId)
     } yield
@@ -417,6 +422,7 @@ class DatasetsMapper(val organization: Organization)
         .map {
           case (datasetId, roleGroups) => datasetId -> roleGroups.map(_._2).max
         }
+  }
 
   def datasetWithRole(
     userId: Int,

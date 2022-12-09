@@ -19,6 +19,7 @@ package com.pennsieve.publish
 import java.time.LocalDate
 import java.util.UUID
 import akka.actor.ActorSystem
+import akka.stream.alpakka.s3.S3Headers
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.Sink
 import cats.data._
@@ -28,6 +29,7 @@ import com.amazonaws.services.s3.model.{
   ObjectMetadata,
   PutObjectRequest
 }
+import com.pennsieve.aws.s3.S3Trait
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.domain.{
@@ -69,32 +71,26 @@ object Publish extends StrictLogging {
 
   val METADATA_FILENAME: String = "manifest.json"
 
-  private def publishedAssetsKey(container: PublishContainer): String =
+  private def assetKey(
+    containerConfig: PublishContainerConfig,
+    assetFilename: String
+  ): String =
     joinKeys(
       Seq(
-        container.publishedDatasetId.toString,
-        container.version.toString,
-        PUBLISH_ASSETS_FILENAME
+        containerConfig.publishedDatasetId.toString,
+        containerConfig.version.toString,
+        assetFilename
       )
     )
 
-  private def graphManifestKey(container: PublishContainer): String =
-    joinKeys(
-      Seq(
-        container.publishedDatasetId.toString,
-        container.version.toString,
-        GRAPH_ASSETS_FILENAME
-      )
-    )
+  private def publishedAssetsKey(config: PublishContainerConfig): String =
+    assetKey(config, PUBLISH_ASSETS_FILENAME)
 
-  private def outputKey(container: PublishContainer): String =
-    joinKeys(
-      Seq(
-        container.publishedDatasetId.toString,
-        container.version.toString,
-        OUTPUT_FILENAME
-      )
-    )
+  private def graphManifestKey(config: PublishContainerConfig): String =
+    assetKey(config, GRAPH_ASSETS_FILENAME)
+
+  private def outputKey(config: PublishContainerConfig): String =
+    assetKey(config, OUTPUT_FILENAME)
 
   /**
     * These intermediate files are generated as part of publishing. After the `finalizeDataset` step runs, they should
@@ -158,7 +154,7 @@ object Publish extends StrictLogging {
     * have to reload the Postgres snapshot just to write these files.
     */
   def finalizeDataset(
-    container: PublishContainer
+    container: PublishContainerConfig
   )(implicit
     executionContext: ExecutionContext,
     system: ActorSystem
@@ -197,26 +193,26 @@ object Publish extends StrictLogging {
         ).asJson
       )
 
-      _ = logger.info(s"Deleting temporary file: $PUBLISH_ASSETS_FILENAME")
+      _ = logger.info(
+        s"Deleting temporary files: $PUBLISH_ASSETS_FILENAME, $GRAPH_ASSETS_FILENAME"
+      )
 
       _ <- container.s3
-        .deleteObject(container.s3Bucket, publishedAssetsKey(container))
+        .deleteObjectsByKeys(
+          container.s3Bucket,
+          Seq(publishedAssetsKey(container), graphManifestKey(container)),
+          isRequesterPays = true
+        )
         .toEitherT[Future]
         .leftMap[CoreError](t => ExceptionError(new Exception(t)))
 
-      _ = logger.info(s"Deleting temporary file: $GRAPH_ASSETS_FILENAME")
-
-      _ <- container.s3
-        .deleteObject(container.s3Bucket, graphManifestKey(container))
-        .toEitherT[Future]
-        .leftMap[CoreError](t => ExceptionError(new Exception(t)))
     } yield ()
 
   /**
     * Perform a blocking, single-part download from S3.
     */
   private def downloadFromS3[T: Decoder](
-    container: PublishContainer,
+    containerConfig: PublishContainerConfig,
     key: String
   )(implicit
     executionContext: ExecutionContext,
@@ -224,8 +220,8 @@ object Publish extends StrictLogging {
   ): EitherT[Future, CoreError, T] = {
     EitherT
       .fromEither[Future](
-        container.s3
-          .getObject(container.s3Bucket, key)
+        containerConfig.s3
+          .getObject(containerConfig.s3Bucket, key, true)
           .flatMap { obj =>
             {
               Either.catchNonFatal(
@@ -244,7 +240,7 @@ object Publish extends StrictLogging {
     * Perform a blocking, single-part upload to S3.
     */
   private def uploadToS3(
-    container: PublishContainer,
+    containerConfig: PublishContainerConfig,
     key: String,
     payload: Json
   )(implicit
@@ -261,10 +257,10 @@ object Publish extends StrictLogging {
     metadata.setContentLength(payloadBytes.length)
     EitherT
       .fromEither[Future](
-        container.s3
+        containerConfig.s3
           .putObject(
             new PutObjectRequest(
-              container.s3Bucket,
+              containerConfig.s3Bucket,
               key,
               payloadInputStream,
               metadata
@@ -502,7 +498,7 @@ object Publish extends StrictLogging {
     * Write published metadata JSON file.
     */
   def writeMetadata(
-    container: PublishContainer,
+    containerConfig: PublishContainerConfig,
     manifests: List[FileManifest]
   )(implicit
     executionContext: ExecutionContext,
@@ -518,27 +514,27 @@ object Publish extends StrictLogging {
       FileManifest(METADATA_FILENAME, METADATA_FILENAME, 0, FileType.Json)
 
     val unsizedMetadata = DatasetMetadataV4_0(
-      pennsieveDatasetId = container.publishedDatasetId,
-      version = container.version,
+      pennsieveDatasetId = containerConfig.publishedDatasetId,
+      version = containerConfig.version,
       revision = None,
-      name = container.dataset.name,
-      description = container.dataset.description.getOrElse(""),
+      name = containerConfig.dataset.name,
+      description = containerConfig.dataset.description.getOrElse(""),
       creator = PublishedContributor(
-        first_name = container.user.firstName,
-        middle_initial = container.user.middleInitial,
-        last_name = container.user.lastName,
-        degree = container.user.degree,
-        orcid = Some(container.userOrcid)
+        first_name = containerConfig.user.firstName,
+        middle_initial = containerConfig.user.middleInitial,
+        last_name = containerConfig.user.lastName,
+        degree = containerConfig.user.degree,
+        orcid = Some(containerConfig.userOrcid)
       ),
-      contributors = container.contributors,
-      sourceOrganization = container.organization.name,
-      keywords = container.dataset.tags,
+      contributors = containerConfig.contributors,
+      sourceOrganization = containerConfig.organization.name,
+      keywords = containerConfig.dataset.tags,
       datePublished = LocalDate.now(),
-      license = container.dataset.license,
-      `@id` = s"https://doi.org/${container.doi}",
+      license = containerConfig.dataset.license,
+      `@id` = s"https://doi.org/${containerConfig.doi}",
       files = (metadataManifest :: manifests).sorted,
-      collections = Some(container.collections),
-      relatedPublications = Some(container.externalPublications)
+      collections = Some(containerConfig.collections),
+      relatedPublications = Some(containerConfig.externalPublications)
     )
 
     // Compute the size of the metadata, including the number of characters
@@ -553,8 +549,8 @@ object Publish extends StrictLogging {
     )
 
     uploadToS3(
-      container,
-      joinKeys(container.s3Key, METADATA_FILENAME),
+      containerConfig,
+      joinKeys(containerConfig.s3Key, METADATA_FILENAME),
       metadata.asJson
     )
   }
@@ -579,12 +575,17 @@ object Publish extends StrictLogging {
     * under the publish key.
     */
   def computeTotalSize(
-    container: PublishContainer
+    containerConfig: PublishContainerConfig
   )(implicit
     executionContext: ExecutionContext,
     system: ActorSystem
   ): EitherT[Future, CoreError, Long] =
-    S3.listBucket(container.s3Bucket, Some(container.s3Key))
+    S3.listBucket(
+        containerConfig.s3Bucket,
+        Some(containerConfig.s3Key),
+        S3Headers()
+          .withCustomHeaders(Map("x-amz-request-payer" -> "requester"))
+      )
       .map(_.size)
       .runWith(Sink.fold(0: Long)(_ + _))
       .toEitherT[CoreError](ThrowableError)

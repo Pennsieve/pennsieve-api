@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import cats.implicits._
+import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.aws.email.LoggingEmailer
 import com.pennsieve.clients.{ MockDatasetAssetClient, MockModelServiceClient }
 import com.pennsieve.db.TeamsMapper
@@ -102,6 +103,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         mockSearchClient,
         new MockDoiClient(),
         mockDatasetAssetClient,
+        new MockCognito,
         maxFileUploadSize,
         system.dispatcher
       ),
@@ -939,7 +941,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 400
       (parsedBody \ "message")
-        .extract[String] shouldBe ("invalid parameter withRole: must be one of Vector(viewer, editor, manager, owner)")
+        .extract[String] shouldBe ("invalid parameter withRole: must be one of Vector(guest, viewer, editor, manager, owner)")
     }
 
     get(
@@ -9540,4 +9542,130 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
 
   }
+
+  test(
+    "guest user is not permitted access to datasets shared to workspace users"
+  ) {
+    // create a dataset
+    val dataset = createDataSet("workspace-shared-dataset")
+    // grant Delete permission to all workspace users
+    val updated =
+      updateDataset(dataset.copy(permission = Some(DBPermission.Delete)))
+
+    get("/", headers = authorizationHeader(guestJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      val result: List[DataSetDTO] = parsedBody
+        .extract[List[DataSetDTO]]
+      result.length should equal(0)
+    }
+  }
+
+  test("guest user should have access to their own dataset") {
+    // create a dataset
+    val dataset1 = createDataSet("workspace-shared-dataset")
+    // grant Delete permission to all workspace users
+    val updated1 =
+      updateDataset(dataset1.copy(permission = Some(DBPermission.Delete)))
+    // create guest-owned dataset
+    val dataset2 =
+      createDataSet("guest-user-dataset", container = secureContainerGuest)
+    val updated2 =
+      updateDataset(dataset2.copy(permission = Some(DBPermission.Delete)))
+
+    get("/", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      val result: List[DataSetDTO] = parsedBody
+        .extract[List[DataSetDTO]]
+      result.length should equal(2) // not 3?
+    }
+
+    get("/", headers = authorizationHeader(guestJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      val result: List[DataSetDTO] = parsedBody
+        .extract[List[DataSetDTO]]
+      result.length should equal(1)
+    }
+  }
+
+  test(
+    "guest user should be restricted to seeing only authorized datasets on paginated endpoint"
+  ) {
+    for (i <- 1 to 10) {
+      createDataSet(s"test-dataset-${i}")
+    }
+    val dataset =
+      createDataSet("guest-user-dataset", container = secureContainerGuest)
+
+    // first check that logged in user can see all 11 created datasets
+    get(
+      "/paginated",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[PaginatedDatasets]
+      response.datasets.length shouldEqual (11)
+    }
+
+    // then check that guest user only sees 1 dataset
+    get(
+      "/paginated",
+      headers = authorizationHeader(guestJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[PaginatedDatasets]
+      response.datasets.length shouldEqual (1)
+    }
+  }
+
+  test("external user should be invited to a dataset") {
+    val dataset = createDataSet(s"test-dataset-for-external-invite")
+    val externalInvite = CollaboratorRoleDTO(externalUser.email, Role.Editor)
+
+    putJson(
+      s"/${dataset.nodeId}/collaborators/external",
+      write(externalInvite),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldEqual (200)
+    }
+
+    // get dataset collaborators, check for external user
+    get(
+      s"/${dataset.nodeId}/collaborators/users",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldEqual (200)
+      val response = parsedBody.extract[List[UserCollaboratorRoleDTO]]
+      val externalPresent =
+        response.filter(u => u.email.equals(externalUser.email))
+      externalPresent.length shouldEqual (1)
+    }
+  }
+
+  test("external user should have access to a dataset they are invited to") {
+    val dataset = createDataSet(s"test-dataset-for-external-access")
+    val externalInvite = CollaboratorRoleDTO(externalUser.email, Role.Editor)
+
+    putJson(
+      s"/${dataset.nodeId}/collaborators/external",
+      write(externalInvite),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldEqual (200)
+    }
+
+    // we generate a new JWT for the external user now present in the organization
+    val externalJwt2 = Authenticator.createUserToken(
+      externalUser,
+      loggedInOrganization
+    )(jwtConfig, insecureContainer.db, ec)
+
+    get(
+      s"/${dataset.nodeId}",
+      headers = authorizationHeader(externalJwt2) ++ traceIdHeader()
+    ) {
+      status shouldEqual (200)
+    }
+  }
+
 }

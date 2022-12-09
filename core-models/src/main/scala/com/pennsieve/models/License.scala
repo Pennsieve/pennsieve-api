@@ -31,6 +31,8 @@ object License extends Enum[License] with CirceEnum[License] {
   case object `Creative Commons Zero 1.0 Universal` extends License
   case object `Creative Commons Attribution` extends License
   case object `Creative Commons Attribution - ShareAlike` extends License
+  case object `Creative Commons Attribution - NonCommercial-ShareAlike`
+      extends License
   case object `GNU General Public License v3.0` extends License
   case object `GNU Lesser General Public License` extends License
   case object `MIT` extends License
@@ -47,6 +49,7 @@ object License extends Enum[License] with CirceEnum[License] {
     License.`Creative Commons Zero 1.0 Universal` -> "https://spdx.org/licenses/CC0-1.0.json",
     License.`Creative Commons Attribution` -> "https://spdx.org/licenses/CC-BY-4.0.json",
     License.`Creative Commons Attribution - ShareAlike` -> "https://spdx.org/licenses/CC-BY-SA-4.0.json",
+    License.`Creative Commons Attribution - NonCommercial-ShareAlike` -> "https://spdx.org/licenses/CC-BY-NC-SA-4.0.json",
     License.`GNU General Public License v3.0` -> "https://spdx.org/licenses/GPL-3.0-only.json",
     License.`GNU Lesser General Public License` -> "https://spdx.org/licenses/LGPL-3.0-only.json",
     License.`MIT` -> "https://spdx.org/licenses/MIT.json",

@@ -602,6 +602,12 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         .await
         .value
 
+    val orgUser =
+      organizationManager
+        .addUser(loggedInOrganization, member, DBPermission.Delete)
+        .await
+        .value
+
     val createReq = write(AddToTeamRequest(List(member.nodeId)))
 
     postJson(
@@ -1539,4 +1545,50 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       )
     }
   }
+
+  test("non-guest user organization isGuest should be false") {
+    get(s"", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      body should include(loggedInOrganization.nodeId)
+      body should include("\"isGuest\":false")
+    }
+  }
+
+  test("guest user organization isGuest should be true") {
+    get(s"", headers = authorizationHeader(guestJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      body should include(loggedInOrganization.nodeId)
+      body should include("\"isGuest\":true")
+    }
+  }
+
+  test("non-guest user can see organization owner and admin lists") {
+    get(s"", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      body should include(loggedInOrganization.nodeId)
+      body shouldNot include("\"administrators\":[]")
+    }
+  }
+
+  test("guest user cannot see organization owner and admin list") {
+    get(s"", headers = authorizationHeader(guestJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      body should include(loggedInOrganization.nodeId)
+      body should include("\"owners\":[]")
+      body should include("\"administrators\":[]")
+    }
+  }
+
+  test("guest user cannot be added to a team") {
+    val team = teamManager.create("NoGuests", loggedInOrganization).await.value
+    val addToTeamRequest = write(AddToTeamRequest(List(guestUser.nodeId)))
+    postJson(
+      s"/${loggedInOrganization.nodeId}/teams/${team.nodeId}/members",
+      addToTeamRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(403)
+    }
+  }
+
 }

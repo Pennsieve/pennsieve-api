@@ -226,6 +226,8 @@ trait SecureCoreContainer
   implicit val datasetTeamMapper: DatasetTeamMapper =
     new DatasetTeamMapper(self.organization)
 
+  // lazy val organizationUser: OrganizationUser = ???
+
   lazy val userRoles: Future[Map[Int, Option[Role]]] =
     db.run(datasetsMapper.maxRoles(user.id))
 

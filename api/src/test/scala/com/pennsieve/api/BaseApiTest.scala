@@ -47,7 +47,7 @@ import com.pennsieve.clients.{
   MockJobSchedulingServiceContainer
 }
 import com.pennsieve.core.utilities._
-import com.pennsieve.models.DBPermission.{ Administer, Delete }
+import com.pennsieve.models.DBPermission.{ Administer, Delete, Guest }
 import com.pennsieve.managers._
 import com.pennsieve.managers.DatasetManager
 import com.pennsieve.helpers._
@@ -249,6 +249,7 @@ trait ApiSuite
   var superAdmin: User = _
   var sandboxUser: User = _
   var integrationUser: User = _
+  var guestUser: User = _
 
   var pennsieve: Organization = _
   var loggedInOrganization: Organization = _
@@ -261,12 +262,10 @@ trait ApiSuite
   val requestTraceId: String = "1234-4567"
 
   var colleagueJwt: String = _
-
   var integrationJwt: String = _
-
   var externalJwt: String = _
-
   var adminJwt: String = _
+  var guestJwt: String = _
 
   var sandboxUserJwt: String = _
 
@@ -282,6 +281,7 @@ trait ApiSuite
   var personal: Package = _
 
   var secureContainer: SecureAPIContainer = _
+  var secureContainerGuest: SecureAPIContainer = _
   var secureDataSetManager: DatasetManager = _
   var sandboxUserContainer: SecureAPIContainer = _
 
@@ -356,6 +356,26 @@ trait ApiSuite
     true,
     None
   )
+
+  val guest = User(
+    NodeCodes.generateId(NodeCodes.userCode),
+    "guest@test.com",
+    "first",
+    Some("M"),
+    "guest",
+    Some(Degree.MS),
+    "cred",
+    "",
+    "http://test.com",
+    0,
+    false,
+    false,
+    None,
+    true,
+    None,
+    Some(CognitoId.UserPoolId(UUID.randomUUID()))
+  )
+
   val superAdminUser = User(
     NodeCodes.generateId(NodeCodes.userCode),
     "super3@external.com",
@@ -402,8 +422,11 @@ trait ApiSuite
     colleagueUser = userManager.create(colleague).await.value
     externalUser = userManager.create(other).await.value
     integrationUser = userManager.create(integrationUserDefinition).await.value
+    guestUser = userManager.create(guest).await.value
 
     secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
+    secureContainerGuest =
+      secureContainerBuilder(guestUser, loggedInOrganization)
 
     secureDataSetManager = secureContainer.datasetManager
     fileManager = secureContainer.fileManager
@@ -437,6 +460,10 @@ trait ApiSuite
       .addUser(loggedInOrganization, integrationUser, Administer)
       .await
       .value
+    organizationManager
+      .addUser(loggedInOrganization, guestUser, Guest)
+      .await
+      .value
 
     loggedInJwt = Authenticator.createUserToken(
       loggedInUser,
@@ -459,6 +486,12 @@ trait ApiSuite
     )(jwtConfig, insecureContainer.db, ec)
 
     adminJwt = Authenticator.createUserToken(superAdmin, loggedInOrganization)(
+      jwtConfig,
+      insecureContainer.db,
+      ec
+    )
+
+    guestJwt = Authenticator.createUserToken(guestUser, loggedInOrganization)(
       jwtConfig,
       insecureContainer.db,
       ec
@@ -654,6 +687,10 @@ trait ApiSuite
 
   def traceIdHeader(id: String = requestTraceId): Map[String, String] =
     Map(AuditLogger.TRACE_ID_HEADER -> id)
+
+  def contentTypeHeader(
+    contentType: String = "application/json"
+  ): Map[String, String] = Map("Content-type" -> contentType)
 
   def jwtServiceAuthorizationHeader(
     organization: Organization,

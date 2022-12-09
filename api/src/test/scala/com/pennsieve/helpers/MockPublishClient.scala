@@ -34,7 +34,8 @@ import com.pennsieve.discover.client.publish.{
 import com.pennsieve.models.PublishStatus
 import com.pennsieve.discover.client.definitions.{
   DatasetPublishStatus,
-  ReleaseRequest
+  ReleaseRequest,
+  UnpublishRequest
 }
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -168,6 +169,7 @@ class MockPublishClient(
   override def unpublish(
     organizationId: Int,
     datasetId: Int,
+    unpublishRequest: UnpublishRequest,
     headers: List[HttpHeader]
   ): EitherT[Future, Either[Throwable, HttpResponse], UnpublishResponse] = {
     EitherT.rightT[Future, Either[Throwable, HttpResponse]](

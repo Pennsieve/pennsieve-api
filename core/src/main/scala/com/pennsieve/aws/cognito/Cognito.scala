@@ -30,6 +30,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDeleteUserRequest,
   AdminDisableProviderForUserRequest,
   AdminDisableUserRequest,
+  AdminGetUserRequest,
   AdminInitiateAuthRequest,
   AdminSetUserPasswordRequest,
   AdminUpdateUserAttributesRequest,
@@ -54,10 +55,17 @@ trait CognitoClient {
     email: Email,
     suppressEmail: Boolean = false,
     verifyEmail: Boolean = true,
-    invitePath: String = "invite"
+    invitePath: String = "invite",
+    customMessage: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId]
+
+  def getCognitoId(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[String]
 
   def resendUserInvite(
     email: Email,
@@ -79,6 +87,13 @@ trait CognitoClient {
   )(implicit
     ec: ExecutionContext
   ): Future[Unit]
+
+  def hasExternalUserLink(
+    username: String,
+    providerName: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
 
   def unlinkExternalUser(
     providerName: String,
@@ -115,6 +130,13 @@ trait CognitoClient {
     ec: ExecutionContext
   ): Future[Boolean]
 
+  def updateUserAttributes(
+    username: String,
+    attributes: Map[String, String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
+
   def authenticateUser(
     username: String,
     password: String
@@ -144,6 +166,11 @@ object Cognito {
 
   def apply(config: Config): Cognito =
     Cognito(CognitoConfig(config))
+
+  def generatePassword(): String =
+    UUID.randomUUID().toString() + scala.util.Random
+      .shuffle(('A' to 'Z').toList)
+      .head
 }
 
 class Cognito(
@@ -163,17 +190,16 @@ class Cognito(
     email: Email,
     suppressEmail: Boolean = false,
     verifyEmail: Boolean = true,
-    invitePath: String = "invite"
+    invitePath: String = "invite",
+    customMessage: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
-    val randomUppercaseChar =
-      scala.util.Random.shuffle(('A' to 'Z').toList).head
     val builder = AdminCreateUserRequest
       .builder()
       .userPoolId(cognitoConfig.userPool.id)
       .username(email.address)
-      .temporaryPassword(UUID.randomUUID().toString() + randomUppercaseChar)
+      .temporaryPassword(Cognito.generatePassword())
       .userAttributes(
         List(
           AttributeType.builder().name("email").value(email.address).build(),
@@ -189,6 +215,9 @@ class Cognito(
             .build()
         ).asJava
       )
+      .clientMetadata(
+        Map("customMessage" -> customMessage.getOrElse("")).asJava
+      )
       .desiredDeliveryMediums(List(DeliveryMediumType.EMAIL).asJava)
 
     val request =
@@ -197,6 +226,25 @@ class Cognito(
       else builder.build()
 
     adminCreateUser(request).map(CognitoId.UserPoolId(_))
+  }
+
+  def getCognitoId(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[String] = {
+    val request = AdminGetUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .build()
+
+    for {
+      result <- client
+        .adminGetUser(request)
+        .toScala
+        .map(response => response.username())
+    } yield result
   }
 
   /**
@@ -295,6 +343,32 @@ class Cognito(
         Future.successful(())
 
     } yield cognitoId
+  }
+
+  def hasExternalUserLink(
+    username: String,
+    providerName: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    // lookup user
+    val request = AdminGetUserRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .build()
+
+    for {
+      attributes <- client
+        .adminGetUser(request)
+        .toScala
+        .map(response => response.userAttributes())
+
+      result = attributes.asScala.toList
+        .map(_.name().equals("identities"))
+        .foldLeft(false)(_ || _)
+
+    } yield result
   }
 
   /**
@@ -438,6 +512,43 @@ class Cognito(
           .value(attributeValue)
           .build()
       )
+      .build()
+
+    for {
+      cognitoResponse <- client
+        .adminUpdateUserAttributes(request)
+        .toScala
+
+      response <- cognitoResponse.sdkHttpResponse().statusCode() match {
+        case 200 => Future.successful(true)
+        case 400 => Future.failed(Error(extractErrorResponse(cognitoResponse)))
+      }
+    } yield response
+  }
+
+  def updateUserAttributes(
+    username: String,
+    attributes: Map[String, String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    val userAttributes = attributes
+      .map {
+        case (name, value) =>
+          AttributeType
+            .builder()
+            .name(name)
+            .value(value)
+            .build()
+      }
+      .toSeq
+      .asJava
+
+    val request = AdminUpdateUserAttributesRequest
+      .builder()
+      .userPoolId(cognitoConfig.userPool.id)
+      .username(username)
+      .userAttributes(userAttributes)
       .build()
 
     for {
