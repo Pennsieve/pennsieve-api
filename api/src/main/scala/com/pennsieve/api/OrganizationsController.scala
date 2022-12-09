@@ -1281,6 +1281,26 @@ class OrganizationsController(
           .getByNodeIds(membersToAdd.ids.toSet)
           .coreErrorToActionResult()
 
+        orgUsers <- secureContainer.organizationManager
+          .getOrganizationUsers(organization)
+          .coreErrorToActionResult()
+
+        userPermission = orgUsers.toMap
+
+        allUsersAreNotGuests = users
+          .map(
+            u =>
+              userPermission.get(u) match {
+                case Some(ou) => ou.permission != DBPermission.Guest
+                case None => false
+              }
+          )
+          .fold(true)((previous, current) => previous && current)
+
+        _ <- checkOrErrorT(allUsersAreNotGuests)(
+          InvalidAction("Guest users may not be added to Teams."): CoreError
+        ).coreErrorToActionResult()
+
         results <- users
           .traverse { user =>
             secureContainer.teamManager

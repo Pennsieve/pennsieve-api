@@ -31,7 +31,8 @@ object License extends Enum[License] with CirceEnum[License] {
   case object `Creative Commons Zero 1.0 Universal` extends License
   case object `Creative Commons Attribution` extends License
   case object `Creative Commons Attribution - ShareAlike` extends License
-  case object `Creative Commons Attribution - NonCommercial-ShareAlike` extends License
+  case object `Creative Commons Attribution - NonCommercial-ShareAlike`
+      extends License
   case object `GNU General Public License v3.0` extends License
   case object `GNU Lesser General Public License` extends License
   case object `MIT` extends License
