@@ -65,13 +65,21 @@ class MockCognito() extends CognitoClient {
     email: Email,
     suppressEmail: Boolean = false,
     verifyEmail: Boolean = true,
-    invite_path: String = "invite"
+    invite_path: String = "invite",
+    customMessage: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
     sentInvites.append(email)
     Future.successful(CognitoId.UserPoolId.randomId())
   }
+
+  def getCognitoId(
+    username: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[String] =
+    Future.successful(CognitoId.UserPoolId.randomId().toString)
 
   def resendUserInvite(
     email: Email,
@@ -102,6 +110,13 @@ class MockCognito() extends CognitoClient {
     sentDeletes.append(token)
     Future.successful(())
   }
+
+  def hasExternalUserLink(
+    username: String,
+    providerName: String
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = Future.successful(true)
 
   def unlinkExternalUser(
     providerName: String,
@@ -150,6 +165,19 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Boolean] = {
     updatedUserAttributes.append((username, (attributeName, attributeValue)))
+    Future.successful(true)
+  }
+
+  def updateUserAttributes(
+    username: String,
+    attributes: Map[String, String]
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
+    attributes.foreach {
+      case (name, value) =>
+        updatedUserAttributes.append((username, (name, value)))
+    }
     Future.successful(true)
   }
 

@@ -47,14 +47,16 @@ class MessageTemplates(
   def addedToOrganization(
     emailAddress: String,
     administrator: String,
-    org: Organization
+    org: Organization,
+    customMessage: String
   ): String =
     GeneratedMessageTemplates.addedToOrganization(
       host = host,
       emailAddress = emailAddress,
       organizationName = org.name,
       organizationNodeId = org.nodeId,
-      administrator = administrator
+      administrator = administrator,
+      customMessage = customMessage
     )
 
   def addedToTeam(
@@ -176,6 +178,7 @@ class MessageTemplates(
     dataset: Dataset
   ): String =
     GeneratedMessageTemplates.datasetRevision(
+      host = host,
       emailAddress = emailAddress,
       discoverHost = discoverHost,
       discoverDatasetId = discoverDatasetId.getOrElse(0).toString,
@@ -254,5 +257,54 @@ class MessageTemplates(
       date = date,
       managerName = manager.fullName,
       emailAddress = emailAddress
+    )
+
+  def emailAddressChanged(
+    previousEmailAddress: String,
+    currentEmailAddress: String,
+    transactionNumber: String,
+    emailAddress: String
+  ): String =
+    GeneratedMessageTemplates.emailAddressChanged(
+      previousEmailAddress = previousEmailAddress,
+      currentEmailAddress = currentEmailAddress,
+      transactionNumber = transactionNumber,
+      emailAddress = emailAddress
+    )
+
+  def inviteExternalExistingUserToDataset(
+    emailAddress: String,
+    invitingPerson: String,
+    invitingEmailAddress: String,
+    workspaceName: String,
+    datasetName: String,
+    customMessage: String
+  ): String =
+    GeneratedMessageTemplates.inviteExternalExistingUserToDataset(
+      emailAddress = emailAddress,
+      invitingPerson = invitingPerson,
+      invitingEmailAddress = invitingEmailAddress,
+      workspaceName = workspaceName,
+      datasetName = datasetName,
+      customMessage = customMessage
+    )
+
+  def inviteExternalNewUserToDataset(
+    emailAddress: String,
+    invitingPerson: String,
+    invitingEmailAddress: String,
+    workspaceName: String,
+    datasetName: String,
+    customMessage: String,
+    setupAccountLink: String
+  ): String =
+    GeneratedMessageTemplates.inviteExternalNewUserToDataset(
+      emailAddress = emailAddress,
+      invitingPerson = invitingPerson,
+      invitingEmailAddress = invitingEmailAddress,
+      workspaceName = workspaceName,
+      datasetName = datasetName,
+      customMessage = customMessage,
+      setupAccountLink = setupAccountLink
     )
 }

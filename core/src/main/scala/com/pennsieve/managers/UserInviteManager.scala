@@ -58,7 +58,8 @@ class UserInviteManager(db: Database) {
     firstName: String,
     lastName: String,
     permission: DBPermission,
-    ttl: Duration
+    ttl: Duration,
+    customMessage: Option[String] = None
   )(implicit
     userManager: UserManager,
     cognitoClient: CognitoClient,
@@ -107,7 +108,10 @@ class UserInviteManager(db: Database) {
                 case Some(id) => EitherT.rightT[Future, CoreError](id)
                 case None =>
                   cognitoClient
-                    .inviteUser(Email(email.trim.toLowerCase))
+                    .inviteUser(
+                      Email(email.trim.toLowerCase),
+                      customMessage = customMessage
+                    )
                     .toEitherT
               }
 

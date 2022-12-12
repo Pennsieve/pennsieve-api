@@ -151,6 +151,9 @@ class DatasetManager(
   val datasetIgnoreFiles: DatasetIgnoreFilesMapper =
     new DatasetIgnoreFilesMapper(organization)
 
+  val organizationManager: OrganizationManager =
+    new OrganizationManager(db)
+
   def isLocked(
     dataset: Dataset
   )(implicit
@@ -374,7 +377,17 @@ class DatasetManager(
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Seq[DatasetAndStatus]] =
-    db.run(datasetsMapper.find(user, Some(withRole), datasetIds)).toEitherT
+    for {
+      userPermission <- organizationManager.getUserPermission(
+        organization,
+        user
+      )
+      result <- db
+        .run(
+          datasetsMapper.find(user, userPermission, Some(withRole), datasetIds)
+        )
+        .toEitherT
+    } yield result
 
   def getStatusLog(
     dataset: Dataset,
@@ -1443,12 +1456,13 @@ class DatasetManager(
     publicationTypes: Option[Set[PublicationType]] = None,
     canPublish: Option[Boolean] = None,
     restrictToRole: Boolean = false,
-    collectionId: Option[Int] = None
+    collectionId: Option[Int] = None,
+    isGuest: Boolean = false
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Seq[DatasetAndStatus], Long)] = {
 
-    val query = datasetsMapper.maxRoles(actor.id).flatMap {
+    val query = datasetsMapper.maxRoles(actor.id, isGuest).flatMap {
       roleMap: Map[Int, Option[Role]] =>
         {
           val datasetIds: List[Int] = roleMap

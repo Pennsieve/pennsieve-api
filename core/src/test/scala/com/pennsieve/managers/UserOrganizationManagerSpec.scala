@@ -271,12 +271,12 @@ class UserOrganizationManagerSpec
     val newTeam2 = createTeam("newTeam2", testOrganization)
 
     teamManager()
-      .addUser(newTeam1, user, DBPermission.Collaborate)
+      .addUser(newTeam1, user, DBPermission.Guest)
       .await
       .value
 
     teamManager()
-      .addUser(newTeam2, user, DBPermission.Collaborate)
+      .addUser(newTeam2, user, DBPermission.Guest)
       .await
       .value
 

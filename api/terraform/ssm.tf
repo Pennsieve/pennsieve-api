@@ -39,6 +39,12 @@ resource "aws_ssm_parameter" "pennsieve_api_host" {
   value = "https://${data.terraform_remote_state.gateway.outputs.private_fqdn}"
 }
 
+resource "aws_ssm_parameter" "pennsieve_app_host" {
+  name  = "/${var.environment_name}/${var.service_name}/pennsieve-app-host"
+  type  = "String"
+  value = "https://app.${data.terraform_remote_state.account.outputs.domain_name}"
+}
+
 # THIS SHOULD BE POINTING TO THE HEROKU REDIRECT
 resource "aws_ssm_parameter" "pennsieve_discover_app" {
   name  = "/${var.environment_name}/${var.service_name}/pennsieve-discover-app"

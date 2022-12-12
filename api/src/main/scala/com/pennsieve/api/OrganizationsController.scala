@@ -94,7 +94,8 @@ case class ExpandedOrganizationResponse(
   administrators: Set[UserDTO],
   isAdmin: Boolean,
   owners: Set[UserDTO],
-  isOwner: Boolean
+  isOwner: Boolean,
+  isGuest: Boolean
 )
 
 case class ExpandedTeamResponse(
@@ -307,6 +308,9 @@ class OrganizationsController(
     secureContainer: SecureAPIContainer
   ): EitherT[Future, ActionResult, ExpandedOrganizationResponse] =
     for {
+      userPermission <- secureContainer.organizationManager
+        .getUserPermission(organization, user)
+        .orError()
       ownersAndAdministrators <- secureContainer.organizationManager
         .getOwnersAndAdministrators(organization)
         .coreErrorToActionResult()
@@ -332,7 +336,9 @@ class OrganizationsController(
         administrators = sanitizedAdministrators.toSet,
         isAdmin = administrators.exists(_.id == user.id),
         owners = sanitizedOwners.toSet,
-        isOwner = owners.exists(_.id == user.id)
+        isOwner = owners.exists(_.id == user.id),
+        isGuest = userPermission
+          .getOrElse(DBPermission.Guest) == DBPermission.Guest
       )
 
   get("/", operation(getOrganizationsOperation)) {
@@ -342,10 +348,22 @@ class OrganizationsController(
           secureContainer <- getSecureContainer()
           traceId <- getTraceId(request)
           user = secureContainer.user
+          organization = secureContainer.organization
 
-          includeAdmins <- param[Boolean]("includeAdmins")
+          userPermission <- secureContainer.organizationManager
+            .getUserPermission(organization, user)
+            .coreErrorToActionResult()
+
+          // is the user a guest? a guest should not be able to see admins
+          guest = userPermission.getOrElse(DBPermission.Guest) == DBPermission.Guest
+
+          // by default we will include the list of admins
+          requestToIncludeAdmins <- param[Boolean]("includeAdmins")
             .orElse(Right(true))
             .toEitherT[Future]
+
+          // in order to see the admins, the request must not be from guest
+          includeAdmins = !guest && requestToIncludeAdmins
 
           //note insecure for performance reasons
           //this is OK because we fetch the organization securely, so we should also be allowed to access the organization details
@@ -398,6 +416,10 @@ class OrganizationsController(
             .coreErrorToActionResult()
           (owners, administrators) = ownersAndAdministrators
 
+          userPermission <- secureContainer.organizationManager
+            .getUserPermission(organization, user)
+            .coreErrorToActionResult()
+
           storageManager = StorageManager.create(secureContainer, organization)
           administrators <- sanitizeUsers(administrators.toList)(storageManager)
           owners <- sanitizeUsers(owners.toList)(storageManager)
@@ -426,7 +448,9 @@ class OrganizationsController(
             administrators = administrators.toSet,
             isAdmin = administrators.exists(_.id == user.nodeId),
             owners = owners.toSet,
-            isOwner = owners.exists(_.id == user.nodeId)
+            isOwner = owners.exists(_.id == user.nodeId),
+            isGuest = userPermission
+              .getOrElse(DBPermission.Guest) == DBPermission.Guest
           )
 
       val is = result.value.map(OkResult)
@@ -463,6 +487,10 @@ class OrganizationsController(
           .getOwnersAndAdministrators(updatedOrganization)
           .coreErrorToActionResult()
         (owners, administrators) = ownerAdmins
+
+        userPermission <- secureContainer.organizationManager
+          .getUserPermission(updatedOrganization, user)
+          .coreErrorToActionResult()
 
         ownerDTOs = owners.map(
           Builders.userDTO(
@@ -511,7 +539,9 @@ class OrganizationsController(
           administrators = administratorDTOs.toSet,
           isAdmin = administratorDTOs.exists(_.id == user.nodeId),
           owners = ownerDTOs.toSet,
-          isOwner = ownerDTOs.exists(_.id == user.nodeId)
+          isOwner = ownerDTOs.exists(_.id == user.nodeId),
+          isGuest = userPermission
+            .getOrElse(DBPermission.Guest) == DBPermission.Guest
         )
 
       val is = result.value.map(OkResult)
@@ -1250,6 +1280,26 @@ class OrganizationsController(
         users <- insecureContainer.userManager
           .getByNodeIds(membersToAdd.ids.toSet)
           .coreErrorToActionResult()
+
+        orgUsers <- secureContainer.organizationManager
+          .getOrganizationUsers(organization)
+          .coreErrorToActionResult()
+
+        userPermission = orgUsers.toMap
+
+        allUsersAreNotGuests = users
+          .map(
+            u =>
+              userPermission.get(u) match {
+                case Some(ou) => ou.permission != DBPermission.Guest
+                case None => false
+              }
+          )
+          .fold(true)((previous, current) => previous && current)
+
+        _ <- checkOrErrorT(allUsersAreNotGuests)(
+          InvalidAction("Guest users may not be added to Teams."): CoreError
+        ).coreErrorToActionResult()
 
         results <- users
           .traverse { user =>

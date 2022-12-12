@@ -20,6 +20,7 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.email.Email
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.domain.StorageAggregation.susers
@@ -57,7 +58,8 @@ case class UpdateUserRequest(
   organization: Option[String],
   url: Option[String],
   email: Option[String],
-  color: Option[String]
+  color: Option[String],
+  userRequestedChange: Option[Boolean] = None
 )
 
 case class UserMergeRequest(
@@ -335,13 +337,22 @@ class UserController(
         secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         loggedInUser = secureContainer.user
+        oldEmail = loggedInUser.email
+        newEmail = userToSave.email.getOrElse(loggedInUser.email)
+        userRequestedChange = userToSave.userRequestedChange.getOrElse(false)
+        transactionId = loggedInUser.cognitoId.get.toString
 
-        // first update Pennsieve User
-        updatedEmail = userToSave.email.getOrElse(loggedInUser.email)
+        // make sure old email and new email are different
+        _ <- {
+          FutureEitherHelpers.assert(!oldEmail.equals(newEmail))(
+            BadRequest("old and new email addresses are the same")
+          )
+        }
 
+        // update the user in Pennsieve database
         storageServiceClient = secureContainer.storageManager
         newUser <- insecureContainer.userManager
-          .updateEmail(loggedInUser, updatedEmail)
+          .updateEmail(loggedInUser, newEmail)
           .orError()
         storageMap <- storageServiceClient
           .getStorage(susers, List(newUser.id))
@@ -356,15 +367,57 @@ class UserController(
           )
           .orError()
 
-        // then update Cognito User
+        // update the Cognito User
         _ <- cognitoClient
-          .updateUserAttribute(
+          .updateUserAttributes(
             loggedInUser.cognitoId.get.toString,
-            "email",
-            newUser.email
+            Map("email" -> newUser.email, "email_verified" -> "true")
           )
           .toEitherT
           .coreErrorToActionResult()
+
+        // send 'email changed' messages to old and new email addresses
+        messageToOld = insecureContainer.messageTemplates
+          .emailAddressChanged(
+            previousEmailAddress = oldEmail,
+            currentEmailAddress = newEmail,
+            transactionNumber = transactionId,
+            emailAddress = oldEmail
+          )
+
+        messageToNew = insecureContainer.messageTemplates
+          .emailAddressChanged(
+            previousEmailAddress = oldEmail,
+            currentEmailAddress = newEmail,
+            transactionNumber = transactionId,
+            emailAddress = newEmail
+          )
+
+        _ = userRequestedChange match {
+          case true =>
+            insecureContainer.emailer
+              .sendEmail(
+                to = Email(oldEmail),
+                from = Settings.support_email,
+                message = messageToOld,
+                subject = s"Your email address has changed"
+              )
+              .leftMap(error => InternalServerError(error.getMessage))
+              .toEitherT[Future]
+
+            insecureContainer.emailer
+              .sendEmail(
+                to = Email(newEmail),
+                from = Settings.support_email,
+                message = messageToNew,
+                subject = s"Your email address has changed"
+              )
+              .leftMap(error => InternalServerError(error.getMessage))
+              .toEitherT[Future]
+
+          case false =>
+            Future.successful(()).toEitherT.coreErrorToActionResult()
+        }
 
         _ <- auditLogger
           .message()
@@ -559,6 +612,26 @@ class UserController(
     }
   }
 
+  def unlinkOrcidId(email: String, orcidId: String): Future[Unit] =
+    for {
+      _ <- cognitoClient
+        .deleteUserAttributes(
+          email,
+          List(OrcidIdentityProvider.customAttributeName)
+        )
+
+      _ <- cognitoClient
+        .unlinkExternalUser(
+          OrcidIdentityProvider.name,
+          OrcidIdentityProvider.attributeNameForUnlink,
+          orcidId
+        )
+
+      _ <- cognitoClient
+        .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
+
+    } yield ()
+
   val deleteORCIDOperation = (apiOperation[Unit]("deleteORCID")
     summary "delete orcid for the current user")
 
@@ -576,32 +649,23 @@ class UserController(
 
         orcidId = loggedInUser.orcidAuthorization.get.orcid
 
-        //1.) DELETING user attr custom:orcid in cognito
-        _ <- cognitoClient
-          .deleteUserAttributes(
-            loggedInUser.email,
-            List(OrcidIdentityProvider.customAttributeName)
-          )
+
+        hasExternalUserLink <- cognitoClient
+          .hasExternalUserLink(loggedInUser.email, OrcidIdentityProvider.name)
           .toEitherT
           .coreErrorToActionResult()
 
-          //2.) UNLINKING the external user
-          //NOTE: here we want to check whether the LINK and the EXTERNAL USER exist
-        _ <- cognitoClient
-          .unlinkExternalUser(
-            OrcidIdentityProvider.name,
-            OrcidIdentityProvider.attributeNameForUnlink,
-            orcidId
-          )
-          .toEitherT
-          .coreErrorToActionResult()
+        _ <- hasExternalUserLink match {
+          case true =>
+            unlinkOrcidId(loggedInUser.email, orcidId).toEitherT
+              .coreErrorToActionResult()
+          case false =>
+            Future
+              .successful(())
+              .toEitherT
+              .coreErrorToActionResult()
+        }
 
-          //3.) DELETING the external user in cognito
-        _ <- cognitoClient
-          .deleteUser(OrcidIdentityProvider.cognitoUsername(orcidId))
-          .toEitherT
-          .coreErrorToActionResult()
-        //4.) UPDATING user in Pennsieve DB (removing orcid auth)
         updatedUser = loggedInUser.copy(orcidAuthorization = None)
         _ <- secureContainer.userManager.update(updatedUser).orError()
       } yield ()

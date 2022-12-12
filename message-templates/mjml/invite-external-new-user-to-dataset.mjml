@@ -1,5 +1,7 @@
 <mjml>
   <mj-head>
+
+
     <mj-attributes>
       <mj-text padding="0" />
       <mj-button background-color="#5039F7" padding="12px 16px" color="#ffffff" font-size="14px" />
@@ -11,32 +13,31 @@
     </mj-attributes>
     <mj-style inline="inline">
       h1 {
-        font-size: 1.875em;
-        font-weight: 700;
-        line-height: 1.2;
-        margin: 1rem 0;
+      font-size: 1.875em;
+      font-weight: 700;
+      line-height: 1.2;
+      margin: 1rem 0;
       }
       h2 {
-        font-size: 1.25em;
-        margin: 0;
+      font-size: 1.25em;
+      margin: 0;
       }
       h3 {
-        font-size: .875em;
-        font-weight: bold;
-        margin: 0;
+      font-size: .875em;
+      font-weight: bold;
+      margin: 0;
       }
       p {
-        font-size: .875em;
-        margin: 0;
-        line-height: 1.5rem;
+      font-size: .875em;
+      margin: 0;
+      line-height: 1.5rem;
       }
       .divider {
-        background: #2760ff;
-        height: 4px;
-        width: 33px;
-      }
+      background: #2760ff;
+      height: 4px;
+      width: 33px;
       .body {
-        overflow: hidden;
+      overflow: hidden;
       }
     </mj-style>
   </mj-head>
@@ -55,16 +56,24 @@
     <mj-section mj-class="full-section" padding-top="0" padding-bottom="20px">
       <mj-column background-color="#5039F7" padding="18px 20px 35px 20px">
         <mj-text color="#ffffff" padding="0">
-          <h1>Welcome to Pennsieve</h1>
-          <h2>Complete your registration to get started</h2>
+          <h1>Invitation to Collaborate</h1>
+          <h2>You have been invited to collaborate on a dataset</h2>
         </mj-text>
       </mj-column>
     </mj-section>
 
     <mj-section mj-class="copy-section">
       <mj-column>
-        <mj-text mj-class="kicker">
-          Manage, analyze, visualize and collaborate on scientific data — all in one powerful, cloud-based platform.
+        <mj-text padding="16px 0">
+	  <p>${invitingPerson} (${invitingEmailAddress}) is inviting you to collaborate on the '${datasetName}' dataset on the Pennsieve Data Management platform.</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0">
+	  <p>${customMessage}</p>
         </mj-text>
       </mj-column>
     </mj-section>
@@ -72,7 +81,8 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
-	        <p>${customMessage}</p>
+	  	  <p>To setup your Pennsieve account, click on the URL link below (or copy and paste the URL into your web browser). From there you will be asked to complete your profile and set your account password.</p><br>
+    <p>${setupAccountLink}</p>
         </mj-text>
       </mj-column>
     </mj-section>
@@ -80,37 +90,11 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
-          <p>To finish creating your account, confirm your email and complete your registration within the next 30 days:</p>
+	  <p>You have been granted guest access to the ${workspaceName} workspace. After you login to your Pennsieve account, you may access this dataset by selecting '${datasetName}' from the list of datasets.</p>
         </mj-text>
       </mj-column>
     </mj-section>
-
-    <mj-section mj-class="copy-section">
-      <mj-column padding="16px 0">
-        <mj-text height="40px">
-          <!--[if mso]>
-            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://app.${domain}/invitation/accept/${username}/${code} style="height:40px;v-text-anchor:middle;width:200px;" arcsize="8%" stroke="f" fillcolor="#5039F7">
-              <w:anchorlock/>
-              <center>
-            <![endif]-->
-                <a href="${setup_url}/${username}/${code}"
-          style="background-color:#5039F7;border-radius:3px;color:#ffffff;display:inline-block;font-family:sans-serif;font-size:14px;font-weight:500;line-height:40px;text-align:center;text-decoration:none;width:200px;-webkit-text-size-adjust:none;">Complete Registration</a>
-            <!--[if mso]>
-              </center>
-            </v:roundrect>
-          <![endif]-->
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <mj-section mj-class="copy-section">
-      <mj-column>
-        <mj-text padding="16px 0">
-          <p>Need help? Contact us at <a href="mailto:support@${domain}">support@${domain}</a> for assistance.</p>
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
+      
     <mj-include path="./footer.mjml" />
 
   </mj-body>
