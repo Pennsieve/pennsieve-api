@@ -178,6 +178,7 @@ class MessageTemplates(
     dataset: Dataset
   ): String =
     GeneratedMessageTemplates.datasetRevision(
+      host = host,
       emailAddress = emailAddress,
       discoverHost = discoverHost,
       discoverDatasetId = discoverDatasetId.getOrElse(0).toString,
