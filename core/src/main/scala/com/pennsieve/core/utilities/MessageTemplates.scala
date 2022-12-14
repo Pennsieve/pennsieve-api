@@ -173,12 +173,17 @@ class MessageTemplates(
 
   def datasetRevisionNotification(
     emailAddress: String,
-    discoverDatasetId: Option[Int]
+    discoverDatasetId: Option[Int],
+    org: Organization,
+    dataset: Dataset
   ): String =
     GeneratedMessageTemplates.datasetRevision(
+      host = host,
       emailAddress = emailAddress,
       discoverHost = discoverHost,
-      discoverDatasetId = discoverDatasetId.getOrElse(0).toString
+      discoverDatasetId = discoverDatasetId.getOrElse(0).toString,
+      organizationNodeId = org.nodeId,
+      datasetNodeId = dataset.nodeId
     )
 
   def embargoedDatasetReleased(

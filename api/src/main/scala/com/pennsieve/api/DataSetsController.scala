@@ -3310,6 +3310,7 @@ class DataSetsController(
 
                 _ <- DataSetPublishingHelper.emailContributorsRevisionAccepted(
                   insecureContainer,
+                  secureContainer.organization,
                   contributors,
                   validated.dataset,
                   validated.owner,
