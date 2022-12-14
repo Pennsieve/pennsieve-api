@@ -68,6 +68,8 @@ data "aws_iam_policy_document" "iam_policy_document" {
     resources = [
       data.terraform_remote_state.platform_infrastructure.outputs.uploads_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.uploads_bucket_arn}/*",
+      data.terraform_remote_state.upload_service_2.outputs.uploads_bucket_arn,
+      "${data.terraform_remote_state.upload_service_2.outputs.uploads_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.storage_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.storage_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.sparc_storage_bucket_arn,
