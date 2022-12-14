@@ -649,7 +649,6 @@ class UserController(
 
         orcidId = loggedInUser.orcidAuthorization.get.orcid
 
-
         hasExternalUserLink <- cognitoClient
           .hasExternalUserLink(loggedInUser.email, OrcidIdentityProvider.name)
           .toEitherT

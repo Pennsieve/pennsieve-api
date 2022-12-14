@@ -355,6 +355,7 @@ case object DataSetPublishingHelper extends LazyLogging {
 
   def emailContributorsRevisionAccepted(
     insecureContainer: InsecureAPIContainer,
+    organization: Organization,
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     owner: User,
@@ -366,7 +367,12 @@ case object DataSetPublishingHelper extends LazyLogging {
       .traverse { contributorEmail =>
         {
           val message = insecureContainer.messageTemplates
-            .datasetRevisionNotification(contributorEmail, discoverDatasetId, organizationNodeId, datasetNodeId)
+            .datasetRevisionNotification(
+              contributorEmail,
+              discoverDatasetId,
+              organization,
+              dataset
+            )
 
           val subject =
             "Dataset Revision"
