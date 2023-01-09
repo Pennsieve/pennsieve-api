@@ -857,7 +857,7 @@ class OrganizationsController(
         _ <- assertNotDemoOrganization(secureContainer)
 
         organization <- secureContainer.organizationManager
-          .getByNodeId(organizationId)
+          .getByNodeId(organizationId, DBPermission.Guest)
           .coreErrorToActionResult()
 
         members <- secureContainer.organizationManager
@@ -1447,7 +1447,7 @@ class OrganizationsController(
         organizationId <- paramT[String]("organizationId")
 
         organization <- secureContainer.organizationManager
-          .getByNodeId(organizationId, DBPermission.Read)
+          .getByNodeId(organizationId, DBPermission.Guest)
           .coreErrorToActionResult()
 
         status <- new DatasetStatusManager(insecureContainer.db, organization).getAllWithUsage
