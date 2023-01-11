@@ -408,7 +408,7 @@ class OrganizationsController(
           organizationId <- param[String]("id").toEitherT[Future]
 
           organization <- secureContainer.organizationManager
-            .getByNodeId(organizationId)
+            .getByNodeId(organizationId, withPermission = DBPermission.Guest)
             .coreErrorToActionResult()
 
           ownersAndAdministrators <- secureContainer.organizationManager
