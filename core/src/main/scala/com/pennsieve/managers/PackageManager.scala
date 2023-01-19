@@ -609,7 +609,16 @@ class PackageManager(datasetManager: DatasetManager) {
           packagesMapper
             .get(pkg.id)
             .map(_.state)
-            .update(PackageState.DELETING)
+            .update(PackageState.DELETED)
+        )
+        .toEitherT
+
+      _ <- db
+        .run(
+          packagesMapper
+            .get(pkg.id)
+            .map(_.name)
+            .update(pkg.name + "__DELETED__" + pkg.nodeId)
         )
         .toEitherT
 
