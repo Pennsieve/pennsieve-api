@@ -641,7 +641,7 @@ class PackageManager(datasetManager: DatasetManager) {
         }
       }
     } yield
-      DeletePackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId): BackgroundJob
+      // DeletePackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId): BackgroundJob
 
   }
 
