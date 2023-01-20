@@ -64,6 +64,14 @@ case class DeletePackageJob(
   id: String = UUID.randomUUID().toString
 ) extends CatalogDeleteJob
 
+case class UpdateDeletedPackageJob(
+  packageId: Int,
+  organizationId: Int,
+  userId: String,
+  traceId: TraceId,
+  id: String = UUID.randomUUID().toString
+) extends CatalogDeleteJob
+
 case class DeleteDatasetJob(
   datasetId: Int,
   organizationId: Int,

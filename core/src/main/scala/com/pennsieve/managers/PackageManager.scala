@@ -31,7 +31,7 @@ import com.pennsieve.domain._
 import com.pennsieve.domain.StorageAggregation.{
   spackages => PackageStorageAggregationKey
 }
-import com.pennsieve.messages.{ BackgroundJob, DeletePackageJob }
+import com.pennsieve.messages.{ BackgroundJob, DeletePackageJob, UpdateDeletedPackageJob }
 import com.pennsieve.models.FileObjectType.Source
 import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
@@ -641,7 +641,7 @@ class PackageManager(datasetManager: DatasetManager) {
         }
       }
     } yield
-      DeletePackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId): BackgroundJob
+      UpdateDeletedPackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId): BackgroundJob
 
   }
 
