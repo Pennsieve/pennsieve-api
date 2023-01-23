@@ -728,8 +728,12 @@ class DeleteJob(
   ): Future[DeleteResult] =
     job match {
       case DeletePackageJob(packageId, _, _, traceId, _) =>
-        db.run(packageTable.filter(_.id === packageId).delete).map {
+        db.run(packageTable.filter(_.id === packageId).map(_.state).update(PackageState.DELETED)).map {
           case 1 =>
+            val pkgName = for { p <- packageTable if p.id === packageId } yield p.name
+            val pkgNodeID = for { p <- packageTable if p.id === packageId } yield p.nodeId
+            val dbAction = packageTable.filter(_.id === packageId).map(_.name).update(pkgName.toString() + "__DELETED__" + pkgNodeID.toString())
+            db.run(dbAction)
             PackageDeleteResult(
               success = true,
               message =
