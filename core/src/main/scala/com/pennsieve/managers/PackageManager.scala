@@ -739,6 +739,7 @@ class PackageManager(datasetManager: DatasetManager) {
        """.opt(filterFiles)(q => q) ++ sql"""
          WHERE p.id >= ${startAtId.getOrElse(0)}
          AND p.dataset_id = ${dataset.id}
+         AND p.state !=  "#${PackageState.DELETED}"
        """.opt(stringFilterTypes)(t => sql"AND p.type = any($t)") ++ sql"""
          ORDER BY p.id
          LIMIT ${pageSize + 1}
