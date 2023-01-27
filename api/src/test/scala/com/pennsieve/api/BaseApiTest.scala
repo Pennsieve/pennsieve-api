@@ -132,6 +132,10 @@ trait ApiSuite
         "sqs.queue",
         ConfigValueFactory.fromAnyRef(s"http://localhost/queue/test")
       )
+      .withValue(
+        "sqs.queue_v2",
+        ConfigValueFactory.fromAnyRef(s"http://localhost/queue/test_v2")
+      )
       .withValue("sns.topic", ConfigValueFactory.fromAnyRef(s"events.sns"))
       .withValue(
         "sqs.notifications_queue",
