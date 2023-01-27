@@ -81,7 +81,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 trait ApiSQSContainer { self: Container =>
   val sqs_queue: String = config.as[String]("sqs.queue")
-  val sqs_queue_v2: String = config.as[String]("sqs.queue_v2")
+  val sqs_queue_v2: String = config.as[String]("sqs.queue_v2").orElse("").toString()
 }
 
 trait ApiSNSContainer { self: Container =>
