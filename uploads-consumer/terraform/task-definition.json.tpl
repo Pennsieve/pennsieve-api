@@ -33,6 +33,7 @@
       { "name": "JWT_SECRET_KEY", "valueFrom": "${jwt_secret_key_arn}" },
       { "name": "NOTIFICATIONS_SQS_QUEUE", "valueFrom": "${notifications_sqs_queue_arn}" },
       { "name": "SQS_QUEUE", "valueFrom": "${sqs_queue_arn}" },
+      { "name": "SQS_QUEUE_V2", "valueFrom": "${sqs_queue_arn}" },
       { "name": "STORAGE_BUCKET", "valueFrom": "${storage_bucket_arn}" },
       { "name": "UPLOADS_BUCKET", "valueFrom": "${uploads_bucket_arn}" }
     ]
