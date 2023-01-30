@@ -612,6 +612,14 @@ class PackageManager(datasetManager: DatasetManager) {
             .update(PackageState.DELETING)
         )
         .toEitherT
+      _ <- db
+        .run(
+          packagesMapper
+            .get(pkg.id)
+            .map(_.name)
+            .update("__DELETED__" + pkg.nodeId + "_"+ pkg.name )
+        )
+        .toEitherT
 
       amount <- storageManager
         .getStorage(PackageStorageAggregationKey, List(pkg.id))

@@ -728,7 +728,7 @@ class DeleteJob(
   ): Future[DeleteResult] =
     job match {
       case DeletePackageJob(packageId, _, _, traceId, _) =>
-        db.run(packageTable.filter(_.id === packageId).delete).map {
+        db.run(packageTable.filter(_.id === packageId).map(_.state).update(PackageState.DELETED)).map {
           case 1 =>
             PackageDeleteResult(
               success = true,
