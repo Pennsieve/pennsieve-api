@@ -293,6 +293,11 @@ resource "aws_ssm_parameter" "sqs_queue" {
   type  = "String"
   value = data.terraform_remote_state.platform_infrastructure.outputs.jobs_queue_id
 }
+resource "aws_ssm_parameter" "sqs_queue_v2" {
+  name  = "/${var.environment_name}/${var.service_name}/sqs-queue-v2"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.jobs_queue_v2_id
+}
 
 # $env-etl-uploads-queue
 resource "aws_ssm_parameter" "uploads_queue" {
