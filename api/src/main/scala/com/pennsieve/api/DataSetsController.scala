@@ -1258,10 +1258,6 @@ class DataSetsController(
           .send(insecureContainer.sqs_queue, deleteMessage.asJson.noSpaces)
           .coreErrorToActionResult()
 
-        _ <- sqsClient
-          .send(insecureContainer.sqs_queue_v2, deleteMessage.asJson.noSpaces)
-          .coreErrorToActionResult()
-
       } yield Done
 
       override val is = deleteResult.value.map(OkResult)
