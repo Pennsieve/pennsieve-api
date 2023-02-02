@@ -1254,9 +1254,9 @@ class DataSetsController(
           .delete(traceId, dataset)
           .orForbidden()
 
-        // _ <- sqsClient
-        //   .send(insecureContainer.sqs_queue, deleteMessage.asJson.noSpaces)
-        //   .coreErrorToActionResult()
+        _ <- sqsClient
+          .send(insecureContainer.sqs_queue, deleteMessage.asJson.noSpaces)
+          .coreErrorToActionResult()
 
         _ <- sqsClient
           .send(insecureContainer.sqs_queue_v2, deleteMessage.asJson.noSpaces)
