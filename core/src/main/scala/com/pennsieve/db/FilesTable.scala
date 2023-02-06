@@ -24,6 +24,7 @@ import com.pennsieve.models.{
   FileObjectType,
   FileProcessingState,
   FileState,
+  PackageState,
   FileType,
   Organization,
   Package
@@ -227,8 +228,10 @@ class FilesMapper(val organization: Organization)
     val query: Query[FilesTable, File, Seq] = this
       .filter(
         f =>
-          (f.packageId inSet packageIds) && this
-            .matchObjectType(objectType, f.objectType)
+          (f.packageId inSet packageIds) && 
+          this.matchObjectType(objectType, f.objectType) &&
+          f.uploadedState.toString() != PackageState.DELETED.toString() && 
+          f.uploadedState.toString() != PackageState.DELETING.toString()
       )
       .filterIf(excludePending)(
         _.uploadedState
