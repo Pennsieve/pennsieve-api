@@ -347,7 +347,7 @@ class PackageManager(datasetManager: DatasetManager) {
     : Query[(PackagesTable, DatasetsTable), (Package, Dataset), Seq] =
     packagesMapper
       .filter(_.state =!= (PackageState.DELETING: PackageState))
-      .filter(_.state =!= (PackageState.DELTED: PackageState))
+      .filter(_.state =!= (PackageState.DELETED: PackageState))
       .join(datasetsMapper)
       .on(_.datasetId === _.id)
 
