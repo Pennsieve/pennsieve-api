@@ -347,6 +347,7 @@ class PackageManager(datasetManager: DatasetManager) {
     : Query[(PackagesTable, DatasetsTable), (Package, Dataset), Seq] =
     packagesMapper
       .filter(_.state =!= (PackageState.DELETING: PackageState))
+      .filter(_.state =!= (PackageState.DELTED: PackageState))
       .join(datasetsMapper)
       .on(_.datasetId === _.id)
 
@@ -435,6 +436,7 @@ class PackageManager(datasetManager: DatasetManager) {
         packagesMapper
           .filter(_.nodeId inSet nodeIds)
           .filter(_.state =!= (PackageState.DELETING: PackageState))
+          .filter(_.state =!= (PackageState.DELETED: PackageState))
           .result
       )
       .map(_.toList)
@@ -453,6 +455,7 @@ class PackageManager(datasetManager: DatasetManager) {
           .filter(_.datasetId === dataset.id)
           .filter(pkg => (pkg.id inSet intIds) || (pkg.nodeId inSet nodeIds))
           .filter(_.state =!= (PackageState.DELETING: PackageState))
+          .filter(_.state =!= (PackageState.DELETED: PackageState))
           .result
       )
       .map(_.toList)
@@ -470,6 +473,7 @@ class PackageManager(datasetManager: DatasetManager) {
         .filter(_.datasetId === dataset.id)
         .filter(pkg => (pkg.id inSet intId) || (pkg.nodeId inSet nodeId))
         .filter(_.state =!= (PackageState.DELETING: PackageState))
+        .filter(_.state =!= (PackageState.DELETED: PackageState))
         .result
         .headOption
     )
@@ -672,6 +676,7 @@ class PackageManager(datasetManager: DatasetManager) {
       packagesMapper
         .filter(p => p.datasetId === dataset.id)
         .filter(_.state =!= (PackageState.DELETING: PackageState))
+        .filter(_.state =!= (PackageState.DELETED: PackageState))
         .groupBy(p => p.`type`)
         .map { case (group, result) => (group, result.length) }
         .result
@@ -994,6 +999,8 @@ class PackageManager(datasetManager: DatasetManager) {
               AND
                 parents.state != ${PackageState.DELETING.entryName}
               AND
+                parents.state != ${PackageState.DELETED.entryName}
+              AND
                 f.object_type = ${FileObjectType.Source.entryName}
         """
           .opt(fileIds)(_ => sql"AND f.id = any($fileIds)")
@@ -1077,6 +1084,8 @@ class PackageManager(datasetManager: DatasetManager) {
                 type != ${Collection.entryName}
               AND
                 parents.state != ${PackageState.DELETING.entryName}
+              AND
+                parents.state != ${PackageState.DELETED.entryName}
               AND
                 f.object_type = ${FileObjectType.Source.entryName}
         """

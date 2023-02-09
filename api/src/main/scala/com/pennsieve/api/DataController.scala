@@ -361,7 +361,6 @@ class DataController(
         _ <- sqsClient
           .send(insecureContainer.sqs_queue, deleteMessage.asJson.noSpaces)
           .leftMap(error => Failure(item, error.getMessage))
-          
         _ <- sqsClient
           .send(insecureContainer.sqs_queue_v2, deleteMessage.asJson.noSpaces)
           .leftMap(error => Failure(item, error.getMessage))

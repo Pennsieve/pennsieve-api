@@ -147,6 +147,7 @@ class MigrateOrganizationStorage {
             .on(_.packageId === _.id)
             .filter(_._2.datasetId === dataset.id)
             .filter(_._2.state =!= (PackageState.DELETING: PackageState))
+            .filter(_._2.state =!= (PackageState.DELETED: PackageState))
             .result
         )) {
 

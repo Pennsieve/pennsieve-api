@@ -229,9 +229,7 @@ class FilesMapper(val organization: Organization)
       .filter(
         f =>
           (f.packageId inSet packageIds) && 
-          this.matchObjectType(objectType, f.objectType) &&
-          f.uploadedState.toString() != PackageState.DELETED.toString() && 
-          f.uploadedState.toString() != PackageState.DELETING.toString()
+          this.matchObjectType(objectType, f.objectType)
       )
       .filterIf(excludePending)(
         _.uploadedState
