@@ -172,6 +172,7 @@ class PackagesMapper(val organization: Organization)
       .filter(hasParent(_, parent))
       .filter(_.datasetId === dataset.id)
       .filter(_.state =!= (PackageState.DELETING: PackageState))
+      .filter(_.state =!= (PackageState.DELETED: PackageState))
 
   def hasParent(
     that: PackagesTable,
@@ -304,6 +305,7 @@ class PackagesMapper(val organization: Organization)
           parents
         WHERE
           parents.state != '#${PackageState.DELETING.entryName}'
+        AND parents.state != '#${PackageState.DELETED.entryName}'
         AND parents.node_id != $nodeId
       """.as[Int]
       }
