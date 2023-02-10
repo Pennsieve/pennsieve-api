@@ -102,7 +102,7 @@ class PackageStorageMapper(val organization: Organization)
          AND files.object_type = ${FileObjectType.Source.entryName}
          AND packages.state NOT IN (
            ${PackageState.UNAVAILABLE.entryName},
-           ${PackageState.DELETING.entryName},
+           ${PackageState.DELETING.entryName}
          )
          GROUP BY packages.id
        UNION ALL
