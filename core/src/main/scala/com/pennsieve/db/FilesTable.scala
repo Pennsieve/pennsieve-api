@@ -24,7 +24,6 @@ import com.pennsieve.models.{
   FileObjectType,
   FileProcessingState,
   FileState,
-  PackageState,
   FileType,
   Organization,
   Package
