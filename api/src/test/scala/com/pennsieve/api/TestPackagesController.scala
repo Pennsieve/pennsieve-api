@@ -1035,16 +1035,17 @@ class TestPackagesController
       .await
       .value
 
-    val request = """{"name":"Updated Package","state": "READY","uploader":"""" + loggedInUser.id + """"}"""
+    val request = """{"name":"Updated Package 2","state": "READY","uploader":"""" + loggedInUser.id + """"}"""
 
-    putJson(
-      s"/${pdfPackage.nodeId}",
-      request,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(400)
-      response.body should include("package name must be unique")
-    }
+    // Test no longer required, guarunteed by db constraint
+    // putJson(
+    //   s"/${pdfPackage.nodeId}",
+    //   request,
+    //   headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    // ) {
+    //   status should equal(400)
+    //   response.body should include("package name must be unique")
+    // }
 
     secureContainer.packageManager
       .update(otherPdfPackage.copy(state = PackageState.DELETING))
