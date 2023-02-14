@@ -1,7 +1,3 @@
-ALTER TABLE organizations
-    ADD COLUMN publish_bucket TEXT
-        CHECK (char_length(publish_bucket) >= 3 AND char_length(publish_bucket) <= 63);
+CREATE UNIQUE INDEX packages_name_dataset_id__parent_id_null ON "19".packages ("name", "dataset_id") WHERE parent_id IS NULL;
 
-ALTER TABLE organizations
-    ADD COLUMN embargo_bucket TEXT
-        CHECK (char_length(embargo_bucket) >= 3 AND char_length(embargo_bucket) <= 63);
+CREATE UNIQUE INDEX packages_name_dataset_id ON "19".packages ("name", "parent_id")
