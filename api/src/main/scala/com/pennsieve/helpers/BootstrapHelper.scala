@@ -81,12 +81,13 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 trait ApiSQSContainer { self: Container =>
   val sqs_queue: String = config.as[String]("sqs.queue")
-  val sqs_queue_v2: String = config.as[String]("sqs.queue_v2").orElse("").toString()
+  val sqs_queue_v2: String =
+    config.as[Option[String]]("sqs.queue_v2").getOrElse("")
 }
 
 trait ApiSNSContainer { self: Container =>
   val sns_topic: String =
-    config.as[String]("pennsieve.changelog.sns_topic").orElse("").toString()
+    config.as[Option[String]]("pennsieve.changelog.sns_topic").getOrElse("")
 }
 
 object APIContainers {
