@@ -4285,7 +4285,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       createPackage(datasetWithAPackage, "some-package", `type` = CSV)
 
     // Create package that should not be in page
-    createPackage(datasetWithAPackage, "some-package")
+    createPackage(datasetWithAPackage, "some-package-other")
 
     val expectedPackage = ExtendedPackageDTO.simple(
       packageInPage,
@@ -4310,7 +4310,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       createPackage(datasetWithAPackage, "some-package", `type` = CSV)
 
     // Create package that should not be in page
-    createPackage(datasetWithAPackage, "some-package")
+    createPackage(datasetWithAPackage, "some-package-other")
 
     val expectedPackage = ExtendedPackageDTO.simple(
       packageInPage,
@@ -4336,7 +4336,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       createPackage(datasetWithAPackage, "some-package", `type` = CSV)
 
     // Create package that should not be in page
-    createPackage(datasetWithAPackage, "some-package")
+    createPackage(datasetWithAPackage, "some-package-other")
 
     val expectedPackage = ExtendedPackageDTO.simple(
       packageInPage,
