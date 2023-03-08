@@ -60,6 +60,7 @@ object PackageState extends Enum[PackageState] with CirceEnum[PackageState] {
   case object DELETED extends PackageState with PackageUploadState
   case object INFECTED extends PackageState with PackageUploadState
   case object UPLOAD_FAILED extends PackageState with PackageUploadState
+  case object RESTORING extends PackageState with PackageUploadState
 
   case object PROCESSING extends PackageState with PackageProcessingState
   case object READY extends PackageState with PackageProcessingState
