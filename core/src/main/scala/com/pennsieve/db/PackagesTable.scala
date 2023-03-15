@@ -185,7 +185,7 @@ class PackagesMapper(val organization: Organization)
 
   /**
     * Find a unique name for a package, given its location in the dataset
-    * directory hierarchy and package type.
+    * directory hierarchy.
     */
   def checkName(
     name: String,
@@ -199,7 +199,6 @@ class PackagesMapper(val organization: Organization)
     for {
       children <- this
         .children(parent, dataset)
-        .filter(hasPackageType(_, packageType))
         .map(_.name)
         .result
         .map(_.toSet)
@@ -211,8 +210,7 @@ class PackagesMapper(val organization: Organization)
       )
 
   /**
-    * Check if a name is unique at this level in the dataset directory
-    * hierarchy, for the given package type.
+    * Check if a name is unique at this level in the dataset directory hierarchy
     */
   def assertNameIsUnique(
     name: String,
@@ -226,7 +224,6 @@ class PackagesMapper(val organization: Organization)
       nameExists <- this
         .children(parent, dataset)
         .filter(_.name === name)
-        .filter(hasPackageType(_, packageType))
         .exists
         .result
 
