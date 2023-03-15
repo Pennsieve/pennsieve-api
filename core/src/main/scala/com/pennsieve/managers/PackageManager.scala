@@ -621,7 +621,7 @@ class PackageManager(datasetManager: DatasetManager) {
           packagesMapper
             .get(pkg.id)
             .map(_.name)
-            .update("__DELETED__" + pkg.nodeId + "_"+ pkg.name )
+            .update("__DELETED__" + pkg.nodeId + "_" + pkg.name)
         )
         .toEitherT
 

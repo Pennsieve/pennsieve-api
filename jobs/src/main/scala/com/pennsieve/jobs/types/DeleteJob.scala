@@ -728,23 +728,29 @@ class DeleteJob(
   ): Future[DeleteResult] =
     job match {
       case DeletePackageJob(packageId, _, _, traceId, _) =>
-        db.run(packageTable.filter(_.id === packageId).map(_.state).update(PackageState.DELETED)).map {
-          case 1 =>
-            PackageDeleteResult(
-              success = true,
-              message =
-                s"Successfully deleted package ($packageId) from Postgres",
-              packageNodeId = "no node ID available",
-              traceId = traceId
-            )
-          case _ =>
-            PackageDeleteResult(
-              success = false,
-              message = s"Failed to delete package ($packageId) from Postgres",
-              packageNodeId = "no node ID available",
-              traceId = traceId
-            )
-        }
+        db.run(
+            packageTable
+              .filter(_.id === packageId)
+              .map(_.state)
+              .update(PackageState.DELETED)
+          )
+          .map {
+            case 1 =>
+              PackageDeleteResult(
+                success = true,
+                message =
+                  s"Successfully deleted package ($packageId) from Postgres",
+                packageNodeId = "no node ID available",
+                traceId = traceId
+              )
+            case _ =>
+              PackageDeleteResult(
+                success = false,
+                message = s"Failed to delete package ($packageId) from Postgres",
+                packageNodeId = "no node ID available",
+                traceId = traceId
+              )
+          }
       case _: DeleteDatasetJob => Future.successful(NoOpDeleteResult)
     }
 
