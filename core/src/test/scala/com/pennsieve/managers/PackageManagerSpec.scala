@@ -83,32 +83,6 @@ class PackageManagerSpec extends BaseManagerSpec {
     assert(pm.get(p.id).await.value.name == p.name)
   }
 
-  "updating a package's name" should "succeed with duplicate names between collection and package" in {
-    val user = createUser()
-    val dataset = createDataset(user = user)
-
-    val name = "test"
-    val p = createPackage(user = user, dataset = dataset)
-    val collection = createPackage(
-      name = name,
-      user = user,
-      dataset = dataset,
-      parent = Some(p)
-    )
-    val pkg = createPackage(
-      name = "myImage",
-      user = user,
-      dataset = dataset,
-      parent = Some(p),
-      `type` = PackageType.Image
-    )
-    val pm = packageManager(user = user)
-
-    val updated = pm.update(pkg.copy(name = name)).await.value
-
-    assert(pm.get(pkg.id).await.value.name == name)
-  }
-
   "updating a package's name" should "fail with duplicate names between packages" in {
     val user = createUser()
     val dataset = createDataset(user = user)
@@ -544,7 +518,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     assert(result.isLeft)
   }
 
-  "checkName" should "allow a collection and package to share the same name" in {
+  "checkName" should "not allow a collection and package to share the same name" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val parent = createPackage(user = user, dataset = dataset)
@@ -561,7 +535,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     val duplicatePackageName =
       pm.checkName(baseName, Some(parent), dataset, PackageType.Image).await
 
-    assert(duplicatePackageName.isRight)
+    assert(duplicatePackageName.isLeft)
 
     val duplicateCollectionName =
       pm.checkName(baseName, Some(parent), dataset, PackageType.Collection)
@@ -570,7 +544,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     assert(duplicateCollectionName.isLeft)
   }
 
-  "assertNameIsUnique" should "allow a collection and package to share the same name" in {
+  "assertNameIsUnique" should "not allow a collection and package to share the same name" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val parent = createPackage(user = user, dataset = dataset)
@@ -597,7 +571,9 @@ class PackageManagerSpec extends BaseManagerSpec {
             )
         )
 
-    noException should be thrownBy duplicatePackageName.await
+    the[PredicateError] thrownBy {
+      duplicatePackageName.await
+    } should have message "package name must be unique"
 
     val duplicateCollectionName =
       database
