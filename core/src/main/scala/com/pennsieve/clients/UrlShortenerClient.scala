@@ -76,7 +76,12 @@ class BitlyUrlShortenerClient(
         case error =>
           Unmarshal(error.entity)
             .to[String]
-            .flatMap(msg => Future.failed(new Exception(s"error shortening long url [$longUrl]: $msg")))
+            .flatMap(
+              msg =>
+                Future.failed(
+                  new Exception(s"error shortening long url [$longUrl]: $msg")
+                )
+            )
       }
     } yield shortUrl
   }
