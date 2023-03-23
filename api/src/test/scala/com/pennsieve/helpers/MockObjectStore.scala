@@ -29,7 +29,8 @@ class MockObjectStore(fileName: String) extends ObjectStore {
   def getPresignedUrl(
     bucket: String,
     key: String,
-    duration: Date
+    duration: Date,
+    fileName: String
   ): Either[ActionResult, URL] = {
     Right(new URL(s"file://$bucket/$key"))
   }
