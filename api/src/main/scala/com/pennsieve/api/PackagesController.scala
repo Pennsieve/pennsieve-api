@@ -941,7 +941,8 @@ class PackagesController(
                     .getPresignedUrl(
                       p.s3Bucket,
                       p.s3Key,
-                      DateTime.now.plusMinutes(180).toDate
+                      DateTime.now.plusMinutes(180).toDate,
+                      p.packageName
                     )
                     .toOption
                     .get,
@@ -1522,7 +1523,8 @@ class PackagesController(
             .getPresignedUrl(
               file.s3Bucket,
               file.s3Key,
-              DateTime.now.plusMinutes(Settings.url_time_limit).toDate
+              DateTime.now.plusMinutes(Settings.url_time_limit).toDate,
+              pkg.name
             )
             .toEitherT[Future]
         else
@@ -1537,7 +1539,8 @@ class PackagesController(
               .getPresignedUrl(
                 file.s3Bucket,
                 file.s3Key,
-                DateTime.now.plusMinutes(Settings.bitly_url_time_limit).toDate
+                DateTime.now.plusMinutes(Settings.bitly_url_time_limit).toDate,
+                pkg.name
               )
               .toEitherT[Future]
             shortUrl <- EitherT.right[ActionResult](
@@ -1626,7 +1629,8 @@ class PackagesController(
           .getPresignedUrl(
             file.s3Bucket,
             s"${file.s3Key}$fileName",
-            DateTime.now.plusHours(10).toDate
+            DateTime.now.plusHours(10).toDate,
+            pkg.name
           )
           .toEitherT[Future]
       } yield url

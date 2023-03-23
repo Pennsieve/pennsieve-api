@@ -1021,7 +1021,8 @@ class DataCanvasController(
                     .getPresignedUrl(
                       p.s3Bucket,
                       p.s3Key,
-                      DateTime.now.plusMinutes(180).toDate
+                      DateTime.now.plusMinutes(180).toDate,
+                      p.packageName
                     )
                     .toOption
                     .get,

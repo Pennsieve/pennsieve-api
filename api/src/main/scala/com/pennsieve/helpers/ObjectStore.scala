@@ -29,7 +29,6 @@ import scala.util.Try
 import scala.concurrent.duration._
 import java.util.Date
 
-import collection.JavaConverters._
 import scala.annotation.tailrec
 
 /**
@@ -40,7 +39,8 @@ trait ObjectStore {
   def getPresignedUrl(
     bucket: String,
     key: String,
-    duration: Date
+    duration: Date,
+    fileName: String
   ): Either[ActionResult, URL]
 
   def getListing(
@@ -63,12 +63,17 @@ class S3ObjectStore(s3Client: S3) extends ObjectStore {
   def getPresignedUrl(
     bucket: String,
     key: String,
-    duration: Date
+    duration: Date,
+    fileName: String
   ): Either[ActionResult, URL] =
     s3Client
       .generatePresignedUrl(
         new GeneratePresignedUrlRequest(bucket, key)
           .withExpiration(duration)
+          .withResponseHeaders(
+            new ResponseHeaderOverrides()
+              .withContentDisposition(s"""attachment; filename="$fileName"""")
+          )
       )
       .leftMap(t => InternalServerError(t.getMessage))
 
