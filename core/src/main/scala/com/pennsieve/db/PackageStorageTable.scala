@@ -102,7 +102,9 @@ class PackageStorageMapper(val organization: Organization)
          AND files.object_type = ${FileObjectType.Source.entryName}
          AND packages.state NOT IN (
            ${PackageState.UNAVAILABLE.entryName},
-           ${PackageState.DELETING.entryName}
+           ${PackageState.DELETING.entryName},
+           ${PackageState.DELETED.entryName},
+           ${PackageState.RESTORING.entryName}
          )
          GROUP BY packages.id
        UNION ALL
@@ -113,7 +115,11 @@ class PackageStorageMapper(val organization: Organization)
            -- child packages to still set sizes, as long as those sizes don't
            -- propagate up the tree.
            CASE
-             WHEN parents.state = ${PackageState.DELETING.entryName}
+             WHEN parents.state IN (
+              ${PackageState.DELETING.entryName}, 
+              ${PackageState.DELETED.entryName},
+              ${PackageState.RESTORING.entryName}
+             )
              THEN NULL
              ELSE children.size
            END,
