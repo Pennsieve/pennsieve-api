@@ -162,7 +162,7 @@ class PackagesMapper(val organization: Organization)
   }
 
   /*
-   * Note: This query excludes packages in the DELETING state
+   * Note: This query excludes packages in the DELETING, DELETED, and RESTORING states
    */
   def children(
     parent: Option[Package],
@@ -173,6 +173,7 @@ class PackagesMapper(val organization: Organization)
       .filter(_.datasetId === dataset.id)
       .filter(_.state =!= (PackageState.DELETING: PackageState))
       .filter(_.state =!= (PackageState.DELETED: PackageState))
+      .filter(_.state =!= (PackageState.RESTORING: PackageState))
 
   def hasParent(
     that: PackagesTable,

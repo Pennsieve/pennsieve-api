@@ -677,6 +677,7 @@ class PackageManager(datasetManager: DatasetManager) {
         .filter(p => p.datasetId === dataset.id)
         .filter(_.state =!= (PackageState.DELETING: PackageState))
         .filter(_.state =!= (PackageState.DELETED: PackageState))
+        .filter(_.state =!= (PackageState.RESTORING: PackageState))
         .groupBy(p => p.`type`)
         .map { case (group, result) => (group, result.length) }
         .result
