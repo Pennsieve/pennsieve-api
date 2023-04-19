@@ -12,7 +12,8 @@ SELECT pennsieve.refresh_union_view('files');
 
 INSERT INTO "pennsieve"."organizations" (id, name, slug, encryption_key_id, node_id) VALUES
     (2, 'Pennsieve', 'pennsieve', 'this-key', 'N:organization:320813c5-3ea3-4c3b-aca5-9c6221e8d5f8'),
-    (3, 'Test Organization', 'test-organization', 'that-key', 'N:organization:4fb6fec6-9b2e-4885-91ff-7b3cf6579cd0');
+    (3, 'Test Organization', 'test-organization', 'that-key', 'N:organization:4fb6fec6-9b2e-4885-91ff-7b3cf6579cd0'),
+    (4, 'Welcome', 'welcome_to_pennsieve', 'another-key', 'N:organization:8f60b0fd-55b7-4efa-b1b1-8204111117d3');
 
 ---
 --- seed subscriptions table
