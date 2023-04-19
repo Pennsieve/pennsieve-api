@@ -274,7 +274,9 @@ class UserManager(db: Database) {
     for {
       middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
 
-      welcomeOrganization <- organizationManager.getBySlug("welcome_to_pennsieve")
+      welcomeOrganization <- organizationManager.getBySlug(
+        "welcome_to_pennsieve"
+      )
 
       user <- create(
         User(

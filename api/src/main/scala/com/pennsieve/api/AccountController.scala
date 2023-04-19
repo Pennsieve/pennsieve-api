@@ -19,11 +19,19 @@ package com.pennsieve.api
 import cats.data._
 import cats.implicits._
 import com.blackfynn.clients.AntiSpamChallengeClient
-import com.pennsieve.aws.cognito.{CognitoClient, CognitoConfig, CognitoJWTAuthenticator}
+import com.pennsieve.aws.cognito.{
+  CognitoClient,
+  CognitoConfig,
+  CognitoJWTAuthenticator
+}
 import com.pennsieve.aws.email.Email
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.domain.{CoreError, InvalidChallengeResponseError, ThrowableError}
-import com.pennsieve.dtos.{Builders, UserDTO}
+import com.pennsieve.domain.{
+  CoreError,
+  InvalidChallengeResponseError,
+  ThrowableError
+}
+import com.pennsieve.dtos.{ Builders, UserDTO }
 import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
 import com.pennsieve.helpers.ResultHandlers.OkResult
 import com.pennsieve.helpers._
@@ -35,10 +43,10 @@ import org.scalatra._
 import org.scalatra.json.JacksonJsonSupport
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder
 import org.scalatra.swagger._
-import com.typesafe.scalalogging.{LazyLogging, Logger}
+import com.typesafe.scalalogging.{ LazyLogging, Logger }
 
 import javax.servlet.http.HttpServletRequest
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 case class CreateUserRequest(
   firstName: String,
