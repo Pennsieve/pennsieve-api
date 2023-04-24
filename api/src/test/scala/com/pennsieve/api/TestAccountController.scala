@@ -141,7 +141,7 @@ class TestAccountController extends BaseApiTest {
 
     postJson("/sign-up", write(newUserRequest)) {
       status should be(200)
-      assert(body.contains(sandboxOrganization.nodeId))
+      assert(body.contains(welcomeOrganization.nodeId))
     }
   }
 }
