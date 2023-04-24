@@ -295,7 +295,7 @@ class UserManager(db: Database) {
       _ <- organizationManager.addUser(
         welcomeOrganization,
         user,
-        DBPermission.Write
+        DBPermission.Guest
       )
 
     } yield user
