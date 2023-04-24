@@ -274,7 +274,9 @@ class UserManager(db: Database) {
     for {
       middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
 
-      sandboxOrganization <- organizationManager.getBySlug("__sandbox__")
+      welcomeOrganization <- organizationManager.getBySlug(
+        "welcome_to_pennsieve"
+      )
 
       user <- create(
         User(
@@ -286,14 +288,14 @@ class UserManager(db: Database) {
           degree,
           credential = title,
           cognitoId = Some(cognitoId),
-          preferredOrganizationId = Some(sandboxOrganization.id)
+          preferredOrganizationId = Some(welcomeOrganization.id)
         )
       )
 
       _ <- organizationManager.addUser(
-        sandboxOrganization,
+        welcomeOrganization,
         user,
-        DBPermission.Write
+        DBPermission.Guest
       )
 
     } yield user

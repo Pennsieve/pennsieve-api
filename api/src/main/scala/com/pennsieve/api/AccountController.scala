@@ -36,6 +36,7 @@ import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
 import com.pennsieve.helpers.ResultHandlers.OkResult
 import com.pennsieve.helpers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.models.DBPermission.Guest
 import com.pennsieve.models.Degree
 import org.json4s._
 import org.scalatra._
@@ -184,6 +185,14 @@ class AccountController(
             executor
           )
           .orBadRequest()
+
+        welcomeOrganization <- insecureContainer.organizationManager
+          .getBySlug("welcome_to_pennsieve")
+          .orError()
+
+        _ <- insecureContainer.organizationManager
+          .addUser(welcomeOrganization, newUser, Guest)
+          .orError()
 
         organizations <- insecureContainer.userManager
           .getOrganizations(newUser)

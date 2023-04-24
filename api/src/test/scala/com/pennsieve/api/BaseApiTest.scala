@@ -260,6 +260,7 @@ trait ApiSuite
   var loggedInOrganizationNoFeatures: Organization = _
   var externalOrganization: Organization = _
   var sandboxOrganization: Organization = _
+  var welcomeOrganization: Organization = _
 
   var loggedInJwt: String = _
 
@@ -582,6 +583,22 @@ trait ApiSuite
     )
 
     sandboxUser = userManager.create(sandboxUserDefinition).await.value
+
+    // This will check to see if an organization of sandbox already exists, and if so, uses that
+    // otherwise generates an org w/ the feature flag
+    welcomeOrganization = organizationManager
+      .getBySlug("welcome_to_pennsieve")
+      .value
+      .await match {
+      case Right(org) => org
+      case _ => {
+        createOrganization(
+          "Welcome",
+          "welcome_to_pennsieve",
+          features = Set(Feature.SandboxOrgFeature)
+        )
+      }
+    }
 
     organizationManager
       .addUser(sandboxOrganization, sandboxUser, Administer)
