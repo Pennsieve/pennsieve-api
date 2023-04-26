@@ -424,12 +424,16 @@ class DataSetsController(
       case Some(etag) => checkIfMatchTimestamp(entity, etag)
     }
   }
+  
+  //Default values for retrieving Dataset children (i.e. packages)
+  //val DatasetChildrenDefaultLimit: Int = 25
+  //val DatasetChildrenDefaultOffset: Int = 0
 
   get(
     "/:id",
     operation(
       apiOperation[DataSetDTO]("getDataSet")
-        summary "gets a data set"
+        summary "gets a data set and paginates its children"
         parameters (
           pathParam[String]("id").description("data set id"),
           queryParam[Boolean]("includePublishedDataset").optional
@@ -437,12 +441,22 @@ class DataSetsController(
               "If true, information about publication will be returned"
             )
             .defaultValue(false)
+          //queryParam[Int]("limit").optional
+          //  .description("max number of dataset children (i.e. packages) returned")
+          //  .defaultValue(DatasetChildrenDefaultLimit)
+          //queryParam[Int]("offset").optional
+          //  .description("offset used for pagination of children")
+          //  .defaultValue(DatasetChildrenDefaultOffset)
       )
     )
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataSetDTO] = for {
         datasetId <- paramT[String]("id")
+
+        //limit <- paramT[Int]("limit", default = DatasetChildrenDefaultLimit)
+        //offset <- paramT[Int]("offset", default = DatasetChildrenDefaultOffset)
+
         secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         storageServiceClient = secureContainer.storageManager
@@ -1546,7 +1560,11 @@ class DataSetsController(
           datasetNodeId <- paramT[String]("id")
 
           dataset <- secureContainer.datasetManager
-            .getByNodeId(datasetNodeId)
+            .getByNodeId(
+              datasetNodeId,
+              //limit = limit.some,
+              //offset = offset.some
+              )
             .coreErrorToActionResult()
 
           _ <- secureContainer

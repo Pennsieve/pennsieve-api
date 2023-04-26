@@ -348,10 +348,15 @@ class DatasetManager(
       .getOrElse(getByNodeId(nodeOrIntId))
 
   def getByNodeId(
-    nodeId: String
+    nodeId: String,
+    //limit: Option[Int],
+    //offset: Option[Int]
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Dataset] =
+  ): EitherT[Future, CoreError, Dataset] = 
+    //{INCLUDE QUERY HERE:
+      //apply query used to get paginated datasets, but on the children of dataset...
+    //}
     db.run(
         datasetsMapper.withoutDeleted
           .filter(_.nodeId === nodeId)
