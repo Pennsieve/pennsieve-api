@@ -396,8 +396,8 @@ class PackagesController(
   }
 
   //Default values for retrieving Package children (i.e. other packages)
-  //val PackageChildrenDefaultLimit: Int = 25
-  //val PackageChildrenDefaultOffset: Int = 0
+  val PackageChildrenDefaultLimit: Int = 25
+  val PackageChildrenDefaultOffset: Int = 0
 
   val getPackageOperation = (apiOperation[PackageDTO]("getPackage")
     summary "gets a package and optionally objects that are associated with it"
@@ -412,12 +412,12 @@ class PackagesController(
         .description(
           "if the package contains channels, reset the channels to start at 0"
         )
-      //queryParam[Int]("limit").optional
-        //  .description("max number of dataset children (i.e. packages) returned")
-        //  .defaultValue(PackageChildrenDefaultLimit)
-      //queryParam[Int]("offset").optional
-        //  .description("offset used for pagination of children")
-        //  .defaultValue(PackageChildrenDefaultOffset)       
+      queryParam[Int]("limit").optional
+        .description("max number of dataset children (i.e. packages) returned")
+        .defaultValue(PackageChildrenDefaultLimit)
+      queryParam[Int]("offset").optional
+        .description("offset used for pagination of children")
+        .defaultValue(PackageChildrenDefaultOffset)       
   ))
 
   get("/:id", operation(getPackageOperation)) {
@@ -487,8 +487,8 @@ class PackagesController(
       val result: EitherT[Future, ActionResult, PackageDTO] = for {
         secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
-        //limit <- paramT[Int]("limit", default = PackageChildrenDefaultLimit
-        //offset <- paramT[Int]("offset", default = PackageChildrenDefaultOffset)
+        limit <- paramT[Int]("limit", default = PackageChildrenDefaultLimit
+        offset <- paramT[Int]("offset", default = PackageChildrenDefaultOffset)
         traceId <- getTraceId(request)
         result <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)

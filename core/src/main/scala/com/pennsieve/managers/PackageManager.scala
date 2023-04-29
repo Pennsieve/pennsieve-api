@@ -481,17 +481,51 @@ class PackageManager(datasetManager: DatasetManager) {
 
   def children(
     parent: Option[Package],
-    dataset: Dataset
+    dataset: Dataset,
+    offset: Option[Int],
+    limit: Option[Int]
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, List[Package]] =
-    db.run(
+  ): EitherT[Future, CoreError, List[Package]] = /* {
+
+    val query =
+      packagesMapper
+        .filter { pkg =>
+          pkg.dataset === dataset.id &&
+          pkg.parentId === parent.map(_.id)
+        }
+        .sortBy(_.name)
+    
+    val queryWithSort =
+      parent.fold(query)(p => query.sortBy(pkg => (pkg.parentId.isEmpty, pkg.name)))
+    
+    val queryWithOffset =
+      offset.foldLeft(queryWithSort) { (query, offset) =>
+        query.drop(offset)
+      }
+
+    val finalQuery = limit
+      .foldLeft(queryWithOffset) { (query, limit) =>
+        query.take(limit)
+      }
+
+      db.run(finalQuery.result)
+      .map(_.toList)
+      .toEitherT
+      */
+      
+      //ORIGINAL:
+      """"
+          db.run(
         packagesMapper
           .children(parent, dataset)
           .result
       )
       .map(_.toList)
       .toEitherT
+      """"
+  }
+
 
   def checkName(
     name: String,
