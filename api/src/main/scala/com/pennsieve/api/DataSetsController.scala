@@ -505,6 +505,8 @@ class DataSetsController(
         dto <- datasetDTO(
           dataset,
           status,
+          limit = limit.some,
+          offset = offset.some,
           includeChildren = true,
           storage = storage,
           datasetPublicationStatus = publicationStatus,

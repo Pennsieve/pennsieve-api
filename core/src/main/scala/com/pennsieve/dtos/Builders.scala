@@ -211,6 +211,8 @@ object Builders {
   ](
     dataset: Dataset,
     status: DatasetStatus,
+    limit: Int,
+    offset: Int,
     datasetPublicationStatus: Option[DatasetPublicationStatus],
     contributors: Seq[Contributor],
     includeChildren: Boolean = false,
@@ -232,7 +234,7 @@ object Builders {
     for {
 
       children <- if (includeChildren) {
-        childrenPackageDTOs(None, dataset).map(Some.apply)
+        childrenPackageDTOs(None, dataset, limit = limit.some, offset = offset.some).map(Some.apply)
       } else {
         Future[Option[List[PackageDTO]]](None).toEitherT
       }
@@ -295,7 +297,9 @@ object Builders {
 
   def childrenPackageDTOs[DIContainer <: PackageDTODIContainer](
     parent: Option[Package],
-    dataset: Dataset
+    dataset: Dataset,
+    limit: Option[Int],
+    offset: Option[Int],
   )(implicit
     executionContext: ExecutionContext,
     secureContainer: DIContainer
@@ -377,6 +381,8 @@ object Builders {
   def packageDTO[DIContainer <: PackageDTODIContainer](
     `package`: Package,
     dataset: Dataset,
+    limit: Int,
+    offset: Int,
     includeAncestors: Boolean = false,
     includeChildren: Boolean = true,
     include: Option[Set[FileObjectType]] = None, //"None" indicates that we should not return any of the objects
@@ -417,7 +423,7 @@ object Builders {
       }
 
       childPackageDTOs <- {
-        if (includeChildren) childrenPackageDTOs(Some(`package`), dataset)
+        if (includeChildren) childrenPackageDTOs(Some(`package`), dataset, limit = limit.some, offset = offset.some)
         else Right(List.empty[PackageDTO]).toEitherT[Future]
       }
 

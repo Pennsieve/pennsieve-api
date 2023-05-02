@@ -486,7 +486,7 @@ class PackageManager(datasetManager: DatasetManager) {
     limit: Option[Int]
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, List[Package]] = /* {
+  ): EitherT[Future, CoreError, List[Package]] =  {
 
     val query =
       packagesMapper
@@ -495,10 +495,11 @@ class PackageManager(datasetManager: DatasetManager) {
           pkg.parentId === parent.map(_.id)
         }
         .sortBy(_.name)
-    
+    //we want the results to return in order
     val queryWithSort =
       parent.fold(query)(p => query.sortBy(pkg => (pkg.parentId.isEmpty, pkg.name)))
     
+    //taking 'limit' numeber of children starting at 'offset'
     val queryWithOffset =
       offset.foldLeft(queryWithSort) { (query, offset) =>
         query.drop(offset)
@@ -512,7 +513,7 @@ class PackageManager(datasetManager: DatasetManager) {
       db.run(finalQuery.result)
       .map(_.toList)
       .toEitherT
-      */
+      
       
       //ORIGINAL:
       """"

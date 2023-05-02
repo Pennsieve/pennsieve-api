@@ -116,6 +116,7 @@ case class SetStorageRequest(size: Long)
 
 case class SetStorageResponse(storageUse: Map[String, Long])
 
+
 class PackagesController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
@@ -487,7 +488,7 @@ class PackagesController(
       val result: EitherT[Future, ActionResult, PackageDTO] = for {
         secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
-        limit <- paramT[Int]("limit", default = PackageChildrenDefaultLimit
+        limit <- paramT[Int]("limit", default = PackageChildrenDefaultLimit)
         offset <- paramT[Int]("offset", default = PackageChildrenDefaultOffset)
         traceId <- getTraceId(request)
         result <- secureContainer.packageManager
@@ -534,6 +535,8 @@ class PackagesController(
         dto <- packageDTO(
           updatedPackage,
           dataset,
+          limit.some,
+          offset.some,
           includeAncestors,
           includeChildren,
           include,
