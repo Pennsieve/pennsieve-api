@@ -282,6 +282,12 @@ case class ChangelogEventPage(
   events: List[ChangelogEventAndType]
 )
 
+object DataSetsController {
+  //Default values for retrieving Dataset children (i.e. packages)
+  val DatasetChildrenDefaultLimit: Int = 25
+  val DatasetChildrenDefaultOffset: Int = 0
+}
+
 class DataSetsController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
@@ -424,10 +430,6 @@ class DataSetsController(
       case Some(etag) => checkIfMatchTimestamp(entity, etag)
     }
   }
-  
-  //Default values for retrieving Dataset children (i.e. packages)
-  val DatasetChildrenDefaultLimit: Int = 25
-  val DatasetChildrenDefaultOffset: Int = 0
 
   get(
     "/:id",
@@ -440,13 +442,15 @@ class DataSetsController(
             .description(
               "If true, information about publication will be returned"
             )
-            .defaultValue(false)
+            .defaultValue(false),
           queryParam[Int]("limit").optional
-            .description("max number of dataset children (i.e. packages) returned")
-            .defaultValue(DatasetChildrenDefaultLimit)
+            .description(
+              "max number of dataset children (i.e. packages) returned"
+            )
+            .defaultValue(DataSetsController.DatasetChildrenDefaultLimit),
           queryParam[Int]("offset").optional
             .description("offset used for pagination of children")
-            .defaultValue(DatasetChildrenDefaultOffset)
+            .defaultValue(DataSetsController.DatasetChildrenDefaultOffset)
       )
     )
   ) {
@@ -454,8 +458,14 @@ class DataSetsController(
       val result: EitherT[Future, ActionResult, DataSetDTO] = for {
         datasetId <- paramT[String]("id")
 
-        limit <- paramT[Int]("limit", default = DatasetChildrenDefaultLimit)
-        offset <- paramT[Int]("offset", default = DatasetChildrenDefaultOffset)
+        limit <- paramT[Int](
+          "limit",
+          default = DataSetsController.DatasetChildrenDefaultLimit
+        )
+        offset <- paramT[Int](
+          "offset",
+          default = DataSetsController.DatasetChildrenDefaultOffset
+        )
 
         secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
@@ -505,14 +515,14 @@ class DataSetsController(
         dto <- datasetDTO(
           dataset,
           status,
-          limit = limit.some,
-          offset = offset.some,
           includeChildren = true,
           storage = storage,
           datasetPublicationStatus = publicationStatus,
           contributors = contributors.map(_._1),
           includeBannerUrl = true,
-          includePublishedDataset = includePublishedDataset
+          includePublishedDataset = includePublishedDataset,
+          limit = limit.some,
+          offset = offset.some
         )(
           asyncExecutor,
           secureContainer,
@@ -533,7 +543,8 @@ class DataSetsController(
           .coreErrorToActionResult()
 
         _ <- setETagHeader(dataset.etag)
-      } yield dto //here add a caseclass for paginated dataset PaginatedDataset(limit, offset, dtos)
+      } yield
+        dto //here add a caseclass for paginated dataset PaginatedDataset(limit, offset, dtos)
 
       override val is = result.value.map(OkResult(_))
     }
@@ -1563,10 +1574,9 @@ class DataSetsController(
 
           dataset <- secureContainer.datasetManager
             .getByNodeId(
-              datasetNodeId,
-              //limit = limit.some,
+              datasetNodeId //limit = limit.some,
               //offset = offset.some
-              )
+            )
             .coreErrorToActionResult()
 
           _ <- secureContainer

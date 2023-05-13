@@ -116,6 +116,11 @@ case class SetStorageRequest(size: Long)
 
 case class SetStorageResponse(storageUse: Map[String, Long])
 
+object PackagesController {
+  //Default values for retrieving Package children (i.e. other packages)
+  val PackageChildrenDefaultLimit: Int = 25
+  val PackageChildrenDefaultOffset: Int = 0
+}
 
 class PackagesController(
   val insecureContainer: InsecureAPIContainer,
@@ -396,10 +401,6 @@ class PackagesController(
     }
   }
 
-  //Default values for retrieving Package children (i.e. other packages)
-  val PackageChildrenDefaultLimit: Int = 25
-  val PackageChildrenDefaultOffset: Int = 0
-
   val getPackageOperation = (apiOperation[PackageDTO]("getPackage")
     summary "gets a package and optionally objects that are associated with it"
     parameters (
@@ -412,13 +413,13 @@ class PackagesController(
         .defaultValue(false)
         .description(
           "if the package contains channels, reset the channels to start at 0"
-        )
+        ),
       queryParam[Int]("limit").optional
         .description("max number of dataset children (i.e. packages) returned")
-        .defaultValue(PackageChildrenDefaultLimit)
+        .defaultValue(PackagesController.PackageChildrenDefaultLimit),
       queryParam[Int]("offset").optional
         .description("offset used for pagination of children")
-        .defaultValue(PackageChildrenDefaultOffset)       
+        .defaultValue(PackagesController.PackageChildrenDefaultOffset)
   ))
 
   get("/:id", operation(getPackageOperation)) {
@@ -488,8 +489,14 @@ class PackagesController(
       val result: EitherT[Future, ActionResult, PackageDTO] = for {
         secureContainer <- getSecureContainer()
         packageId <- paramT[String]("id")
-        limit <- paramT[Int]("limit", default = PackageChildrenDefaultLimit)
-        offset <- paramT[Int]("offset", default = PackageChildrenDefaultOffset)
+        limit <- paramT[Int](
+          "limit",
+          default = PackagesController.PackageChildrenDefaultLimit
+        )
+        offset <- paramT[Int](
+          "offset",
+          default = PackagesController.PackageChildrenDefaultOffset
+        )
         traceId <- getTraceId(request)
         result <- secureContainer.packageManager
           .getPackageAndDatasetByNodeId(packageId)
@@ -535,12 +542,12 @@ class PackagesController(
         dto <- packageDTO(
           updatedPackage,
           dataset,
-          limit.some,
-          offset.some,
           includeAncestors,
           includeChildren,
           include,
-          storage = storage
+          storage = storage,
+          limit = limit.some,
+          offset = offset.some
         )(asyncExecutor, secureContainer).orError()
 
         _ <- auditLogger

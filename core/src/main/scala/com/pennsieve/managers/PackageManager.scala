@@ -482,51 +482,29 @@ class PackageManager(datasetManager: DatasetManager) {
   def children(
     parent: Option[Package],
     dataset: Dataset,
-    offset: Option[Int],
-    limit: Option[Int]
+    offset: Option[Int] = None,
+    limit: Option[Int] = None
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, List[Package]] =  {
+  ): EitherT[Future, CoreError, List[Package]] = {
 
-    val query =
-      packagesMapper
-        .filter { pkg =>
-          pkg.dataset === dataset.id &&
-          pkg.parentId === parent.map(_.id)
-        }
-        .sortBy(_.name)
-    //we want the results to return in order
-    val queryWithSort =
-      parent.fold(query)(p => query.sortBy(pkg => (pkg.parentId.isEmpty, pkg.name)))
-    
-    //taking 'limit' numeber of children starting at 'offset'
-    val queryWithOffset =
-      offset.foldLeft(queryWithSort) { (query, offset) =>
-        query.drop(offset)
-      }
-
-    val finalQuery = limit
-      .foldLeft(queryWithOffset) { (query, limit) =>
-        query.take(limit)
-      }
-
-      db.run(finalQuery.result)
-      .map(_.toList)
-      .toEitherT
-      
-      
-      //ORIGINAL:
-      """"
-          db.run(
+    val query = (offset, limit) match {
+      case (None, None) | (None, _) | (_, None) =>
         packagesMapper
           .children(parent, dataset)
           .result
-      )
+      case (Some(offset), Some(limit)) =>
+        packagesMapper
+          .children(parent, dataset)
+          .sortBy(_.name)
+          .drop(offset)
+          .take(limit)
+          .result
+    }
+    db.run(query)
       .map(_.toList)
       .toEitherT
-      """"
   }
-
 
   def checkName(
     name: String,
