@@ -18,7 +18,6 @@ package com.pennsieve.api
 
 import java.net.URL
 import java.time.ZonedDateTime
-
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import com.pennsieve.clients.MockJobSchedulingServiceClient
 import com.pennsieve.domain.StorageAggregation.{
@@ -42,6 +41,7 @@ import com.pennsieve.helpers.{
 }
 import com.pennsieve.managers.{ FileManager, PackageManager }
 import com.pennsieve.models.PackageState.{
+  namesToValuesMap,
   PROCESSING,
   READY,
   UNAVAILABLE,
@@ -1207,6 +1207,77 @@ class TestPackagesController
       compact(render(json \ "properties" \\ "key")) should include("meta")
       compact(render(json \ "properties" \\ "value")) should include("data")
       compact(render(json)) should not include ("objects")
+    }
+  }
+
+  test("get package is paginated and returns default number of children") {
+    // create a dataset
+    val ds = createDataSet(
+      name = "test-dataset-for-testing-package-pagination",
+      description = Some("test-dataset-for-testing-package-pagination")
+    )
+    // create a collection package (folder)
+    val collection = createPackage(ds, "Folder")
+    // create packages in the collection
+    (1 to 26).map(
+      n => createPackage(ds, s"Package-${n}", parent = Some(collection))
+    )
+
+    get(
+      s"/${collection.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val `package` = parsedBody.extract[PackageDTO]
+      `package`.children.length shouldBe PackagesController.PackageChildrenDefaultLimit
+    }
+  }
+
+  test("get package is paginated and returns requested number of children") {
+    // create a dataset
+    val ds = createDataSet(
+      name = "test-dataset-for-testing-package-pagination",
+      description = Some("test-dataset-for-testing-package-pagination")
+    )
+    // create a collection package (folder)
+    val collection = createPackage(ds, "Folder")
+    // create packages in the collection
+    (1 to 26).map(
+      n => createPackage(ds, s"Package-${n}", parent = Some(collection))
+    )
+
+    get(
+      s"/${collection.nodeId}?offset=0&limit=5",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val `package` = parsedBody.extract[PackageDTO]
+      `package`.children.length shouldBe 5
+    }
+  }
+
+  test(
+    "get package is paginated and last page may provide fewer children than requested"
+  ) {
+    // create a dataset
+    val ds = createDataSet(
+      name = "test-dataset-for-testing-package-pagination",
+      description = Some("test-dataset-for-testing-package-pagination")
+    )
+    // create a collection package (folder)
+    val collection = createPackage(ds, "Folder")
+    // create packages in the collection
+    (1 to 26).map(
+      n => createPackage(ds, s"Package-${n}", parent = Some(collection))
+    )
+
+    get(
+      s"/${collection.nodeId}?offset=25&limit=5",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val `package` = parsedBody.extract[PackageDTO]
+      `package`.children.length shouldBe 1
     }
   }
 

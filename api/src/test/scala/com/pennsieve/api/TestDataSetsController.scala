@@ -287,6 +287,63 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("get dataset returns default number of paginated children") {
+    // create a dataset
+    val ds = createDataSet(
+      name = "test-dataset-for-paginated-children",
+      description = Some("test-dataset-for-paginated-children")
+    )
+    // add packages to the dataset
+    (1 to 26).map(n => createPackage(ds, s"Package-${n}"))
+
+    get(
+      s"/${ds.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val dataset = parsedBody.extract[DataSetDTO]
+      dataset.children.get.length shouldBe DataSetsController.DatasetChildrenDefaultLimit
+    }
+  }
+
+  test("get dataset returns requested number of paginated children") {
+    // create a dataset
+    val ds = createDataSet(
+      name = "test-dataset-for-paginated-children",
+      description = Some("test-dataset-for-paginated-children")
+    )
+    // add packages to the dataset
+    (1 to 26).map(n => createPackage(ds, s"Package-${n}"))
+
+    get(
+      s"/${ds.nodeId}?offset=0&limit=5",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val dataset = parsedBody.extract[DataSetDTO]
+      dataset.children.get.length shouldBe 5
+    }
+  }
+
+  test("get dataset returns partial limit when on the last page") {
+    // create a dataset
+    val ds = createDataSet(
+      name = "test-dataset-for-paginated-children",
+      description = Some("test-dataset-for-paginated-children")
+    )
+    // add packages to the dataset
+    (1 to 26).map(n => createPackage(ds, s"Package-${n}"))
+
+    get(
+      s"/${ds.nodeId}?offset=25&limit=5",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val dataset = parsedBody.extract[DataSetDTO]
+      dataset.children.get.length shouldBe 1
+    }
+  }
+
   test("get a data set for an external file") {
     val description = Some("An external file")
     val externalLocation = Some("https://drive.google.com/external_file")

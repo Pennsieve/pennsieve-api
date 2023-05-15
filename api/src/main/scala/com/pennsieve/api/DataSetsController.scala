@@ -282,6 +282,12 @@ case class ChangelogEventPage(
   events: List[ChangelogEventAndType]
 )
 
+object DataSetsController {
+  //Default values for retrieving Dataset children (i.e. packages)
+  val DatasetChildrenDefaultLimit: Int = 25
+  val DatasetChildrenDefaultOffset: Int = 0
+}
+
 class DataSetsController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
@@ -429,20 +435,38 @@ class DataSetsController(
     "/:id",
     operation(
       apiOperation[DataSetDTO]("getDataSet")
-        summary "gets a data set"
+        summary "gets a data set and paginates its children"
         parameters (
           pathParam[String]("id").description("data set id"),
           queryParam[Boolean]("includePublishedDataset").optional
             .description(
               "If true, information about publication will be returned"
             )
-            .defaultValue(false)
+            .defaultValue(false),
+          queryParam[Int]("limit").optional
+            .description(
+              "max number of dataset children (i.e. packages) returned"
+            )
+            .defaultValue(DataSetsController.DatasetChildrenDefaultLimit),
+          queryParam[Int]("offset").optional
+            .description("offset used for pagination of children")
+            .defaultValue(DataSetsController.DatasetChildrenDefaultOffset)
       )
     )
   ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, DataSetDTO] = for {
         datasetId <- paramT[String]("id")
+
+        limit <- paramT[Int](
+          "limit",
+          default = DataSetsController.DatasetChildrenDefaultLimit
+        )
+        offset <- paramT[Int](
+          "offset",
+          default = DataSetsController.DatasetChildrenDefaultOffset
+        )
+
         secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
         storageServiceClient = secureContainer.storageManager
@@ -496,7 +520,9 @@ class DataSetsController(
           datasetPublicationStatus = publicationStatus,
           contributors = contributors.map(_._1),
           includeBannerUrl = true,
-          includePublishedDataset = includePublishedDataset
+          includePublishedDataset = includePublishedDataset,
+          limit = limit.some,
+          offset = offset.some
         )(
           asyncExecutor,
           secureContainer,
@@ -517,7 +543,8 @@ class DataSetsController(
           .coreErrorToActionResult()
 
         _ <- setETagHeader(dataset.etag)
-      } yield dto
+      } yield
+        dto //here add a caseclass for paginated dataset PaginatedDataset(limit, offset, dtos)
 
       override val is = result.value.map(OkResult(_))
     }
@@ -1546,7 +1573,10 @@ class DataSetsController(
           datasetNodeId <- paramT[String]("id")
 
           dataset <- secureContainer.datasetManager
-            .getByNodeId(datasetNodeId)
+            .getByNodeId(
+              datasetNodeId //limit = limit.some,
+              //offset = offset.some
+            )
             .coreErrorToActionResult()
 
           _ <- secureContainer
