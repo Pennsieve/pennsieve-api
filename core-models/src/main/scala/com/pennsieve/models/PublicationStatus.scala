@@ -44,11 +44,13 @@ object PublicationStatus
       Some(Completed) -> Seq(Requested),
       Some(Failed) -> Seq(Rejected, Accepted),
       Some(Accepted) -> Seq(Failed, Completed),
-      Some(Draft) -> Seq(Requested)
+      Some(Draft) -> Seq(Requested),
+      Some(InProgress) -> Seq(Cancelled, Failed, Completed)
     )
 
   case object Draft extends PublicationStatus
   case object Requested extends PublicationStatus
+  case object InProgress extends PublicationStatus
   case object Cancelled extends PublicationStatus
   case object Rejected extends PublicationStatus
   case object Accepted extends PublicationStatus
