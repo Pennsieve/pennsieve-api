@@ -3225,6 +3225,17 @@ class DataSetsController(
             )(request, ec, system, jwtConfig)
             .coreErrorToActionResult()
 
+          // mark as in progress, to prevent simultaneous requests for Requested -> Accepted
+          _ <- secureContainer.datasetPublicationStatusManager
+            .create(
+              dataset = validated.dataset,
+              publicationStatus = PublicationStatus.InProgress,
+              publicationType = validated.publicationType,
+              comments = comments,
+              embargoReleaseDate = validated.embargoReleaseDate
+            )
+            .coreErrorToActionResult()
+
           contributors <- secureContainer.datasetManager
             .getContributors(validated.dataset)
             .map(_.map(ContributorDTO(_)))
