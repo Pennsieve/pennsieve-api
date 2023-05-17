@@ -64,6 +64,7 @@ object ChangelogEventDetail {
       case d: RenamePackage => d.asJson
       case d: MovePackage => d.asJson
       case d: DeletePackage => d.asJson
+      case d: RestorePackage => d.asJson
       case d: CreateModel => d.asJson
       case d: UpdateModel => d.asJson
       case d: DeleteModel => d.asJson
@@ -122,6 +123,7 @@ object ChangelogEventDetail {
       case RENAME_PACKAGE => RenamePackage.decoder.widen
       case MOVE_PACKAGE => MovePackage.decoder.widen
       case DELETE_PACKAGE => DeletePackage.decoder.widen
+      case RESTORE_PACKAGE => RestorePackage.decoder.widen
       case CREATE_MODEL => CreateModel.decoder.widen
       case UPDATE_MODEL => UpdateModel.decoder.widen
       case DELETE_MODEL => DeleteModel.decoder.widen
@@ -590,6 +592,36 @@ object ChangelogEventDetail {
 
     implicit val encoder: Encoder[DeletePackage] = deriveEncoder[DeletePackage]
     implicit val decoder: Decoder[DeletePackage] = deriveDecoder[DeletePackage]
+  }
+
+  case class RestorePackage(
+    id: Int,
+    nodeId: Option[String],
+    name: Option[String],
+    originalName: Option[String],
+    parent: Option[PackageDetail]
+  ) extends ChangelogEventDetail {
+    val eventType = RESTORE_PACKAGE
+  }
+
+  object RestorePackage {
+    def apply(
+      pkg: Package,
+      originalName: Option[String],
+      parent: Option[Package]
+    ): RestorePackage =
+      RestorePackage(
+        id = pkg.id,
+        nodeId = Some(pkg.nodeId),
+        name = Some(pkg.name),
+        originalName = originalName,
+        parent = parent.map(PackageDetail(_))
+      )
+
+    implicit val encoder: Encoder[RestorePackage] =
+      deriveEncoder[RestorePackage]
+    implicit val decoder: Decoder[RestorePackage] =
+      deriveDecoder[RestorePackage]
   }
 
   case class CreateModel(id: UUID, name: String) extends ChangelogEventDetail {

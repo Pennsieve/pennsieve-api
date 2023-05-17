@@ -111,6 +111,9 @@ object ChangelogEventName
   case object DELETE_PACKAGE extends ChangelogEventName {
     val category = PACKAGES
   }
+  case object RESTORE_PACKAGE extends ChangelogEventName {
+    val category = PACKAGES
+  }
 
   // MODELS, RECORDS
 
