@@ -294,7 +294,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       description = Some("test-dataset-for-paginated-children")
     )
     // add packages to the dataset
-    (1 to 26).map(n => createPackage(ds, s"Package-${n}"))
+    (1 to DataSetsController.DatasetChildrenDefaultLimit+1).map(n => createPackage(ds, s"Package-${n}"))
 
     get(
       s"/${ds.nodeId}",

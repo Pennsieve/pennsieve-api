@@ -1219,7 +1219,7 @@ class TestPackagesController
     // create a collection package (folder)
     val collection = createPackage(ds, "Folder")
     // create packages in the collection
-    (1 to 26).map(
+    (1 to PackagesController.PackageChildrenDefaultLimit+1).map(
       n => createPackage(ds, s"Package-${n}", parent = Some(collection))
     )
 
