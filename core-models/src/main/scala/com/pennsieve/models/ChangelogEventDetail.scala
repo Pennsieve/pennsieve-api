@@ -598,17 +598,23 @@ object ChangelogEventDetail {
     id: Int,
     nodeId: Option[String],
     name: Option[String],
+    originalName: Option[String],
     parent: Option[PackageDetail]
   ) extends ChangelogEventDetail {
     val eventType = RESTORE_PACKAGE
   }
 
   object RestorePackage {
-    def apply(pkg: Package, parent: Option[Package]): RestorePackage =
+    def apply(
+      pkg: Package,
+      originalName: Option[String],
+      parent: Option[Package]
+    ): RestorePackage =
       RestorePackage(
         id = pkg.id,
         nodeId = Some(pkg.nodeId),
         name = Some(pkg.name),
+        originalName = originalName,
         parent = parent.map(PackageDetail(_))
       )
 
