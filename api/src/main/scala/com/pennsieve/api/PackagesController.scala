@@ -118,7 +118,7 @@ case class SetStorageResponse(storageUse: Map[String, Long])
 
 object PackagesController {
   //Default values for retrieving Package children (i.e. other packages)
-  val PackageChildrenDefaultLimit: Int = 25
+  val PackageChildrenDefaultLimit: Int = 100
   val PackageChildrenDefaultOffset: Int = 0
 }
 
