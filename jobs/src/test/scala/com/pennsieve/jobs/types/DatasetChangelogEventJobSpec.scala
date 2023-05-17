@@ -134,7 +134,8 @@ class DatasetChangelogEventJobSpec
       |    "userId": "${u.nodeId}",
       |    "events": [
       |      {"eventType": "CREATE_PACKAGE", "eventDetail": { "id": 123, "timestamp": "2019-03-27T10:15:30+05:30" }},
-      |      {"eventType": "DELETE_PACKAGE", "eventDetail": { "id": 123 }}
+      |      {"eventType": "DELETE_PACKAGE", "eventDetail": { "id": 123 }},
+      |      {"eventType": "RESTORE_PACKAGE", "eventDetail": { "id": 123, "name": "test.txt" }}
       |    ],
       |    "traceId": "1234-5678",
       |    "id": "${UUID.randomUUID().toString}"
@@ -187,6 +188,25 @@ class DatasetChangelogEventJobSpec
     deleteEvents.head.eventType shouldBe (ChangelogEventName.DELETE_PACKAGE)
     deleteEvents.head.detail shouldBe (ChangelogEventDetail
       .DeletePackage(id = 123, None, None, None))
+
+    // RESTORE
+    val (undeleteEvents, _) = clm
+      .getEvents(
+        dataset = ds,
+        limit = 10,
+        cursor = ChangelogEventCursor(
+          ChangelogEventName.RESTORE_PACKAGE,
+          None,
+          None,
+          None
+        )
+      )
+      .await
+      .value
+    undeleteEvents.length shouldBe (1)
+    undeleteEvents.head.eventType shouldBe (ChangelogEventName.RESTORE_PACKAGE)
+    undeleteEvents.head.detail shouldBe (ChangelogEventDetail
+      .RestorePackage(id = 123, None, Some("test.txt"), None))
   }
 
   "parsing a changelog event job" should "fail if the event is not well-formed or missing data" in {
