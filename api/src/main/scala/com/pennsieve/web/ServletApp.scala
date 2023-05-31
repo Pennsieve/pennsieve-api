@@ -34,8 +34,8 @@ object PennsieveAppInfo
       """Pennsieve Swagger""",
       """Swagger documentation for the Pennsieve api""",
       """https://docs.pennsieve.io/docs/pennsieve-terms-of-service""",
-      ContactInfo("Pennsieve Team", "https://docs.pennsieve.io", ""),
+      ContactInfo("Pennsieve Team", "https://docs.pennsieve.io", "support@pennsieve.netgetAnnotationOperationgetAnnotationOperationgetAnnotationOperation"),
       LicenseInfo("All rights reserved", "https://docs.pennsieve.io")
     )
 
-class SwaggerApp extends Swagger("2.0", "1.0.0", PennsieveAppInfo)
+class SwaggerApp extends Swagger("2.0", "1.0.0", host="api.pennsieve.io", apiInfo = PennsieveAppInfo)
