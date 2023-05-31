@@ -16,10 +16,15 @@
 
 package com.pennsieve.db
 
+import cats._
+
+import cats.implicits._
+
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.models._
-import slick.dbio.Effect
-import slick.sql.SqlAction
+import com.pennsieve.models.{ ModelProperty, _ }
+import slick.lifted.MappedToBase.mappedToIsomorphism
+
+import com.pennsieve.models.WebhookTarget
 
 import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
@@ -52,6 +57,9 @@ final class WebhooksTable(schema: String, tag: Tag)
 
   def integrationUserId = column[Int]("integration_user_id")
 
+  def customTargets =
+    column[Option[List[WebhookTarget]]]("targets")
+
   def createdBy = column[Int]("created_by")
 
   def createdAt =
@@ -70,6 +78,7 @@ final class WebhooksTable(schema: String, tag: Tag)
       isDisabled,
       hasAccess,
       integrationUserId,
+      customTargets,
       createdBy,
       createdAt,
       id

@@ -33,6 +33,7 @@ final case class Webhook(
   isDisabled: Boolean,
   hasAccess: Boolean,
   integrationUserId: Int,
+  customTargets: Option[List[WebhookTarget]],
   createdBy: Int,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0

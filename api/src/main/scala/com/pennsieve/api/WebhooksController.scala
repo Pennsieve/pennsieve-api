@@ -33,7 +33,13 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.pennsieve.models.{ DBPermission, NodeCodes, Role, User }
+import com.pennsieve.models.{
+  DBPermission,
+  NodeCodes,
+  Role,
+  User,
+  WebhookTarget
+}
 
 case class CreateWebhookRequest(
   apiUrl: String,
@@ -42,6 +48,7 @@ case class CreateWebhookRequest(
   secret: String,
   displayName: String,
   targetEvents: Option[List[String]],
+  customTargets: Option[List[WebhookTarget]],
   hasAccess: Boolean,
   isPrivate: Boolean,
   isDefault: Boolean
@@ -54,6 +61,7 @@ case class UpdateWebhookRequest(
   secret: Option[String] = None,
   displayName: Option[String] = None,
   targetEvents: Option[List[String]] = None,
+  customTargets: Option[List[String]] = None,
   hasAccess: Option[Boolean] = None,
   isPrivate: Option[Boolean] = None,
   isDefault: Option[Boolean] = None,
@@ -138,6 +146,7 @@ class WebhooksController(
             isPrivate = body.isPrivate,
             isDefault = body.isDefault,
             targetEvents = body.targetEvents,
+            customTargets = body.customTargets,
             integrationUser = integrationUser
           )
           .coreErrorToActionResult()
