@@ -75,6 +75,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        null,
         integrationUser
       )
       .await
@@ -123,6 +124,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         expectedTargetEvents,
+        null,
         integrationUser
       )
       .await
@@ -166,6 +168,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        null,
         integrationUser
       )
       .await
@@ -210,6 +213,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        null,
         integrationUser
       )
       .await
@@ -245,6 +249,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        null,
         integrationUser
       )
       .await
@@ -280,6 +285,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        null,
         integrationUser
       )
       .await
@@ -315,6 +321,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        null,
         integrationUser
       )
       .await
@@ -348,6 +355,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        null,
         integrationUser
       )
       .await
@@ -587,6 +595,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       isDisabled = false,
       hasAccess = false,
       integrationUser.id,
+      null,
       1
     )
 
@@ -709,6 +718,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       isDisabled = false,
       hasAccess = false,
       integrationUserId = 1,
+      null,
       webhook.id + 1
     )
     val result = webhookManager().delete(unsavedWebhook).await

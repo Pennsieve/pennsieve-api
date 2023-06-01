@@ -23,9 +23,6 @@ case class WebhookTarget(target: String, filter: String)
 
 object WebhookTarget {
 
-  def created: WebhookTarget =
-    WebhookTarget("", "")
-
   implicit val encoder: Encoder[WebhookTarget] = deriveEncoder[WebhookTarget]
   implicit val decoder: Decoder[WebhookTarget] = deriveDecoder[WebhookTarget]
 }

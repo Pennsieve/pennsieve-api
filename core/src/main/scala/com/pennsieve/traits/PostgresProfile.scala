@@ -154,6 +154,12 @@ trait PostgresProfile
         json => json.as[List[ModelProperty]].toOption.get
       )
 
+    implicit val webhookTargetMapper =
+      MappedColumnType.base[List[WebhookTarget], Json](
+        webhook_targets => webhook_targets.asJson,
+        json => json.as[List[WebhookTarget]].toOption.get
+      )
+
     implicit val annotationPathElementMapper =
       MappedColumnType.base[List[PathElement], Json](
         elements => elements.asJson,

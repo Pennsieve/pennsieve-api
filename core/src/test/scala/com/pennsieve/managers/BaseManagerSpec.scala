@@ -38,7 +38,8 @@ import com.pennsieve.models.{
   Role,
   Team,
   User,
-  Webhook
+  Webhook,
+  WebhookTarget
 }
 import com.pennsieve.core.utilities.PostgresDatabase
 import com.pennsieve.traits.PostgresProfile.api._
@@ -495,6 +496,7 @@ trait ManagerSpec
     isDefault: Boolean = false,
     hasAccess: Boolean = false,
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
+    customTargets: Option[List[WebhookTarget]] = null,
     organization: Organization = testOrganization,
     creatingUser: User = superAdmin
   ): (Webhook, Seq[String]) = {
@@ -513,6 +515,7 @@ trait ManagerSpec
         isDefault,
         hasAccess,
         targetEvents,
+        customTargets,
         integrationUser
       )
       .await

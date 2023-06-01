@@ -385,6 +385,7 @@ trait DataSetTestMixin {
         isDefault = isDefault,
         hasAccess = hasAccess,
         targetEvents = targetEvents,
+        customTargets = null,
         integrationUser = integrationUser
       )
       .await match {
