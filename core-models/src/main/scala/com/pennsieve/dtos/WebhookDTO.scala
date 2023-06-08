@@ -20,7 +20,8 @@ import com.pennsieve.models.{
   Token,
   TokenSecret,
   Webhook,
-  WebhookEventSubcription
+  WebhookEventSubcription,
+  WebhookTarget
 }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
@@ -40,6 +41,7 @@ final case class WebhookDTO(
   hasAccess: Boolean,
   eventTargets: Option[Seq[String]],
   tokenSecret: Option[APITokenSecretDTO],
+  customTargets: Option[List[WebhookTarget]],
   createdBy: Int,
   createdAt: ZonedDateTime
 )
@@ -64,6 +66,7 @@ object WebhookDTO {
       hasAccess = webhook.hasAccess,
       eventTargets = None,
       tokenSecret = None,
+      customTargets = None,
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )
@@ -85,6 +88,7 @@ object WebhookDTO {
       hasAccess = webhook.hasAccess,
       eventTargets = Option(target).filter(_.nonEmpty),
       tokenSecret = None,
+      customTargets = None,
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )
@@ -111,6 +115,7 @@ object WebhookDTO {
           isDisabled = webhook.isDisabled,
           hasAccess = webhook.hasAccess,
           eventTargets = Option(target).filter(_.nonEmpty),
+          customTargets = None,
           tokenSecret = Some(tokenSecretDTO),
           createdBy = webhook.createdBy,
           createdAt = webhook.createdAt
@@ -128,6 +133,7 @@ object WebhookDTO {
           isDisabled = webhook.isDisabled,
           hasAccess = webhook.hasAccess,
           eventTargets = Option(target).filter(_.nonEmpty),
+          customTargets = None,
           tokenSecret = None,
           createdBy = webhook.createdBy,
           createdAt = webhook.createdAt

@@ -16,13 +16,20 @@
 
 package com.pennsieve.models
 
-import io.circe.{ Decoder, Encoder }
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import enumeratum.EnumEntry.UpperSnakecase
+import enumeratum._
 
-case class WebhookTarget(target: IntegrationTarget, filter: String)
+sealed trait IntegrationTarget extends EnumEntry with UpperSnakecase
 
-object WebhookTarget {
+object IntegrationTarget
+    extends Enum[IntegrationTarget]
+    with CirceEnum[IntegrationTarget] {
+  val values: IndexedSeq[IntegrationTarget] = findValues
 
-  implicit val encoder: Encoder[WebhookTarget] = deriveEncoder[WebhookTarget]
-  implicit val decoder: Decoder[WebhookTarget] = deriveDecoder[WebhookTarget]
+  case object Package extends IntegrationTarget
+  case object Packages extends IntegrationTarget
+  case object Record extends IntegrationTarget
+  case object Records extends IntegrationTarget
+  case object Dataset extends IntegrationTarget
+
 }
