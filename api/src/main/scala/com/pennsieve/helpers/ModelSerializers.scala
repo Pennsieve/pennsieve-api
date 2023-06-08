@@ -74,7 +74,8 @@ object ModelSerializers {
     Json4s.serializer(EmbargoAccess),
     Json4s.serializer(ChangelogEventName),
     Json4s.serializer(EventGroupPeriod),
-    Json4s.serializer(RelationshipType)
+    Json4s.serializer(RelationshipType),
+    Json4s.serializer(IntegrationTarget)
   )
 }
 

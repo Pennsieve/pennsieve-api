@@ -57,7 +57,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-
+      println("body:", body)
       println("parsedBody:", parsedBody)
 
       val resp = parsedBody.extract[WebhookDTO]

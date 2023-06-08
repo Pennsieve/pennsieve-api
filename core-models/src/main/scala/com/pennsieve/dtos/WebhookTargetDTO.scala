@@ -29,8 +29,4 @@ object WebhookTargetDTO {
   implicit val decoder: Decoder[WebhookTargetDTO] =
     deriveDecoder[WebhookTargetDTO]
 
-  implicit val integrationTargetEncoder: Encoder[IntegrationTarget] =
-    deriveEncoder[IntegrationTarget]
-  implicit val integrationTargetDecoder: Decoder[IntegrationTarget] =
-    deriveDecoder[IntegrationTarget]
 }
