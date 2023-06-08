@@ -16,8 +16,9 @@
 
 package com.pennsieve.models
 
-import java.time.ZonedDateTime
+import com.pennsieve.dtos.WebhookTargetDTO
 
+import java.time.ZonedDateTime
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 
@@ -33,7 +34,7 @@ final case class Webhook(
   isDisabled: Boolean,
   hasAccess: Boolean,
   integrationUserId: Int,
-  customTargets: Option[List[WebhookTarget]],
+  customTargets: Option[List[WebhookTargetDTO]],
   createdBy: Int,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0

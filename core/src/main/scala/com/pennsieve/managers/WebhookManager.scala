@@ -28,6 +28,7 @@ import com.pennsieve.core.utilities.{
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.db.{ WebhooksMapper, _ }
 import com.pennsieve.domain.{ CoreError, _ }
+import com.pennsieve.dtos.WebhookTargetDTO
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile
 import com.pennsieve.traits.PostgresProfile.api._
@@ -57,7 +58,7 @@ class WebhookManager(
     isDisabled: Boolean,
     hasAccess: Boolean,
     integrationUserId: Int,
-    customTargets: Option[List[WebhookTarget]],
+    customTargets: Option[List[WebhookTargetDTO]],
     createdBy: Int = actor.id,
     createdAt: ZonedDateTime = ZonedDateTime.now(),
     id: Int = 0
@@ -140,7 +141,7 @@ class WebhookManager(
     isDefault: Boolean,
     hasAccess: Boolean,
     targetEvents: Option[List[String]],
-    customTargets: Option[List[WebhookTarget]],
+    customTargets: Option[List[WebhookTargetDTO]],
     integrationUser: User
   )(implicit
     ec: ExecutionContext

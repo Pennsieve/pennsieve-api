@@ -22,7 +22,7 @@ import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
 import com.pennsieve.domain.CoreError
-import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO }
+import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO, WebhookTargetDTO }
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
   SecureContainerBuilderType
@@ -33,13 +33,7 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import scala.concurrent.{ ExecutionContext, Future }
-import com.pennsieve.models.{
-  DBPermission,
-  NodeCodes,
-  Role,
-  User,
-  WebhookTarget
-}
+import com.pennsieve.models.{ DBPermission, NodeCodes, Role, User }
 
 case class CreateWebhookRequest(
   apiUrl: String,
@@ -48,7 +42,7 @@ case class CreateWebhookRequest(
   secret: String,
   displayName: String,
   targetEvents: Option[List[String]],
-  customTargets: Option[List[WebhookTarget]],
+  customTargets: Option[List[WebhookTargetDTO]],
   hasAccess: Boolean,
   isPrivate: Boolean,
   isDefault: Boolean
@@ -61,7 +55,7 @@ case class UpdateWebhookRequest(
   secret: Option[String] = None,
   displayName: Option[String] = None,
   targetEvents: Option[List[String]] = None,
-  customTargets: Option[List[String]] = None,
+  customTargets: Option[List[WebhookTargetDTO]] = None,
   hasAccess: Option[Boolean] = None,
   isPrivate: Option[Boolean] = None,
   isDefault: Option[Boolean] = None,

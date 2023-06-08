@@ -17,11 +17,10 @@
 package com.pennsieve.db
 
 import cats._
-
 import cats.implicits._
-
+import com.pennsieve.dtos.WebhookTargetDTO
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.models.{ WebhookTarget, _ }
+import com.pennsieve.models._
 import slick.lifted.MappedToBase.mappedToIsomorphism
 
 import java.time.ZonedDateTime
@@ -56,7 +55,7 @@ final class WebhooksTable(schema: String, tag: Tag)
   def integrationUserId = column[Int]("integration_user_id")
 
   def customTargets =
-    column[Option[List[WebhookTarget]]]("webhook_targets")
+    column[Option[List[WebhookTargetDTO]]]("webhook_targets")
 
   def createdBy = column[Int]("created_by")
 

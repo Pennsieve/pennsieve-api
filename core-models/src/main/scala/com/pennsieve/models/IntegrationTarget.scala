@@ -16,20 +16,26 @@
 
 package com.pennsieve.models
 
-import enumeratum.EnumEntry.UpperSnakecase
+import com.pennsieve.dtos.WebhookTargetDTO
+import enumeratum.EnumEntry.Uppercase
 import enumeratum._
+import io.circe.{ Decoder, Encoder }
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 
-sealed trait IntegrationTarget extends EnumEntry with UpperSnakecase
+import scala.collection.immutable
+
+sealed trait IntegrationTarget extends EnumEntry with Uppercase
 
 object IntegrationTarget
     extends Enum[IntegrationTarget]
     with CirceEnum[IntegrationTarget] {
-  val values: IndexedSeq[IntegrationTarget] = findValues
 
-  case object Package extends IntegrationTarget
-  case object Packages extends IntegrationTarget
-  case object Record extends IntegrationTarget
-  case object Records extends IntegrationTarget
-  case object Dataset extends IntegrationTarget
+  val values: immutable.IndexedSeq[IntegrationTarget] = findValues
+
+  case object PACKAGE extends IntegrationTarget
+  case object PACKAGES extends IntegrationTarget
+  case object RECORD extends IntegrationTarget
+  case object RECORDS extends IntegrationTarget
+  case object DATASET extends IntegrationTarget
 
 }

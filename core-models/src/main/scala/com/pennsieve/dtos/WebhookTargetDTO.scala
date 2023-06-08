@@ -14,15 +14,23 @@
  * limitations under the License.
  */
 
-package com.pennsieve.models
+package com.pennsieve.dtos
 
-import io.circe.{ Decoder, Encoder }
+import com.pennsieve.models.IntegrationTarget
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.{ Decoder, Encoder }
 
-case class WebhookTarget(target: IntegrationTarget, filter: String)
+case class WebhookTargetDTO(target: IntegrationTarget, filter: String)
 
-object WebhookTarget {
+object WebhookTargetDTO {
 
-  implicit val encoder: Encoder[WebhookTarget] = deriveEncoder[WebhookTarget]
-  implicit val decoder: Decoder[WebhookTarget] = deriveDecoder[WebhookTarget]
+  implicit val encoder: Encoder[WebhookTargetDTO] =
+    deriveEncoder[WebhookTargetDTO]
+  implicit val decoder: Decoder[WebhookTargetDTO] =
+    deriveDecoder[WebhookTargetDTO]
+
+  implicit val integrationTargetEncoder: Encoder[IntegrationTarget] =
+    deriveEncoder[IntegrationTarget]
+  implicit val integrationTargetDecoder: Decoder[IntegrationTarget] =
+    deriveDecoder[IntegrationTarget]
 }

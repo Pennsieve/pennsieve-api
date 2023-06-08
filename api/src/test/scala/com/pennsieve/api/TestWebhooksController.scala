@@ -23,7 +23,7 @@ import com.pennsieve.helpers.{
   DataSetTestMixin,
   MockAuditLogger
 }
-import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO }
+import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO, WebhookTargetDTO }
 import com.pennsieve.models.Webhook
 import org.json4s.jackson.Serialization.write
 import org.scalatest.OptionValues._
@@ -57,7 +57,12 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
+
+      println("parsedBody:", parsedBody)
+
       val resp = parsedBody.extract[WebhookDTO]
+
+      println("response:", resp)
       checkProperties(resp, webhook, subscriptions)
     }
   }
@@ -592,6 +597,10 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     webserviceResponse.imageUrl should equal(expectedWebhook.imageUrl)
 
     webserviceResponse.description should equal(expectedWebhook.description)
+
+    println("response", webserviceResponse.customTargets)
+
+    webserviceResponse.customTargets should equal(expectedWebhook.customTargets)
 
     val (actualWebhook, _) = secureContainer.webhookManager
       .getWithSubscriptions(expectedWebhook.id)

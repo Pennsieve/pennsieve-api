@@ -38,12 +38,12 @@ import com.pennsieve.models.{
   Role,
   Team,
   User,
-  Webhook,
-  WebhookTarget
+  Webhook
 }
 import com.pennsieve.core.utilities.PostgresDatabase
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.db._
+import com.pennsieve.dtos.WebhookTargetDTO
 import com.pennsieve.models.FileObjectType.Source
 import com.pennsieve.test._
 import com.pennsieve.test.helpers.{ TestDatabase, TestableOrganizationManager }
@@ -496,7 +496,7 @@ trait ManagerSpec
     isDefault: Boolean = false,
     hasAccess: Boolean = false,
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
-    customTargets: Option[List[WebhookTarget]] = null,
+    customTargets: Option[List[WebhookTargetDTO]] = null,
     organization: Organization = testOrganization,
     creatingUser: User = superAdmin
   ): (Webhook, Seq[String]) = {

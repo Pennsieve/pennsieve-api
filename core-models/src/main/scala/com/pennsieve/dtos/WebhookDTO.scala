@@ -20,8 +20,7 @@ import com.pennsieve.models.{
   Token,
   TokenSecret,
   Webhook,
-  WebhookEventSubcription,
-  WebhookTarget
+  WebhookEventSubcription
 }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
@@ -41,7 +40,7 @@ final case class WebhookDTO(
   hasAccess: Boolean,
   eventTargets: Option[Seq[String]],
   tokenSecret: Option[APITokenSecretDTO],
-  customTargets: Option[List[WebhookTarget]],
+  customTargets: Option[List[WebhookTargetDTO]],
   createdBy: Int,
   createdAt: ZonedDateTime
 )
@@ -66,7 +65,7 @@ object WebhookDTO {
       hasAccess = webhook.hasAccess,
       eventTargets = None,
       tokenSecret = None,
-      customTargets = None,
+      customTargets = webhook.customTargets,
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )
@@ -74,6 +73,8 @@ object WebhookDTO {
 
   def apply(webhook: Webhook, target: Seq[String]): WebhookDTO = {
 //    val targetsStr: Option[Seq[Int]] = Some(target.map(x => x.id))
+
+    println("Constructor:", webhook.customTargets)
 
     WebhookDTO(
       id = webhook.id,
@@ -88,7 +89,7 @@ object WebhookDTO {
       hasAccess = webhook.hasAccess,
       eventTargets = Option(target).filter(_.nonEmpty),
       tokenSecret = None,
-      customTargets = None,
+      customTargets = webhook.customTargets,
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )
@@ -115,7 +116,7 @@ object WebhookDTO {
           isDisabled = webhook.isDisabled,
           hasAccess = webhook.hasAccess,
           eventTargets = Option(target).filter(_.nonEmpty),
-          customTargets = None,
+          customTargets = webhook.customTargets,
           tokenSecret = Some(tokenSecretDTO),
           createdBy = webhook.createdBy,
           createdAt = webhook.createdAt
@@ -133,7 +134,7 @@ object WebhookDTO {
           isDisabled = webhook.isDisabled,
           hasAccess = webhook.hasAccess,
           eventTargets = Option(target).filter(_.nonEmpty),
-          customTargets = None,
+          customTargets = webhook.customTargets,
           tokenSecret = None,
           createdBy = webhook.createdBy,
           createdAt = webhook.createdAt
