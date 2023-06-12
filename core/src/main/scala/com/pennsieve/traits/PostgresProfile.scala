@@ -18,13 +18,13 @@ package com.pennsieve.traits
 
 import java.sql.{ PreparedStatement, ResultSet, Timestamp }
 import java.time.{ ZoneOffset, ZonedDateTime }
-
 import cats.implicits._
 import com.pennsieve.models._
 import com.pennsieve.timeseries.AnnotationData
 import com.pennsieve.utilities.AbstractError
 import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
+import com.pennsieve.dtos.WebhookTargetDTO
 import io.circe.Json
 import io.circe.syntax._
 import slick.ast.Library.SqlAggregateFunction
@@ -152,6 +152,18 @@ trait PostgresProfile
       MappedColumnType.base[List[ModelProperty], Json](
         properties => properties.asJson,
         json => json.as[List[ModelProperty]].toOption.get
+      )
+
+    implicit val webhookTargetMapper =
+      MappedColumnType.base[List[WebhookTargetDTO], Json](
+        properties => properties.asJson,
+        json => json.as[List[WebhookTargetDTO]].toOption.get
+      )
+
+    implicit val integrationTargetMapper =
+      MappedColumnType.base[IntegrationTarget, String](
+        s => s.entryName,
+        s => IntegrationTarget.withName(s)
       )
 
     implicit val annotationPathElementMapper =

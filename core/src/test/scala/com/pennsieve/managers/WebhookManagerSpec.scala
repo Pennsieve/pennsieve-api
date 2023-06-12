@@ -17,6 +17,11 @@
 package com.pennsieve.managers
 
 import com.pennsieve.domain.{ NotFound, PermissionError, PredicateError }
+import com.pennsieve.dtos.{
+  WebhookPackageFilter,
+  WebhookTargetDTO,
+  WebhookTargetFilterDTO
+}
 import com.pennsieve.models._
 import slick.jdbc.PostgresProfile.api._
 import org.scalatest.EitherValues._
@@ -63,6 +68,17 @@ class WebhookManagerSpec extends BaseManagerSpec {
     val expectedIsDefault = true
     val expectedHasAccess = true
     val expectedTargetEvents = List("METADATA", "PERMISSIONS")
+    val expectedCustomTargets = List(
+      WebhookTargetDTO(IntegrationTarget.PACKAGE, None),
+      WebhookTargetDTO(
+        IntegrationTarget.PACKAGES,
+        Some(
+          WebhookTargetFilterDTO(
+            Some(WebhookPackageFilter(List(FileType.EDF, FileType.CSV)))
+          )
+        )
+      )
+    )
 
     val result = whManager
       .create(
@@ -75,6 +91,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        Some(expectedCustomTargets),
         integrationUser
       )
       .await
@@ -91,6 +108,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(returnedWebhook.secret == expectedSecret)
     assert(returnedWebhook.integrationUserId == integrationUser.id)
     assert(returnedTargetEvents.equals(expectedTargetEvents))
+    assert(returnedWebhook.customTargets.contains(expectedCustomTargets))
 
     checkActualWebhooks(whManager, returnedWebhook)
     checkActualSubscriptions(
@@ -123,6 +141,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         expectedTargetEvents,
+        None,
         integrationUser
       )
       .await
@@ -138,6 +157,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
     assert(returnedWebhook.displayName == expectedDisplayName)
     assert(returnedWebhook.secret == expectedSecret)
     assert(returnedTargetEvents.isEmpty)
+    assert(returnedWebhook.customTargets.isEmpty)
 
     checkActualWebhooks(whManager, returnedWebhook)
     assertNoSubscriptions(whManager)
@@ -166,6 +186,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        None,
         integrationUser
       )
       .await
@@ -210,6 +231,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        None,
         integrationUser
       )
       .await
@@ -245,6 +267,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        None,
         integrationUser
       )
       .await
@@ -280,6 +303,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        None,
         integrationUser
       )
       .await
@@ -315,6 +339,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        None,
         integrationUser
       )
       .await
@@ -348,6 +373,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
         expectedIsDefault,
         expectedHasAccess,
         Some(expectedTargetEvents),
+        None,
         integrationUser
       )
       .await
@@ -587,6 +613,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       isDisabled = false,
       hasAccess = false,
       integrationUser.id,
+      null,
       1
     )
 
@@ -709,6 +736,7 @@ class WebhookManagerSpec extends BaseManagerSpec {
       isDisabled = false,
       hasAccess = false,
       integrationUserId = 1,
+      null,
       webhook.id + 1
     )
     val result = webhookManager().delete(unsavedWebhook).await

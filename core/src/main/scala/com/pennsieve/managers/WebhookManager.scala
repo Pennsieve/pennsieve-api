@@ -28,6 +28,7 @@ import com.pennsieve.core.utilities.{
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.db.{ WebhooksMapper, _ }
 import com.pennsieve.domain.{ CoreError, _ }
+import com.pennsieve.dtos.WebhookTargetDTO
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile
 import com.pennsieve.traits.PostgresProfile.api._
@@ -57,6 +58,7 @@ class WebhookManager(
     isDisabled: Boolean,
     hasAccess: Boolean,
     integrationUserId: Int,
+    customTargets: Option[List[WebhookTargetDTO]],
     createdBy: Int = actor.id,
     createdAt: ZonedDateTime = ZonedDateTime.now(),
     id: Int = 0
@@ -102,6 +104,7 @@ class WebhookManager(
         isDisabled,
         hasAccess,
         integrationUserId,
+        customTargets,
         createdBy,
         createdAt,
         id
@@ -121,6 +124,7 @@ class WebhookManager(
       webhook.isDisabled,
       webhook.hasAccess,
       webhook.integrationUserId,
+      webhook.customTargets,
       webhook.createdBy,
       webhook.createdAt,
       webhook.id
@@ -137,6 +141,7 @@ class WebhookManager(
     isDefault: Boolean,
     hasAccess: Boolean,
     targetEvents: Option[List[String]],
+    customTargets: Option[List[WebhookTargetDTO]],
     integrationUser: User
   )(implicit
     ec: ExecutionContext
@@ -155,7 +160,8 @@ class WebhookManager(
         isDefault,
         isDisabled = false,
         hasAccess,
-        integrationUser.id
+        integrationUser.id,
+        customTargets
       ) match {
         case Right(webhook) => insertWebhook(webhook)
         case Left(error) => DBIO.failed(error)

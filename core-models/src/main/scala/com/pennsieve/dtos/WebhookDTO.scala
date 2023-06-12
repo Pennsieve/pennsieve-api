@@ -40,6 +40,7 @@ final case class WebhookDTO(
   hasAccess: Boolean,
   eventTargets: Option[Seq[String]],
   tokenSecret: Option[APITokenSecretDTO],
+  customTargets: Option[List[WebhookTargetDTO]],
   createdBy: Int,
   createdAt: ZonedDateTime
 )
@@ -64,6 +65,7 @@ object WebhookDTO {
       hasAccess = webhook.hasAccess,
       eventTargets = None,
       tokenSecret = None,
+      customTargets = webhook.customTargets,
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )
@@ -85,6 +87,7 @@ object WebhookDTO {
       hasAccess = webhook.hasAccess,
       eventTargets = Option(target).filter(_.nonEmpty),
       tokenSecret = None,
+      customTargets = webhook.customTargets,
       createdBy = webhook.createdBy,
       createdAt = webhook.createdAt
     )
@@ -111,6 +114,7 @@ object WebhookDTO {
           isDisabled = webhook.isDisabled,
           hasAccess = webhook.hasAccess,
           eventTargets = Option(target).filter(_.nonEmpty),
+          customTargets = webhook.customTargets,
           tokenSecret = Some(tokenSecretDTO),
           createdBy = webhook.createdBy,
           createdAt = webhook.createdAt
@@ -128,6 +132,7 @@ object WebhookDTO {
           isDisabled = webhook.isDisabled,
           hasAccess = webhook.hasAccess,
           eventTargets = Option(target).filter(_.nonEmpty),
+          customTargets = webhook.customTargets,
           tokenSecret = None,
           createdBy = webhook.createdBy,
           createdAt = webhook.createdAt

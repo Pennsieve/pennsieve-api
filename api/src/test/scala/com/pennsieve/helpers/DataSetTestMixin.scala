@@ -26,6 +26,8 @@ import com.pennsieve.models.{
   DatasetIntegration,
   DatasetState,
   Degree,
+  FileType,
+  IntegrationTarget,
   License,
   NodeCodes,
   OrcidAuthorization,
@@ -44,7 +46,6 @@ import com.pennsieve.clients.DatasetAssetClient
 import org.scalatest.EitherValues._
 
 import scala.concurrent.ExecutionContext
-
 import java.io.ByteArrayInputStream
 import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
@@ -332,6 +333,12 @@ trait DataSetTestMixin {
     secret: String = "secretkey123",
     displayName: String = "Test Webhook",
     targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
+    customTargets: Option[List[WebhookTargetDTO]] =
+      Some(List(WebhookTargetDTO(IntegrationTarget.PACKAGE,
+            Some(WebhookTargetFilterDTO(Some(WebhookPackageFilter(List(FileType.EDF)))))),
+          WebhookTargetDTO(IntegrationTarget.PACKAGES,
+            Some(WebhookTargetFilterDTO(Some(WebhookPackageFilter(List(FileType.Intan,
+                      FileType.RData)))))))),
     isPrivate: Boolean = false,
     isDefault: Boolean = false,
     hasAccess: Boolean = false,
@@ -385,6 +392,7 @@ trait DataSetTestMixin {
         isDefault = isDefault,
         hasAccess = hasAccess,
         targetEvents = targetEvents,
+        customTargets = customTargets,
         integrationUser = integrationUser
       )
       .await match {
