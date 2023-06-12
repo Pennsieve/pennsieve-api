@@ -34,7 +34,7 @@ object PennsieveAppInfo
       """Pennsieve Swagger""",
       """Swagger documentation for the Pennsieve api""",
       """https://docs.pennsieve.io/docs/pennsieve-terms-of-service""",
-      ContactInfo("Pennsieve Team", "https://docs.pennsieve.io", "support@pennsieve.netgetAnnotationOperationgetAnnotationOperationgetAnnotationOperation"),
+      ContactInfo("Pennsieve Team", "https://docs.pennsieve.io", "support@pennsieve.net"),
       LicenseInfo("All rights reserved", "https://docs.pennsieve.io")
     )
 
