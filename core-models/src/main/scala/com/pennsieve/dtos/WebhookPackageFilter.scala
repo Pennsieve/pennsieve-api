@@ -16,20 +16,15 @@
 
 package com.pennsieve.dtos
 
-import com.pennsieve.models.IntegrationTarget
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import com.pennsieve.models.{ FileType }
 import io.circe.{ Decoder, Encoder }
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 
-case class WebhookTargetDTO(
-  target: IntegrationTarget,
-  filter: Option[WebhookTargetFilterDTO]
-)
+case class WebhookPackageFilter(fileType: List[FileType])
 
-object WebhookTargetDTO {
-
-  implicit val encoder: Encoder[WebhookTargetDTO] =
-    deriveEncoder[WebhookTargetDTO]
-  implicit val decoder: Decoder[WebhookTargetDTO] =
-    deriveDecoder[WebhookTargetDTO]
-
+object WebhookPackageFilter {
+  implicit val encoder: Encoder[WebhookPackageFilter] =
+    deriveEncoder[WebhookPackageFilter]
+  implicit val decoder: Decoder[WebhookPackageFilter] =
+    deriveDecoder[WebhookPackageFilter]
 }

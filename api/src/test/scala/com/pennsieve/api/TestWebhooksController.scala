@@ -24,7 +24,7 @@ import com.pennsieve.helpers.{
   MockAuditLogger
 }
 import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO, WebhookTargetDTO }
-import com.pennsieve.models.Webhook
+import com.pennsieve.models.{ IntegrationTarget, Webhook }
 import org.json4s.jackson.Serialization.write
 import org.scalatest.OptionValues._
 import org.scalatest.EitherValues._
@@ -57,12 +57,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      println("body:", body)
-      println("parsedBody:", parsedBody)
-
       val resp = parsedBody.extract[WebhookDTO]
-
-      println("response:", resp)
       checkProperties(resp, webhook, subscriptions)
     }
   }
@@ -138,7 +133,8 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         secret = "secretkey",
         displayName = "Test Webhook",
         targetEvents = Some(List("METADATA", "FILES")),
-        customTargets = null,
+        customTargets =
+          Some(List(WebhookTargetDTO(IntegrationTarget.PACKAGE, null))),
         hasAccess = false,
         isPrivate = false,
         isDefault = true
@@ -158,6 +154,9 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       webhook.isDisabled should equal(false)
       webhook.createdBy should equal(loggedInUser.id)
       webhook.tokenSecret.get shouldBe a[APITokenSecretDTO]
+      webhook.customTargets should equal(
+        Some(List(WebhookTargetDTO(IntegrationTarget.PACKAGE, None)))
+      )
 
       get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
         status should equal(200)
@@ -374,6 +373,41 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val expectedWebhook = webhook.copy(imageUrl = newImageUrl)
       val updatedWebhook = parsedBody.extract[WebhookDTO]
+      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
+    }
+  }
+
+  test("update the custom target") {
+    val (webhook, subscriptions) =
+      createWebhook(
+        customTargets =
+          Some(List(WebhookTargetDTO(IntegrationTarget.PACKAGE, None)))
+      )
+    val newTarget = Some(List(WebhookTargetDTO(IntegrationTarget.RECORD, None)))
+    val req = write(UpdateWebhookRequest(customTargets = newTarget))
+
+    putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(200)
+      val expectedWebhook = webhook.copy(customTargets = newTarget)
+      val updatedWebhook = parsedBody.extract[WebhookDTO]
+      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
+    }
+  }
+
+  test("remove custom targets") {
+    val (webhook, subscriptions) =
+      createWebhook(
+        customTargets =
+          Some(List(WebhookTargetDTO(IntegrationTarget.PACKAGE, None)))
+      )
+    val newTargets = Some(List.empty[WebhookTargetDTO])
+    val req = write(UpdateWebhookRequest(customTargets = newTargets))
+
+    putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
+      status should equal(200)
+      val updatedWebhook = parsedBody.extract[WebhookDTO]
+      val expectedWebhook =
+        webhook.copy(customTargets = Some(List.empty[WebhookTargetDTO]))
       checkProperties(updatedWebhook, expectedWebhook, subscriptions)
     }
   }
@@ -597,8 +631,6 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     webserviceResponse.imageUrl should equal(expectedWebhook.imageUrl)
 
     webserviceResponse.description should equal(expectedWebhook.description)
-
-    println("response", webserviceResponse.customTargets)
 
     webserviceResponse.customTargets should equal(expectedWebhook.customTargets)
 

@@ -74,8 +74,6 @@ object WebhookDTO {
   def apply(webhook: Webhook, target: Seq[String]): WebhookDTO = {
 //    val targetsStr: Option[Seq[Int]] = Some(target.map(x => x.id))
 
-    println("Constructor:", webhook.customTargets)
-
     WebhookDTO(
       id = webhook.id,
       apiUrl = webhook.apiUrl,

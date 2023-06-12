@@ -20,16 +20,13 @@ import com.pennsieve.models.IntegrationTarget
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 
-case class WebhookTargetDTO(
-  target: IntegrationTarget,
-  filter: Option[WebhookTargetFilterDTO]
-)
+case class WebhookTargetFilterDTO(packageFilter: Option[WebhookPackageFilter])
 
-object WebhookTargetDTO {
+object WebhookTargetFilterDTO {
 
-  implicit val encoder: Encoder[WebhookTargetDTO] =
-    deriveEncoder[WebhookTargetDTO]
-  implicit val decoder: Decoder[WebhookTargetDTO] =
-    deriveDecoder[WebhookTargetDTO]
+  implicit val encoder: Encoder[WebhookTargetFilterDTO] =
+    deriveEncoder[WebhookTargetFilterDTO]
+  implicit val decoder: Decoder[WebhookTargetFilterDTO] =
+    deriveDecoder[WebhookTargetFilterDTO]
 
 }

@@ -175,8 +175,6 @@ class WebhooksController(
               .coreErrorToActionResult()
           }
 
-          _ = println(webhookMap)
-
         } yield webhookMap.map(x => WebhookDTO(x._1, x._2))
 
       override val is: Future[ActionResult] = result.value.map(OkResult(_))
@@ -234,7 +232,8 @@ class WebhooksController(
           displayName = body.displayName.getOrElse(webhook.displayName),
           isPrivate = body.isPrivate.getOrElse(webhook.isPrivate),
           isDefault = body.isDefault.getOrElse(webhook.isDefault),
-          isDisabled = body.isDisabled.getOrElse(webhook.isDisabled)
+          isDisabled = body.isDisabled.getOrElse(webhook.isDisabled),
+          customTargets = body.customTargets.orElse(webhook.customTargets)
         )
         updatedWebhookAndEvents <- secureContainer.webhookManager
           .update(updatedWebhook, body.targetEvents)
