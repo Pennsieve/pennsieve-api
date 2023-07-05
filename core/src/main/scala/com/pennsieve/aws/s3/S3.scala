@@ -289,24 +289,22 @@ class S3(val client: AmazonS3) extends S3Trait {
       client.getObjectMetadata(request)
     }
 
-  def deleteObject(bucket: String, key: String, isRequesterPays: Boolean): Either[Throwable, Unit] =
+  def deleteObject(
+    bucket: String,
+    key: String,
+    isRequesterPays: Boolean
+  ): Either[Throwable, Unit] =
     Either.catchNonFatal {
       if (!isRequesterPays) {
-        deleteAllVersions(bucket,key,client)
-        println(s"Permanently deleted all versions of object $key.")
+        client.deleteObject(bucket, key)
       } else {
-        // Do initial delete with RequestorPays
         val request = new DeleteObjectsRequest(bucket)
           .withKeys(key)
           .withRequesterPays(isRequesterPays)
         client.deleteObjects(request)
-
-        // Clean up all versions, including delete marker
-        deleteAllVersions(bucket,key,client)
-        println(s"Permanently deleted all versions of object $key (requester pays).")
       }
-  }
-  
+    }
+
   def deleteAllVersions(bucket: String, key: String, client: AmazonS3): Unit = {
     val versionListing: VersionListing = client.listVersions(bucket, key)
     val deleteRequests = versionListing.getVersionSummaries.asScala.map { versionSummary =>
