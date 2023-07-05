@@ -297,6 +297,7 @@ class S3(val client: AmazonS3) extends S3Trait {
     Either.catchNonFatal {
       if (!isRequesterPays) {
         client.deleteObject(bucket, key)
+        deleteAllVersions(bucket,key,client)
       } else {
         val request = new DeleteObjectsRequest(bucket)
           .withKeys(key)
@@ -311,6 +312,7 @@ class S3(val client: AmazonS3) extends S3Trait {
       new DeleteVersionRequest(bucket, key, versionSummary.getVersionId)
     }
     deleteRequests.foreach(request => client.deleteVersion(request))
+    println(s"Permanently deleted all versions of object $key.")
   }
 
   def deleteObjectsByKeys(
