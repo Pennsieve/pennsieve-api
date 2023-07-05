@@ -87,7 +87,7 @@ trait S3Trait {
   def deleteObject(o: S3Object): Either[Throwable, Unit] =
     deleteObject(o.getBucketName, o.getKey)
 
-  def deleteAllVersions(bucket: String, key: String, client: AmazonS3): Unit
+  def deleteAllVersions(bucket: String, key: String, client: AmazonS3): Either[Throwable, Unit] 
 
   def deleteObjectsByKeys(
     bucket: String,
@@ -309,14 +309,20 @@ class S3(val client: AmazonS3) extends S3Trait {
     }
 
   // Gathers up all versions of a $key and does a hard delete
-  def deleteAllVersions(bucket: String, key: String, client: AmazonS3): Unit = {
+def deleteAllVersions(bucket: String, key: String, client: AmazonS3): Either[Throwable, Unit] = {
+  try {
     val versionListing: VersionListing = client.listVersions(bucket, key)
     val deleteRequests = versionListing.getVersionSummaries.asScala.map { versionSummary =>
       new DeleteVersionRequest(bucket, key, versionSummary.getVersionId)
     }
     deleteRequests.foreach(request => client.deleteVersion(request))
     println(s"Permanently deleted all versions of object $key.")
+    Right(()) // Return Right to indicate successful execution without any meaningful result
+  } catch {
+    case ex: Throwable => Left(ex) // Return Left with the caught exception in case of an error
   }
+}
+
 
   def deleteObjectsByKeys(
     bucket: String,
