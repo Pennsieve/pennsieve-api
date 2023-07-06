@@ -299,13 +299,13 @@ class S3(val client: AmazonS3) extends S3Trait {
     Either.catchNonFatal {
       if (!isRequesterPays) {
         client.deleteObject(bucket, key)
-        deleteAllVersions(bucket,key,client)
       } else {
         val request = new DeleteObjectsRequest(bucket)
           .withKeys(key)
           .withRequesterPays(isRequesterPays)
         client.deleteObjects(request)
       }
+      deleteAllVersions(bucket,key,client)
     }
 
   // Gathers up all versions of a $key and does a hard delete
