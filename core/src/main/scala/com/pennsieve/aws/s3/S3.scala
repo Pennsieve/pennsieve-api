@@ -52,6 +52,7 @@ import java.io.{ File, InputStream }
 import java.net.URL
 import scala.jdk.CollectionConverters._
 import scala.annotation.tailrec
+import com.pennsieve.service.utilities.{ ContextLogger, LogContext, Tier }
 
 trait S3Trait {
   def getObject(s3URI: AmazonS3URI): Either[Throwable, S3Object]
@@ -309,14 +310,14 @@ class S3(val client: AmazonS3) extends S3Trait {
     }
 
   // Gathers up all versions of a $key and does a hard delete
-def deleteAllVersions(bucket: String, key: String, client: AmazonS3): Either[Throwable, Unit] = {
+def deleteAllVersions(bucket: String, key: String, client: AmazonS3)(implicit log:ContextLogger): Either[Throwable, Unit] = {
   try {
     val versionListing: VersionListing = client.listVersions(bucket, key)
     val deleteRequests = versionListing.getVersionSummaries.asScala.map { versionSummary =>
       new DeleteVersionRequest(bucket, key, versionSummary.getVersionId)
     }
     deleteRequests.foreach(request => client.deleteVersion(request))
-    println(s"Permanently deleted all versions of object $key.")
+    log.tierContext.info(s"Permanently deleted all versions of object $key.")
     Right(()) // Return Right to indicate successful execution without any meaningful result
   } catch {
     case ex: Throwable => Left(ex) // Return Left with the caught exception in case of an error
