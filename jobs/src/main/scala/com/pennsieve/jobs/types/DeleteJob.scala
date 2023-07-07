@@ -883,6 +883,7 @@ class DeleteJob(
         .sequence
         .toEitherT[Future]
         .leftMap(ExceptionError(_))
+      _ = log.noContext.info(s"Permanently deleted assets: ${assets}")
 
       _ <- assets
         .map(datasetAssetsManager.deleteDatasetAsset(_))
