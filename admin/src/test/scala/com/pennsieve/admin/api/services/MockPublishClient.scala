@@ -61,7 +61,8 @@ class MockPublishClient(
             0,
             PublishStatus.PublishInProgress,
             None,
-            Some(SponsorshipRequest(Some("foo"), Some("bar"), Some("baz")))
+            Some(SponsorshipRequest(Some("foo"), Some("bar"), Some("baz"))),
+            workflowId = 4
           ),
           DatasetPublishStatus(
             "TUSZ",
@@ -70,7 +71,8 @@ class MockPublishClient(
             None,
             0,
             PublishStatus.PublishInProgress,
-            None
+            None,
+            workflowId = 4
           )
         )
       )
