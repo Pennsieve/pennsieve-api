@@ -432,28 +432,29 @@ class DeleteJob(
         log.tierNoContext.info(
           s"Deleting ${s3Ids.size} keys from bucket: $bucket"
         )
-
-        // Retrieve object versions using ListVersionsRequest
-        val versions = s3Keys.flatMap { key =>
-          amazonS3.listVersions(bucket, key).getVersionSummaries.asScala
+        val req = new DeleteObjectsRequest(bucket)
+          .withKeys(s3Keys: _*)
+        try {
+          val deletedIds = amazonS3
+            .deleteObjects(req)
+            .getDeletedObjects
+            .asScala
+            .map(_.getKey)
+          S3DeleteResult(
+            bucket = bucket,
+            deletedKeys = deletedIds.toSeq,
+            notDeletedKeys = Seq.empty
+          )
+        } catch {
+          case ex: MultiObjectDeleteException =>
+            val deletedIds = ex.getDeletedObjects.asScala
+              .map(_.getKey)
+            S3DeleteResult(
+              bucket = bucket,
+              deletedKeys = deletedIds.toSeq,
+              notDeletedKeys = ex.getErrors.asScala.toSeq
+            )
         }
-
-        // Delete the objects
-        val deleteResult = amazonS3.deleteObjects(new DeleteObjectsRequest(bucket).withKeys(s3Keys: _*))
-
-        // Delete all versions of the deleted keys
-        versions.foreach { version =>
-          val versionDeleteReq = new DeleteVersionRequest(bucket, version.getKey, version.getVersionId)
-          amazonS3.deleteVersion(versionDeleteReq)
-          log.tierNoContext.info(s"Deleting all versions")
-        }
-
-        val deletedObjects = deleteResult.getDeletedObjects.asScala
-        S3DeleteResult(
-          bucket = bucket,
-          deletedKeys = deletedObjects.map(_.getKey).toSeq,
-          notDeletedKeys = Seq.empty
-        )
       }
       .mergeSubstreams
 
