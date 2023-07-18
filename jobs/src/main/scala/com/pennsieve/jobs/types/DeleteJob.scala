@@ -422,6 +422,15 @@ class DeleteJob(
       .toList
   }
 
+  def deleteAllVersions(bucket: String, key: String, client: AmazonS3) = {
+    // Gather all versions and hard delete them
+    val versionListing: VersionListing = client.listVersions(bucket, key)
+    val deleteRequests = versionListing.getVersionSummaries.asScala.map { versionSummary =>
+      new DeleteVersionRequest(bucket, key, versionSummary.getVersionId)
+    }
+    deleteRequests.foreach(request => client.deleteVersion(request))
+  }
+
   val deleteS3Objects: Flow[S3Object, S3DeleteResult, NotUsed] =
     Flow[S3Object]
       .groupBy(2, _.bucket)
@@ -440,6 +449,10 @@ class DeleteJob(
             .getDeletedObjects
             .asScala
             .map(_.getKey)
+  
+          s3Keys.foreach{ key =>
+            deleteAllVersions(bucket,key,amazonS3)
+          }
           S3DeleteResult(
             bucket = bucket,
             deletedKeys = deletedIds.toSeq,
