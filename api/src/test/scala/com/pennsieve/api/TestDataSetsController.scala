@@ -8091,7 +8091,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       0,
       PublishStatus.PublishInProgress,
       None,
-      None
+      None,
+      workflowId = 4
     )
 
     get(
@@ -8113,7 +8114,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         2,
         PublishStatus.PublishInProgress,
         Some(OffsetDateTime.of(2019, 2, 1, 10, 11, 12, 13, ZoneOffset.UTC)),
-        None
+        None,
+        workflowId = 4
       ),
       DatasetPublishStatus(
         "TUSZ",
@@ -8123,7 +8125,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         3,
         PublishStatus.PublishInProgress,
         Some(OffsetDateTime.of(2019, 4, 1, 10, 11, 12, 13, ZoneOffset.UTC)),
-        None
+        None,
+        workflowId = 4
       )
     )
 
