@@ -449,10 +449,6 @@ class DeleteJob(
             .getDeletedObjects
             .asScala
             .map(_.getKey)
-  
-          s3Keys.foreach{ key =>
-            deleteAllVersions(bucket,key,amazonS3)
-          }
           S3DeleteResult(
             bucket = bucket,
             deletedKeys = deletedIds.toSeq,
