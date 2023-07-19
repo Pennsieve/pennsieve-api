@@ -444,6 +444,9 @@ class DeleteJob(
         val req = new DeleteObjectsRequest(bucket)
           .withKeys(s3Keys: _*)
         try {
+          s3Keys.foreach{ key =>
+            deleteAllVersions(bucket,key,amazonS3)
+          }
           val deletedIds = amazonS3
             .deleteObjects(req)
             .getDeletedObjects
