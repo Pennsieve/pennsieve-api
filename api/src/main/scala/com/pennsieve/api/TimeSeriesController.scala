@@ -395,7 +395,7 @@ class TimeSeriesController(
       bodyParam[List[ModelPropertyRO]]("properties")
   ))
 
-  put("/:id/channels/:channelId/properties", operation(updateChannel)) {
+  put("/:id/channels/:channelId/properties", operation(updateChannelProperties)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, ChannelDTO] = for {
         secureContainer <- getSecureContainer()
@@ -674,10 +674,10 @@ class TimeSeriesController(
         .description("Id of the time series the annotation belongs to"),
       pathParam[Int]("layerId")
         .description("Id of the layer the annotations belongs to"),
-      pathParam[Boolean]("includeLinks").optional
+      queryParam[Boolean]("includeLinks").optional
         .description("whether or not to include attached packages")
         .defaultValue(true),
-      queryParam[Int]("annotationId")
+      pathParam[Int]("annotationId")
         .description("Id of the annotation to retrieve"),
       queryParam[Boolean]("startAtEpoch")
         .description(
@@ -778,7 +778,7 @@ class TimeSeriesController(
         .description("Start time of search query in microseconds"),
       queryParam[Long]("end")
         .description("End time of search query in microseconds"),
-      pathParam[Boolean]("includeLinks").optional
+      queryParam[Boolean]("includeLinks").optional
         .description("whether or not to include attached packages")
         .defaultValue(true),
       queryParam[SortedSet[String]]("channelIds")
