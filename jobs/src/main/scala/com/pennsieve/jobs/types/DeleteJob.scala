@@ -434,9 +434,13 @@ class DeleteJob(
           new DeleteVersionRequest(bucket, key, versionSummary.getVersionId)
       }
       deleteRequests.foreach(request => client.deleteVersion(request))
+      log.tierNoContext.info(s"Sucessfully deleted versions for ${key}")
       Right(()) // Return Right to indicate successful execution without any meaningful result
     } catch {
       case ex: Throwable =>
+        log.tierNoContext.info(
+          s"Failed to delete versions for ${key}. Error: ${ex.getMessage()}"
+        )
         Left(ex) // Return Left with the caught exception in case of an error
     }
   }
