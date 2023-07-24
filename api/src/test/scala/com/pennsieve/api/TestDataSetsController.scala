@@ -8720,37 +8720,11 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       "# Markdown content\nChangelog here!\nAnd also here!"
     val request = write(DatasetChangelogDTO(changelog = changeLogContentUpdate))
 
-    val orcidAuth = OrcidAuthorization(
-      name = "John Doe",
-      accessToken = "64918a80-dd0c-dd0c-dd0c-dd0c64918a80",
-      expiresIn = 631138518,
-      tokenType = "bearer",
-      orcid = "0000-0012-3456-7890",
-      scope = "/autheticate",
-      refreshToken = "64918a80-dd0c-dd0c-dd0c-dd0c64918a80"
-    )
-
-    val updatedUser = loggedInUser.copy(orcidAuthorization = Some(orcidAuth))
-    secureContainer.userManager.update(updatedUser).await
-
-    secureContainer.datasetPublicationStatusManager
-      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
-      .await
-      .value
-
-    val publisherTeam = secureContainer.organizationManager
-      .getPublisherTeam(secureContainer.organization)
-      .await
-      .value
-    secureContainer.teamManager
-      .addUser(publisherTeam._1, updatedUser, DBPermission.Administer)
-      .await
-      .value
-
+    val jwtOfPublishingTeamUser = colleagueJwt
     putJson(
       s"/${dataset.nodeId}/changelog",
       request,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+      headers = authorizationHeader(jwtOfPublishingTeamUser) ++ traceIdHeader()
     ) {
       status shouldBe 200
 
