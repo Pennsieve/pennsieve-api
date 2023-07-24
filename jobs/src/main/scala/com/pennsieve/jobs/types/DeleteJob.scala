@@ -422,6 +422,29 @@ class DeleteJob(
       .toList
   }
 
+  def deleteAllVersions(
+    bucket: String,
+    key: String,
+    client: AmazonS3
+  ): Either[Throwable, Unit] = {
+    try {
+      val versionListing: VersionListing = client.listVersions(bucket, key)
+      val deleteRequests = versionListing.getVersionSummaries.asScala.map {
+        versionSummary =>
+          new DeleteVersionRequest(bucket, key, versionSummary.getVersionId)
+      }
+      deleteRequests.foreach(request => client.deleteVersion(request))
+      log.tierNoContext.info(s"Sucessfully deleted versions for ${key}")
+      Right(()) // Return Right to indicate successful execution without any meaningful result
+    } catch {
+      case ex: Throwable =>
+        log.tierNoContext.info(
+          s"Failed to delete versions for ${key}. Error: ${ex.getMessage()}"
+        )
+        Left(ex) // Return Left with the caught exception in case of an error
+    }
+  }
+
   val deleteS3Objects: Flow[S3Object, S3DeleteResult, NotUsed] =
     Flow[S3Object]
       .groupBy(2, _.bucket)
@@ -435,6 +458,9 @@ class DeleteJob(
         val req = new DeleteObjectsRequest(bucket)
           .withKeys(s3Keys: _*)
         try {
+          s3Keys.foreach { key =>
+            deleteAllVersions(bucket, key, amazonS3)
+          }
           val deletedIds = amazonS3
             .deleteObjects(req)
             .getDeletedObjects
