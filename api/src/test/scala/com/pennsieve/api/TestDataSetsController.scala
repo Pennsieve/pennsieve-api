@@ -8721,6 +8721,15 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     val request = write(DatasetChangelogDTO(changelog = changeLogContentUpdate))
 
     val jwtOfPublishingTeamUser = colleagueJwt
+    val publisherTeam = secureContainer.organizationManager
+      .getPublisherTeam(secureContainer.organization)
+      .await
+      .value
+    secureContainer.teamManager
+      .addUser(publisherTeam._1, colleagueUser, DBPermission.Administer)
+      .await
+      .value
+
     putJson(
       s"/${dataset.nodeId}/changelog",
       request,
