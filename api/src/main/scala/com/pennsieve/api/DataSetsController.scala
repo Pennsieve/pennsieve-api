@@ -4313,6 +4313,10 @@ class DataSetsController(
           .getByNodeId(datasetId)
           .coreErrorToActionResult()
 
+        _ <- DataSetPublishingHelper
+          .addPublisherTeam(secureContainer, dataset)
+          .coreErrorToActionResult()
+
         _ <- secureContainer
           .authorizeDataset(
             Set(
