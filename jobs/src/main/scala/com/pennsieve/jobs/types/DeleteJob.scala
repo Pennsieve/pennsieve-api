@@ -445,6 +445,12 @@ class DeleteJob(
     }
   }
 
+  def deleteVersionsForKeys(keys: Seq[String], bucket: String): Unit = {
+    keys.foreach { key =>
+      deleteAllVersions(bucket, key, amazonS3)
+    }
+  }
+
   val deleteS3Objects: Flow[S3Object, S3DeleteResult, NotUsed] =
     Flow[S3Object]
       .groupBy(2, _.bucket)
@@ -457,18 +463,13 @@ class DeleteJob(
         )
         val req = new DeleteObjectsRequest(bucket)
           .withKeys(s3Keys: _*)
-        def deleteVersionsForKeys(keys: Seq[String]): Unit = {
-          keys.foreach { key =>
-            deleteAllVersions(bucket, key, amazonS3)
-          }
-        }
         try {
           val deletedIds = amazonS3
             .deleteObjects(req)
             .getDeletedObjects
             .asScala
             .map(_.getKey)
-          deleteVersionsForKeys(s3Keys)
+          deleteVersionsForKeys(s3Keys, bucket)
           S3DeleteResult(
             bucket = bucket,
             deletedKeys = deletedIds.toSeq,
@@ -478,7 +479,7 @@ class DeleteJob(
           case ex: MultiObjectDeleteException =>
             val deletedIds = ex.getDeletedObjects.asScala
               .map(_.getKey)
-            deleteVersionsForKeys(s3Keys)
+            deleteVersionsForKeys(s3Keys, bucket)
             S3DeleteResult(
               bucket = bucket,
               deletedKeys = deletedIds.toSeq,
