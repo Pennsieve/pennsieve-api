@@ -918,7 +918,7 @@ class PackagesController(
   }
 
   val downloadManifestOperation = (apiOperation[DownloadManifestDTO](
-    "download-manifest"
+    "download-package-manifest"
   )
     summary "returns the tree structure, including signed s3 urls and the corresponding paths that will make up an archive to download"
     parameter bodyParam[DownloadRequest]("body")

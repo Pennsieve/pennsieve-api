@@ -101,7 +101,8 @@ class MockPublishClient(
             publishedVersionCount = 0,
             status = PublishStatus.PublishInProgress,
             lastPublishedDate = None,
-            sponsorship = None
+            sponsorship = None,
+            workflowId = 4
           )
         )
       )
@@ -132,7 +133,8 @@ class MockPublishClient(
             publishedVersionCount = 3,
             status = PublishStatus.PublishSucceeded,
             lastPublishedDate = None,
-            sponsorship = None
+            sponsorship = None,
+            workflowId = 4
           )
         )
       )
@@ -160,7 +162,8 @@ class MockPublishClient(
           publishedVersionCount = 0,
           status = PublishStatus.ReleaseInProgress,
           lastPublishedDate = None,
-          sponsorship = None
+          sponsorship = None,
+          workflowId = 4
         )
       )
     )
@@ -182,7 +185,8 @@ class MockPublishClient(
           publishedVersionCount = 0,
           status = PublishStatus.NotPublished,
           lastPublishedDate = None,
-          sponsorship = None
+          sponsorship = None,
+          workflowId = 4
         )
       )
     )
@@ -203,7 +207,8 @@ class MockPublishClient(
           publishedVersionCount = 0,
           status = nextStatus(),
           lastPublishedDate = None,
-          sponsorship = None
+          sponsorship = None,
+          workflowId = 4
         )
       )
     )
@@ -226,7 +231,8 @@ class MockPublishClient(
             lastPublishedDate = Some(
               OffsetDateTime.of(2019, 2, 1, 10, 11, 12, 13, ZoneOffset.UTC)
             ),
-            sponsorship = None
+            sponsorship = None,
+            workflowId = 4
           ),
           DatasetPublishStatus(
             name = "TUSZ",
@@ -238,7 +244,8 @@ class MockPublishClient(
             lastPublishedDate = Some(
               OffsetDateTime.of(2019, 4, 1, 10, 11, 12, 13, ZoneOffset.UTC)
             ),
-            sponsorship = None
+            sponsorship = None,
+            workflowId = 4
           )
         )
       )

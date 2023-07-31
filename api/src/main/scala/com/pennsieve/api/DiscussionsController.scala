@@ -72,10 +72,10 @@ class DiscussionsController(
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
   val getDiscussionOperation = (apiOperation[Option[DiscussionsResponse]](
-    "getAnnotationOperation"
+    "getDiscussionOperation"
   )
-    summary "get an annotation"
-    parameter pathParam[String]("id").description("the id of the packge"))
+    summary "get a discussion"
+    parameter pathParam[String]("id").description("the id of the package"))
 
   get("/package/:id", operation(getDiscussionOperation)) {
     new AsyncResult {

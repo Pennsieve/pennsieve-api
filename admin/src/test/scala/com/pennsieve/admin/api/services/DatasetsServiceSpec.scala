@@ -48,7 +48,8 @@ class DatasetsServiceSpec extends AdminServiceSpec {
             0,
             PublishStatus.PublishInProgress,
             None,
-            Some(SponsorshipRequest(Some("foo"), Some("bar"), Some("baz")))
+            Some(SponsorshipRequest(Some("foo"), Some("bar"), Some("baz"))),
+            workflowId = 4
           ),
           DatasetPublishStatus(
             "TUSZ",
@@ -57,7 +58,8 @@ class DatasetsServiceSpec extends AdminServiceSpec {
             None,
             0,
             PublishStatus.PublishInProgress,
-            None
+            None,
+            workflowId = 4
           )
         ))
       }

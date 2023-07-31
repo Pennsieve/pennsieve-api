@@ -80,6 +80,10 @@ import org.scalatra.{ ActionResult, InternalServerError }
 import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
 
+object PublishingWorkflows {
+  val Version5: Long = 5
+}
+
 case class ValidatedPublicationStatusRequest(
   publicationStatus: PublicationStatus,
   publicationType: PublicationType,
@@ -919,6 +923,9 @@ case object DataSetPublishingHelper extends LazyLogging {
         .getModelStats(ownerBearerToken, dataset.nodeId)
         .toEitherT[Future]
 
+      newWorkflowEnabled <- secureContainer.organizationManager
+        .hasFeatureFlagEnabled(organization.id, Feature.Publishing50Feature)
+
       discoverRequest = PublishRequest(
         name = dataset.name,
         description = description,
@@ -953,7 +960,11 @@ case object DataSetPublishingHelper extends LazyLogging {
                 )
             )
             .toVector
-        )
+        ),
+        workflowId = newWorkflowEnabled match {
+          case true => Some(PublishingWorkflows.Version5)
+          case false => None
+        }
       )
 
       _ = logger.info(
