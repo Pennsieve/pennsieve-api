@@ -479,7 +479,6 @@ class DeleteJob(
           case ex: MultiObjectDeleteException =>
             val deletedIds = ex.getDeletedObjects.asScala
               .map(_.getKey)
-            deleteVersionsForKeys(s3Keys, bucket)
             S3DeleteResult(
               bucket = bucket,
               deletedKeys = deletedIds.toSeq,
