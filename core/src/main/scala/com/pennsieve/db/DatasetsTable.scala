@@ -18,14 +18,14 @@ package com.pennsieve.db
 
 import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
-import java.time.ZonedDateTime
 
+import java.time.ZonedDateTime
 import cats.Semigroup
 import cats.implicits._
 import com.rms.miu.slickcats.DBIOInstances._
 import slick.lifted.Case._
-import java.util.UUID
 
+import java.util.UUID
 import com.pennsieve.domain.SqlError
 import com.pennsieve.traits.PostgresProfile
 
@@ -191,6 +191,56 @@ class DatasetsMapper(val organization: Organization)
         status === (PublicationStatus.Failed: PublicationStatus) && isSharedWithUserOnPublisherTeam
       ) Then false
       If (status inSet PublicationStatus.lockedStatuses) Then true
+      Else false)
+  }
+
+  /**
+    * Check if the dataset is editable during review for the given user.
+    */
+  def isEditable(
+    dataset: Dataset,
+    user: User
+  )(implicit
+    datasetUser: DatasetUserMapper,
+    datasetTeam: DatasetTeamMapper,
+    executionContext: ExecutionContext
+  ): DBIO[Boolean] =
+    this
+      .get(dataset.id)
+      .joinLeft(datasetPublicationStatusMapper)
+      .on(_.publicationStatusId === _.id)
+      .map {
+        case (_, publicationStatus) =>
+          isEditableLifted(publicationStatus, user)
+      }
+      .take(1)
+      .result
+      .headOption
+      .map(_.getOrElse(false))
+
+  /**
+    * Lifted root of `isEditable`. Can be composed directly into Slick queries.
+    */
+  def isEditableLifted(
+    publicationStatus: Rep[Option[DatasetPublicationStatusTable]],
+    user: User
+  )(implicit
+    datasetUser: DatasetUserMapper,
+    datasetTeam: DatasetTeamMapper,
+    ec: ExecutionContext
+  ): Rep[Boolean] = {
+
+    val isPublisher = OrganizationsMapper
+      .getPublisherTeam(organization.id)
+      .join(teamUser.filter(_.userId === user.id))
+      .exists
+
+    val status = publicationStatus
+      .map(_.publicationStatus)
+      .getOrElse(PublicationStatus.Draft: PublicationStatus)
+
+    (Case
+      If (status === (PublicationStatus.Requested: PublicationStatus) && isPublisher) Then true
       Else false)
   }
 
