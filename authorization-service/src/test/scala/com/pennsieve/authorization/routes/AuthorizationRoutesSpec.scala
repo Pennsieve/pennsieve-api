@@ -522,6 +522,101 @@ class AuthorizationRoutesSpec
       }
     }
 
+    "return a JWT with locked = false and role = Editor if the dataset is in review (requested) and the user is a publisher" in {
+      val datasetsMapper = new DatasetsMapper(organizationTwo)
+      val datasetManager =
+        new DatasetManager(db, admin, datasetsMapper) // not dataset owner
+
+      val datasetPublicationStatusManager = new DatasetPublicationStatusManager(
+        db,
+        nonAdmin,
+        new DatasetPublicationStatusMapper(organizationTwo),
+        new ChangelogEventMapper(organizationTwo)
+      )
+
+      val teamManager = TeamManager(organizationManager)
+
+      val query = for {
+        dataset <- datasetManager
+          .create("Test Dataset (from node ID)")
+
+        publisherTeam <- organizationManager
+          .getPublisherTeam(organizationTwo)
+          .map(_._1)
+
+        _ <- teamManager
+          .addUser(publisherTeam, nonAdmin, DBPermission.Administer)
+
+        _ <- datasetManager.addTeamCollaborator(
+          dataset,
+          publisherTeam,
+          Role.Viewer
+        )
+
+      } yield dataset
+
+      val dataset = query.await.value
+
+      datasetPublicationStatusManager
+        .create(
+          dataset,
+          PublicationStatus.Requested,
+          PublicationType.Publication
+        )
+        .await
+        .value
+
+      testRequest(
+        GET,
+        s"/authorization?dataset_id=${dataset.nodeId}",
+        session = nonAdminCognitoJwt,
+        headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
+      ) ~>
+        routes ~> check {
+
+        val claim: Jwt.Claim = getClaim()
+        claim.content.roles.collect {
+          case Jwt.DatasetRole(
+              Inl(datasetId),
+              Role.Editor,
+              Some(DatasetNodeId(dataset.nodeId)),
+              Some(false)
+              ) =>
+            datasetId
+        } should have length 1
+      }
+
+      // Role should not be updated when not in review
+      datasetPublicationStatusManager
+        .create(
+          dataset,
+          PublicationStatus.Completed,
+          PublicationType.Publication
+        )
+        .await
+        .value
+
+      testRequest(
+        GET,
+        s"/authorization?dataset_id=${dataset.nodeId}",
+        session = nonAdminCognitoJwt,
+        headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
+      ) ~>
+        routes ~> check {
+
+        val claim: Jwt.Claim = getClaim()
+        claim.content.roles.collect {
+          case Jwt.DatasetRole(
+              Inl(datasetId),
+              Role.Viewer,
+              Some(DatasetNodeId(dataset.nodeId)),
+              Some(false)
+              ) =>
+            datasetId
+        } should have length 1
+      }
+    }
+
     "return a JWT for an authorized user with a dataset claim if the dataset is shared with the organization" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
