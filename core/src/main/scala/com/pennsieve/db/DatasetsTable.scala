@@ -211,17 +211,14 @@ class DatasetsMapper(val organization: Organization)
       .on(_.publicationStatusId === _.id)
       .map {
         case (_, publicationStatus) =>
-          isEditableLifted(publicationStatus, user)
+          isPublisherEditable(publicationStatus, user)
       }
       .take(1)
       .result
       .headOption
       .map(_.getOrElse(false))
 
-  /**
-    * Lifted root of `isEditable`. Can be composed directly into Slick queries.
-    */
-  def isEditableLifted(
+  def isPublisherEditable(
     publicationStatus: Rep[Option[DatasetPublicationStatusTable]],
     user: User
   )(implicit
