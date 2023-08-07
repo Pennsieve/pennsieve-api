@@ -692,6 +692,27 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(!isEditable(dataset, superAdmin))
   }
 
+  "a dataset" should "should NOT be editable for non-publishers when under review" in {
+    val dm = datasetManager(testOrganization, superAdmin)
+    val dataset = createDataset()
+
+    val someOtherUser = createUser()
+    val otherTeam = createTeam("Other team", testOrganization)
+    teamManager(superAdmin).addUser(
+      otherTeam,
+      someOtherUser,
+      DBPermission.Administer
+    )
+    dm.addTeamCollaborator(dataset, otherTeam, Role.Manager).await.value
+
+    datasetPublicationStatusManager()
+      .create(dataset, PublicationStatus.Requested, PublicationType.Publication)
+      .await
+      .value
+
+    assert(!isEditable(dataset, someOtherUser))
+  }
+
   "enableWebhook" should "create a DatasetIntegration for the given dataset and webhook" in {
     val user = createUser()
     val dataset = createDataset(user = user)

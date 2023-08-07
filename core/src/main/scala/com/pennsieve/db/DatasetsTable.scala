@@ -229,7 +229,12 @@ class DatasetsMapper(val organization: Organization)
 
     val isPublisher = OrganizationsMapper
       .getPublisherTeam(organization.id)
+      .map(_._2)
       .join(teamUser.filter(_.userId === user.id))
+      .on {
+        case (organizationTeam, teamUser) =>
+          organizationTeam.teamId === teamUser.teamId
+      }
       .exists
 
     val status = publicationStatus
