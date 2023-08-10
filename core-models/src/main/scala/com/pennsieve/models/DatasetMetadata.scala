@@ -34,6 +34,9 @@ sealed trait DatasetMetadata {
   val files: List[FileManifest]
 }
 
+case class DatasetMetadataEmpty(files: List[FileManifest] = List.empty)
+    extends DatasetMetadata
+
 case class DatasetMetadataV1_0(
   pennsieveDatasetId: Int,
   version: Int,
@@ -218,7 +221,8 @@ case class FileManifest(
   size: Long,
   fileType: FileType,
   sourcePackageId: Option[String] = None,
-  id: Option[UUID] = None
+  id: Option[UUID] = None,
+  s3VersionId: Option[String] = None
 ) extends Ordered[FileManifest] {
 
   def this(
@@ -247,6 +251,7 @@ object FileManifest {
         fileType <- c.downField("fileType").as[FileType]
         sourcePackageId <- c.downField("sourcePackageId").as[Option[String]]
         id <- c.downField("id").as[Option[UUID]]
+        s3VersionId <- c.downField("s3VersionId").as[Option[String]]
 
         mappedName = if (name.isEmpty) {
           FilenameUtils.getName(path)
@@ -254,7 +259,15 @@ object FileManifest {
           name.get
         }
       } yield {
-        new FileManifest(mappedName, path, size, fileType, sourcePackageId, id)
+        new FileManifest(
+          mappedName,
+          path,
+          size,
+          fileType,
+          sourcePackageId,
+          id,
+          s3VersionId
+        )
       }
   }
 
