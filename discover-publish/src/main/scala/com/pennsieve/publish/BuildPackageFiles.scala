@@ -18,31 +18,22 @@ package com.pennsieve.publish
 
 import akka.NotUsed
 import akka.stream.scaladsl.{ Flow, Source }
-
-import cats.data._
-import cats.implicits._
 import com.pennsieve.core.utilities
-import com.pennsieve.models.{ DatasetIgnoreFile, File, Package }
-import com.pennsieve.publish.models.{ CopyAction, FileAction, PackagePath }
+import com.pennsieve.models.Utilities.{ cleanS3Key, getFullExtension }
+import com.pennsieve.models.{ File, Package }
+import com.pennsieve.publish.models.PackagePath
 import com.pennsieve.publish.utils.joinKeys
-import com.pennsieve.models.Utilities._
+import org.apache.commons.io.FilenameUtils
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.commons.io.FilenameUtils
-
-/**
-  * Flow that takes a package and outputs the requests that needs to be
-  * run against S3 in order to copy all the source files of the package.
-  */
-object BuildCopyRequests {
-
+object BuildPackageFiles {
   def apply(
   )(implicit
     container: PublishContainer,
     ec: ExecutionContext
-  ): Flow[PackagePath, FileAction, NotUsed] = {
-    val futureFlow: Future[Flow[PackagePath, FileAction, NotUsed]] = for {
+  ): Flow[PackagePath, PackageFile, NotUsed] = {
+    val futureFlow: Future[Flow[PackagePath, PackageFile, NotUsed]] = for {
       ignoreFiles <- container.datasetManager
         .getIgnoreFiles(container.dataset)
         .value
@@ -52,30 +43,30 @@ object BuildCopyRequests {
         .flatMapConcat {
           case (pkg, path) =>
             Source.futureSource(
-              filesSource(pkg, path, ignoreFiles.map(_.fileName))
+              buildPackageFile(pkg, path, ignoreFiles.map(_.fileName))
             )
         }
     // Resolve the Future Flow to return a Flow with the PackagePath excluding ignored files
     Flow.lazyFutureFlow(() => futureFlow).mapMaterializedValue(_ => NotUsed)
   }
 
-  def filesSource(
+  def buildPackageFile(
     pkg: Package,
     parentPath: Seq[String],
     ignoreFiles: Seq[String]
   )(implicit
     container: PublishContainer,
     ec: ExecutionContext
-  ): Future[Source[FileAction, NotUsed]] = {
+  ): Future[Source[PackageFile, NotUsed]] = {
     container.fileManager
       .getSources(pkg, None, None, excludePending = true)
       .map(sourceFiles => {
         Source(
-          buildCopyActions(pkg, parentPath, sourceFiles)
+          generatePackageFile(pkg, parentPath, sourceFiles)
             .to(collection.immutable.Seq)
             .filterNot(
-              copyAction =>
-                ignoreFiles.contains(FilenameUtils.getName(copyAction.fileKey))
+              packageFile =>
+                ignoreFiles.contains(FilenameUtils.getName(packageFile.fileKey))
             )
         )
       })
@@ -90,30 +81,13 @@ object BuildCopyRequests {
       }
   }
 
-  /**
-    * TODO: Rename identical sources, deduplicate clashes between packages and
-    * containing collections?
-    *
-    * Three cases:
-    *
-    * 1) The Package has a single source. The source should be renamed with the
-    * filename (maintaining the extension, and placed directly in the parent
-    * collection.
-    *
-    * 2) The package has multiple sources. The sources are placed in a new
-    * directory which contains the name of the package. The sources contain
-    * their original names.
-    *
-    * 3) The package has no sources (eg, a collection). Do nothing - the path of
-    * the collection has already been added to the paths of its children.
-    */
-  def buildCopyActions(
+  def generatePackageFile(
     pkg: Package,
     parentPath: Seq[String],
     files: Seq[File]
   )(implicit
     container: PublishContainer
-  ): Seq[CopyAction] = {
+  ): Seq[PackageFile] = {
     val fileDirectory = "files"
     if (files.length == 1)
       files
@@ -129,15 +103,7 @@ object BuildCopyRequests {
               }}".trim)
                 .map(cleanS3Key)
             )
-
-          new CopyAction(
-            pkg,
-            file,
-            container.s3Bucket,
-            container.s3Key,
-            packageKey,
-            packageKey
-          )
+          PackageFile(pkg, file, packageKey, packageKey)
         })
     else
       files
@@ -147,15 +113,7 @@ object BuildCopyRequests {
 
           val fileKey = joinKeys(packageKey, cleanS3Key(file.fileName))
 
-          new CopyAction(
-            pkg,
-            file,
-            container.s3Bucket,
-            container.s3Key,
-            fileKey,
-            packageKey
-          )
+          PackageFile(pkg, file, packageKey, fileKey)
         })
-
   }
 }

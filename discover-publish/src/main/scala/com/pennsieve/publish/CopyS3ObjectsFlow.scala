@@ -24,7 +24,7 @@ import akka.stream.scaladsl.Flow
 import akka.stream.alpakka.s3.scaladsl._
 import cats.data._
 import cats.implicits._
-import com.pennsieve.publish.models.CopyAction
+import com.pennsieve.publish.models.{ CopyAction, FileAction }
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -41,13 +41,16 @@ object CopyS3ObjectsFlow extends LazyLogging {
     container: PublishContainer,
     ec: ExecutionContext,
     system: ActorSystem
-  ): Flow[CopyAction, CopyAction, NotUsed] = {
+  ): Flow[FileAction, FileAction, NotUsed] = {
     implicit val scheduler = system.scheduler
 
-    Flow[CopyAction]
+    Flow[FileAction]
       .mapAsyncUnordered(container.s3CopyFileParallelism)(
-        copyAction =>
-          retry(() => copyFile(copyAction), attempts = 5, delay = 5.second)
+        fileAction =>
+          fileAction match {
+            case copyAction: CopyAction =>
+              retry(() => copyFile(copyAction), attempts = 5, delay = 5.second)
+          }
       )
   }
 

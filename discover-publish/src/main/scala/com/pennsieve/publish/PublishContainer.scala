@@ -69,6 +69,7 @@ trait PublishContainerConfig {
   def collections: List[PublishedCollection]
   def externalPublications: List[PublishedExternalPublication]
   def datasetAssetClient: DatasetAssetClient
+  def workflowId: Long
 }
 
 case class PublishContainer(
