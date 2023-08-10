@@ -27,6 +27,13 @@ import org.apache.commons.io.FilenameUtils
 
 import scala.concurrent.{ ExecutionContext, Future }
 
+case class PackageFile(
+  `package`: Package,
+  file: File,
+  packageKey: String,
+  fileKey: String
+)
+
 object BuildPackageFiles {
   def apply(
   )(implicit

@@ -143,9 +143,6 @@ object Publish extends StrictLogging {
         .exportPackageSources5x(container, previousFiles)
         .toEitherT
 
-      // TODO: also receive "actions performed" list
-      // TODO: "actions performed" list will be written to S3 for cleanup (if necessary)
-      // TODO: we need to ensure that the "actions performed" list is written no matter what!
       (externalIdToPackagePath, packageFileManifests) = packagesResult
 
       // copy the banner to Discover S3 bucket
@@ -173,8 +170,6 @@ object Publish extends StrictLogging {
 
       // upload the asset list (all published files) to Discover S3
       _ <- uploadToS3(container, publishedAssetsKey(container), assets.asJson)
-
-      // TODO: upload the "actions performed" to S3 (for Cleanup job, on failure)
 
     } yield ()
 

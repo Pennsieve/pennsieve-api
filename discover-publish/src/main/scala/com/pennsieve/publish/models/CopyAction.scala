@@ -94,6 +94,33 @@ object FileActionItem {
 case class FileActionList(fileActionList: Seq[FileActionItem])
 
 object FileActionList {
+  def from(fileActions: Seq[FileAction]): FileActionList =
+    new FileActionList(fileActionList = fileActions.map { fileAction =>
+      fileAction match {
+        case copyAction: CopyAction =>
+          FileActionItem(
+            action = FileActionType.CopyFile,
+            bucket = copyAction.toBucket,
+            path = s"${copyAction.baseKey}/${copyAction.fileKey}",
+            versionId = copyAction.s3VersionId
+          )
+        case keepAction: KeepAction =>
+          FileActionItem(
+            action = FileActionType.KeepFile,
+            bucket = keepAction.bucket,
+            path = s"${keepAction.baseKey}/${keepAction.fileKey}",
+            versionId = keepAction.s3VersionId
+          )
+        case deleteAction: DeleteAction =>
+          FileActionItem(
+            action = FileActionType.DeleteFile,
+            bucket = deleteAction.fromBucket,
+            path = s"${deleteAction.baseKey}/${deleteAction.fileKey}",
+            versionId = deleteAction.s3VersionId
+          )
+      }
+    })
+
   implicit val encoder: Encoder[FileActionList] = deriveEncoder[FileActionList]
   implicit val decoder: Decoder[FileActionList] = deriveDecoder[FileActionList]
 }

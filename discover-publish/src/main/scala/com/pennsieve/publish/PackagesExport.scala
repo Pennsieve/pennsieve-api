@@ -90,39 +90,11 @@ object PackagesExport extends LazyLogging {
         currentPackageFileList
       )
 
-      // generate FileActionList which summarises the actions to be taken
-      fileActionList = FileActionList(fileActionList = fileActions.map {
-        fileAction =>
-          fileAction match {
-            case copyAction: CopyAction =>
-              FileActionItem(
-                action = FileActionType.CopyFile,
-                bucket = copyAction.toBucket,
-                path = s"${copyAction.baseKey}/${copyAction.fileKey}",
-                versionId = copyAction.s3VersionId
-              )
-            case keepAction: KeepAction =>
-              FileActionItem(
-                action = FileActionType.KeepFile,
-                bucket = keepAction.bucket,
-                path = s"${keepAction.baseKey}/${keepAction.fileKey}",
-                versionId = keepAction.s3VersionId
-              )
-            case deleteAction: DeleteAction =>
-              FileActionItem(
-                action = FileActionType.DeleteFile,
-                bucket = deleteAction.fromBucket,
-                path = s"${deleteAction.baseKey}/${deleteAction.fileKey}",
-                versionId = deleteAction.s3VersionId
-              )
-          }
-      })
-
       // Write FileActionList to S3 (will be used by Cleanup Job on failure)
       fileActionListUpload = Storage.uploadToS3(
         container,
         Storage.fileActionsKey(container),
-        fileActionList.asJson
+        FileActionList.from(fileActions).asJson
       )
       _ = Await.result(fileActionListUpload.value, 1.hour)
 
