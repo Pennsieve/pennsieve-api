@@ -13,7 +13,8 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
       "Parameters": {
         "publish_bucket.$": "$.publish_bucket",
         "embargo_bucket.$": "$.embargo_bucket",
-        "s3_key_prefix.$": "$.s3_publish_key"
+        "s3_key_prefix.$": "$.s3_publish_key",
+        "workflow_id.$": "$.workflow_id"
       },
       "Retry": [
         {
@@ -313,6 +314,9 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
             }, {
               "Name": "VERSION",
               "Value.$": "$.version"
+            }, {
+              "Name": "WORKFLOW_ID",
+              "Value.$": "$.workflow_id"
             }]
           }, {
             "Name": "discover-postgres",
@@ -340,7 +344,8 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
       "Parameters": {
         "publish_bucket.$": "$.publish_bucket",
         "embargo_bucket.$": "$.embargo_bucket",
-        "s3_key_prefix.$": "$.s3_publish_key"
+        "s3_key_prefix.$": "$.s3_publish_key",
+        "workflow_id.$": "$.workflow_id"
       },
       "Retry": [
         {

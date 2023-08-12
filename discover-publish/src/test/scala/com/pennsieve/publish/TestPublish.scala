@@ -188,7 +188,8 @@ class TestPublish
         contributors = List(contributor),
         collections = List(collection),
         externalPublications = List(externalPublication),
-        datasetAssetClient = datasetAssetClient
+        datasetAssetClient = datasetAssetClient,
+        workflowId = PublishingWorkflows.Version4
       )
     }
 
@@ -214,7 +215,8 @@ class TestPublish
         contributors = List(contributor),
         collections = List(collection),
         externalPublications = List(externalPublication),
-        datasetAssetClient = datasetAssetClient
+        datasetAssetClient = datasetAssetClient,
+        workflowId = PublishingWorkflows.Version4
       )
     }
 
@@ -1079,6 +1081,7 @@ class TestPublish
       sink.expectComplete()
     }
   }
+
   "file sources flow" should {
     "emit copy requests" in {
       val pkg = createPackage(testUser, name = "pkg")
@@ -1359,6 +1362,55 @@ class TestPublish
       Publish.computeTotalSize(publishContainer).await.value shouldBe 6
     }
   }
+
+  "build copy requests" should {
+    "emit CopyFile when a new file is to be published" in {
+      val pkg = createPackage(testUser, name = "pkg")
+      val file1 = createFile(pkg, name = "file1", s3Key = "key/file1.txt")
+      val file2 = createFile(pkg, name = "file2", s3Key = "key/file2.txt")
+
+      val (_, sink) = Source
+        .single((pkg, Seq("p1", "c1")))
+        .via(BuildCopyRequests())
+        .toMat(TestSink.probe)(Keep.both)
+        .run()
+
+      sink.request(n = 100)
+      sink.expectNextUnordered(
+        CopyAction(
+          pkg,
+          file1,
+          publishBucket,
+          testKey,
+          s"files/p1/c1/pkg/file1.txt",
+          s"files/p1/c1/pkg",
+          None
+        ),
+        CopyAction(
+          pkg,
+          file2,
+          publishBucket,
+          testKey,
+          s"files/p1/c1/pkg/file2.txt",
+          s"files/p1/c1/pkg",
+          None
+        )
+      )
+      sink.expectComplete()
+    }
+
+//    "emit KeepFile when a published file is unchanged" in {
+//    }
+
+//    "emit DeleteFile and CopyFile when a file is moved" in {
+//    }
+
+//    "emit DeleteFile when a published file is to be removed" in {
+//    }
+
+  }
+
+  "build "
 
   /**
     * Delete all objects from bucket, and delete the bucket itself

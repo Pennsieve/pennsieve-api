@@ -116,6 +116,8 @@ object Main extends App with StrictLogging {
       s3Bucket <- getEnv("S3_BUCKET") // either the publish or embargo bucket
       s3Key <- getEnv("S3_PUBLISH_KEY")
 
+      workflowId <- getEnv("WORKFLOW_ID").map(_.toLong)
+
       publishContainer = Await.result(
         PublishContainer.secureContainer(
           config = config,
@@ -137,7 +139,8 @@ object Main extends App with StrictLogging {
           organizationName = organizationName,
           contributors = contributors,
           collections = collections,
-          externalPublications = externalPublications
+          externalPublications = externalPublications,
+          workflowId = workflowId
         ),
         10 seconds
       )

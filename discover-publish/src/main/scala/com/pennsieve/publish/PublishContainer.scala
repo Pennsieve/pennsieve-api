@@ -69,6 +69,7 @@ trait PublishContainerConfig {
   def collections: List[PublishedCollection]
   def externalPublications: List[PublishedExternalPublication]
   def datasetAssetClient: DatasetAssetClient
+  def workflowId: Long
 }
 
 case class PublishContainer(
@@ -92,7 +93,8 @@ case class PublishContainer(
   contributors: List[PublishedContributor],
   collections: List[PublishedCollection],
   externalPublications: List[PublishedExternalPublication],
-  datasetAssetClient: DatasetAssetClient
+  datasetAssetClient: DatasetAssetClient,
+  workflowId: Long
 ) extends Container
     with PublishContainerConfig
     with OrganizationContainer
@@ -134,7 +136,8 @@ object PublishContainer {
     organizationName: String,
     contributors: String,
     collections: String,
-    externalPublications: String
+    externalPublications: String,
+    workflowId: Long
   )(implicit
     executionContext: ExecutionContext
   ): Future[PublishContainer] = {
@@ -204,7 +207,8 @@ object PublishContainer {
         contributors = publishedContributors,
         collections = publishedCollections,
         externalPublications = publishedExternalPublications,
-        datasetAssetClient = datasetAssetClient
+        datasetAssetClient = datasetAssetClient,
+        workflowId = workflowId
       )
   }
 }

@@ -55,6 +55,11 @@ import java.nio.charset.{ Charset, StandardCharsets }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.io.Source
 
+object PublishingWorkflows {
+  val Unknown: Long = -1
+  val Version4: Long = 4
+  val Version5: Long = 5
+}
 object Publish extends StrictLogging {
 
   val PUBLISH_ASSETS_FILENAME: String = "publish.json"
@@ -75,13 +80,20 @@ object Publish extends StrictLogging {
     containerConfig: PublishContainerConfig,
     assetFilename: String
   ): String =
-    joinKeys(
-      Seq(
-        containerConfig.publishedDatasetId.toString,
-        containerConfig.version.toString,
-        assetFilename
-      )
-    )
+    containerConfig.workflowId match {
+      case PublishingWorkflows.Version5 =>
+        joinKeys(
+          Seq(containerConfig.publishedDatasetId.toString, assetFilename)
+        )
+      case _ =>
+        joinKeys(
+          Seq(
+            containerConfig.publishedDatasetId.toString,
+            containerConfig.version.toString,
+            assetFilename
+          )
+        )
+    }
 
   private def publishedAssetsKey(config: PublishContainerConfig): String =
     assetKey(config, PUBLISH_ASSETS_FILENAME)
@@ -92,6 +104,9 @@ object Publish extends StrictLogging {
   private def outputKey(config: PublishContainerConfig): String =
     assetKey(config, OUTPUT_FILENAME)
 
+  private def publishedMetadataKey(config: PublishContainerConfig): String =
+    assetKey(config, METADATA_FILENAME)
+
   /**
     * These intermediate files are generated as part of publishing. After the `finalizeDataset` step runs, they should
     * be deleted.
@@ -99,33 +114,46 @@ object Publish extends StrictLogging {
   def temporaryFiles: Seq[String] =
     Seq(PUBLISH_ASSETS_FILENAME, GRAPH_ASSETS_FILENAME)
 
-  /**
-    * Publish the assets of a dataset to S3. This includes exporting the dataset:
-    *
-    * - package sources
-    * - banner image
-    * - README file
-    * - Changelog file if applicable
-    */
   def publishAssets(
     container: PublishContainer
   )(implicit
     executionContext: ExecutionContext,
     system: ActorSystem
   ): EitherT[Future, CoreError, Unit] =
+    container.workflowId match {
+      case PublishingWorkflows.Version5 => publishAssets5x(container)
+      case _ => publishAssets4x(container)
+    }
+
+  def publishAssets5x(
+    container: PublishContainer
+  )(implicit
+    executionContext: ExecutionContext,
+    system: ActorSystem
+  ): EitherT[Future, CoreError, Unit] =
     for {
+      metadata <- getDatatsetMetadata(container)
+
+      // filter out where sourcePackageId.isEmpty because these are Files not attached to Packages
+      // (i.e., readme.md, banner.jpg, changelog.md, the manifest.json, and Model export files)
+      previousFiles = metadata.files.filterNot(_.sourcePackageId.isEmpty)
+
+      // get current set of Packages, and copy to Discover S3
       packagesResult <- PackagesExport
-        .exportPackageSources(container)
+        .exportPackageSources5x(container, previousFiles)
         .toEitherT
+
       (externalIdToPackagePath, packageFileManifests) = packagesResult
 
+      // copy the banner to Discover S3 bucket
       bannerResult <- copyBanner(container)
       (bannerKey, bannerFileManifest) = bannerResult
 
+      // copy the README to Discover S3 bucket
       readmeResult <- copyReadme(container)
       (readmeKey, readmeFileManifest) = readmeResult
 
-      //see where these functions are defined
+      // copy the ChangeLog to Discover S3 bucket
       changelogResult <- copyChangelog(container)
       (changelogKey, changelogFileManifest) = changelogResult
 
@@ -140,6 +168,57 @@ object Publish extends StrictLogging {
         changelogManifest = changelogFileManifest
       )
 
+      // upload the asset list (all published files) to Discover S3
+      _ <- uploadToS3(container, publishedAssetsKey(container), assets.asJson)
+
+    } yield ()
+
+  /**
+    * Publish the assets of a dataset to S3. This includes exporting the dataset:
+    *
+    * - package sources
+    * - banner image
+    * - README file
+    * - Changelog file if applicable
+    */
+  def publishAssets4x(
+    container: PublishContainer
+  )(implicit
+    executionContext: ExecutionContext,
+    system: ActorSystem
+  ): EitherT[Future, CoreError, Unit] =
+    for {
+      // get current set of Packages, and copy to Discover S3
+      packagesResult <- PackagesExport
+        .exportPackageSources(container)
+        .toEitherT
+
+      (externalIdToPackagePath, packageFileManifests) = packagesResult
+
+      // copy the banner to Discover S3 bucket
+      bannerResult <- copyBanner(container)
+      (bannerKey, bannerFileManifest) = bannerResult
+
+      // copy the README to Discover S3 bucket
+      readmeResult <- copyReadme(container)
+      (readmeKey, readmeFileManifest) = readmeResult
+
+      // copy the ChangeLog to Discover S3 bucket
+      changelogResult <- copyChangelog(container)
+      (changelogKey, changelogFileManifest) = changelogResult
+
+      assets = PublishAssetResult(
+        externalIdToPackagePath = externalIdToPackagePath,
+        packageManifests = packageFileManifests,
+        bannerKey = bannerKey,
+        bannerManifest = bannerFileManifest,
+        readmeKey = readmeKey,
+        readmeManifest = readmeFileManifest,
+        changelogKey = changelogKey,
+        changelogManifest = changelogFileManifest
+      )
+
+      // upload the asset list (all published files) to Discover S3
       _ <- uploadToS3(container, publishedAssetsKey(container), assets.asJson)
 
     } yield ()
@@ -270,6 +349,24 @@ object Publish extends StrictLogging {
           .map(_ => ())
       )
   }
+
+  /**
+    * downloads the dataset metadata (manifest.json) from S3
+    */
+  def getDatatsetMetadata(
+    container: PublishContainerConfig
+  )(implicit
+    executionContext: ExecutionContext,
+    system: ActorSystem
+  ): EitherT[Future, CoreError, DatasetMetadata] =
+    container.version match {
+      case 1 => EitherT.fromEither(Either.right(DatasetMetadataEmpty()))
+      case _ =>
+        downloadFromS3[DatasetMetadata](
+          container,
+          publishedMetadataKey(container)
+        )
+    }
 
   /**
     * Instead of exporting optional fields with a `null` literal,

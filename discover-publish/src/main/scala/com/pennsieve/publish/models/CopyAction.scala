@@ -16,8 +16,18 @@
 
 package com.pennsieve.publish.models
 
-import com.pennsieve.models.{ File, Package }
+import com.pennsieve.models.{ File, FileType, Package }
 import com.pennsieve.publish.utils.joinKeys
+import enumeratum.{ CirceEnum, Enum, EnumEntry }
+import enumeratum.EnumEntry.Camelcase
+import io.circe.{ Decoder, Encoder }
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+
+import scala.collection.immutable
+
+sealed trait FileAction {
+  def fileKey: String
+}
 
 /**
   * Container that describes the source and destination of an S3 file to copy.
@@ -30,10 +40,87 @@ import com.pennsieve.publish.utils.joinKeys
 case class CopyAction(
   pkg: Package,
   file: File,
-  toBucket: String,
+  toBucket: String, // S3 Bucket name
+  baseKey: String, // folder on S3 into which the file will be copied
+  fileKey: String, // path to file
+  packageKey: String, // path to folder or file (see above)
+  s3VersionId: Option[String] = None
+) extends FileAction {
+  def copyToKey: String = joinKeys(baseKey, fileKey)
+}
+
+case class KeepAction(
+  pkg: Package,
+  file: File,
+  bucket: String, // S3 Bucket name
+  baseKey: String, // folder on S3 into which the file will be copied
+  fileKey: String, // path to file
+  packageKey: String, // path to folder or file (see above)
+  s3VersionId: Option[String] = None
+) extends FileAction
+
+case class DeleteAction(
+  fromBucket: String,
   baseKey: String,
   fileKey: String,
-  packageKey: String
-) {
-  def copyToKey: String = joinKeys(baseKey, fileKey)
+  s3VersionId: Option[String] = None
+) extends FileAction
+
+sealed trait FileActionType extends EnumEntry with Camelcase
+
+object FileActionType
+    extends Enum[FileActionType]
+    with CirceEnum[FileActionType] {
+
+  val values: immutable.IndexedSeq[FileActionType] = findValues
+
+  case object CopyFile extends FileActionType
+  case object KeepFile extends FileActionType
+  case object DeleteFile extends FileActionType
+}
+
+case class FileActionItem(
+  action: FileActionType,
+  bucket: String,
+  path: String,
+  versionId: Option[String]
+)
+
+object FileActionItem {
+  implicit val encoder: Encoder[FileActionItem] = deriveEncoder[FileActionItem]
+  implicit val decoder: Decoder[FileActionItem] = deriveDecoder[FileActionItem]
+}
+
+case class FileActionList(fileActionList: Seq[FileActionItem])
+
+object FileActionList {
+  def from(fileActions: Seq[FileAction]): FileActionList =
+    new FileActionList(fileActionList = fileActions.map { fileAction =>
+      fileAction match {
+        case copyAction: CopyAction =>
+          FileActionItem(
+            action = FileActionType.CopyFile,
+            bucket = copyAction.toBucket,
+            path = s"${copyAction.baseKey}/${copyAction.fileKey}",
+            versionId = copyAction.s3VersionId
+          )
+        case keepAction: KeepAction =>
+          FileActionItem(
+            action = FileActionType.KeepFile,
+            bucket = keepAction.bucket,
+            path = s"${keepAction.baseKey}/${keepAction.fileKey}",
+            versionId = keepAction.s3VersionId
+          )
+        case deleteAction: DeleteAction =>
+          FileActionItem(
+            action = FileActionType.DeleteFile,
+            bucket = deleteAction.fromBucket,
+            path = s"${deleteAction.baseKey}/${deleteAction.fileKey}",
+            versionId = deleteAction.s3VersionId
+          )
+      }
+    })
+
+  implicit val encoder: Encoder[FileActionList] = deriveEncoder[FileActionList]
+  implicit val decoder: Decoder[FileActionList] = deriveDecoder[FileActionList]
 }
