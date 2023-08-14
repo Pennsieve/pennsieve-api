@@ -145,6 +145,9 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
             }, {
               "Name": "VERSION",
               "Value.$": "$.version"
+            }, {
+              "Name": "WORKFLOW_ID",
+              "Value.$": "$.workflow_id"
             }]
           }, {
             "Name": "discover-postgres",
