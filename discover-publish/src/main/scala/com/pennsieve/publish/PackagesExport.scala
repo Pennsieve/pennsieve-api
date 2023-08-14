@@ -69,6 +69,7 @@ object PackagesExport extends LazyLogging {
     system: ActorSystem
   ): Future[(PackageExternalIdMap, List[FileManifest])] = {
     implicit val publishContainer: PublishContainer = container
+    logger.info("exporting package sources (for 5x)")
 
     // get all Packages and transform into PackageFile and FileManifest
     val (currentPackageFileListF, currentFileManifestsF) = PackagesSource()
@@ -120,6 +121,7 @@ object PackagesExport extends LazyLogging {
     system: ActorSystem
   ): Future[(PackageExternalIdMap, List[FileManifest])] = {
     implicit val publishContainer: PublishContainer = container
+    logger.info("exporting package sources (for legacy)")
 
     val (manifestF, packageNodeIdF) = PackagesSource()
       .withAttributes(ActorAttributes.supervisionStrategy(supervision))

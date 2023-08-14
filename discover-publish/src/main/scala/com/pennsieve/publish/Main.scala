@@ -62,6 +62,7 @@ object Main extends App with StrictLogging {
       case _ => Left(PublishError(s"Not a value command: ${cmd}"))
     }
 
+  logger.info(s"Discover-Publish: Starting")
   try {
     val start: Long = System.currentTimeMillis / 1000
 
@@ -146,10 +147,14 @@ object Main extends App with StrictLogging {
       )
 
       action = publishAction match {
-        case PublishAssets => Publish.publishAssets(publishContainer)
+        case PublishAssets =>
+          logger.info(s"Publishing Assets")
+          Publish.publishAssets(publishContainer)
         case ExportNeptuneGraph =>
           throw new Exception("Neptune no longer exists")
-        case Finalize => Publish.finalizeDataset(publishContainer)
+        case Finalize =>
+          logger.info(s"Finalizing Publication")
+          Publish.finalizeDataset(publishContainer)
       }
 
       result <- Await.result(action.value, 48.hour)
@@ -160,7 +165,7 @@ object Main extends App with StrictLogging {
 
     val end: Long = System.currentTimeMillis / 1000
     val elapsed = end - start
-    logger.info(s"Done. $elapsed seconds")
+    logger.info(s"Discover-Publish: Completed elapsed: $elapsed seconds")
 
   } catch {
     case ex: Throwable =>
