@@ -130,7 +130,8 @@ object Publish extends StrictLogging {
   )(implicit
     executionContext: ExecutionContext,
     system: ActorSystem
-  ): EitherT[Future, CoreError, Unit] =
+  ): EitherT[Future, CoreError, Unit] = {
+    logger.info(s"Starting publishAssets5x()")
     for {
       metadata <- getDatatsetMetadata(container)
 
@@ -172,6 +173,7 @@ object Publish extends StrictLogging {
       _ <- uploadToS3(container, publishedAssetsKey(container), assets.asJson)
 
     } yield ()
+  }
 
   /**
     * Publish the assets of a dataset to S3. This includes exporting the dataset:
@@ -186,7 +188,8 @@ object Publish extends StrictLogging {
   )(implicit
     executionContext: ExecutionContext,
     system: ActorSystem
-  ): EitherT[Future, CoreError, Unit] =
+  ): EitherT[Future, CoreError, Unit] = {
+    logger.info(s"Starting publishAssets4x()")
     for {
       // get current set of Packages, and copy to Discover S3
       packagesResult <- PackagesExport
@@ -222,6 +225,7 @@ object Publish extends StrictLogging {
       _ <- uploadToS3(container, publishedAssetsKey(container), assets.asJson)
 
     } yield ()
+  }
 
   /**
     * Finalizes a dataset for publishing by:
