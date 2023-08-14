@@ -579,6 +579,9 @@ class DatasetManagerSpec extends BaseManagerSpec {
   def isLocked(dataset: Dataset, user: User): Boolean =
     datasetManager(testOrganization, user).isLocked(dataset).await.value
 
+  def isEditable(dataset: Dataset, user: User): Boolean =
+    datasetManager(testOrganization, user).isEditable(dataset).await.value
+
   "a dataset" should "not be locked for publishers when under review" in {
 
     val dm = datasetManager(testOrganization, superAdmin)
@@ -641,6 +644,73 @@ class DatasetManagerSpec extends BaseManagerSpec {
     assert(!isLocked(dataset, publisherUser))
     assert(isLocked(dataset, superAdmin))
     assert(isLocked(dataset, otherTeamUser))
+  }
+
+  "a dataset" should "should be editable for publishers when under review" in {
+    val dataset = createDataset()
+
+    val publisherUser = createUser()
+    val publisherTeam = organizationManager()
+      .getPublisherTeam(testOrganization)
+      .map(_._1)
+      .await
+      .value
+    teamManager()
+      .addUser(publisherTeam, publisherUser, DBPermission.Administer)
+      .await
+      .value
+
+    datasetPublicationStatusManager()
+      .create(dataset, PublicationStatus.Requested, PublicationType.Publication)
+      .await
+      .value
+
+    assert(isEditable(dataset, publisherUser))
+    assert(!isEditable(dataset, superAdmin))
+  }
+
+  "a dataset" should "should not be editable for publishers when NOT under review" in {
+    val dataset = createDataset()
+
+    val publisherUser = createUser()
+    val publisherTeam = organizationManager()
+      .getPublisherTeam(testOrganization)
+      .map(_._1)
+      .await
+      .value
+    teamManager()
+      .addUser(publisherTeam, publisherUser, DBPermission.Administer)
+      .await
+      .value
+
+    datasetPublicationStatusManager()
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    assert(!isEditable(dataset, publisherUser))
+    assert(!isEditable(dataset, superAdmin))
+  }
+
+  "a dataset" should "should NOT be editable for non-publishers when under review" in {
+    val dm = datasetManager(testOrganization, superAdmin)
+    val dataset = createDataset()
+
+    val someOtherUser = createUser()
+    val otherTeam = createTeam("Other team", testOrganization)
+    teamManager(superAdmin).addUser(
+      otherTeam,
+      someOtherUser,
+      DBPermission.Administer
+    )
+    dm.addTeamCollaborator(dataset, otherTeam, Role.Manager).await.value
+
+    datasetPublicationStatusManager()
+      .create(dataset, PublicationStatus.Requested, PublicationType.Publication)
+      .await
+      .value
+
+    assert(!isEditable(dataset, someOtherUser))
   }
 
   "enableWebhook" should "create a DatasetIntegration for the given dataset and webhook" in {

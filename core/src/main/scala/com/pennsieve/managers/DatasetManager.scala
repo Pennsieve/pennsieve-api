@@ -161,6 +161,13 @@ class DatasetManager(
   ): EitherT[Future, CoreError, Boolean] =
     db.run(datasetsMapper.isLocked(dataset, actor)).toEitherT
 
+  def isEditable(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] =
+    db.run(datasetsMapper.isEditable(dataset, actor)).toEitherT
+
   def assertNotLocked(
     dataset: Dataset
   )(implicit

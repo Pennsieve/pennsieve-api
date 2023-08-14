@@ -17,54 +17,35 @@
 package com.pennsieve.authorization.routes
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.server.directives.Credentials
-import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.{ HttpHeader, HttpResponse }
+import akka.http.scaladsl.model.{HttpHeader, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.pennsieve.db._
-import com.pennsieve.domain.FeatureNotEnabled
-import com.pennsieve.dtos.{ Builders, UserDTO }
-import com.pennsieve.models._
-import com.typesafe.scalalogging.LazyLogging
-import slick.dbio.{ DBIOAction, Effect, NoStream }
-import slick.sql.FixedSqlStreamingAction
+import akka.http.scaladsl.server.directives.Credentials
 import cats.implicits._
 import com.pennsieve.akka.http.RouteService
-import com.pennsieve.auth.middleware.{
-  CognitoSession,
-  DatasetId,
-  DatasetNodeId,
-  EncryptionKeyId,
-  Jwt,
-  OrganizationId,
-  OrganizationNodeId,
-  UserClaim,
-  UserId,
-  UserNodeId
-}
+import com.pennsieve.auth.middleware.{CognitoSession, DatasetId, DatasetNodeId, EncryptionKeyId, Jwt, OrganizationId, OrganizationNodeId, UserClaim, UserId, UserNodeId}
 import com.pennsieve.authorization.Router.ResourceContainer
 import com.pennsieve.authorization.utilities.exceptions._
 import com.pennsieve.aws.cognito.CognitoPayload
-import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.db.{ DatasetsMapper, OrganizationUserMapper, UserMapper }
-import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.db._
+import com.pennsieve.dtos.{Builders, UserDTO}
+import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
+import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.circe._
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.syntax._
+import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import shapeless.syntax.inject._
-import java.time.Instant
-
-import net.ceedubs.ficus.Ficus._
+import slick.dbio.{DBIOAction, Effect, NoStream}
+import slick.sql.FixedSqlStreamingAction
 
 import scala.collection.immutable
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
-import pdi.jwt.{ JwtAlgorithm, JwtCirce, JwtClaim }
-import io.circe._
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.syntax._
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Either, Failure, Success, Try}
 
 class AuthorizationRoutes(
   user: User,
@@ -443,8 +424,20 @@ private[routes] object AuthorizationQueries {
           .flatMap {
             case Some((dataset, Some(role))) =>
               container.db
-                .run(datasets.isLocked(dataset, user))
-                .map(locked => (dataset, locked, role))
+                .run(datasets.isEditable(dataset, user))
+                .flatMap { isEditable =>
+                  container.db
+                    .run(datasets.isLocked(dataset, user))
+                    .map(
+                      locked =>
+                        (
+                          dataset,
+                          locked,
+                          if (isEditable) Role.Editor
+                          else role
+                        )
+                    )
+                }
             case _ => throw new InvalidDatasetId(user, datasetId)
           }
       }

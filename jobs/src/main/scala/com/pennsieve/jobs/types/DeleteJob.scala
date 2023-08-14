@@ -422,6 +422,35 @@ class DeleteJob(
       .toList
   }
 
+  def deleteAllVersions(
+    bucket: String,
+    key: String,
+    client: AmazonS3
+  ): Either[Throwable, Unit] = {
+    try {
+      val versionListing: VersionListing = client.listVersions(bucket, key)
+      val deleteRequests = versionListing.getVersionSummaries.asScala.map {
+        versionSummary =>
+          new DeleteVersionRequest(bucket, key, versionSummary.getVersionId)
+      }
+      deleteRequests.foreach(request => client.deleteVersion(request))
+      log.tierNoContext.info(s"Sucessfully deleted versions for ${key}")
+      Right(()) // Return Right to indicate successful execution without any meaningful result
+    } catch {
+      case ex: Throwable =>
+        log.tierNoContext.info(
+          s"Failed to delete versions for ${key}. Error: ${ex.getMessage()}"
+        )
+        Left(ex) // Return Left with the caught exception in case of an error
+    }
+  }
+
+  def deleteVersionsForKeys(keys: Seq[String], bucket: String): Unit = {
+    keys.foreach { key =>
+      deleteAllVersions(bucket, key, amazonS3)
+    }
+  }
+
   val deleteS3Objects: Flow[S3Object, S3DeleteResult, NotUsed] =
     Flow[S3Object]
       .groupBy(2, _.bucket)
@@ -440,6 +469,7 @@ class DeleteJob(
             .getDeletedObjects
             .asScala
             .map(_.getKey)
+          deleteVersionsForKeys(s3Keys, bucket)
           S3DeleteResult(
             bucket = bucket,
             deletedKeys = deletedIds.toSeq,
@@ -883,6 +913,7 @@ class DeleteJob(
         .sequence
         .toEitherT[Future]
         .leftMap(ExceptionError(_))
+      _ = log.noContext.info(s"Permanently deleted assets: ${assets}")
 
       _ <- assets
         .map(datasetAssetsManager.deleteDatasetAsset(_))

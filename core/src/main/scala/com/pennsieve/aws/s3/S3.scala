@@ -29,6 +29,7 @@ import com.amazonaws.services.s3.model.{
   CopyPartResult,
   DeleteObjectRequest,
   DeleteObjectsRequest,
+  DeleteVersionRequest,
   GeneratePresignedUrlRequest,
   GetObjectMetadataRequest,
   GetObjectRequest,
@@ -43,7 +44,8 @@ import com.amazonaws.services.s3.model.{
   PutObjectRequest,
   PutObjectResult,
   S3Object,
-  S3ObjectSummary
+  S3ObjectSummary,
+  VersionListing
 }
 
 import java.io.{ File, InputStream }

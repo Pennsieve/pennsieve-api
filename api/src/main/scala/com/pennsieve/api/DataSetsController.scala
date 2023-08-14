@@ -1598,7 +1598,7 @@ class DataSetsController(
   //CONTRIBUTORS
 
   val getContributors: OperationBuilder = (apiOperation[Seq[ContributorDTO]](
-    "getContributors"
+    "getDatasetContributors"
   )
     summary "get the contributors to the data set"
     parameters
@@ -1769,7 +1769,7 @@ class DataSetsController(
   // COLLECTIONS
 
   val getCollections: OperationBuilder = (apiOperation[Seq[CollectionDTO]](
-    "getCollections"
+    "getDatasetCollections"
   )
     summary "get the collections to the data set"
     parameters
@@ -3957,16 +3957,16 @@ class DataSetsController(
     }
   }
 
-  val getDataUseAgreement
+  val getPublicationDataUseAgreement
     : OperationBuilder = (apiOperation[Option[DataUseAgreement]](
-    "getDataUseAgreement"
+    "getPublicationDataUseAgreement"
   )
     summary "get the data use agreement for this dataset"
     parameter (
       pathParam[String]("id").description("data set id")
     ))
 
-  get("/:id/publication/data-use-agreement", operation(getDataUseAgreement)) {
+  get("/:id/publication/data-use-agreement", operation(getPublicationDataUseAgreement)) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Option[DataUseAgreementDTO]] =
         for {
@@ -4712,7 +4712,7 @@ class DataSetsController(
     }
   }
 
-  val getChangelogPage = (apiOperation[ChangelogPage]("getChangelog")
+  val getChangelogPage = (apiOperation[ChangelogPage]("getChangelogTimeLine")
     summary ("get dataset changelog")
     parameter pathParam[String]("id").description("data set id")
     parameter queryParam[Int]("limit").optional
@@ -4891,7 +4891,7 @@ class DataSetsController(
   get(
     "/:id/webhook",
     operation(
-      apiOperation[Seq[DatasetIntegration]]("getIntegrations")
+      apiOperation[Seq[DatasetIntegration]]("getDatasetIntegrations")
         summary "Return the enabled integrations for a given dataset. Returns a list of DatasetIntegration."
         parameters (
           pathParam[String]("id").description("dataset id")
