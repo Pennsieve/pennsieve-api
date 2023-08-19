@@ -108,7 +108,13 @@ object Publish extends StrictLogging {
     assetKey(config, METADATA_FILENAME)
 
   private def publicAssetKeyPrefix(container: PublishContainer): String =
-    joinKeys(Seq(container.s3AssetKeyPrefix, container.publishedDatasetId.toString, container.version.toString))
+    joinKeys(
+      Seq(
+        container.s3AssetKeyPrefix,
+        container.publishedDatasetId.toString,
+        container.version.toString
+      )
+    )
 
   /**
     * These intermediate files are generated as part of publishing. After the `finalizeDataset` step runs, they should
