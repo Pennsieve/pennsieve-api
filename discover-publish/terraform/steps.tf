@@ -14,7 +14,10 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
         "publish_bucket.$": "$.publish_bucket",
         "embargo_bucket.$": "$.embargo_bucket",
         "s3_key_prefix.$": "$.s3_publish_key",
-        "workflow_id.$": "$.workflow_id"
+        "workflow_id.$": "$.workflow_id",
+        "published_dataset_id.$": "$.published_dataset_id",
+        "published_dataset_version.$": "$.version",
+        "cleanup_stage.$": "INITIAL"
       },
       "Retry": [
         {
@@ -348,7 +351,10 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
         "publish_bucket.$": "$.publish_bucket",
         "embargo_bucket.$": "$.embargo_bucket",
         "s3_key_prefix.$": "$.s3_publish_key",
-        "workflow_id.$": "$.workflow_id"
+        "workflow_id.$": "$.workflow_id",
+        "published_dataset_id.$": "$.published_dataset_id",
+        "published_dataset_version.$": "$.version",
+        "cleanup_stage.$": "FAILURE"
       },
       "Retry": [
         {
