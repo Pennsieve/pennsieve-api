@@ -17,7 +17,7 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
         "workflow_id.$": "$.workflow_id",
         "published_dataset_id.$": "$.published_dataset_id",
         "published_dataset_version.$": "$.version",
-        "cleanup_stage.$": "INITIAL"
+        "cleanup_stage": "INITIAL"
       },
       "Retry": [
         {
@@ -354,7 +354,7 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
         "workflow_id.$": "$.workflow_id",
         "published_dataset_id.$": "$.published_dataset_id",
         "published_dataset_version.$": "$.version",
-        "cleanup_stage.$": "FAILURE"
+        "cleanup_stage": "FAILURE"
       },
       "Retry": [
         {
