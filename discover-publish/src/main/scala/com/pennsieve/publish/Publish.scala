@@ -107,6 +107,15 @@ object Publish extends StrictLogging {
   private def publishedMetadataKey(config: PublishContainerConfig): String =
     assetKey(config, METADATA_FILENAME)
 
+  private def publicAssetKeyPrefix(container: PublishContainer): String =
+    joinKeys(
+      Seq(
+        container.s3AssetKeyPrefix,
+        container.publishedDatasetId.toString,
+        container.version.toString
+      )
+    )
+
   /**
     * These intermediate files are generated as part of publishing. After the `finalizeDataset` step runs, they should
     * be deleted.
@@ -404,20 +413,20 @@ object Publish extends StrictLogging {
       bannerName = s"banner$extension"
       bannerKey = joinKeys(container.s3Key, bannerName)
 
-      // Copy to public asset bucket
+      // Copy to public asset bucket: always has dataset-id/dataset-version in path
       _ <- container.s3
         .copyObject(
           new CopyObjectRequest(
             banner.s3Bucket,
             banner.s3Key,
             container.s3AssetBucket,
-            joinKeys(container.s3AssetKeyPrefix, bannerKey)
+            joinKeys(publicAssetKeyPrefix(container), bannerName)
           )
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
 
-      // Copy to published dataset bucket
+      // Copy to published dataset bucket: uses container.s3Key as head of path (see above)
       _ <- container.s3
         .copyObject(
           new CopyObjectRequest(
@@ -472,14 +481,14 @@ object Publish extends StrictLogging {
           )
         )
 
-      // Copy to public asset bucket
+      // Copy to public asset bucket: always has dataset-id/dataset-version in path
       _ <- container.s3
         .copyObject(
           new CopyObjectRequest(
             readme.s3Bucket,
             readme.s3Key,
             container.s3AssetBucket,
-            joinKeys(container.s3AssetKeyPrefix, readmeKey)
+            joinKeys(publicAssetKeyPrefix(container), README_FILENAME)
           )
         )
         .toEitherT[Future]
@@ -550,14 +559,14 @@ object Publish extends StrictLogging {
             )
         )
 
-      // Copy to public asset bucket
+      // Copy to public asset bucket: always has dataset-id/dataset-version in path
       _ <- container.s3
         .copyObject(
           new CopyObjectRequest(
             changelog.s3Bucket,
             changelog.s3Key,
             container.s3AssetBucket,
-            joinKeys(container.s3AssetKeyPrefix, changelogKey)
+            joinKeys(publicAssetKeyPrefix(container), CHANGELOG_FILENAME)
           )
         )
         .toEitherT[Future]
