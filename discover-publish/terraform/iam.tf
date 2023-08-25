@@ -110,7 +110,32 @@ data "aws_iam_policy_document" "ecs_task_iam_policy_document" {
       "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn}/*",
       data.terraform_remote_state.upload_service_v2.outputs.uploads_bucket_arn,
       "${data.terraform_remote_state.upload_service_v2.outputs.uploads_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn}/*",
 
+    ]
+  }
+
+  statement {
+    sid = "S3GetObjectVersion"
+    effect = "Allow"
+    actions = ["s3:GetObjectVersion"]
+
+    resources = [
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn}/*",
     ]
   }
 
@@ -130,7 +155,14 @@ data "aws_iam_policy_document" "ecs_task_iam_policy_document" {
       "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn}/*",
-
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn}/*",
     ]
   }
 
@@ -144,7 +176,23 @@ data "aws_iam_policy_document" "ecs_task_iam_policy_document" {
       data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo_bucket_arn,
       data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn,
       data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn,
+    ]
+  }
 
+  statement {
+    sid     = "S3ListBucketVersions"
+    effect  = "Allow"
+    actions = ["s3:ListBucketVersions"]
+
+    resources = [
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn,
     ]
   }
 
@@ -162,7 +210,31 @@ data "aws_iam_policy_document" "ecs_task_iam_policy_document" {
       "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn}/*",
+    ]
+  }
 
+  statement {
+    sid     = "S3DeleteObjectVersion"
+    effect  = "Allow"
+    actions = ["s3:DeleteObjectVersion"]
+
+    resources = [
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.discover_embargo50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_arn}/*",
     ]
   }
 
