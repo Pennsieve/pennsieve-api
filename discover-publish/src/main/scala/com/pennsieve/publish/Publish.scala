@@ -109,11 +109,7 @@ object Publish extends StrictLogging {
 
   private def publicAssetKeyPrefix(container: PublishContainer): String =
     joinKeys(
-      Seq(
-        container.s3AssetKeyPrefix,
-        container.publishedDatasetId.toString,
-        container.version.toString
-      )
+      Seq(container.publishedDatasetId.toString, container.version.toString)
     )
 
   /**
@@ -154,6 +150,10 @@ object Publish extends StrictLogging {
         .toEitherT
 
       (externalIdToPackagePath, packageFileManifests) = packagesResult
+
+      // for the banner, readme and changelog
+      // the `key` is the location in the public assets bucket (for the front-end)
+      // the `file-manifest` is the location in the publish bucket
 
       // copy the banner to Discover S3 bucket
       bannerResult <- copyBanner(container)
@@ -413,14 +413,20 @@ object Publish extends StrictLogging {
       bannerName = s"banner$extension"
       bannerKey = joinKeys(container.s3Key, bannerName)
 
-      // Copy to public asset bucket: always has dataset-id/dataset-version in path
+      // the public assets key always has dataset-id/dataset-version in path
+      bannerPublicAssetsKey = joinKeys(
+        publicAssetKeyPrefix(container),
+        bannerName
+      )
+
+      // Copy to public asset bucket
       _ <- container.s3
         .copyObject(
           new CopyObjectRequest(
             banner.s3Bucket,
             banner.s3Key,
             container.s3AssetBucket,
-            joinKeys(publicAssetKeyPrefix(container), bannerName)
+            joinKeys(container.s3AssetKeyPrefix, bannerPublicAssetsKey)
           )
         )
         .toEitherT[Future]
@@ -448,7 +454,7 @@ object Publish extends StrictLogging {
 
     } yield
       (
-        bannerKey,
+        bannerPublicAssetsKey,
         FileManifest(
           bannerName,
           bannerName,
@@ -481,6 +487,12 @@ object Publish extends StrictLogging {
           )
         )
 
+      // the public assets key always has dataset-id/dataset-version in path
+      readmePublicAssetsKey = joinKeys(
+        publicAssetKeyPrefix(container),
+        README_FILENAME
+      )
+
       // Copy to public asset bucket: always has dataset-id/dataset-version in path
       _ <- container.s3
         .copyObject(
@@ -488,7 +500,7 @@ object Publish extends StrictLogging {
             readme.s3Bucket,
             readme.s3Key,
             container.s3AssetBucket,
-            joinKeys(publicAssetKeyPrefix(container), README_FILENAME)
+            joinKeys(container.s3AssetKeyPrefix, readmePublicAssetsKey)
           )
         )
         .toEitherT[Future]
@@ -516,7 +528,7 @@ object Publish extends StrictLogging {
 
     } yield
       (
-        readmeKey,
+        readmePublicAssetsKey,
         FileManifest(
           README_FILENAME,
           README_FILENAME,
@@ -559,6 +571,12 @@ object Publish extends StrictLogging {
             )
         )
 
+      // the public assets key always has dataset-id/dataset-version in path
+      changelogPublicAssetsKey = joinKeys(
+        publicAssetKeyPrefix(container),
+        CHANGELOG_FILENAME
+      )
+
       // Copy to public asset bucket: always has dataset-id/dataset-version in path
       _ <- container.s3
         .copyObject(
@@ -566,7 +584,7 @@ object Publish extends StrictLogging {
             changelog.s3Bucket,
             changelog.s3Key,
             container.s3AssetBucket,
-            joinKeys(publicAssetKeyPrefix(container), CHANGELOG_FILENAME)
+            joinKeys(container.s3AssetKeyPrefix, changelogPublicAssetsKey)
           )
         )
         .toEitherT[Future]
@@ -594,7 +612,7 @@ object Publish extends StrictLogging {
 
     } yield
       (
-        changelogKey,
+        changelogPublicAssetsKey,
         FileManifest(
           CHANGELOG_FILENAME,
           CHANGELOG_FILENAME,
