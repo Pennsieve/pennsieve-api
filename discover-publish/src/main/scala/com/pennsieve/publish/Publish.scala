@@ -433,7 +433,7 @@ object Publish extends StrictLogging {
         .leftMap[CoreError](ThrowableError)
 
       // Copy to published dataset bucket: uses container.s3Key as head of path (see above)
-      _ <- container.s3
+      copyResult <- container.s3
         .copyObject(
           new CopyObjectRequest(
             banner.s3Bucket,
@@ -444,6 +444,11 @@ object Publish extends StrictLogging {
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
+
+      s3VersionId = container.workflowId match {
+        case PublishingWorkflows.Version5 => Some(copyResult.getVersionId())
+        case _ => None
+      }
 
       // Get size of file for manifest
       bannerSize <- container.s3
@@ -459,7 +464,8 @@ object Publish extends StrictLogging {
           bannerName,
           bannerName,
           bannerSize,
-          FileExtensions.fileTypeMap(extension.toLowerCase)
+          FileExtensions.fileTypeMap(extension.toLowerCase),
+          s3VersionId = s3VersionId
         )
       )
   }
@@ -507,7 +513,7 @@ object Publish extends StrictLogging {
         .leftMap[CoreError](ThrowableError)
 
       // Copy to published dataset bucket
-      _ <- container.s3
+      copyResult <- container.s3
         .copyObject(
           new CopyObjectRequest(
             readme.s3Bucket,
@@ -518,6 +524,11 @@ object Publish extends StrictLogging {
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
+
+      s3VersionId = container.workflowId match {
+        case PublishingWorkflows.Version5 => Some(copyResult.getVersionId())
+        case _ => None
+      }
 
       // Get size of file for manifest
       readmeSize <- container.s3
@@ -533,7 +544,8 @@ object Publish extends StrictLogging {
           README_FILENAME,
           README_FILENAME,
           readmeSize,
-          FileType.Markdown
+          FileType.Markdown,
+          s3VersionId = s3VersionId
         )
       )
   }
@@ -591,7 +603,7 @@ object Publish extends StrictLogging {
         .leftMap[CoreError](ThrowableError)
 
       // Copy to published dataset bucket
-      _ <- container.s3
+      copyResult <- container.s3
         .copyObject(
           new CopyObjectRequest(
             changelog.s3Bucket,
@@ -602,6 +614,11 @@ object Publish extends StrictLogging {
         )
         .toEitherT[Future]
         .leftMap[CoreError](ThrowableError)
+
+      s3VersionId = container.workflowId match {
+        case PublishingWorkflows.Version5 => Some(copyResult.getVersionId())
+        case _ => None
+      }
 
       // Get size of file for manifest
       changelogSize <- container.s3
@@ -617,7 +634,8 @@ object Publish extends StrictLogging {
           CHANGELOG_FILENAME,
           CHANGELOG_FILENAME,
           changelogSize,
-          FileType.Markdown
+          FileType.Markdown,
+          s3VersionId = s3VersionId
         )
       )
   }
