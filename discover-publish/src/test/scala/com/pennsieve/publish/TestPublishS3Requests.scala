@@ -270,9 +270,9 @@ class TestPublishS3Requests
         .expects(capture(putObjectCapture))
         .twice()
 
-      (mockAmazonS3
-        .deleteObjects(_: DeleteObjectsRequest))
-        .expects(capture(deleteObjectsCapture))
+//      (mockAmazonS3
+//        .deleteObjects(_: DeleteObjectsRequest))
+//        .expects(capture(deleteObjectsCapture))
 
       Publish
         .finalizeDataset(publishContainer)

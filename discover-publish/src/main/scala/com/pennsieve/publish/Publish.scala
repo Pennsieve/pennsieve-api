@@ -287,18 +287,18 @@ object Publish extends StrictLogging {
         ).asJson
       )
 
-      _ = logger.info(
-        s"Deleting temporary files: $PUBLISH_ASSETS_FILENAME, $GRAPH_ASSETS_FILENAME"
-      )
-
-      _ <- container.s3
-        .deleteObjectsByKeys(
-          container.s3Bucket,
-          Seq(publishedAssetsKey(container), graphManifestKey(container)),
-          isRequesterPays = true
-        )
-        .toEitherT[Future]
-        .leftMap[CoreError](t => ExceptionError(new Exception(t)))
+//      _ = logger.info(
+//        s"Deleting temporary files: $PUBLISH_ASSETS_FILENAME, $GRAPH_ASSETS_FILENAME"
+//      )
+//
+//      _ <- container.s3
+//        .deleteObjectsByKeys(
+//          container.s3Bucket,
+//          Seq(publishedAssetsKey(container), graphManifestKey(container)),
+//          isRequesterPays = true
+//        )
+//        .toEitherT[Future]
+//        .leftMap[CoreError](t => ExceptionError(new Exception(t)))
 
     } yield ()
 
