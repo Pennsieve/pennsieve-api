@@ -436,7 +436,7 @@ class UserController(
   val mergeUsersOperation = (apiOperation[UserDTO]("merge user accounts") summary "merge user accounts"
     parameter bodyParam[UserMergeRequest]("newUserToken").required
     parameter pathParam[String]("userId").required
-    .description("id of the user requested"))
+      .description("id of the user requested"))
 
   put("/merge/:userId", operation(mergeUsersOperation)) {
     new AsyncResult {
