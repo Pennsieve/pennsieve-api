@@ -3966,7 +3966,10 @@ class DataSetsController(
       pathParam[String]("id").description("data set id")
     ))
 
-  get("/:id/publication/data-use-agreement", operation(getPublicationDataUseAgreement)) {
+  get(
+    "/:id/publication/data-use-agreement",
+    operation(getPublicationDataUseAgreement)
+  ) {
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Option[DataUseAgreementDTO]] =
         for {
