@@ -94,6 +94,12 @@ object FileActionItem {
 case class FileActionList(fileActionList: Seq[FileActionItem])
 
 object FileActionList {
+  def path(prefix: String, suffix: String): String =
+    prefix.endsWith("/") match {
+      case true => s"${prefix}${suffix}"
+      case false => s"${prefix}/${suffix}"
+    }
+
   def from(fileActions: Seq[FileAction]): FileActionList =
     new FileActionList(fileActionList = fileActions.map { fileAction =>
       fileAction match {
@@ -101,21 +107,21 @@ object FileActionList {
           FileActionItem(
             action = FileActionType.CopyFile,
             bucket = copyAction.toBucket,
-            path = s"${copyAction.baseKey}/${copyAction.fileKey}",
+            path = path(copyAction.baseKey, copyAction.fileKey),
             versionId = copyAction.s3VersionId
           )
         case keepAction: KeepAction =>
           FileActionItem(
             action = FileActionType.KeepFile,
             bucket = keepAction.bucket,
-            path = s"${keepAction.baseKey}/${keepAction.fileKey}",
+            path = path(keepAction.baseKey, keepAction.fileKey),
             versionId = keepAction.s3VersionId
           )
         case deleteAction: DeleteAction =>
           FileActionItem(
             action = FileActionType.DeleteFile,
             bucket = deleteAction.fromBucket,
-            path = s"${deleteAction.baseKey}/${deleteAction.fileKey}",
+            path = path(deleteAction.baseKey, deleteAction.fileKey),
             versionId = deleteAction.s3VersionId
           )
       }
