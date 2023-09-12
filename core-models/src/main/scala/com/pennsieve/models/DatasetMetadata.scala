@@ -288,4 +288,24 @@ object FileManifest {
       sourcePackageId
     )
   }
+  def apply(
+    /**
+      * Used in older versions of the schema.
+      */
+    path: String,
+    size: Long,
+    fileType: FileType,
+    sourcePackageId: Option[String],
+    s3VersionId: Option[String]
+  ): FileManifest = {
+    FileManifest(
+      name = FilenameUtils.getName(path),
+      path = path,
+      size = size,
+      fileType = fileType,
+      sourcePackageId = sourcePackageId,
+      id = None,
+      s3VersionId = s3VersionId
+    )
+  }
 }
