@@ -144,6 +144,9 @@ object Publish extends StrictLogging {
       // filter out where sourcePackageId.isEmpty because these are Files not attached to Packages
       // (i.e., readme.md, banner.jpg, changelog.md, the manifest.json, and Model export files)
       previousFiles = metadata.files.filterNot(_.sourcePackageId.isEmpty)
+      _ = previousFiles.foreach(
+        pf => logger.info(s"publishAssets5x() previousFile: ${pf}")
+      )
 
       // get current set of Packages, and copy to Discover S3
       packagesResult <- PackagesExport
