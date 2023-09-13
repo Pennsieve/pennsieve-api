@@ -24,6 +24,7 @@ import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 
 import scala.collection.immutable
+import com.typesafe.scalalogging.LazyLogging
 
 sealed trait FileAction {
   def fileKey: String
@@ -93,7 +94,7 @@ object FileActionItem {
 
 case class FileActionList(fileActionList: Seq[FileActionItem])
 
-object FileActionList {
+object FileActionList extends LazyLogging {
   def path(prefix: String, suffix: String): String =
     prefix.endsWith("/") match {
       case true => s"${prefix}${suffix}"
@@ -102,7 +103,7 @@ object FileActionList {
 
   def from(fileActions: Seq[FileAction]): FileActionList =
     new FileActionList(fileActionList = fileActions.map { fileAction =>
-      fileAction match {
+      val fileActionItem = fileAction match {
         case copyAction: CopyAction =>
           FileActionItem(
             action = FileActionType.CopyFile,
@@ -125,6 +126,8 @@ object FileActionList {
             versionId = deleteAction.s3VersionId
           )
       }
+      logger.info(s"FileActionList.from() fileActionItem: ${fileActionItem}")
+      fileActionItem
     })
 
   implicit val encoder: Encoder[FileActionList] = deriveEncoder[FileActionList]
