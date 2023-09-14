@@ -175,8 +175,7 @@ lazy val coreApiSharedSettings = Seq(
   resolvers ++= Seq(
     "Local Maven Repository" at "file://" + Path.userHome.absolutePath + "/.m2/repository",
     Resolver.sonatypeRepo("snapshots"),
-    Resolver.sonatypeRepo("releases"),
-    "The New Motion Repository" at "https://nexus.thenewmotion.com/content/repositories/releases-public"
+    Resolver.sonatypeRepo("releases")
   ),
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
