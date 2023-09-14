@@ -1410,7 +1410,424 @@ class TestPublish
 
   }
 
-  "build "
+//  "get dataset metadata" should {
+//    "load manifest.json into DatasetMetadata" in {
+//
+//    }
+//  }
+
+  "decode Manifest in Publishing 5.0 into DatasetMetadata" should {
+    "load manifest.json into a DatasetMetadata 4.0 when there are no S3 Version Ids" in {
+      val sampleMetadataV4 =
+        """{
+        "pennsieveDatasetId": 1,
+        "version": 1,
+        "revision": 1,
+        "name" : "Test Dataset",
+        "description" : "Lorem ipsum",
+        "creator" : { "first_name": "Blaise", "last_name": "Pascal", "orcid": "0000-0009-1234-5678"},
+        "contributors" : [  { "first_name": "Isaac", "last_name": "Newton"}, { "first_name": "Albert", "last_name": "Einstein"}],
+        "sourceOrganization" : "1",
+        "keywords" : [
+        "neuro",
+        "neuron"
+        ],
+        "datePublished": "2019-06-05",
+        "license": "MIT",
+        "@id": "10.21397/jlt1-xdqn",
+        "publisher" : "The University of Pennsylvania",
+        "@context" : "http://purl.org/dc/terms",
+        "@type":"Dataset",
+        "schemaVersion": "http://schema.org/version/3.7/",
+        "collections" : [
+          {
+            "name" : "My great collection"
+          }
+        ],
+        "relatedPublications" : [
+          {
+            "doi" : "10.26275/t6j6-77pu",
+            "relationshipType" : "IsDescribedBy"
+          }
+        ],
+        "files" : [
+          {
+            "path" : "packages/brain.dcm",
+            "size" : 15010,
+            "fileType" : "DICOM",
+            "sourcePackageId" : "N:package:1"
+          }
+        ],
+        "pennsieveSchemaVersion" : "4.0"
+        }"""
+
+      val mdV4 = DatasetMetadataV4_0(
+        pennsieveDatasetId = 1,
+        version = 1,
+        revision = Some(1),
+        name = "Test Dataset",
+        description = "Lorem ipsum",
+        creator =
+          PublishedContributor("Blaise", "Pascal", Some("0000-0009-1234-5678")),
+        contributors = List(
+          PublishedContributor("Isaac", "Newton", None),
+          PublishedContributor("Albert", "Einstein", None)
+        ),
+        sourceOrganization = "1",
+        keywords = List("neuro", "neuron"),
+        datePublished = LocalDate.of(2019, 6, 5),
+        license = Some(License.MIT),
+        `@id` = "10.21397/jlt1-xdqn",
+        `@context` = "http://purl.org/dc/terms",
+        files = List(
+          FileManifest(
+            "packages/brain.dcm",
+            15010,
+            FileType.DICOM,
+            Some("N:package:1")
+          )
+        ),
+        collections = Some(List(PublishedCollection("My great collection"))),
+        relatedPublications = Some(
+          List(
+            PublishedExternalPublication(
+              Doi("10.26275/t6j6-77pu"),
+              Some(RelationshipType.IsDescribedBy)
+            )
+          )
+        )
+      )
+
+      decode[DatasetMetadata](sampleMetadataV4) shouldBe Right(mdV4)
+    }
+
+    "load manifest.json into a DatasetMetadata 4.0 when there are S3 Version Ids" in {
+      val sampleMetadataV4 =
+        """{
+        "pennsieveDatasetId": 1,
+        "version": 1,
+        "revision": 1,
+        "name" : "Test Dataset",
+        "description" : "Lorem ipsum",
+        "creator" : { "first_name": "Blaise", "last_name": "Pascal", "orcid": "0000-0009-1234-5678"},
+        "contributors" : [  { "first_name": "Isaac", "last_name": "Newton"}, { "first_name": "Albert", "last_name": "Einstein"}],
+        "sourceOrganization" : "1",
+        "keywords" : [
+        "neuro",
+        "neuron"
+        ],
+        "datePublished": "2019-06-05",
+        "license": "MIT",
+        "@id": "10.21397/jlt1-xdqn",
+        "publisher" : "The University of Pennsylvania",
+        "@context" : "http://purl.org/dc/terms",
+        "@type":"Dataset",
+        "schemaVersion": "http://schema.org/version/3.7/",
+        "collections" : [
+          {
+            "name" : "My great collection"
+          }
+        ],
+        "relatedPublications" : [
+          {
+            "doi" : "10.26275/t6j6-77pu",
+            "relationshipType" : "IsDescribedBy"
+          }
+        ],
+        "files" : [
+          {
+            "path" : "packages/brain.dcm",
+            "size" : 15010,
+            "fileType" : "DICOM",
+            "sourcePackageId" : "N:package:1",
+            "s3VersionId": "s3-version-abc123"
+          }
+        ],
+        "pennsieveSchemaVersion" : "4.0"
+        }"""
+
+      val mdV4 = DatasetMetadataV4_0(
+        pennsieveDatasetId = 1,
+        version = 1,
+        revision = Some(1),
+        name = "Test Dataset",
+        description = "Lorem ipsum",
+        creator =
+          PublishedContributor("Blaise", "Pascal", Some("0000-0009-1234-5678")),
+        contributors = List(
+          PublishedContributor("Isaac", "Newton", None),
+          PublishedContributor("Albert", "Einstein", None)
+        ),
+        sourceOrganization = "1",
+        keywords = List("neuro", "neuron"),
+        datePublished = LocalDate.of(2019, 6, 5),
+        license = Some(License.MIT),
+        `@id` = "10.21397/jlt1-xdqn",
+        `@context` = "http://purl.org/dc/terms",
+        files = List(
+          FileManifest(
+            "packages/brain.dcm",
+            15010,
+            FileType.DICOM,
+            Some("N:package:1"),
+            Some("s3-version-abc123")
+          )
+        ),
+        collections = Some(List(PublishedCollection("My great collection"))),
+        relatedPublications = Some(
+          List(
+            PublishedExternalPublication(
+              Doi("10.26275/t6j6-77pu"),
+              Some(RelationshipType.IsDescribedBy)
+            )
+          )
+        )
+      )
+
+      decode[DatasetMetadata](sampleMetadataV4) shouldBe Right(mdV4)
+    }
+
+    "load manifest.json into a DatasetMetadata 4.0 with and without files having S3 Version Ids" in {
+      val sampleMetadataV4 =
+        """{
+        "pennsieveDatasetId": 1,
+        "version": 1,
+        "revision": 1,
+        "name" : "Test Dataset",
+        "description" : "Lorem ipsum",
+        "creator" : { "first_name": "Blaise", "last_name": "Pascal", "orcid": "0000-0009-1234-5678"},
+        "contributors" : [  { "first_name": "Isaac", "last_name": "Newton"}, { "first_name": "Albert", "last_name": "Einstein"}],
+        "sourceOrganization" : "1",
+        "keywords" : [
+        "neuro",
+        "neuron"
+        ],
+        "datePublished": "2019-06-05",
+        "license": "MIT",
+        "@id": "10.21397/jlt1-xdqn",
+        "publisher" : "The University of Pennsylvania",
+        "@context" : "http://purl.org/dc/terms",
+        "@type":"Dataset",
+        "schemaVersion": "http://schema.org/version/3.7/",
+        "collections" : [
+          {
+            "name" : "My great collection"
+          }
+        ],
+        "relatedPublications" : [
+          {
+            "doi" : "10.26275/t6j6-77pu",
+            "relationshipType" : "IsDescribedBy"
+          }
+        ],
+        "files" : [
+          {
+            "name" : "manifest.json",
+            "path" : "manifest.json",
+            "size" : 1234,
+            "fileType" : "Json"
+          },
+          {
+            "path" : "packages/brain.dcm",
+            "size" : 15010,
+            "fileType" : "DICOM",
+            "sourcePackageId" : "N:package:1",
+            "s3VersionId": "s3-version-abc123"
+          }
+        ],
+        "pennsieveSchemaVersion" : "4.0"
+        }"""
+
+      val mdV4 = DatasetMetadataV4_0(
+        pennsieveDatasetId = 1,
+        version = 1,
+        revision = Some(1),
+        name = "Test Dataset",
+        description = "Lorem ipsum",
+        creator =
+          PublishedContributor("Blaise", "Pascal", Some("0000-0009-1234-5678")),
+        contributors = List(
+          PublishedContributor("Isaac", "Newton", None),
+          PublishedContributor("Albert", "Einstein", None)
+        ),
+        sourceOrganization = "1",
+        keywords = List("neuro", "neuron"),
+        datePublished = LocalDate.of(2019, 6, 5),
+        license = Some(License.MIT),
+        `@id` = "10.21397/jlt1-xdqn",
+        `@context` = "http://purl.org/dc/terms",
+        files = List(
+          FileManifest("manifest.json", "manifest.json", 1234, FileType.Json),
+          FileManifest(
+            "packages/brain.dcm",
+            15010,
+            FileType.DICOM,
+            Some("N:package:1"),
+            Some("s3-version-abc123")
+          )
+        ),
+        collections = Some(List(PublishedCollection("My great collection"))),
+        relatedPublications = Some(
+          List(
+            PublishedExternalPublication(
+              Doi("10.26275/t6j6-77pu"),
+              Some(RelationshipType.IsDescribedBy)
+            )
+          )
+        )
+      )
+
+      decode[DatasetMetadata](sampleMetadataV4) shouldBe Right(mdV4)
+    }
+
+//    "load an actual manifest.json into a DatasetMetadata 4.0" in {
+//      val sampleMetadataV4 =
+//        """{
+//          |  "pennsieveDatasetId" : 5068,
+//          |  "version" : 1,
+//          |  "name" : "publishing-5x-8",
+//          |  "description" : "test dataset 8",
+//          |  "creator" : {
+//          |    "first_name" : "Michael",
+//          |    "last_name" : "Uftring",
+//          |    "orcid" : "0000-0001-7054-4685"
+//          |  },
+//          |  "contributors" : [
+//          |    {
+//          |      "first_name" : "Michael",
+//          |      "last_name" : "Uftring",
+//          |      "orcid" : "0000-0001-7054-4685"
+//          |    }
+//          |  ],
+//          |  "sourceOrganization" : "Publishing 5.0 Workspace",
+//          |  "keywords" : [
+//          |    "publishing",
+//          |    "5.0"
+//          |  ],
+//          |  "datePublished" : "2023-09-11",
+//          |  "license" : "Community Data License Agreement – Permissive",
+//          |  "@id" : "https://doi.org/10.21397/hsvc-wubl",
+//          |  "publisher" : "The University of Pennsylvania",
+//          |  "@context" : "http://schema.org/",
+//          |  "@type" : "Dataset",
+//          |  "schemaVersion" : "http://schema.org/version/3.7/",
+//          |  "collections" : [
+//          |  ],
+//          |  "relatedPublications" : [
+//          |  ],
+//          |  "files" : [
+//          |    {
+//          |      "name" : "banner.jpg",
+//          |      "path" : "banner.jpg",
+//          |      "size" : 5008,
+//          |      "fileType" : "JPEG",
+//          |      "s3VersionId" : "9u.qGGC5BgkxZhTv4VlvhnSHR8_yK.zs"
+//          |    },
+//          |    {
+//          |      "name" : "changelog.md",
+//          |      "path" : "changelog.md",
+//          |      "size" : 24,
+//          |      "fileType" : "Markdown",
+//          |      "s3VersionId" : "llW9Nah2l2JyqylZ6mQW_GwsFjAM1TeT"
+//          |    },
+//          |    {
+//          |      "name" : "file.csv",
+//          |      "path" : "metadata/records/file.csv",
+//          |      "size" : 355,
+//          |      "fileType" : "CSV",
+//          |      "s3VersionId" : "4TLWZysTwpqi5JQkZw4VRMnJlMO7umQh"
+//          |    },
+//          |    {
+//          |      "name" : "manifest.json",
+//          |      "path" : "manifest.json",
+//          |      "size" : 2741,
+//          |      "fileType" : "Json"
+//          |    },
+//          |    {
+//          |      "name" : "readme.md",
+//          |      "path" : "readme.md",
+//          |      "size" : 25,
+//          |      "fileType" : "Markdown",
+//          |      "s3VersionId" : "x16k1IhceSfRU5KcUUmzEMhZG533sI0I"
+//          |    },
+//          |    {
+//          |      "name" : "schema.json",
+//          |      "path" : "metadata/schema.json",
+//          |      "size" : 567,
+//          |      "fileType" : "Json",
+//          |      "s3VersionId" : "5Tiv4AcFDueHJheHibe.XxZDglRnMixq"
+//          |    },
+//          |    {
+//          |      "name" : "test-001.dat",
+//          |      "path" : "files/first/test-001.dat",
+//          |      "size" : 4100,
+//          |      "fileType" : "Persyst",
+//          |      "sourcePackageId" : "N:package:a6512ea3-918d-45cd-adef-a5ef8f30600e",
+//          |      "s3VersionId" : "L6jMEVVz7.jKms05YP.2DlV_7KjxzFf1"
+//          |    },
+//          |    {
+//          |      "name" : "test-002.dat",
+//          |      "path" : "files/first/test-002.dat",
+//          |      "size" : 4100,
+//          |      "fileType" : "Persyst",
+//          |      "sourcePackageId" : "N:package:929564cc-9260-41d8-857f-cc78f90eb8ca",
+//          |      "s3VersionId" : "vlutn_m4ZOECZKhpMhaeYtFceHCWHQD7"
+//          |    },
+//          |    {
+//          |      "name" : "test-003.dat",
+//          |      "path" : "files/first/test-003.dat",
+//          |      "size" : 4100,
+//          |      "fileType" : "Persyst",
+//          |      "sourcePackageId" : "N:package:9bf150bc-c700-4094-a3d0-1e43d22f971d",
+//          |      "s3VersionId" : "IFmDw_6sNP_b9Rx0LTjvx4EasTvYjcY6"
+//          |    }
+//          |  ],
+//          |  "pennsieveSchemaVersion" : "4.0"
+//          |}""".stripMargin
+//
+//      val mdV4 = DatasetMetadataV4_0(
+//        pennsieveDatasetId = 1,
+//        version = 1,
+//        revision = Some(1),
+//        name = "Test Dataset",
+//        description = "Lorem ipsum",
+//        creator =
+//          PublishedContributor("Blaise", "Pascal", Some("0000-0009-1234-5678")),
+//        contributors = List(
+//          PublishedContributor("Isaac", "Newton", None),
+//          PublishedContributor("Albert", "Einstein", None)
+//        ),
+//        sourceOrganization = "1",
+//        keywords = List("neuro", "neuron"),
+//        datePublished = LocalDate.of(2019, 6, 5),
+//        license = Some(License.MIT),
+//        `@id` = "10.21397/jlt1-xdqn",
+//        `@context` = "http://purl.org/dc/terms",
+//        files = List(
+//          FileManifest("manifest.json", "manifest.json", 1234, FileType.Json),
+//          FileManifest(
+//            "packages/brain.dcm",
+//            15010,
+//            FileType.DICOM,
+//            Some("N:package:1"),
+//            Some("s3-version-abc123")
+//          )
+//        ),
+//        collections = Some(List(PublishedCollection("My great collection"))),
+//        relatedPublications = Some(
+//          List(
+//            PublishedExternalPublication(
+//              Doi("10.26275/t6j6-77pu"),
+//              Some(RelationshipType.IsDescribedBy)
+//            )
+//          )
+//        )
+//      )
+//
+//      decode[DatasetMetadata](sampleMetadataV4) shouldBe Right(mdV4)
+//    }
+
+  }
 
   /**
     * Delete all objects from bucket, and delete the bucket itself

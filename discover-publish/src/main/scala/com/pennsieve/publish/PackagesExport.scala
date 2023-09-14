@@ -89,7 +89,10 @@ object PackagesExport extends LazyLogging {
         previousFileManifests,
         currentFileManifests,
         currentPackageFileList
-      )
+      ).map { fileAction =>
+        logger.info(s"exportPackageSources5x() fileAction: ${fileAction}")
+        fileAction
+      }
 
       // Write FileActionList to S3 (will be used by Cleanup Job on failure)
       fileActionListUpload = Storage.uploadToS3(
@@ -279,17 +282,22 @@ object PackagesExport extends LazyLogging {
       .filterNot(p => currentPathManifest.contains(p._1))
       .map {
         case (path, manifest) =>
-          DeleteAction(
+          val action = DeleteAction(
             fromBucket = container.s3Bucket,
             baseKey = container.s3Key,
             fileKey = manifest.path,
             s3VersionId = manifest.s3VersionId
           )
+          logger.info(s"computeFileActions() action: ${action}")
+          action
       }
 
     val fileActions: Iterable[FileAction] = currentPathManifest.map {
       case (currentPath, currentManifest) =>
-        previousPathManifest.get(currentPath) match {
+        logger.info(
+          s"computeFileActions() currentPath: ${currentPath} currentManifest: ${currentManifest}"
+        )
+        val action = previousPathManifest.get(currentPath) match {
           case Some(previousManifest) =>
             // the current path was published in the previous version
             samePackage(currentManifest, previousManifest) match {
@@ -311,6 +319,8 @@ object PackagesExport extends LazyLogging {
             // whether the Package Ids match is not relevant, both resolve to copying the current file
             copyAction(currentPathToPackageFile.get(currentPath).get)
         }
+        logger.info(s"computeFileActions() action: ${action}")
+        action
     }
 
     (deleteActions ++ fileActions).toList

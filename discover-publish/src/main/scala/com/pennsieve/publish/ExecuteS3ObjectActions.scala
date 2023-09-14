@@ -50,21 +50,21 @@ object ExecuteS3ObjectActions extends LazyLogging {
     implicit val scheduler = system.scheduler
 
     Flow[FileAction]
-      .mapAsyncUnordered(container.s3CopyFileParallelism)(
-        fileAction =>
-          fileAction match {
-            case copyAction: CopyAction =>
-              retry(() => copyFile(copyAction), attempts = 5, delay = 5.second)
-            case deleteAction: DeleteAction =>
-              retry(
-                () => deleteFile(deleteAction),
-                attempts = 5,
-                delay = 5.second
-              )
-            case keepAction: KeepAction =>
-              retry(() => keepFile(keepAction), attempts = 5, delay = 5.second)
-          }
-      )
+      .mapAsyncUnordered(container.s3CopyFileParallelism) { fileAction =>
+        logger.info(s"ExecuteS3ObjectActions() fileAction: ${fileAction}")
+        fileAction match {
+          case copyAction: CopyAction =>
+            retry(() => copyFile(copyAction), attempts = 5, delay = 5.second)
+          case deleteAction: DeleteAction =>
+            retry(
+              () => deleteFile(deleteAction),
+              attempts = 5,
+              delay = 5.second
+            )
+          case keepAction: KeepAction =>
+            retry(() => keepFile(keepAction), attempts = 5, delay = 5.second)
+        }
+      }
   }
 
   def copyFile(
