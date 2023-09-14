@@ -89,11 +89,10 @@ object PackagesExport extends LazyLogging {
         previousFileManifests,
         currentFileManifests,
         currentPackageFileList
-      )
-
-      _ = fileActions.foreach(
-        fa => logger.info(s"exportPackageSources5x() fileAction: ${fa}")
-      )
+      ).map { fileAction =>
+        logger.info(s"exportPackageSources5x() fileAction: ${fileAction}")
+        fileAction
+      }
 
       // Write FileActionList to S3 (will be used by Cleanup Job on failure)
       fileActionListUpload = Storage.uploadToS3(

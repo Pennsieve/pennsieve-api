@@ -126,7 +126,9 @@ object FileActionList extends LazyLogging {
             versionId = deleteAction.s3VersionId
           )
       }
-      logger.info(s"FileActionList.from() fileActionItem: ${fileActionItem}")
+      logger.info(
+        s"FileActionList.from() fileAction: ${fileAction} -> fileActionItem: ${fileActionItem}"
+      )
       fileActionItem
     })
 
