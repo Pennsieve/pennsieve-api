@@ -303,12 +303,14 @@ object PackagesExport extends LazyLogging {
             samePackage(currentManifest, previousManifest) match {
               case true =>
                 // the current path is being published by the same package, it can be considered unchanged
+                // the KeepAction will preserve based on the previous manifest
                 keepAction(
                   currentPathToPackageFile.get(currentPath).get,
-                  currentManifest
+                  previousManifest
                 )
               case false =>
-                // the current path is being published by a different package
+                // the current path is being published by a different package, the path will be overwritten
+                // the CopyAction will preserve based on the current manifest and the previous S3 VersionId
                 copyAction(
                   currentPathToPackageFile.get(currentPath).get,
                   previousManifest.s3VersionId
