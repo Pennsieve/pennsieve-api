@@ -2060,14 +2060,26 @@ class DataSetsController(
     secureContainer.userManager
       .getByEmail(email)
 
-  def createExternalUser(email: String): EitherT[Future, CoreError, User] =
+  def externalUserCustomEmailMessage(
+    firstName: String,
+    lastName: String,
+    datasetName: String,
+    orgName: String
+  ): String =
+    s"${firstName} ${lastName} is inviting you to collaborate on the '${datasetName}' dataset in the ${orgName} workspace."
+
+  def createExternalUser(
+    email: String,
+    welcomeMessage: String
+  ): EitherT[Future, CoreError, User] =
     for {
       cognitoId <- cognitoClient
         .inviteUser(
           email = Email(email),
-          suppressEmail = true,
+          suppressEmail = false,
           verifyEmail = true,
-          invitePath = "invite-external"
+          invitePath = "invite-external",
+          customMessage = Some(welcomeMessage)
         )
         .toEitherT
 
@@ -2113,8 +2125,15 @@ class DataSetsController(
             getExistingUser(userDto.id, secureContainer)
               .coreErrorToActionResult()
           case false =>
-            createExternalUser(userDto.id)
-              .coreErrorToActionResult()
+            createExternalUser(
+              userDto.id,
+              welcomeMessage = externalUserCustomEmailMessage(
+                invitingUser.firstName,
+                invitingUser.lastName,
+                dataset.name,
+                secureContainer.organization.name
+              )
+            ).coreErrorToActionResult()
         }
 
         _ <- checkOrErrorT(!user.isIntegrationUser)(
@@ -2131,26 +2150,7 @@ class DataSetsController(
           .addUserCollaborator(dataset, user, userDto.role)
           .coreErrorToActionResult()
 
-        // set the new user's password, because we will need to send this in the accept invite link
-        password = Cognito.generatePassword()
-        _ <- userExists match {
-          case false =>
-            cognitoClient
-              .setUserPassword(user.email, password)
-              .toEitherT
-              .coreErrorToActionResult()
-          case true =>
-            Future.successful(true).toEitherT.coreErrorToActionResult()
-        }
-
-        setupAccountLink = userExists match {
-          case false =>
-            s"${Settings.appHost}/invitation/accept/${user.cognitoId.getOrElse("").toString}/${password}"
-          case true =>
-            ""
-        }
-
-        // generate email message
+        // generate email message to existing user
         emailMessage = userExists match {
           case true =>
             insecureContainer.messageTemplates
@@ -2163,28 +2163,24 @@ class DataSetsController(
                 customMessage = customMessage
               )
           case false =>
-            insecureContainer.messageTemplates
-              .inviteExternalNewUserToDataset(
-                user.email,
-                s"${invitingUser.firstName} ${invitingUser.lastName}",
-                invitingUser.email,
-                secureContainer.organization.name,
-                dataset.name,
-                customMessage = customMessage,
-                setupAccountLink = setupAccountLink
-              )
+            "n/a"
         }
 
-        // send email message to invited user
-        _ <- insecureContainer.emailer
-          .sendEmail(
-            to = Email(user.email),
-            from = Settings.support_email,
-            message = emailMessage,
-            subject = s"You have been invited to collaborate"
-          )
-          .leftMap(error => InternalServerError(error.getMessage))
-          .toEitherT[Future]
+        _ <- userExists match {
+          case true =>
+            // send email message to invited user, if they are an existing Pennsieve user
+            insecureContainer.emailer
+              .sendEmail(
+                to = Email(user.email),
+                from = Settings.support_email,
+                message = emailMessage,
+                subject = s"You have been invited to collaborate"
+              )
+              .leftMap(error => InternalServerError(error.getMessage))
+              .toEitherT[Future]
+          case false =>
+            Future.successful(()).toEitherT.coreErrorToActionResult()
+        }
 
         // generate a change log event
         _ <- secureContainer.changelogManager
