@@ -221,6 +221,72 @@ class AccountController(
     }
   }
 
+  val updateAccountFromInviteOperation
+    : OperationBuilder = (apiOperation[CreateUserResponse](
+    "updateUserFromInvite"
+  )
+    summary "update user from a user invite"
+    parameter bodyParam[CreateUserRequest]("body"))
+
+  put("/", operation(updateAccountFromInviteOperation)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, CreateUserResponse] = for {
+        updateRequest <- parseRequestBody[CreateUserRequest].toEitherT[Future]
+
+        jwt <- AuthenticatedController
+          .getBearerToken(request)
+          .toEitherT[Future]
+
+        cognitoId <- CognitoJWTAuthenticator
+          .validateJwt(jwt)(cognitoConfig)
+          .flatMap(_.id.asUserPoolId)
+          .leftMap[CoreError](ThrowableError(_))
+          .toEitherT[Future]
+          .orUnauthorized()
+
+        user <- insecureContainer.userManager
+          .getByCognitoId(cognitoId)
+          .coreErrorToActionResult()
+
+        updatedUser <- insecureContainer.userManager
+          .update(
+            user.copy(
+              firstName = updateRequest.firstName,
+              middleInitial = updateRequest.middleInitial,
+              lastName = updateRequest.lastName,
+              degree = updateRequest.degree,
+              credential = updateRequest.title
+            )
+          )
+          .coreErrorToActionResult()
+
+        organizations <- insecureContainer.userManager
+          .getOrganizations(updatedUser)
+          .orError()
+
+        preferredOrganization = updatedUser.preferredOrganizationId.flatMap(
+          id => organizations.find(_.id == id)
+        )
+
+        dto = Builders.userDTO(
+          user = updatedUser,
+          organizationNodeId = preferredOrganization.map(_.nodeId),
+          permission = None,
+          storage = None,
+          pennsieveTermsOfService = None,
+          customTermsOfService = Seq.empty,
+          role = None
+        )
+
+      } yield
+        CreateUserResponse(
+          orgIds = organizations.map(_.nodeId).toSet,
+          profile = dto
+        )
+      val is = result.value.map(OkResult)
+    }
+  }
+
   val selfServiceUserSignUp
     : OperationBuilder = (apiOperation[CreateUserResponse]("signUpUser")
     summary "Self-service sign up a new user account"
