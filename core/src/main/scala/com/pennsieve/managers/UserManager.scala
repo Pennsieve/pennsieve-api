@@ -164,6 +164,24 @@ class UserManager(db: Database) {
       updatedUser <- get(user.id)
     } yield updatedUser
 
+  def setPreferredOrganization(
+    user: User,
+    organization: Organization
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    for {
+      _ <- db
+        .run(
+          UserMapper
+            .filter(_.id === user.id)
+            .map(_.preferredOrganizationId)
+            .update(Some(organization.id))
+        )
+        .toEitherT
+      updatedUser <- get(user.id)
+    } yield updatedUser
+
   def getPreferredOrganizationId(
     organizationNodeId: Option[String],
     defaultId: Option[Int]
@@ -341,7 +359,8 @@ class UserManager(db: Database) {
 
   def createExternalUser(
     email: String,
-    cognitoId: CognitoId.UserPoolId
+    cognitoId: CognitoId.UserPoolId,
+    organization: Organization
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, User] = {
@@ -360,6 +379,8 @@ class UserManager(db: Database) {
       createdUser <- db
         .run(UserMapper.returning(UserMapper) += user.copy(color = randomColor))
         .toEitherT
+
+      _ <- setPreferredOrganization(user, organization)
 
     } yield createdUser
   }
