@@ -2070,6 +2070,7 @@ class DataSetsController(
 
   def createExternalUser(
     email: String,
+    invitingOrganization: Organization,
     welcomeMessage: String
   ): EitherT[Future, CoreError, User] =
     for {
@@ -2084,7 +2085,7 @@ class DataSetsController(
         .toEitherT
 
       user <- insecureContainer.userManager
-        .createExternalUser(email, cognitoId)
+        .createExternalUser(email, cognitoId, invitingOrganization)
 
     } yield user
 
@@ -2102,6 +2103,7 @@ class DataSetsController(
         customMessage = userDto.message.getOrElse("")
         secureContainer <- getSecureContainer()
         invitingUser = secureContainer.user
+        invitingOrganization = secureContainer.organization
 
         _ <- assertNotDemoOrganization(secureContainer)
 
@@ -2127,6 +2129,7 @@ class DataSetsController(
           case false =>
             createExternalUser(
               userDto.id,
+              invitingOrganization,
               welcomeMessage = externalUserCustomEmailMessage(
                 invitingUser.firstName,
                 invitingUser.lastName,
@@ -2140,14 +2143,23 @@ class DataSetsController(
           InvalidAction("Cannot manually add integration users to a dataset"): CoreError
         ).coreErrorToActionResult()
 
-        // add the user to the organization as a Guest
+        // add the user to the inviting organization as a Guest
         _ <- secureContainer.organizationManager
-          .addGuestUser(secureContainer.organization, user)
+          .addGuestUser(invitingOrganization, user)
           .coreErrorToActionResult()
 
         // add the user to the dataset with specified role
         oldRole <- secureContainer.datasetManager
           .addUserCollaborator(dataset, user, userDto.role)
+          .coreErrorToActionResult()
+
+        // ensure user is in the Welcome Workspace
+        welcomeWorkspace <- secureContainer.organizationManager
+          .getBySlug("welcome_to_pennsieve")
+          .coreErrorToActionResult()
+
+        _ <- secureContainer.organizationManager
+          .addGuestUser(welcomeWorkspace, user)
           .coreErrorToActionResult()
 
         // generate email message to existing user
