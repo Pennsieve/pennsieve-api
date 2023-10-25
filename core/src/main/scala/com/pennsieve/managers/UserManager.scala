@@ -380,9 +380,9 @@ class UserManager(db: Database) {
         .run(UserMapper.returning(UserMapper) += user.copy(color = randomColor))
         .toEitherT
 
-      _ <- setPreferredOrganization(user, organization)
+      updatedUser <- setPreferredOrganization(createdUser, organization)
 
-    } yield createdUser
+    } yield updatedUser
   }
 
   def get(
