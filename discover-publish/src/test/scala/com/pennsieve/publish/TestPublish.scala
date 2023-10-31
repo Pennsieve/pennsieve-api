@@ -1410,12 +1410,12 @@ class TestPublish
   }
 
   "compute file actions " should {
-    "emit CopyAction when a file is new" in {
+    "copy a New File with a CopyAction" in {
       val pkg1 = createPackage(testUser, name = "pkg1")
       val file1 = createFile(
         pkg1,
-        name = "file1",
-        s3Key = "key/file.txt",
+        name = "file-new",
+        s3Key = "key/file-new.txt",
         content = "data data",
         size = 1234
       )
@@ -1458,12 +1458,12 @@ class TestPublish
       fileActions.head shouldEqual (copyAction)
     }
 
-    "emit DeleteAction when a file is removed" in {
+    "delete a Removed File with a DeleteAction" in {
       val pkg1 = createPackage(testUser, name = "pkg1")
       val file1 = createFile(
         pkg1,
-        name = "file1",
-        s3Key = "key/file.txt",
+        name = "file-delete",
+        s3Key = "key/file-delete.txt",
         content = "data data",
         size = 1234
       )
@@ -1496,12 +1496,12 @@ class TestPublish
       fileActions.head shouldEqual (deleteAction)
     }
 
-    "emit KeepAction when a file is unchanged" in {
+    "leave an Unchanged File with a KeepAction" in {
       val pkg1 = createPackage(testUser, name = "pkg1")
       val file1 = createFile(
         pkg1,
-        name = "file1",
-        s3Key = "key/file.txt",
+        name = "file-unchanged",
+        s3Key = "key/file-unchanged.txt",
         content = "data data",
         size = 1234
       )
@@ -1544,19 +1544,19 @@ class TestPublish
       fileActions.head shouldEqual (keepAction)
     }
 
-    "emit a DeleteAction and CopyAction when a file is moved" in {
+    "modify a Renamed File with a DeleteAction and a CopyAction" in {
       val pkg1 = createPackage(testUser, name = "pkg1")
       val file1 = createFile(
         pkg1,
-        name = "file1",
-        s3Key = "key/file.txt",
+        name = "file-original",
+        s3Key = "key/file-original.txt",
         content = "data data",
         size = 1234
       )
       val file2 = createFile(
         pkg1,
-        name = "file1",
-        s3Key = "key/renamed.txt",
+        name = "file-renamed",
+        s3Key = "key/file-renamed.txt",
         content = "data data",
         size = 1234
       )
@@ -1611,6 +1611,138 @@ class TestPublish
 
       fileActions.length shouldEqual (2)
       fileActions shouldEqual (List(deleteAction, copyAction))
+    }
+
+    "modify a Moved File with a DeleteAction and a CopyAction" in {
+      val pkg1 = createPackage(testUser, name = "pkg1")
+      val file1 = createFile(
+        pkg1,
+        name = "file-moved",
+        s3Key = "folder-1/file-moved.txt",
+        content = "data data",
+        size = 1234
+      )
+      val file2 = createFile(
+        pkg1,
+        name = "file-moved",
+        s3Key = "folder-2/file-moved.txt",
+        content = "data data",
+        size = 1234
+      )
+
+      val previousFiles = List(
+        FileManifest(
+          path = file1.s3Key,
+          size = file1.size,
+          fileType = file1.fileType,
+          sourcePackageId = Some(pkg1.nodeId)
+        )
+      )
+      val currentFiles = List(
+        FileManifest(
+          path = file2.s3Key,
+          size = file2.size,
+          fileType = file2.fileType,
+          sourcePackageId = Some(pkg1.nodeId)
+        )
+      )
+      val currentPackageFileList = List(
+        PackageFile(
+          `package` = pkg1,
+          file = file2,
+          packageKey = "",
+          fileKey = file2.s3Key
+        )
+      )
+
+      val fileActions = PackagesExport.computeFileActions(
+        previousFiles,
+        currentFiles,
+        currentPackageFileList
+      )
+
+      val deleteAction = DeleteAction(
+        fromBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file1.s3Key,
+        s3VersionId = None
+      )
+
+      val copyAction = CopyAction(
+        pkg = pkg1,
+        file = file2,
+        toBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file2.s3Key,
+        packageKey = "",
+        s3VersionId = None
+      )
+
+      fileActions.length shouldEqual (2)
+      fileActions shouldEqual (List(deleteAction, copyAction))
+    }
+
+    "overwrite a Replaced File (in a new Package) with a CopyAction" in {
+      val pkg1 = createPackage(testUser, name = "pkg1")
+      val file1 = createFile(
+        pkg1,
+        name = "file-replaced",
+        s3Key = "key/file-replaced.txt",
+        content = "data data",
+        size = 1234
+      )
+      val pkg2 = createPackage(testUser, name = "pkg2")
+      val file2 = createFile(
+        pkg2,
+        name = "file-replaced",
+        s3Key = "key/file-replaced.txt",
+        content = "data data",
+        size = 1234
+      )
+
+      val previousFiles = List(
+        FileManifest(
+          path = file1.s3Key,
+          size = file1.size,
+          fileType = file1.fileType,
+          sourcePackageId = Some(pkg1.nodeId)
+        )
+      )
+      val currentFiles = List(
+        FileManifest(
+          path = file2.s3Key,
+          size = file2.size,
+          fileType = file2.fileType,
+          sourcePackageId = Some(pkg2.nodeId)
+        )
+      )
+      val currentPackageFileList = List(
+        PackageFile(
+          `package` = pkg2,
+          file = file2,
+          packageKey = "",
+          fileKey = file2.s3Key
+        )
+      )
+
+      val fileActions = PackagesExport.computeFileActions(
+        previousFiles,
+        currentFiles,
+        currentPackageFileList
+      )
+
+      val copyAction = CopyAction(
+        pkg = pkg2,
+        file = file2,
+        toBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file2.s3Key,
+        packageKey = "",
+        s3VersionId = None
+      )
+
+      fileActions.length shouldEqual (1)
+      fileActions shouldEqual (List(copyAction))
     }
 
   } // END: "compute file actions " should...
