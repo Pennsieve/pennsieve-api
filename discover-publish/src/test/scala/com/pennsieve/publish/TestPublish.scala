@@ -21,7 +21,6 @@ import akka.stream.testkit.scaladsl.TestSink
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{ Sink, Source }
 import cats.data.EitherT
-
 import cats.implicits._
 import com.amazonaws.services.s3.model.{ Bucket, S3ObjectSummary }
 import com.pennsieve.clients.{ DatasetAssetClient, S3DatasetAssetClient }
@@ -29,7 +28,7 @@ import com.pennsieve.aws.s3.S3
 import com.pennsieve.core.utilities._
 import com.pennsieve.domain.{ CoreError, ServiceError }
 import com.pennsieve.models._
-import com.pennsieve.publish.models.CopyAction
+import com.pennsieve.publish.models.{ CopyAction, DeleteAction, KeepAction }
 import com.pennsieve.test._
 import com.pennsieve.test.helpers._
 import org.scalatest.EitherValues._
@@ -1409,6 +1408,212 @@ class TestPublish
 //    }
 
   }
+
+  "compute file actions " should {
+    "emit CopyAction when a file is new" in {
+      val pkg1 = createPackage(testUser, name = "pkg1")
+      val file1 = createFile(
+        pkg1,
+        name = "file1",
+        s3Key = "key/file.txt",
+        content = "data data",
+        size = 1234
+      )
+
+      val previousFiles = List.empty[FileManifest]
+      val currentFiles = List(
+        FileManifest(
+          path = file1.s3Key,
+          size = file1.size,
+          fileType = file1.fileType,
+          sourcePackageId = Some(pkg1.nodeId)
+        )
+      )
+      val currentPackageFileList = List(
+        PackageFile(
+          `package` = pkg1,
+          file = file1,
+          packageKey = "",
+          fileKey = file1.s3Key
+        )
+      )
+
+      val fileActions = PackagesExport.computeFileActions(
+        previousFiles,
+        currentFiles,
+        currentPackageFileList
+      )
+
+      val copyAction = CopyAction(
+        pkg = pkg1,
+        file = file1,
+        toBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file1.s3Key,
+        packageKey = "",
+        s3VersionId = None
+      )
+
+      fileActions.length shouldEqual (1)
+      fileActions.head shouldEqual (copyAction)
+    }
+
+    "emit DeleteAction when a file is removed" in {
+      val pkg1 = createPackage(testUser, name = "pkg1")
+      val file1 = createFile(
+        pkg1,
+        name = "file1",
+        s3Key = "key/file.txt",
+        content = "data data",
+        size = 1234
+      )
+
+      val fileManifest = FileManifest(
+        path = file1.s3Key,
+        size = file1.size,
+        fileType = file1.fileType,
+        sourcePackageId = Some(pkg1.nodeId)
+      )
+
+      val previousFiles = List(fileManifest)
+      val currentFiles = List.empty[FileManifest]
+      val currentPackageFileList = List.empty[PackageFile]
+
+      val fileActions = PackagesExport.computeFileActions(
+        previousFiles,
+        currentFiles,
+        currentPackageFileList
+      )
+
+      val deleteAction = DeleteAction(
+        fromBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file1.s3Key,
+        s3VersionId = None
+      )
+
+      fileActions.length shouldEqual (1)
+      fileActions.head shouldEqual (deleteAction)
+    }
+
+    "emit KeepAction when a file is unchanged" in {
+      val pkg1 = createPackage(testUser, name = "pkg1")
+      val file1 = createFile(
+        pkg1,
+        name = "file1",
+        s3Key = "key/file.txt",
+        content = "data data",
+        size = 1234
+      )
+
+      val fileManifest = FileManifest(
+        path = file1.s3Key,
+        size = file1.size,
+        fileType = file1.fileType,
+        sourcePackageId = Some(pkg1.nodeId)
+      )
+
+      val previousFiles = List(fileManifest)
+      val currentFiles = List(fileManifest)
+      val currentPackageFileList = List(
+        PackageFile(
+          `package` = pkg1,
+          file = file1,
+          packageKey = "",
+          fileKey = file1.s3Key
+        )
+      )
+
+      val fileActions = PackagesExport.computeFileActions(
+        previousFiles,
+        currentFiles,
+        currentPackageFileList
+      )
+
+      val keepAction = KeepAction(
+        pkg = pkg1,
+        file = file1,
+        bucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file1.s3Key,
+        packageKey = "",
+        s3VersionId = None
+      )
+
+      fileActions.length shouldEqual (1)
+      fileActions.head shouldEqual (keepAction)
+    }
+
+    "emit a DeleteAction and CopyAction when a file is moved" in {
+      val pkg1 = createPackage(testUser, name = "pkg1")
+      val file1 = createFile(
+        pkg1,
+        name = "file1",
+        s3Key = "key/file.txt",
+        content = "data data",
+        size = 1234
+      )
+      val file2 = createFile(
+        pkg1,
+        name = "file1",
+        s3Key = "key/renamed.txt",
+        content = "data data",
+        size = 1234
+      )
+
+      val previousFiles = List(
+        FileManifest(
+          path = file1.s3Key,
+          size = file1.size,
+          fileType = file1.fileType,
+          sourcePackageId = Some(pkg1.nodeId)
+        )
+      )
+      val currentFiles = List(
+        FileManifest(
+          path = file2.s3Key,
+          size = file2.size,
+          fileType = file2.fileType,
+          sourcePackageId = Some(pkg1.nodeId)
+        )
+      )
+      val currentPackageFileList = List(
+        PackageFile(
+          `package` = pkg1,
+          file = file2,
+          packageKey = "",
+          fileKey = file2.s3Key
+        )
+      )
+
+      val fileActions = PackagesExport.computeFileActions(
+        previousFiles,
+        currentFiles,
+        currentPackageFileList
+      )
+
+      val deleteAction = DeleteAction(
+        fromBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file1.s3Key,
+        s3VersionId = None
+      )
+
+      val copyAction = CopyAction(
+        pkg = pkg1,
+        file = file2,
+        toBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file2.s3Key,
+        packageKey = "",
+        s3VersionId = None
+      )
+
+      fileActions.length shouldEqual (2)
+      fileActions shouldEqual (List(deleteAction, copyAction))
+    }
+
+  } // END: "compute file actions " should...
 
 //  "get dataset metadata" should {
 //    "load manifest.json into DatasetMetadata" in {
