@@ -1745,6 +1745,71 @@ class TestPublish
       fileActions shouldEqual (List(copyAction))
     }
 
+    "hide a renamed file" in {
+      val pkg = createPackage(testUser, name = "pkg1")
+      val originalFilePath = "key/original.dat"
+      val renamedFilePath = "key/renamed.txt"
+      val file = createFile(
+        pkg,
+        name = "renamed",
+        s3Key = renamedFilePath,
+        content = "data data",
+        size = 1234
+      )
+
+      val previousFiles = List(
+        FileManifest(
+          path = originalFilePath,
+          size = file.size,
+          fileType = file.fileType,
+          sourcePackageId = Some(pkg.nodeId)
+        )
+      )
+      val currentFiles = List(
+        FileManifest(
+          path = file.s3Key,
+          size = file.size,
+          fileType = file.fileType,
+          sourcePackageId = Some(pkg.nodeId)
+        )
+      )
+      val currentPackageFileList = List(
+        PackageFile(
+          `package` = pkg,
+          file = file,
+          packageKey = "",
+          fileKey = file.s3Key
+        )
+      )
+
+      val fileActions = PackagesExport.computeFileActions(
+        previousFiles,
+        currentFiles,
+        currentPackageFileList
+      )
+
+      val deleteAction = DeleteAction(
+        fromBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = originalFilePath,
+        s3VersionId = None
+      )
+
+      val copyAction = CopyAction(
+        pkg = pkg,
+        file = file,
+        toBucket = publishContainer.s3Bucket,
+        baseKey = publishContainer.s3Key,
+        fileKey = file.s3Key,
+        packageKey = "",
+        s3VersionId = None
+      )
+
+      fileActions.length shouldEqual (2)
+      fileActions shouldEqual (List(deleteAction, copyAction))
+
+    }
+
   } // END: "compute file actions " should...
 
 //  "get dataset metadata" should {
