@@ -24,7 +24,8 @@ import com.pennsieve.db.CustomTermsOfService
 import com.pennsieve.dtos.{
   CustomTermsOfServiceDTO,
   OrcidDTO,
-  PennsieveTermsOfServiceDTO
+  PennsieveTermsOfServiceDTO,
+  UserDTO
 }
 import com.pennsieve.helpers.{ MockAuditLogger, OrcidClient }
 import com.pennsieve.models.DBPermission.Delete
@@ -44,7 +45,7 @@ class TestUsersController extends BaseApiTest {
     expiresIn = 100,
     tokenType = "tokenType",
     orcid = "orcid",
-    scope = "scope",
+    scope = "/read-limited /activities/update",
     refreshToken = "refreshToken"
   )
 
@@ -124,6 +125,15 @@ class TestUsersController extends BaseApiTest {
       body should include(loggedInUser.middleInitial.get)
       body should include(loggedInUser.lastName)
       body should include(loggedInUser.degree.get.entryName)
+    }
+  }
+
+  test("get user info includes ORCID Auth Scope") {
+    get(s"", headers = authorizationHeader(loggedInOrcidJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      val result: UserDTO = parsedBody.extract[UserDTO]
+      val orcidDto = result.orcid.get
+      orcidDto.scope.length shouldBe (2)
     }
   }
 

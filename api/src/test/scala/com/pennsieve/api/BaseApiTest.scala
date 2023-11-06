@@ -254,6 +254,7 @@ trait ApiSuite
   var sandboxUser: User = _
   var integrationUser: User = _
   var guestUser: User = _
+  var orcidUser: User = _
 
   var pennsieve: Organization = _
   var loggedInOrganization: Organization = _
@@ -263,6 +264,7 @@ trait ApiSuite
   var welcomeOrganization: Organization = _
 
   var loggedInJwt: String = _
+  var loggedInOrcidJwt: String = _
 
   val requestTraceId: String = "1234-4567"
 
@@ -398,6 +400,35 @@ trait ApiSuite
     id = 4
   )
 
+  val userWithORCID = User(
+    NodeCodes.generateId(NodeCodes.userCode),
+    "fancy-flowers@test.org",
+    "Cymbidium",
+    Some("D"),
+    "Cattleya",
+    Some(Degree.MS),
+    "florist",
+    "",
+    "http://test.com",
+    0,
+    false,
+    false,
+    None,
+    true,
+    Some(
+      OrcidAuthorization(
+        name = "Cymbidium Cattleya",
+        accessToken = UUID.randomUUID().toString,
+        expiresIn = 12345678910L,
+        tokenType = "test",
+        orcid = "0000-0001-0002-0003",
+        scope = "/read-limited /activities/update",
+        refreshToken = UUID.randomUUID().toString
+      )
+    ),
+    Some(CognitoId.UserPoolId(UUID.randomUUID()))
+  )
+
   override def afterEach(): Unit = {
     super.afterEach()
 
@@ -428,6 +459,7 @@ trait ApiSuite
     externalUser = userManager.create(other).await.value
     integrationUser = userManager.create(integrationUserDefinition).await.value
     guestUser = userManager.create(guest).await.value
+    orcidUser = userManager.create(userWithORCID).await.value
 
     secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
     secureContainerGuest =
@@ -469,9 +501,18 @@ trait ApiSuite
       .addUser(loggedInOrganization, guestUser, Guest)
       .await
       .value
+    organizationManager
+      .addUser(loggedInOrganization, orcidUser, Guest)
+      .await
+      .value
 
     loggedInJwt = Authenticator.createUserToken(
       loggedInUser,
+      loggedInOrganization
+    )(jwtConfig, insecureContainer.db, ec)
+
+    loggedInOrcidJwt = Authenticator.createUserToken(
+      orcidUser,
       loggedInOrganization
     )(jwtConfig, insecureContainer.db, ec)
 
