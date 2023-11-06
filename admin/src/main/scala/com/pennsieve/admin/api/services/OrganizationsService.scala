@@ -843,15 +843,14 @@ class OrganizationsService(
           (returnedVersion, _, _) = updateResult
         } yield returnedVersion
 
-        _ = println("UploadCustomTOS output") 
-        _ = println(html) 
-        _ = println(returnedVersion)
-        _ = println(result)
-        _ = println(result.value) 
-
         result.value.flatMap {
           case Right(returnedVersion) => ctx.complete(returnedVersion.toString)
           case Left(error) =>
+            _ = println("UploadCustomTOS output") 
+            _ = println(html) 
+            _ = println(returnedVersion)
+            _ = println(result)
+            _ = println(result.value) 
             ctx.complete(
               HttpResponse(
                 InternalServerError,
