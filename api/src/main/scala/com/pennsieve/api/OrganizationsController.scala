@@ -1420,7 +1420,10 @@ class OrganizationsController(
           .toEitherT[Future]
           .orNotFound()
 
+        _ = println("Date version check")
         _ = println(version.toString)
+
+        version = "2021-03-17 14:55:42.082"
         
         text <- customTermsOfServiceClient
           .getTermsOfService(organization.nodeId, version)
