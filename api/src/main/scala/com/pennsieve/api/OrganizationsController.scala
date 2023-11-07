@@ -1415,15 +1415,10 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Read)
           .coreErrorToActionResult()
 
-        // version <- organization.customTermsOfServiceVersion
-        //   .toRight(MissingCustomTermsOfService: CoreError)
-        //   .toEitherT[Future]
-        //   .orNotFound()
-
-        _ = println("Date version check")
-        _ = println(version.toString)
-
-        version = ZonedDateTime.now()
+        version <- organization.customTermsOfServiceVersion
+          .toRight(MissingCustomTermsOfService: CoreError)
+          .toEitherT[Future]
+          .orNotFound()
         
         text <- customTermsOfServiceClient
           .getTermsOfService(organization.nodeId, version)
