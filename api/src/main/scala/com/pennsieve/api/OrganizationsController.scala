@@ -1420,7 +1420,7 @@ class OrganizationsController(
           .toEitherT[Future]
           .orNotFound()
 
-        println(version.toString)
+        _ = println(version.toString)
         
         text <- customTermsOfServiceClient
           .getTermsOfService(organization.nodeId, version)
