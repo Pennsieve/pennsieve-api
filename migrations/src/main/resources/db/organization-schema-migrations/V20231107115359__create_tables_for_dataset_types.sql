@@ -1,15 +1,17 @@
-CREATE TABLE dataset_collections
+CREATE TABLE dataset_reference
 (
     id SERIAL PRIMARY KEY,
     dataset_id INTEGER NOT NULL references datasets(id) ON DELETE CASCADE,
-    dataset_order INTEGER,
+    reference_order INTEGER,
     reference_type VARCHAR(255) NOT NULL,
     reference_id VARCHAR(255) NOT NULL,
+    properties JSONB NOT NULL DEFAULT '[]',
+    tags VARCHAR(255) ARRAY NOT NULL DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TRIGGER dataset_collections_update_updated_at BEFORE UPDATE ON dataset_collections FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER dataset_reference_update_updated_at BEFORE UPDATE ON dataset_reference FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
 CREATE TABLE dataset_release
 (
