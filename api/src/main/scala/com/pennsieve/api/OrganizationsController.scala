@@ -1423,7 +1423,7 @@ class OrganizationsController(
         _ = println("Date version check")
         _ = println(version.toString)
 
-        version = ZonedDateTime.now(ZoneOffset.UTC)
+        version = ZonedDateTime.now()
         
         text <- customTermsOfServiceClient
           .getTermsOfService(organization.nodeId, version)
