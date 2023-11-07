@@ -49,6 +49,7 @@ import com.pennsieve.models.{
   FeatureFlag,
   File,
   FileObjectType,
+  OrcidAuthorization,
   Organization,
   Package,
   PackageType,
@@ -678,11 +679,14 @@ object Builders {
 
   }
 
-  def orcidDTO(user: User): Option[OrcidDTO] = {
-    user.orcidAuthorization.map(
-      orcidAuth => OrcidDTO(name = orcidAuth.name, orcid = orcidAuth.orcid)
-    )
-  }
+  def orcidDTO(user: User): Option[OrcidDTO] =
+    user.orcidAuthorization.map(orcidAuth => orcidDTO(orcidAuth))
+
+  def orcidDTO(orcidAuth: OrcidAuthorization): OrcidDTO = OrcidDTO(
+    name = orcidAuth.name,
+    orcid = orcidAuth.orcid,
+    scope = orcidAuth.scope.split(" ").toList
+  )
 
   def userDTO(
     user: User,

@@ -603,7 +603,7 @@ class UserController(
 
         updatedUser = loggedInUser.copy(orcidAuthorization = Some(orcidAuth))
         _ <- secureContainer.userManager.update(updatedUser).orError()
-      } yield OrcidDTO(name = orcidAuth.name, orcid = orcidAuth.orcid)
+      } yield Builders.orcidDTO(orcidAuth)
 
       val is = result.value.map(
         either =>
