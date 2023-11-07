@@ -1420,6 +1420,8 @@ class OrganizationsController(
           .toEitherT[Future]
           .orNotFound()
 
+        println(version.toString)
+        
         text <- customTermsOfServiceClient
           .getTermsOfService(organization.nodeId, version)
           .leftMap(_ => InvalidDateVersion(version.toString): CoreError)
