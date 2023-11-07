@@ -21,7 +21,7 @@ CREATE TABLE dataset_release
     url VARCHAR(255) NOT NULL,
     label VARCHAR(255) NOT NULL,
     marker VARCHAR(255) NOT NULL,
-    date TIMESTAMP NOT NULL,
+    release_date TIMESTAMP NOT NULL,
     properties JSONB NOT NULL DEFAULT '[]',
     tags VARCHAR(255) ARRAY NOT NULL DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
