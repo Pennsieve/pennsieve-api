@@ -33,6 +33,8 @@ object DatasetType extends Enum[DatasetType] with CirceEnum[DatasetType] {
 
   case object Research extends DatasetType
   case object Trial extends DatasetType
+  case object Collection extends DatasetType
+  case object Release extends DatasetType
 }
 
 final case class Dataset(
