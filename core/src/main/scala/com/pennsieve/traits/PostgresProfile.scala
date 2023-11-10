@@ -233,6 +233,24 @@ trait PostgresProfile
         s => DatasetStatusInUse(s)
       )
 
+    implicit val nameValuePropertyMapper =
+      MappedColumnType.base[NameValueProperty, Json](
+        nameValueProperty => nameValueProperty.asJson,
+        jsonString => jsonString.as[NameValueProperty].toOption.get
+      )
+
+    implicit val nameValuePropertyListMapper =
+      MappedColumnType.base[List[NameValueProperty], Json](
+        nameValueProperty => nameValueProperty.asJson,
+        jsonString => jsonString.as[List[NameValueProperty]].toOption.get
+      )
+
+    implicit val datasetReferenceMapper =
+      MappedColumnType.base[DatasetReference, Json](
+        datasetReference => datasetReference.asJson,
+        json => json.as[DatasetReference].toOption.get
+      )
+
     implicit val fileChecksumMapper =
       MappedColumnType.base[FileChecksum, Json](
         fileChecksum => fileChecksum.asJson,
