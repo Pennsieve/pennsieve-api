@@ -251,6 +251,12 @@ trait PostgresProfile
         json => json.as[DatasetReference].toOption.get
       )
 
+    implicit val datasetReleaseMapper =
+      MappedColumnType.base[DatasetRelease, Json](
+        datasetRelease => datasetRelease.asJson,
+        json => json.as[DatasetRelease].toOption.get
+      )
+
     implicit val fileChecksumMapper =
       MappedColumnType.base[FileChecksum, Json](
         fileChecksum => fileChecksum.asJson,
