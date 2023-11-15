@@ -9729,4 +9729,87 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("create dataset type - default is research") {
+    val request = CreateDataSetRequest(
+      name = "test-create-type-default",
+      description = None,
+      properties = List.empty[ModelPropertyRO]
+    )
+    postJson(
+      uri = "/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader(),
+      body = write(request)
+    ) {
+      status shouldEqual (201)
+      val response = parsedBody.extract[DataSetDTO]
+      response.content.datasetType shouldEqual (DatasetType.Research)
+    }
+  }
+
+  test("create dataset type - research") {
+    val request = CreateDataSetRequest(
+      name = "test-create-type-research",
+      description = None,
+      properties = List.empty[ModelPropertyRO],
+      datasetType = DatasetType.Research
+    )
+    postJson(
+      uri = "/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader(),
+      body = write(request)
+    ) {
+      status shouldEqual (201)
+      val response = parsedBody.extract[DataSetDTO]
+      response.content.datasetType shouldEqual (DatasetType.Research)
+    }
+  }
+
+  test("create dataset type - collection") {
+    val request = CreateDataSetRequest(
+      name = "test-create-type-collection",
+      description = None,
+      properties = List.empty[ModelPropertyRO],
+      datasetType = DatasetType.Collection
+    )
+    postJson(
+      uri = "/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader(),
+      body = write(request)
+    ) {
+      status shouldEqual (201)
+      val response = parsedBody.extract[DataSetDTO]
+      response.content.datasetType shouldEqual (DatasetType.Collection)
+    }
+  }
+
+  test("create dataset type - release") {
+    val request = CreateDataSetRequest(
+      name = "test-create-type-release",
+      description = None,
+      properties = List.empty[ModelPropertyRO],
+      datasetType = DatasetType.Release
+    )
+    postJson(
+      uri = "/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader(),
+      body = write(request)
+    ) {
+      status shouldEqual (201)
+      val response = parsedBody.extract[DataSetDTO]
+      response.content.datasetType shouldEqual (DatasetType.Release)
+    }
+  }
+
+  test("create dataset type - invalid type fails") {
+    val invalidRequestJSON =
+      s"""{"name":"test-create-type-invalid","properties":[],"automaticallyProcessPackages":false,"tags":[],"includedWebhookIds":[],"excludedWebhookIds":[],"datasetType":"invalid"}"""
+    postJson(
+      uri = "/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader(),
+      body = invalidRequestJSON
+    ) {
+      status shouldEqual (400)
+    }
+  }
+
 }

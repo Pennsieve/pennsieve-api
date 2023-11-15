@@ -105,7 +105,8 @@ case class CreateDataSetRequest(
   license: Option[License] = None,
   tags: List[String] = List.empty,
   includedWebhookIds: List[Int] = List.empty,
-  excludedWebhookIds: List[Int] = List.empty
+  excludedWebhookIds: List[Int] = List.empty,
+  datasetType: DatasetType = DatasetType.Research
 )
 
 case class UpdateDataSetRequest(
@@ -908,7 +909,8 @@ class DataSetsController(
             automaticallyProcessPackages = body.automaticallyProcessPackages,
             license = body.license,
             tags = body.tags,
-            dataUseAgreement = dataUseAgreement
+            dataUseAgreement = dataUseAgreement,
+            datasetType = body.datasetType
           )
           .coreErrorToActionResult()
 

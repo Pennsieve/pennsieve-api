@@ -237,7 +237,8 @@ class DatasetManager(
     bannerId: Option[UUID] = None,
     readmeId: Option[UUID] = None,
     changelogId: Option[UUID] = None,
-    dataUseAgreement: Option[DataUseAgreement] = None
+    dataUseAgreement: Option[DataUseAgreement] = None,
+    datasetType: DatasetType = DatasetType.Research
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Dataset] = {
@@ -283,7 +284,8 @@ class DatasetManager(
           bannerId = bannerId,
           readmeId = readmeId,
           changelogId = changelogId,
-          dataUseAgreementId = dataUseAgreement.map(_.id)
+          dataUseAgreementId = dataUseAgreement.map(_.id),
+          `type` = datasetType
         )
 
         _ <- datasetUser += DatasetUser(
