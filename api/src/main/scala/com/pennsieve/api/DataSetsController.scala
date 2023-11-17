@@ -119,6 +119,10 @@ case class UpdateDataSetRequest(
   dataUseAgreementId: Option[Int] = None
 )
 
+trait DatasetDetails
+case class CollectionDatasetDetails() extends DatasetDetails
+case class ReleaseDatasetDetails() extends DatasetDetails
+
 case class DatasetPermissionResponse(
   userId: Int,
   datasetId: Int,
