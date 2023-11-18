@@ -20,7 +20,8 @@ import com.pennsieve.models.{
   DatasetReference,
   DatasetRelease,
   NameValueProperty,
-  Organization
+  Organization,
+  ReleaseOrigin
 }
 import com.pennsieve.traits.PostgresProfile.api._
 
@@ -31,11 +32,11 @@ class DatasetReleaseTable(schema: String, tag: Tag)
 
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def datasetId = column[Int]("dataset_id")
-  def origin = column[String]("origin")
+  def origin = column[ReleaseOrigin]("origin")
   def url = column[String]("url")
   def label = column[String]("label")
-  def marker = column[String]("marker")
-  def releaseDate = column[ZonedDateTime]("release_date")
+  def marker = column[Option[String]]("marker")
+  def releaseDate = column[Option[ZonedDateTime]]("release_date")
   def properties = column[Option[List[NameValueProperty]]]("properties")
   def tags = column[Option[List[String]]]("tags")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
@@ -67,4 +68,5 @@ class DatasetReleaseMapper(organization: Organization)
     datasetId: Int
   ): Query[DatasetReleaseTable, DatasetRelease, Seq] =
     this.filter(_.datasetId === datasetId)
+
 }

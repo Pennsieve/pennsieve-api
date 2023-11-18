@@ -19,7 +19,8 @@ package com.pennsieve.db
 import com.pennsieve.models.{
   DatasetReference,
   NameValueProperty,
-  Organization
+  Organization,
+  ReferenceType
 }
 import com.pennsieve.traits.PostgresProfile.api._
 
@@ -31,7 +32,7 @@ final class DatasetReferenceTable(schema: String, tag: Tag)
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def datasetId = column[Int]("dataset_id")
   def referenceOrder = column[Int]("reference_order")
-  def referenceType = column[String]("reference_type")
+  def referenceType = column[ReferenceType]("reference_type")
   def referenceId = column[String]("reference_id")
   def properties = column[Option[List[NameValueProperty]]]("properties")
   def tags = column[Option[List[String]]]("tags")

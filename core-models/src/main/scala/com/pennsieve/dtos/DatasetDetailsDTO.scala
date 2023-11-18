@@ -14,25 +14,15 @@
  * limitations under the License.
  */
 
-package com.pennsieve.models
+package com.pennsieve.dtos
 
-import enumeratum._
-import enumeratum.EnumEntry.Snakecase
-import io.circe.{ Decoder, Encoder }
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import com.pennsieve.models.{ NameValueProperty, ReferenceType, ReleaseOrigin }
 
 import java.time.ZonedDateTime
-import scala.collection.immutable.IndexedSeq
 
-sealed trait ReleaseOrigin extends EnumEntry with Snakecase
+trait DatasetDetailsDTO
 
-object ReleaseOrigin extends Enum[ReleaseOrigin] with CirceEnum[ReleaseOrigin] {
-  val values: IndexedSeq[ReleaseOrigin] = findValues
-
-  case object Github extends ReleaseOrigin
-}
-
-case class DatasetRelease(
+case class DatasetReleaseDTO(
   id: Int,
   datasetId: Int,
   origin: ReleaseOrigin,
@@ -44,13 +34,16 @@ case class DatasetRelease(
   tags: Option[List[String]],
   createdAt: ZonedDateTime = ZonedDateTime.now,
   updatedAt: ZonedDateTime = ZonedDateTime.now
-)
+) extends DatasetDetailsDTO
 
-object DatasetRelease {
-  implicit val encoder: Encoder[DatasetRelease] =
-    deriveEncoder[DatasetRelease]
-  implicit val decoder: Decoder[DatasetRelease] =
-    deriveDecoder[DatasetRelease]
-
-  val tupled = (this.apply _).tupled
-}
+case class DatasetReferenceDTO(
+  id: Int,
+  datasetId: Int,
+  referenceOrder: Int,
+  referenceType: ReferenceType,
+  referenceId: String,
+  properties: Option[List[NameValueProperty]],
+  tags: Option[List[String]],
+  createdAt: ZonedDateTime = ZonedDateTime.now,
+  updatedAt: ZonedDateTime = ZonedDateTime.now
+) extends DatasetDetailsDTO

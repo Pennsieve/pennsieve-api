@@ -16,6 +16,8 @@
 
 package com.pennsieve.models
 
+import enumeratum._
+import enumeratum.EnumEntry.Snakecase
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.{ Decoder, Encoder }
 
@@ -29,11 +31,20 @@ object NameValueProperty {
     deriveDecoder[NameValueProperty]
 }
 
+sealed trait ReferenceType extends EnumEntry with Snakecase
+
+object ReferenceType extends Enum[ReferenceType] with CirceEnum[ReferenceType] {
+  val values: IndexedSeq[ReferenceType] = findValues
+
+  case object Pennsieve extends ReferenceType
+  case object DOI extends ReferenceType
+}
+
 case class DatasetReference(
   id: Int,
-  userId: Int,
+  datasetId: Int,
   referenceOrder: Int,
-  referenceType: String,
+  referenceType: ReferenceType,
   referenceId: String,
   properties: Option[List[NameValueProperty]],
   tags: Option[List[String]],

@@ -119,9 +119,23 @@ case class UpdateDataSetRequest(
   dataUseAgreementId: Option[Int] = None
 )
 
-trait DatasetDetails
-case class CollectionDatasetDetails() extends DatasetDetails
-case class ReleaseDatasetDetails() extends DatasetDetails
+trait AddDatasetDetailsRequest
+case class AddDatasetReleaseDetailsRequest(
+  origin: ReleaseOrigin,
+  url: String,
+  label: String,
+  marker: Option[String],
+  releaseDate: Option[ZonedDateTime],
+  properties: Option[List[NameValueProperty]],
+  tags: Option[List[String]]
+) extends AddDatasetDetailsRequest
+
+case class AddDatasetReferenceDetailsRequest(
+  referenceType: ReferenceType,
+  referenceId: String,
+  properties: Option[List[NameValueProperty]],
+  tags: Option[List[String]]
+) extends AddDatasetDetailsRequest
 
 case class DatasetPermissionResponse(
   userId: Int,
@@ -1294,6 +1308,63 @@ class DataSetsController(
       } yield Done
 
       override val is = deleteResult.value.map(OkResult)
+    }
+  }
+
+  //
+  // Dataset Details
+  //
+
+  val addDatasetDetailsOperation: OperationBuilder = (
+    apiOperation[DatasetDetailsDTO]("addDatasetDetails")
+      summary "add dataset details"
+      parameters (
+        pathParam[String]("id").description("data set id"),
+        bodyParam[AddDatasetDetailsRequest]("body")
+          .description("dataset details")
+    )
+  )
+
+  post("/:id/details", operation(addDatasetDetailsOperation)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, DatasetDetailsDTO] = for {
+        secureContainer <- getSecureContainer()
+        traceId <- getTraceId(request)
+
+        body <- extractOrErrorT[AddDatasetDetailsRequest](parsedBody)
+
+        result = body match {
+          case _: AddDatasetReleaseDetailsRequest =>
+            DatasetReleaseDTO(
+              id = 1,
+              datasetId = 1,
+              origin = ReleaseOrigin.Github,
+              url = "https://github.com/Pennsieve/pennsieve-api",
+              label = "v1.0",
+              marker = None,
+              releaseDate = None,
+              properties = None,
+              tags = None,
+              createdAt = ZonedDateTime.now,
+              updatedAt = ZonedDateTime.now
+            )
+          case _: AddDatasetReferenceDetailsRequest =>
+            DatasetReferenceDTO(
+              id = 1,
+              datasetId = 1,
+              referenceOrder = 1,
+              referenceType = ReferenceType.Pennsieve,
+              referenceId = "N:dataset:1234",
+              properties = None,
+              tags = None,
+              createdAt = ZonedDateTime.now,
+              updatedAt = ZonedDateTime.now
+            )
+        }
+
+      } yield result
+
+      override val is = result.value.map(CreatedResult)
     }
   }
 
