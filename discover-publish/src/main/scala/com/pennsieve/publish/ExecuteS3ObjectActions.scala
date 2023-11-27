@@ -111,7 +111,7 @@ object ExecuteS3ObjectActions extends LazyLogging {
     val deleteObjectF = S3
       .deleteObject(
         bucket = deleteAction.fromBucket,
-        key = s"${deleteAction.baseKey}/${deleteAction.fileKey}",
+        key = deleteAction.deleteFromKey,
         versionId = None,
         s3Headers = S3Headers()
           .withCustomHeaders(Map("x-amz-request-payer" -> "requester"))
@@ -160,7 +160,7 @@ object ExecuteS3ObjectActions extends LazyLogging {
     s"s3://${action.toBucket}/${action.copyToKey}"
 
   def deleteUrl(action: DeleteAction): String =
-    s"s3://${action.fromBucket}/${action.baseKey}/${action.fileKey}"
+    s"s3://${action.fromBucket}/${action.deleteFromKey}"
 
   def keepUrl(action: KeepAction): String =
     s"s3://${action.bucket}/${action.baseKey}/${action.fileKey}"

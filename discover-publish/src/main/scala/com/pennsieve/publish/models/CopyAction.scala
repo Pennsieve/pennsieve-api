@@ -65,7 +65,9 @@ case class DeleteAction(
   baseKey: String,
   fileKey: String,
   s3VersionId: Option[String] = None
-) extends FileAction
+) extends FileAction {
+  def deleteFromKey = joinKeys(baseKey, fileKey)
+}
 
 sealed trait FileActionType extends EnumEntry with Camelcase
 
