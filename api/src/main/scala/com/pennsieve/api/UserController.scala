@@ -38,6 +38,7 @@ import com.pennsieve.models.{
   CognitoId,
   DateVersion,
   Degree,
+  OrcidAuthorization,
   OrcidIdentityProvider,
   User
 }
@@ -70,7 +71,8 @@ case class UserMergeRequest(
 
 case class UpdatePennsieveTermsOfServiceRequest(version: String)
 
-case class ORCIDRequest(authorizationCode: String)
+case class ORCIDAuthorizationInfo(source: String, code: String)
+case class ORCIDRequest(authorizationCode: ORCIDAuthorizationInfo)
 
 // `version` expected to be a date in the same format as DateVersion:
 case class AcceptCustomTermsOfServiceRequest(version: String)
@@ -598,7 +600,7 @@ class UserController(
           ).toEitherT[Future]
 
         orcidAuth <- EitherT.right[ActionResult](
-          orcidClient.getToken(orcidRequest.authorizationCode)
+          orcidClient.getToken(orcidRequest.authorizationCode.code)
         )
 
         updatedUser = loggedInUser.copy(orcidAuthorization = Some(orcidAuth))

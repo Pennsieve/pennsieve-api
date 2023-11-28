@@ -336,7 +336,14 @@ class TestUsersController extends BaseApiTest {
   }
 
   test("orcid creation") {
-    val orcidRequest = write(ORCIDRequest(testAuthorizationCode))
+    val orcidRequest = write(
+      ORCIDRequest(
+        ORCIDAuthorizationInfo(
+          source = "orcid-redirect-response",
+          code = testAuthorizationCode
+        )
+      )
+    )
 
     postJson(
       s"/orcid",
@@ -351,7 +358,14 @@ class TestUsersController extends BaseApiTest {
   }
 
   test("orcid deletion") {
-    val orcidRequest = write(ORCIDRequest(testAuthorizationCode))
+    val orcidRequest = write(
+      ORCIDRequest(
+        ORCIDAuthorizationInfo(
+          source = "orcid-redirect-response",
+          code = testAuthorizationCode
+        )
+      )
+    )
     postJson(
       s"/orcid",
       orcidRequest,
