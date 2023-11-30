@@ -285,6 +285,7 @@ case class ChangelogEventPage(
 object DataSetsController {
   //Default values for retrieving Dataset children (i.e. packages)
   val DatasetChildrenDefaultLimit: Int = 100
+  val DatasetChildrenMaxLimit: Int = 500
   val DatasetChildrenDefaultOffset: Int = 0
 }
 
@@ -521,7 +522,7 @@ class DataSetsController(
           contributors = contributors.map(_._1),
           includeBannerUrl = true,
           includePublishedDataset = includePublishedDataset,
-          limit = limit.some,
+          limit = limit.min(DataSetsController.DatasetChildrenMaxLimit).some,
           offset = offset.some
         )(
           asyncExecutor,
