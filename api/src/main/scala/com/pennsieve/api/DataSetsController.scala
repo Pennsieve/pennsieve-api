@@ -665,6 +665,7 @@ class DataSetsController(
     DatasetManager.OrderByDirection.values.map(_.entryName)
 
   val DatasetsDefaultLimit: Int = 25
+  val DatasetsMaxLimit: Int = 500
   val DatasetsDefaultOffset: Int = 0
 
   get(
@@ -809,7 +810,7 @@ class DataSetsController(
           datasetsAndCount <- secureContainer.datasetManager
             .getDatasetPaginated(
               withRole = ownerOnly.getOrElse(withRole.getOrElse(Role.Viewer)),
-              limit = limit.some,
+              limit = limit.min(DatasetsMaxLimit).some,
               offset = offset.some,
               orderBy = (orderBy, orderByDirection),
               status = status,
@@ -4638,7 +4639,7 @@ class DataSetsController(
             .getPublishedDatasetsForOrganization(
               searchClient,
               organization,
-              Some(limit),
+              limit.min(DatasetsMaxLimit).some,
               Some(offset),
               (orderBy, orderByDirection),
               textSearch
