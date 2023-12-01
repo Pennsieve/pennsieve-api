@@ -1280,6 +1280,24 @@ class TestPackagesController
     }
   }
 
+  test("paginated max limit on get package requests") {
+    // create a dataset
+    val ds = createDataSet("test-dataset-ppackage-pagination-limit")
+    // create a collection package (folder)
+    val collection = createPackage(ds, "Folder")
+    (1 to PackagesController.PackageChildrenMaxLimit + 2)
+      .map(n => createPackage(ds, s"Package-${n}", parent = Some(collection)))
+
+    get(
+      s"/${collection.nodeId}?offset=0&limit=${PackagesController.PackageChildrenMaxLimit + 1}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val `package` = parsedBody.extract[PackageDTO]
+      `package`.children.length shouldBe PackagesController.PackageChildrenMaxLimit
+    }
+  }
+
   test("packages with a single file should contain a file extension") {
     val props = List(
       ModelProperty("meta", "data", "string", "user-defined"),
