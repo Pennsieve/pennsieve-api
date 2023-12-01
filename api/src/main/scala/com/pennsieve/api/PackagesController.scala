@@ -119,7 +119,12 @@ case class SetStorageResponse(storageUse: Map[String, Long])
 object PackagesController {
   //Default values for retrieving Package children (i.e. other packages)
   val PackageChildrenDefaultLimit: Int = 100
+  val PackageChildrenMaxLimit: Int = 500
   val PackageChildrenDefaultOffset: Int = 0
+
+  val FILES_LIMIT_DEFAULT: Int = 100
+  val FILES_LIMIT_MAX: Int = 500
+  val FILES_OFFSET_DEFAULT: Int = 0
 }
 
 class PackagesController(
@@ -135,6 +140,8 @@ class PackagesController(
   val swagger: Swagger
 ) extends ScalatraServlet
     with AuthenticatedController {
+
+  import PackagesController._
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
@@ -546,7 +553,7 @@ class PackagesController(
           includeChildren,
           include,
           storage = storage,
-          limit = limit.some,
+          limit = limit.min(PackagesController.PackageChildrenMaxLimit).some,
           offset = offset.some
         )(asyncExecutor, secureContainer).orError()
 
@@ -1241,9 +1248,6 @@ class PackagesController(
     objectStore.getMD5(f.s3Bucket, f.s3Key)
   }
 
-  val FILES_LIMIT_DEFAULT: Int = 100
-  val FILES_OFFSET_DEFAULT: Int = 0
-
   def getPagedSources(
     pkg: Package,
     limit: Int,
@@ -1328,7 +1332,7 @@ class PackagesController(
         (pkg, dataset) = packageAndDataset
         sources <- getPagedSources(
           pkg,
-          limit,
+          limit.min(FILES_LIMIT_MAX),
           offset,
           Some((orderBy, orderByDirection)),
           secureContainer
@@ -1380,7 +1384,13 @@ class PackagesController(
           .getPackageAndDatasetByNodeId(packageId)
           .orNotFound()
         (pkg, dataset) = packageAndDataset
-        sources <- getPagedSources(pkg, limit, offset, None, secureContainer)
+        sources <- getPagedSources(
+          pkg,
+          limit.min(FILES_LIMIT_MAX),
+          offset,
+          None,
+          secureContainer
+        )
         _ <- auditLogger
           .message()
           .append("dataset-id", dataset.id)
@@ -1430,7 +1440,7 @@ class PackagesController(
           .coreErrorToActionResult()
 
         files <- secureContainer.fileManager
-          .getFiles(pkg, limit.some, offset.some)
+          .getFiles(pkg, limit.min(FILES_LIMIT_MAX).some, offset.some)
           .orNotFound()
 
         _ <- auditLogger
@@ -1485,7 +1495,7 @@ class PackagesController(
           .coreErrorToActionResult()
 
         views <- secureContainer.fileManager
-          .getViews(pkg, limit.some, offset.some)
+          .getViews(pkg, limit.min(FILES_LIMIT_MAX).some, offset.some)
           .orNotFound()
 
         _ <- auditLogger

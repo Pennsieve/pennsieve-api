@@ -9729,4 +9729,43 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("paginated max limit on get datasets") {
+    // create 502 datasets
+    (1 to DataSetsController.DatasetsMaxLimit + 2)
+      .map(n => createDataSet(s"test-dataset-for-pagination-${n}"))
+
+    // GET paginated with limit = DatasetsMaxLimit + 1
+    get(
+      s"/paginated?limit=${DataSetsController.DatasetsMaxLimit + 1}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      // check that DatasetsMaxLimit datasets were returned
+      status shouldEqual (200)
+      val response = parsedBody.extract[PaginatedDatasets]
+      response.datasets.length shouldEqual (DataSetsController.DatasetsMaxLimit)
+    }
+
+  }
+
+  test("paginated max limit on child packages in get dataset :id") {
+    // create a dataset, add 502 packages
+    val ds = createDataSet("test-dataset-for-pagination-with-packages")
+
+    // create packages in the root folder
+    (1 to DataSetsController.DatasetChildrenMaxLimit + 2)
+      .map(n => createPackage(ds, s"Package-${n}"))
+
+    // GET dataset with limit = DatasetChildrenMaxLimit + 1
+    get(
+      s"/${ds.nodeId}?limit=${DataSetsController.DatasetChildrenMaxLimit + 1}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      // check that DatasetChildrenMaxLimit packages were returned
+      status shouldEqual (200)
+      val response = parsedBody.extract[DataSetDTO]
+      response.children.get.length shouldEqual (DataSetsController.DatasetChildrenMaxLimit)
+    }
+
+  }
+
 }
