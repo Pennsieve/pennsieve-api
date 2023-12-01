@@ -121,6 +121,10 @@ object PackagesController {
   val PackageChildrenDefaultLimit: Int = 100
   val PackageChildrenMaxLimit: Int = 500
   val PackageChildrenDefaultOffset: Int = 0
+
+  val FILES_LIMIT_DEFAULT: Int = 100
+  val FILES_LIMIT_MAX: Int = 500
+  val FILES_OFFSET_DEFAULT: Int = 0
 }
 
 class PackagesController(
@@ -136,6 +140,8 @@ class PackagesController(
   val swagger: Swagger
 ) extends ScalatraServlet
     with AuthenticatedController {
+
+  import PackagesController._
 
   override protected implicit def executor: ExecutionContext = asyncExecutor
 
@@ -1242,10 +1248,6 @@ class PackagesController(
     objectStore.getMD5(f.s3Bucket, f.s3Key)
   }
 
-  val FILES_LIMIT_DEFAULT: Int = 100
-  val FILES_LIMIT_MAX: Int = 500
-  val FILES_OFFSET_DEFAULT: Int = 0
-
   def getPagedSources(
     pkg: Package,
     limit: Int,
@@ -1382,7 +1384,13 @@ class PackagesController(
           .getPackageAndDatasetByNodeId(packageId)
           .orNotFound()
         (pkg, dataset) = packageAndDataset
-        sources <- getPagedSources(pkg, limit.min(FILES_LIMIT_MAX), offset, None, secureContainer)
+        sources <- getPagedSources(
+          pkg,
+          limit.min(FILES_LIMIT_MAX),
+          offset,
+          None,
+          secureContainer
+        )
         _ <- auditLogger
           .message()
           .append("dataset-id", dataset.id)
