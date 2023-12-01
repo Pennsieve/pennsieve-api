@@ -2061,6 +2061,45 @@ class TestPackagesController
     }
   }
 
+  test("paginated max limit on sources-paged") {
+    val pdfPackage = packageManager
+      .create(
+        "Foo15",
+        PackageType.PDF,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    (1 to PackagesController.FILES_LIMIT_MAX + 2).map(
+      _ =>
+        fileManager
+          .create(
+            "Source File",
+            FileType.PDF,
+            pdfPackage,
+            "s3bucketName",
+            "/path/to/test.pdf",
+            objectType = FileObjectType.Source,
+            processingState = FileProcessingState.Unprocessed,
+            0
+          )
+          .await
+    )
+
+    get(
+      s"/${pdfPackage.nodeId}/sources-paged?limit=${PackagesController.FILES_LIMIT_MAX + 1}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val sources = parsedBody.extract[PagedResponse[FileDTO]]
+      sources.results.length should equal(PackagesController.FILES_LIMIT_MAX)
+    }
+  }
+
   test("sources-paged order-by and order-by direction works correctly TESTME") {
 
     val pdfPackage = packageManager
