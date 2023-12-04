@@ -50,6 +50,7 @@ import com.pennsieve.notifications.{
 }
 import com.pennsieve.traits.PostgresProfile.api._
 import io.circe.parser.decode
+import io.circe.syntax.EncoderOps
 import org.apache.commons.io.FileUtils
 import org.apache.http.HttpHeaders
 import org.json4s._
@@ -9727,6 +9728,57 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldEqual (200)
     }
+  }
+
+  test("orcid work json encoding") {
+    val json =
+      """
+        |{
+        |  "title" : {
+        |    "title" : { "value" : "title" },
+        |    "subtitle" : { "value" : "subtitle" }
+        |  },
+        |  "short-description" : "short description",
+        |  "type" : "data-set",
+        |  "external-ids" : {
+        |    "external-id" : [
+        |      {
+        |        "external-id-type" : "???",
+        |        "external-id-value" : "???",
+        |        "external-id-relationship" : "???",
+        |        "external-id-url" : { "value" : "???" }
+        |      }
+        |    ]
+        |  },
+        |  "url" : { "value" : "???" }
+        |}
+        |""".stripMargin
+
+    val orcidWork = OrcidWork(
+      title = OrcidTitle(
+        title = OrcidTitleValue(value = "title"),
+        subtitle = OrcidTitleValue(value = "subtitle")
+      ),
+      shortDescription = "short description",
+      `type` = "data-set",
+      externalIds = OricdExternalIds(
+        externalId = List(
+          OrcidExternalId(
+            externalIdType = "???",
+            externalIdValue = "???",
+            externalIdUrl = OrcidTitleValue(value = "???"),
+            externalIdRelationship = "???"
+          )
+        )
+      ),
+      url = OrcidTitleValue(value = "???")
+    )
+
+    val encoded = orcidWork.asJson
+
+    encoded.toString.filterNot(_.isWhitespace) shouldEqual (json.filterNot(
+      _.isWhitespace
+    ))
   }
 
 }
