@@ -17,7 +17,6 @@
 package com.pennsieve.publish
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.headers.ByteRange
 import akka.stream.scaladsl.{ Keep, Sink, Source }
 import cats.implicits._
 import com.amazonaws.ClientConfiguration
@@ -31,10 +30,16 @@ import com.typesafe.config.ConfigValueFactory
 import org.scalatest.Inspectors.forAll
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
+import org.scalatest.AppendedClues.convertToClueful
 import org.scalatest.EitherValues._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{ Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Suite }
+import org.scalatest.{
+  BeforeAndAfterAll,
+  BeforeAndAfterEach,
+  DoNotDiscover,
+  Suite
+}
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -53,9 +58,11 @@ import scala.jdk.CollectionConverters._
   * get these values.
   *
   * SOURCE_BUCKET: the bucket containing the files to be copied
-  * SOURCE_KEY: the key of the file to be copied
+  * SOURCE_KEY1: the key of a file to be copied
+  * SOURCE_KEY2: the key of a file to be copied
   * TARGET_BUCKET: the destination bucket of the copy.
   */
+@DoNotDiscover
 class CopyFlowIntegrationTest
     extends AnyWordSpec
     with Matchers
@@ -70,7 +77,8 @@ class CopyFlowIntegrationTest
   implicit var s3: S3 = _
   var sourceBucketName: String = _
   var targetBucketName: String = _
-  var largeFile100GBS3Key: String = _
+  var sourceS3Key1: String = _
+  var sourceS3Key2: String = _
   val testOrganization: Organization = sampleOrganization
 
   var testDataset: Dataset = _
@@ -99,8 +107,10 @@ class CopyFlowIntegrationTest
     super.beforeAll()
 
     sourceBucketName = sys.env("SOURCE_BUCKET")
-    largeFile100GBS3Key = sys.env("SOURCE_KEY")
+    sourceS3Key1 = sys.env("SOURCE_KEY1")
+    sourceS3Key2 = sys.env("SOURCE_KEY2")
     targetBucketName = sys.env("TARGET_BUCKET")
+
     // alpakka-s3 v1.0 can only be configured via Typesafe config passed to the
     // actor system, or as S3Settings that are attached to every graph
     // There is no config in test/resources, so the load() below will read the
@@ -111,6 +121,8 @@ class CopyFlowIntegrationTest
         "s3.copy-chunk-size",
         ConfigValueFactory.fromAnyRef(1073741824) //from terraform
       )
+      .withValue("s3.copy-file-parallelism", ConfigValueFactory.fromAnyRef(4))
+      .withValue("s3.copy-chunk-parallelism", ConfigValueFactory.fromAnyRef(2))
       .withValue(
         "akka.http.client.stream-cancellation-delay",
         ConfigValueFactory.fromAnyRef("1 second")
@@ -220,83 +232,14 @@ class CopyFlowIntegrationTest
     }
   }
 
-  "copy S3 files sink" should {
-
-    "copy big files" in {
-      val fileName = "random_data_file.bytes"
-      val sourceS3Key = largeFile100GBS3Key
-      val pkg = createPackageObject(
-        testUser,
-        name = fileName,
-        `type` = PackageType.Unsupported
-      )
-      val file = createFileObject(
-        `package` = pkg,
-        name = fileName,
-        s3Bucket = sourceBucketName,
-        s3Key = sourceS3Key,
-        fileType = FileType.Data,
-        objectType = FileObjectType.Source
-      )
-
-      val targetKeyPrefix = "large-file-test"
-      Await.result(
-        Source
-          .single(
-            CopyAction(
-              pkg = pkg,
-              file = file,
-              toBucket = targetBucketName,
-              baseKey = targetKeyPrefix,
-              fileKey = fileName,
-              packageKey = fileName
-            )
-          )
-          .via(CopyS3ObjectsFlow())
-          .toMat(Sink.ignore)(Keep.right)
-          .run(),
-        Duration.Inf
-      )
-
-      s3FilesExistUnderKey(
-        targetBucketName,
-        s"${targetKeyPrefix}/${fileName}",
-        true
-      ) shouldBe true
-
-    }
+  "CopyS3ObjectsFlow" should {
 
     "copy several big files" in {
-      val sourceS3Key = largeFile100GBS3Key
       val targetKeyPrefix = "large-file-test"
-      val targetFileNames = List("random-file1.data", "random-file2.data")
 
-      val copyActions: List[CopyAction] =
-        for {
-          fileName <- targetFileNames
+      val copyActions =
+        makeCopyActions(9, sourceS3Key2, sourceS3Key2, targetKeyPrefix)
 
-          pkg = createPackageObject(
-            testUser,
-            name = fileName,
-            `type` = PackageType.Unsupported
-          )
-          file = createFileObject(
-            `package` = pkg,
-            name = fileName,
-            s3Bucket = sourceBucketName,
-            s3Key = sourceS3Key,
-            fileType = FileType.Data,
-            objectType = FileObjectType.Source
-          )
-        } yield
-          CopyAction(
-            pkg = pkg,
-            file = file,
-            toBucket = targetBucketName,
-            baseKey = targetKeyPrefix,
-            fileKey = fileName,
-            packageKey = fileName
-          )
       Await.result(
         Source(copyActions)
           .via(CopyS3ObjectsFlow())
@@ -305,15 +248,74 @@ class CopyFlowIntegrationTest
         Duration.Inf
       )
 
-      forAll(targetFileNames) { fileName =>
+      forAll(copyActions) { copyAction =>
         s3FilesExistUnderKey(
           targetBucketName,
-          s"${targetKeyPrefix}/${fileName}",
-          true
-        ) shouldBe true
+          copyAction.copyToKey,
+          matchExact = true
+        ) shouldBe true withClue s"file not found at ${copyAction.copyToKey}"
       }
     }
   }
+
+  "ExecuteS3ObjectActions" should {
+    "copy several big files" in {
+      val targetKeyPrefix = "large-file-test-5x"
+
+      val copyActions =
+        makeCopyActions(9, sourceS3Key2, sourceS3Key2, targetKeyPrefix)
+
+      Await.result(
+        Source(copyActions)
+          .via(ExecuteS3ObjectActions())
+          .toMat(Sink.ignore)(Keep.right)
+          .run(),
+        Duration.Inf
+      )
+
+      forAll(copyActions) { copyAction =>
+        s3FilesExistUnderKey(
+          targetBucketName,
+          copyAction.copyToKey,
+          matchExact = true
+        ) shouldBe true withClue s"file not found at ${copyAction.copyToKey}"
+      }
+    }
+  }
+
+  def makeCopyActions(
+    size: Int,
+    evenSourceS3Key: String,
+    oddSourceS3Key: String,
+    targetKeyPrefix: String
+  ): Seq[CopyAction] =
+    for (fileNo <- 1 to size)
+      yield {
+        val fileName = s"random-file$fileNo.data"
+        val pkg = createPackageObject(
+          testUser,
+          name = fileName,
+          `type` = PackageType.Unsupported
+        )
+        val sourceS3Key =
+          if (fileNo % 2 == 0) evenSourceS3Key else oddSourceS3Key
+        val file = createFileObject(
+          `package` = pkg,
+          name = fileName,
+          s3Bucket = sourceBucketName,
+          s3Key = sourceS3Key,
+          fileType = FileType.Data,
+          objectType = FileObjectType.Source
+        )
+        CopyAction(
+          pkg = pkg,
+          file = file,
+          toBucket = targetBucketName,
+          baseKey = targetKeyPrefix,
+          fileKey = fileName,
+          packageKey = fileName
+        )
+      }
 
   def listBucket(bucket: String): mutable.Seq[S3ObjectSummary] =
     s3.client
