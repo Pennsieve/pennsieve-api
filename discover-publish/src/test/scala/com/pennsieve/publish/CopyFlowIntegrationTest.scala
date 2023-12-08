@@ -119,13 +119,8 @@ class CopyFlowIntegrationTest
       .empty()
       .withValue(
         "s3.copy-chunk-size",
-        ConfigValueFactory.fromAnyRef(1073741824) //from terraform
-      )
-      .withValue("s3.copy-file-parallelism", ConfigValueFactory.fromAnyRef(4))
-      .withValue("s3.copy-chunk-parallelism", ConfigValueFactory.fromAnyRef(2))
-      .withValue(
-        "akka.http.client.stream-cancellation-delay",
-        ConfigValueFactory.fromAnyRef("1 second")
+        ConfigValueFactory
+          .fromAnyRef(1073741824) //same value set from terraform in dev/prod
       )
       .withFallback(ConfigFactory.load())
 
