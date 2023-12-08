@@ -233,7 +233,7 @@ class CopyFlowIntegrationTest
       val targetKeyPrefix = "large-file-test"
 
       val copyActions =
-        makeCopyActions(9, sourceS3Key2, sourceS3Key2, targetKeyPrefix)
+        makeCopyActions(9, sourceS3Key1, sourceS3Key2, targetKeyPrefix)
 
       Await.result(
         Source(copyActions)
@@ -258,7 +258,7 @@ class CopyFlowIntegrationTest
       val targetKeyPrefix = "large-file-test-5x"
 
       val copyActions =
-        makeCopyActions(9, sourceS3Key2, sourceS3Key2, targetKeyPrefix)
+        makeCopyActions(9, sourceS3Key1, sourceS3Key2, targetKeyPrefix)
 
       Await.result(
         Source(copyActions)
