@@ -21,20 +21,39 @@ import akka.http.scaladsl.model.FormData
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import com.pennsieve.models.OrcidAuthorization
+import com.pennsieve.models.{
+  OrcidAuthorization,
+  OrcidExternalId,
+  OrcidTitle,
+  OrcidTitleValue,
+  OrcidWork,
+  OricdExternalIds
+}
 import akka.http.scaladsl.HttpExt
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import com.pennsieve.domain.PredicateError
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import io.circe.parser.decode
+import io.circe.syntax._
 
 import scala.concurrent.{ ExecutionContext, Future }
+
+case class OrcidWorkPublishing(
+  orcidId: String,
+  accessToken: String,
+  orcidPutCode: Option[String],
+  publishedDatasetId: Int,
+  title: String,
+  subTitle: String,
+  doi: String
+)
 
 trait OrcidClient {
 
   def getToken(authorizationCode: String): Future[OrcidAuthorization]
   def verifyOrcid(orcid: Option[String]): Future[Boolean]
+  def publishWork(work: OrcidWorkPublishing): Future[Option[String]]
 }
 
 case class OrcidClientConfig(
@@ -127,6 +146,76 @@ class OrcidClientImpl(
           }
     }
 
+  }
+
+  override def publishWork(
+    work: OrcidWorkPublishing
+  ): Future[Option[String]] = {
+    import MediaTypes._
+    import HttpCharsets._
+
+    val workRequest = OrcidWork(
+      title = OrcidTitle(
+        title = OrcidTitleValue(value = work.title),
+        subtitle = OrcidTitleValue(value = work.subTitle)
+      ),
+      `type` = "data-set",
+      externalIds = OricdExternalIds(
+        externalId = Seq(
+          OrcidExternalId(
+            externalIdType = "doi",
+            externalIdValue = work.doi,
+            externalIdUrl =
+              OrcidTitleValue(value = s"https://doi.org/${work.doi}"),
+            externalIdRelationship = "self"
+          )
+        )
+      ),
+      url = OrcidTitleValue(
+        value =
+          s"https://discover.pennsieve.io/datasets/${work.publishedDatasetId}"
+      )
+    )
+
+    val request = work.orcidPutCode match {
+      case Some(putCode: String) =>
+        HttpRequest(
+          method = HttpMethods.PUT,
+          uri = orcidClientConfig.getRecordBaseUrl + work.orcidId + "/work" + "/" + putCode,
+          headers = List(
+            Accept(MediaTypes.`application/json`),
+            Authorization(OAuth2BearerToken(work.accessToken))
+          ),
+          entity = HttpEntity(`application/json`, workRequest.asJson.toString)
+        )
+      case None =>
+        HttpRequest(
+          method = HttpMethods.POST,
+          uri = orcidClientConfig.getRecordBaseUrl + work.orcidId + "/work",
+          headers = List(
+            Accept(MediaTypes.`application/json`),
+            Authorization(OAuth2BearerToken(work.accessToken))
+          ),
+          entity = HttpEntity(`application/json`, workRequest.asJson.toString)
+        )
+    }
+
+    httpClient
+      .singleRequest(request)
+      .flatMap {
+        case HttpResponse(StatusCodes.OK, headers, _, _) =>
+          val headersMap = headers
+            .map(header => header.name().toLowerCase -> header.value())
+            .toMap
+          val putCode = headersMap.get("location") match {
+            case Some(location: String) =>
+              Some(location.split("/").last)
+            case None => None
+          }
+          Future.successful(putCode)
+        case _ =>
+          Future.failed(PredicateError("ORCID not found"))
+      }
   }
 
 }
