@@ -54,7 +54,7 @@ import com.pennsieve.helpers.APIContainers.{
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.pennsieve.helpers.Param
+import com.pennsieve.helpers.{ OrcidClient, OrcidWorkPublishing, Param }
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
@@ -301,6 +301,7 @@ class DataSetsController(
   doiClient: DoiClient,
   datasetAssetClient: DatasetAssetClient,
   cognitoClient: CognitoClient,
+  orcidClient: OrcidClient,
   maxFileUploadSize: Int,
   asyncExecutor: ExecutionContext
 )(implicit
@@ -3449,6 +3450,44 @@ class DataSetsController(
     }
   }
 
+  def orcidAuthorized(user: User): Boolean =
+    user.orcidAuthorization match {
+      case Some(orcidAuth: OrcidAuthorization) =>
+        orcidAuth.scope.contains("/activities/update")
+      case None => false
+    }
+
+  def registrableEvent(publicationStatus: DatasetPublicationStatus): Boolean =
+    publicationStatus.publicationType == PublicationType.Publication ||
+      publicationStatus.publicationType == PublicationType.Embargo
+
+  def registerPublication(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    user: User,
+    completion: PublishCompleteRequest,
+    publicationStatus: DatasetPublicationStatus
+  ): EitherT[Future, CoreError, Unit] =
+    for {
+      _ <- if (completion.success && registrableEvent(publicationStatus) && orcidAuthorized(
+          user
+        ))
+        // registration <- secureContainer.datasetManager.getRegistration(dataset.id, "ORCID")
+        // value = registration match {
+        //   case Some(registration) => registration.value
+        //   case None => None
+        // }
+        // putCode <- orcidClient.publishWork(... putCode = value)
+        // (registration, putCode) match {
+        //   case (None, Some(putCode)) => secureContainer.datasetManager.addRegistration(...)
+        //   case (Some(registration), Some(putCode)) => secureContainer.datasetManager.updateRegistration(...)
+        //   case (_, None) ==> there must have been a failure at ORCID
+        // }
+        Future.successful(()).toEitherT
+      else
+        Future.successful(()).toEitherT
+    } yield ()
+
   val publishComplete: OperationBuilder = (apiOperation[Unit]("publishComplete")
     summary "notify API that Discover has completed a publish job"
     parameters (pathParam[Int]("id").required.description("dataset id"),
@@ -3615,6 +3654,15 @@ class DataSetsController(
                   )
               case _ => EitherT.rightT[Future, ActionResult](())
             }
+
+            // TODO: add push to ORCID here
+            _ <- registerPublication(
+              secureContainer,
+              dataset,
+              owner,
+              body,
+              publicationStatus
+            ).coreErrorToActionResult()
 
           } yield ()
           else EitherT.rightT[Future, ActionResult](())

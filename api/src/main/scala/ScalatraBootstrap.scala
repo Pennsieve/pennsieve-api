@@ -157,6 +157,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.doiClient,
         bootstrapHelper.datasetAssetClient,
         bootstrapHelper.cognitoClient,
+        bootstrapHelper.orcidClient,
         bootstrapHelper.insecureContainer.config
           .getInt("pennsieve.max_file_upload_size"),
         ec
