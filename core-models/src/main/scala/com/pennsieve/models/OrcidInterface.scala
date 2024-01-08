@@ -77,7 +77,6 @@ object OrcidTitleValue {
 
 case class OrcidWork(
   title: OrcidTitle,
-  shortDescription: String,
   `type`: String,
   externalIds: OricdExternalIds,
   url: OrcidTitleValue
@@ -87,7 +86,6 @@ object OrcidWork {
   implicit val encoder: Encoder[OrcidWork] = new Encoder[OrcidWork] {
     final def apply(a: OrcidWork): Json = Json.obj(
       ("title", a.title.asJson),
-      ("short-description", Json.fromString(a.shortDescription)),
       ("type", Json.fromString(a.`type`)),
       ("external-ids", a.externalIds.asJson),
       ("url", a.url.asJson)
