@@ -27,7 +27,11 @@ import com.pennsieve.dtos.{
   PennsieveTermsOfServiceDTO,
   UserDTO
 }
-import com.pennsieve.helpers.{ MockAuditLogger, OrcidClient }
+import com.pennsieve.helpers.{
+  MockAuditLogger,
+  OrcidClient,
+  OrcidWorkPublishing
+}
 import com.pennsieve.models.DBPermission.Delete
 import com.pennsieve.models.{ DateVersion, Degree, OrcidAuthorization, User }
 import org.json4s.jackson.Serialization.write
@@ -62,6 +66,11 @@ class TestUsersController extends BaseApiTest {
       }
     override def verifyOrcid(orcid: Option[String]): Future[Boolean] =
       Future.successful(true)
+
+    override def publishWork(
+      work: OrcidWorkPublishing
+    ): Future[Option[String]] = Future.successful(Some("1234567"))
+
   }
 
   val mockCustomToSClient: MockCustomTermsOfServiceClient =

@@ -92,6 +92,35 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     mockSearchClient = new MockSearchClient()
 
+    val orcidAuthorization: OrcidAuthorization = OrcidAuthorization(
+      name = "name",
+      accessToken = "accessToken",
+      expiresIn = 100,
+      tokenType = "tokenType",
+      orcid = "orcid",
+      scope = "/read-limited /activities/update",
+      refreshToken = "refreshToken"
+    )
+
+    val testAuthorizationCode = "authCode"
+
+    val mockOrcidClient: OrcidClient = new OrcidClient {
+      override def getToken(
+        authorizationCode: String
+      ): Future[OrcidAuthorization] =
+        if (authorizationCode == testAuthorizationCode) {
+          Future.successful(orcidAuthorization)
+        } else {
+          Future.failed(new Throwable("invalid authorization code"))
+        }
+      override def verifyOrcid(orcid: Option[String]): Future[Boolean] =
+        Future.successful(true)
+
+      override def publishWork(
+        work: OrcidWorkPublishing
+      ): Future[Option[String]] = Future.successful(Some("1234567"))
+    }
+
     addServlet(
       new DataSetsController(
         insecureContainer,
@@ -105,6 +134,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         new MockDoiClient(),
         mockDatasetAssetClient,
         new MockCognito,
+        mockOrcidClient,
         maxFileUploadSize,
         system.dispatcher
       ),
@@ -9738,7 +9768,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         |    "title" : { "value" : "title" },
         |    "subtitle" : { "value" : "subtitle" }
         |  },
-        |  "short-description" : "short description",
         |  "type" : "data-set",
         |  "external-ids" : {
         |    "external-id" : [
@@ -9759,7 +9788,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         title = OrcidTitleValue(value = "title"),
         subtitle = OrcidTitleValue(value = "subtitle")
       ),
-      shortDescription = "short description",
       `type` = "data-set",
       externalIds = OricdExternalIds(
         externalId = List(

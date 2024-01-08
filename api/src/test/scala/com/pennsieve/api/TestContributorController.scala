@@ -62,6 +62,10 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       authorizationCode: String
     ): Future[OrcidAuthorization] =
       Future.successful(orcidAuthorization)
+
+    override def publishWork(
+      work: OrcidWorkPublishing
+    ): Future[Option[String]] = Future.successful(Some("1234567"))
   }
 
   override def afterStart(): Unit = {
