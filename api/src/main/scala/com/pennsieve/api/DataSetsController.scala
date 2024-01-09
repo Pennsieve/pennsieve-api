@@ -3461,6 +3461,55 @@ class DataSetsController(
     publicationStatus.publicationType == PublicationType.Publication ||
       publicationStatus.publicationType == PublicationType.Embargo
 
+  def registerOrcidWork(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    user: User,
+    completion: PublishCompleteRequest,
+    publicationStatus: DatasetPublicationStatus
+  ): EitherT[Future, CoreError, Unit] = {
+    for {
+      registration <- secureContainer.datasetManager
+        .getRegistration(dataset, "ORCID")
+      orcidAuthorization = user.orcidAuthorization.get
+      registrationValue = registration match {
+        case Some(registration) => Some(registration.value)
+        case None => None
+      }
+      putCode <- orcidClient
+        .publishWork(
+          OrcidWorkPublishing(
+            orcidId = orcidAuthorization.orcid,
+            accessToken = orcidAuthorization.accessToken,
+            orcidPutCode = registrationValue,
+            publishedDatasetId = dataset.id,
+            title = dataset.name,
+            subTitle = dataset.description.get,
+            doi = "12.3456/ab.cdef"
+          )
+        )
+        .toEitherT
+
+      _ = (registration, putCode) match {
+        case (None, Some(putCode)) =>
+          secureContainer.datasetManager.addRegistration(
+            DatasetRegistration(
+              datasetId = dataset.id,
+              registry = "ORCID",
+              registryId = Some(orcidAuthorization.orcid),
+              category = Some("Work"),
+              value = putCode,
+              url = None
+            )
+          )
+        case (Some(registration), Some(_)) =>
+          secureContainer.datasetManager.updateRegistration(registration)
+        case (_, None) =>
+          Future.successful(()).toEitherT
+      }
+    } yield ()
+  }
+
   def registerPublication(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
@@ -3471,21 +3520,18 @@ class DataSetsController(
     for {
       _ <- if (completion.success && registrableEvent(publicationStatus) && orcidAuthorized(
           user
-        ))
-        // registration <- secureContainer.datasetManager.getRegistration(dataset.id, "ORCID")
-        // value = registration match {
-        //   case Some(registration) => registration.value
-        //   case None => None
-        // }
-        // putCode <- orcidClient.publishWork(... putCode = value)
-        // (registration, putCode) match {
-        //   case (None, Some(putCode)) => secureContainer.datasetManager.addRegistration(...)
-        //   case (Some(registration), Some(putCode)) => secureContainer.datasetManager.updateRegistration(...)
-        //   case (_, None) ==> there must have been a failure at ORCID
-        // }
+        )) {
+        registerOrcidWork(
+          secureContainer,
+          dataset,
+          user,
+          completion,
+          publicationStatus
+        )
+      } else {
         Future.successful(()).toEitherT
-      else
-        Future.successful(()).toEitherT
+      }
+
     } yield ()
 
   val publishComplete: OperationBuilder = (apiOperation[Unit]("publishComplete")
