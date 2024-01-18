@@ -46,7 +46,7 @@ case class OrcidWorkPublishing(
   publishedDatasetId: Int,
   title: String,
   subTitle: String,
-  doi: String
+  doi: Option[String]
 )
 
 trait OrcidClient {
@@ -160,17 +160,20 @@ class OrcidClientImpl(
         subtitle = OrcidTitleValue(value = work.subTitle)
       ),
       `type` = "data-set",
-      externalIds = OricdExternalIds(
-        externalId = Seq(
-          OrcidExternalId(
-            externalIdType = "doi",
-            externalIdValue = work.doi,
-            externalIdUrl =
-              OrcidTitleValue(value = s"https://doi.org/${work.doi}"),
-            externalIdRelationship = "self"
-          )
-        )
-      ),
+      externalIds =
+        OricdExternalIds(externalId = work.doi match {
+          case Some(doi) =>
+            Seq(
+              OrcidExternalId(
+                externalIdType = "doi",
+                externalIdValue = doi,
+                externalIdUrl =
+                  OrcidTitleValue(value = s"https://doi.org/${doi}"),
+                externalIdRelationship = "self"
+              )
+            )
+          case None => List.empty
+        }),
       url = OrcidTitleValue(
         value =
           s"https://discover.pennsieve.io/datasets/${work.publishedDatasetId}"
