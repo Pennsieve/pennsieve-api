@@ -3467,15 +3467,42 @@ class DataSetsController(
     user: User,
     completion: PublishCompleteRequest,
     publicationStatus: DatasetPublicationStatus
-  ): EitherT[Future, CoreError, Unit] = {
+  ): EitherT[Future, CoreError, Unit] =
     for {
       registration <- secureContainer.datasetManager
-        .getRegistration(dataset, "ORCID")
+        .getRegistration(dataset, DatasetRegistry.ORCID)
       orcidAuthorization = user.orcidAuthorization.get
       registrationValue = registration match {
         case Some(registration) => Some(registration.value)
         case None => None
       }
+
+      organization = secureContainer.organization
+
+      token = JwtAuthenticator.generateServiceToken(
+        1.minute,
+        organization.id,
+        Some(dataset.id)
+      )
+
+      tokenHeader = Authorization(OAuth2BearerToken(token.value))
+
+      doiServiceResponse <- doiClient
+        .getLatestDoi(organization.id, dataset.id, List(tokenHeader))
+        .leftMap {
+          case Left(e) => ServiceError(e.getMessage)
+          case Right(resp) => ServiceError(resp.toString)
+        }
+
+      doi = handleGetDoiResponse(
+        secureContainer.user.nodeId,
+        dataset.id,
+        doiServiceResponse
+      ) match {
+        case Right(doiDTO) => Some(doiDTO.doi)
+        case Left(_) => None
+      }
+
       putCode <- orcidClient
         .publishWork(
           OrcidWorkPublishing(
@@ -3485,7 +3512,7 @@ class DataSetsController(
             publishedDatasetId = dataset.id,
             title = dataset.name,
             subTitle = dataset.description.get,
-            doi = "12.3456/ab.cdef"
+            doi = doi
           )
         )
         .toEitherT
@@ -3495,9 +3522,9 @@ class DataSetsController(
           secureContainer.datasetManager.addRegistration(
             DatasetRegistration(
               datasetId = dataset.id,
-              registry = "ORCID",
+              registry = DatasetRegistry.ORCID,
               registryId = Some(orcidAuthorization.orcid),
-              category = Some("Work"),
+              category = Some(OrcidActivity.WORK),
               value = putCode,
               url = None
             )
@@ -3508,7 +3535,6 @@ class DataSetsController(
           Future.successful(()).toEitherT
       }
     } yield ()
-  }
 
   def registerPublication(
     secureContainer: SecureAPIContainer,
