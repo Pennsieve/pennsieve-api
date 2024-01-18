@@ -23,6 +23,10 @@ import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax._
 import io.circe.{ HCursor, Json }
 
+object OrcidActivity {
+  def WORK = "Work"
+}
+
 // TODO: the JSON Decoders here are fictitious (we are not decoding ORCID Work records -- yet)
 
 case class OrcidExternalId(
