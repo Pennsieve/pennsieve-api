@@ -18,6 +18,10 @@ package com.pennsieve.models
 
 import java.time.ZonedDateTime
 
+object DatasetRegistry {
+  def ORCID = "ORCID"
+}
+
 final case class DatasetRegistration(
   datasetId: Int,
   registry: String,
