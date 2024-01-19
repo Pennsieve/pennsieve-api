@@ -62,7 +62,8 @@ case class OrcidClientConfig(
   tokenUrl: String,
   redirectUrl: String,
   readPublicToken: String,
-  getRecordBaseUrl: String
+  getRecordBaseUrl: String,
+  updateProfileBaseUrl: String
 )
 
 object OrcidClientConfig {
@@ -74,7 +75,9 @@ object OrcidClientConfig {
       tokenUrl = config.as[String]("orcidClient.tokenUrl"),
       redirectUrl = config.as[String]("orcidClient.redirectUrl"),
       readPublicToken = config.as[String]("orcidClient.readPublicToken"),
-      getRecordBaseUrl = config.as[String]("orcidClient.getRecordBaseUrl")
+      getRecordBaseUrl = config.as[String]("orcidClient.getRecordBaseUrl"),
+      updateProfileBaseUrl =
+        config.as[String]("orcidClient.updateProfileBaseUrl")
     )
   }
 }
@@ -172,7 +175,7 @@ class OrcidClientImpl(
                 externalIdRelationship = "self"
               )
             )
-          case None => List.empty
+          case None => List.empty[OrcidExternalId]
         }),
       url = OrcidTitleValue(
         value =
@@ -184,7 +187,7 @@ class OrcidClientImpl(
       case Some(putCode: String) =>
         HttpRequest(
           method = HttpMethods.PUT,
-          uri = orcidClientConfig.getRecordBaseUrl + work.orcidId + "/work" + "/" + putCode,
+          uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work" + "/" + putCode,
           headers = List(
             Accept(MediaTypes.`application/json`),
             Authorization(OAuth2BearerToken(work.accessToken))
@@ -194,7 +197,7 @@ class OrcidClientImpl(
       case None =>
         HttpRequest(
           method = HttpMethods.POST,
-          uri = orcidClientConfig.getRecordBaseUrl + work.orcidId + "/work",
+          uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work",
           headers = List(
             Accept(MediaTypes.`application/json`),
             Authorization(OAuth2BearerToken(work.accessToken))

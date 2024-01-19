@@ -251,6 +251,12 @@ resource "aws_ssm_parameter" "orcid_get_record_base_url" {
   value = var.orcid_get_record_base_url
 }
 
+resource "aws_ssm_parameter" "orcid_update_profile_base_url" {
+  name  = "/${var.environment_name}/${var.service_name}/orcid-update-profile-base-url"
+  type  = "String"
+  value = var.orcid_update_profile_base_url
+}
+
 # BF Postgres
 resource "aws_ssm_parameter" "pennsieve_postgres_database" {
   name  = "/${var.environment_name}/${var.service_name}/pennsieve-postgres-database"
