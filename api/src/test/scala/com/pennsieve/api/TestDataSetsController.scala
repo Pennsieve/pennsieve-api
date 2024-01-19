@@ -4658,7 +4658,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   def initializePublicationTest(
     assignPublisherUserDirectlyToDataset: Boolean = true,
     container: SecureAPIContainer = secureContainer,
-    user: User = loggedInUser
+    user: User = loggedInUser,
+    orcidScope: Option[String] = None
   ): Dataset = {
     val dataset = createDataSet("My Dataset", container = container)
     addBannerAndReadme(dataset, container = container)
@@ -4674,7 +4675,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       expiresIn = 631138518,
       tokenType = "bearer",
       orcid = "0000-0012-3456-7890",
-      scope = "/authenticate",
+      scope = orcidScope match {
+        case Some(scope) => scope
+        case None => "/read-limited"
+      },
       refreshToken = "64918a80-dd0c-dd0c-dd0c-dd0c64918a80"
     )
 
@@ -9807,6 +9811,151 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     encoded.toString.filterNot(_.isWhitespace) shouldEqual (json.filterNot(
       _.isWhitespace
     ))
+  }
+
+  test("registration does not occur when not authorized in orcid scope") {
+    // create dataset
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Draft)
+    currentPublicationType() shouldBe None
+
+    // request publish
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=publication&comments=hello%20world",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // accept request
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=publication&comments=accepted",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // publish complete
+    val request = write(
+      PublishCompleteRequest(
+        Some(1),
+        1,
+        Some(OffsetDateTime.now),
+        PublishStatus.PublishSucceeded,
+        success = true,
+        error = None
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // check for dataset registration
+    val registration = secureContainer.datasetManager
+      .getRegistration(dataset, DatasetRegistry.ORCID)
+      .await
+    val storedRegistration = registration match {
+      case Left(_) => false
+      case Right(someRegistration) =>
+        someRegistration match {
+          case Some(_) => true
+          case None => false
+        }
+    }
+
+    storedRegistration shouldEqual (false)
+  }
+
+  test("registration occurs after publishing completes") {
+    // create dataset
+    implicit val dataset: Dataset =
+      initializePublicationTest(
+        assignPublisherUserDirectlyToDataset = false,
+        orcidScope = Some("/read-limited /activities/update")
+      )
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Draft)
+    currentPublicationType() shouldBe None
+
+    // request publish
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=publication&comments=hello%20world",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // accept request
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=publication&comments=accepted",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // publish complete
+    val request = write(
+      PublishCompleteRequest(
+        Some(1),
+        1,
+        Some(OffsetDateTime.now),
+        PublishStatus.PublishSucceeded,
+        success = true,
+        error = None
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // check for dataset registration
+    val registration = secureContainer.datasetManager
+      .getRegistration(dataset, DatasetRegistry.ORCID)
+      .await
+    val storedRegistration = registration match {
+      case Left(_) => false
+      case Right(registration) => true
+    }
+
+    storedRegistration shouldEqual (true)
+  }
+
+  ignore("registration removed when dataset is unpublished") {
+    0 shouldEqual (1)
   }
 
 }
