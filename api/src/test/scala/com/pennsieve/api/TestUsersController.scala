@@ -30,7 +30,8 @@ import com.pennsieve.dtos.{
 import com.pennsieve.helpers.{
   MockAuditLogger,
   OrcidClient,
-  OrcidWorkPublishing
+  OrcidWorkPublishing,
+  OrcidWorkUnpublishing
 }
 import com.pennsieve.models.DBPermission.Delete
 import com.pennsieve.models.{ DateVersion, Degree, OrcidAuthorization, User }
@@ -71,6 +72,8 @@ class TestUsersController extends BaseApiTest {
       work: OrcidWorkPublishing
     ): Future[Option[String]] = Future.successful(Some("1234567"))
 
+    override def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean] =
+      Future.successful(true)
   }
 
   val mockCustomToSClient: MockCustomTermsOfServiceClient =

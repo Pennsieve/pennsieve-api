@@ -31,6 +31,7 @@ import com.pennsieve.models.{
   OricdExternalIds
 }
 import akka.http.scaladsl.HttpExt
+import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import com.pennsieve.domain.PredicateError
 import com.typesafe.config.Config
@@ -50,11 +51,18 @@ case class OrcidWorkPublishing(
   doi: Option[String]
 )
 
+case class OrcidWorkUnpublishing(
+  orcidId: String,
+  accessToken: String,
+  orcidPutCode: String
+)
+
 trait OrcidClient {
 
   def getToken(authorizationCode: String): Future[OrcidAuthorization]
   def verifyOrcid(orcid: Option[String]): Future[Boolean]
   def publishWork(work: OrcidWorkPublishing): Future[Option[String]]
+  def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean]
 }
 
 case class OrcidClientConfig(
@@ -212,7 +220,7 @@ class OrcidClientImpl(
     httpClient
       .singleRequest(request)
       .flatMap {
-        case HttpResponse(StatusCodes.OK, headers, _, _) =>
+        case HttpResponse(StatusCodes.Created, headers, _, _) =>
           val headersMap = headers
             .map(header => header.name().toLowerCase -> header.value())
             .toMap
@@ -223,7 +231,27 @@ class OrcidClientImpl(
           }
           Future.successful(putCode)
         case _ =>
-          Future.failed(PredicateError("ORCID not found"))
+          Future.failed(PredicateError("ORCID Work not added"))
+      }
+  }
+
+  def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean] = {
+    val request = HttpRequest(
+      method = HttpMethods.DELETE,
+      uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work" + "/" + work.orcidPutCode,
+      headers = List(
+        Accept(MediaTypes.`application/json`),
+        Authorization(OAuth2BearerToken(work.accessToken))
+      )
+    )
+
+    httpClient
+      .singleRequest(request)
+      .flatMap {
+        case HttpResponse(StatusCodes.NoContent, headers, _, _) =>
+          Future.successful(true)
+        case _ =>
+          Future.failed(PredicateError("ORCID Work not removed"))
       }
   }
 

@@ -119,6 +119,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       override def publishWork(
         work: OrcidWorkPublishing
       ): Future[Option[String]] = Future.successful(Some("1234567"))
+
+      override def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean] =
+        Future.successful(true)
     }
 
     addServlet(
