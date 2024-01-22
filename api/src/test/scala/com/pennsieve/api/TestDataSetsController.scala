@@ -9957,8 +9957,105 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     storedRegistration shouldEqual (true)
   }
 
-  ignore("registration removed when dataset is unpublished") {
-    0 shouldEqual (1)
-  }
+  test("registration removed when dataset is unpublished") {
+    // create dataset
+    implicit val dataset: Dataset =
+      initializePublicationTest(
+        assignPublisherUserDirectlyToDataset = false,
+        orcidScope = Some("/read-limited /activities/update")
+      )
 
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Draft)
+    currentPublicationType() shouldBe None
+
+    // request publish
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=publication&comments=hello%20world",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Requested)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // accept request
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=publication&comments=accepted",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // publish complete
+    val request = write(
+      PublishCompleteRequest(
+        Some(1),
+        1,
+        Some(OffsetDateTime.now),
+        PublishStatus.PublishSucceeded,
+        success = true,
+        error = None
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Publication)
+
+    // check for dataset registration
+    val registration = secureContainer.datasetManager
+      .getRegistration(dataset, DatasetRegistry.ORCID)
+      .await
+    val storedRegistration = registration match {
+      case Left(_) => false
+      case Right(registration) => true
+    }
+
+    storedRegistration shouldEqual (true)
+
+    // unpublish the dataset
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=removal",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    // check that there is no registration
+    val removedRegistration = secureContainer.datasetManager
+      .getRegistration(dataset, DatasetRegistry.ORCID)
+      .await
+    val registrationRemoved = removedRegistration match {
+      case Left(_) => false
+      case Right(registration) =>
+        registration match {
+          case Some(_) => false
+          case None => true
+        }
+    }
+
+    registrationRemoved shouldEqual (true)
+  }
 }
