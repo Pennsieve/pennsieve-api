@@ -54,7 +54,12 @@ import com.pennsieve.helpers.APIContainers.{
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.pennsieve.helpers.{ OrcidClient, OrcidWorkPublishing, Param }
+import com.pennsieve.helpers.{
+  OrcidClient,
+  OrcidWorkPublishing,
+  OrcidWorkUnpublishing,
+  Param
+}
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
@@ -3401,7 +3406,16 @@ class DataSetsController(
                   .coreErrorToActionResult()
 
                 // TODO: get dataset owner (unregister will need the ORCID Authorization)
+                owner <- secureContainer.datasetManager
+                  .getOwner(validated.dataset)
+                  .coreErrorToActionResult()
+
                 // TODO: remove publication registrations
+                _ <- unregisterPublication(
+                  secureContainer,
+                  validated.dataset,
+                  owner
+                ).coreErrorToActionResult()
 
                 // add entries for both Accept and Complete, since the unpublish job is syncronous
                 response <- secureContainer.datasetPublicationStatusManager
@@ -3537,6 +3551,36 @@ class DataSetsController(
       }
     } yield ()
 
+  def unregisterOrcidWork(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    user: User
+  ): EitherT[Future, CoreError, Unit] =
+    for {
+      registration <- secureContainer.datasetManager
+        .getRegistration(dataset, DatasetRegistry.ORCID)
+      orcidAuthorization = user.orcidAuthorization.get
+
+      _ <- registration match {
+        case Some(registration) =>
+          orcidClient
+            .unpublishWork(
+              OrcidWorkUnpublishing(
+                orcidId = orcidAuthorization.orcid,
+                accessToken = orcidAuthorization.accessToken,
+                orcidPutCode = registration.value
+              )
+            )
+            .toEitherT
+        case None =>
+          Future.successful(false).toEitherT
+      }
+
+      _ <- secureContainer.datasetManager
+        .removeRegistration(dataset, DatasetRegistry.ORCID)
+
+    } yield ()
+
   def registerPublication(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
@@ -3553,6 +3597,19 @@ class DataSetsController(
         Future.successful(()).toEitherT
       }
 
+    } yield ()
+
+  def unregisterPublication(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    user: User
+  ): EitherT[Future, CoreError, Unit] =
+    for {
+      _ <- if (orcidAuthorized(user)) {
+        unregisterOrcidWork(secureContainer, dataset, user)
+      } else {
+        Future.successful(()).toEitherT
+      }
     } yield ()
 
   val publishComplete: OperationBuilder = (apiOperation[Unit]("publishComplete")
