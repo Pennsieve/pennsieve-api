@@ -27,6 +27,7 @@ import com.pennsieve.models.{
   OrcidTitle,
   OrcidTitleValue,
   OrcidWork,
+  OrcidWorkType,
   OricdExternalIds
 }
 import akka.http.scaladsl.HttpExt
@@ -63,7 +64,8 @@ case class OrcidClientConfig(
   redirectUrl: String,
   readPublicToken: String,
   getRecordBaseUrl: String,
-  updateProfileBaseUrl: String
+  updateProfileBaseUrl: String,
+  discoverAppHost: String
 )
 
 object OrcidClientConfig {
@@ -77,7 +79,8 @@ object OrcidClientConfig {
       readPublicToken = config.as[String]("orcidClient.readPublicToken"),
       getRecordBaseUrl = config.as[String]("orcidClient.getRecordBaseUrl"),
       updateProfileBaseUrl =
-        config.as[String]("orcidClient.updateProfileBaseUrl")
+        config.as[String]("orcidClient.updateProfileBaseUrl"),
+      discoverAppHost = config.as[String]("discover_app.host")
     )
   }
 }
@@ -162,7 +165,7 @@ class OrcidClientImpl(
         title = OrcidTitleValue(value = work.title),
         subtitle = OrcidTitleValue(value = work.subTitle)
       ),
-      `type` = "data-set",
+      `type` = OrcidWorkType.DATASET,
       externalIds =
         OricdExternalIds(externalId = work.doi match {
           case Some(doi) =>
@@ -179,7 +182,7 @@ class OrcidClientImpl(
         }),
       url = OrcidTitleValue(
         value =
-          s"https://discover.pennsieve.io/datasets/${work.publishedDatasetId}"
+          s"https://${orcidClientConfig.discoverAppHost}/datasets/${work.publishedDatasetId}"
       )
     )
 

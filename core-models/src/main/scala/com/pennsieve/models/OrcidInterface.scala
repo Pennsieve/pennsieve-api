@@ -27,6 +27,10 @@ object OrcidActivity {
   def WORK = "Work"
 }
 
+object OrcidWorkType {
+  def DATASET = "data-set"
+}
+
 // TODO: the JSON Decoders here are fictitious (we are not decoding ORCID Work records -- yet)
 
 case class OrcidExternalId(

@@ -3400,6 +3400,9 @@ class DataSetsController(
                   .removePublisherTeam(secureContainer, validated.dataset)
                   .coreErrorToActionResult()
 
+                // TODO: get dataset owner (unregister will need the ORCID Authorization)
+                // TODO: remove publication registrations
+
                 // add entries for both Accept and Complete, since the unpublish job is syncronous
                 response <- secureContainer.datasetPublicationStatusManager
                   .create(
@@ -3464,9 +3467,7 @@ class DataSetsController(
   def registerOrcidWork(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
-    user: User,
-    completion: PublishCompleteRequest,
-    publicationStatus: DatasetPublicationStatus
+    user: User
   ): EitherT[Future, CoreError, Unit] =
     for {
       registration <- secureContainer.datasetManager
@@ -3547,13 +3548,7 @@ class DataSetsController(
       _ <- if (completion.success && registrableEvent(publicationStatus) && orcidAuthorized(
           user
         )) {
-        registerOrcidWork(
-          secureContainer,
-          dataset,
-          user,
-          completion,
-          publicationStatus
-        )
+        registerOrcidWork(secureContainer, dataset, user)
       } else {
         Future.successful(()).toEitherT
       }
@@ -3727,7 +3722,7 @@ class DataSetsController(
               case _ => EitherT.rightT[Future, ActionResult](())
             }
 
-            // TODO: add push to ORCID here
+            // register publication with external sites/registries
             _ <- registerPublication(
               secureContainer,
               dataset,
