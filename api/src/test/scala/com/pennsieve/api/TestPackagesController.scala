@@ -1280,6 +1280,24 @@ class TestPackagesController
     }
   }
 
+  test("paginated max limit on get package requests") {
+    // create a dataset
+    val ds = createDataSet("test-dataset-ppackage-pagination-limit")
+    // create a collection package (folder)
+    val collection = createPackage(ds, "Folder")
+    (1 to PackagesController.PackageChildrenMaxLimit + 2)
+      .map(n => createPackage(ds, s"Package-${n}", parent = Some(collection)))
+
+    get(
+      s"/${collection.nodeId}?offset=0&limit=${PackagesController.PackageChildrenMaxLimit + 1}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val `package` = parsedBody.extract[PackageDTO]
+      `package`.children.length shouldBe PackagesController.PackageChildrenMaxLimit
+    }
+  }
+
   test("packages with a single file should contain a file extension") {
     val props = List(
       ModelProperty("meta", "data", "string", "user-defined"),
@@ -2040,6 +2058,45 @@ class TestPackagesController
       val sources = parsedBody.extract[PagedResponse[FileDTO]]
       sources.results.length should equal(99)
 
+    }
+  }
+
+  test("paginated max limit on sources-paged") {
+    val pdfPackage = packageManager
+      .create(
+        "Foo15",
+        PackageType.PDF,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    (1 to PackagesController.FILES_LIMIT_MAX + 2).map(
+      _ =>
+        fileManager
+          .create(
+            "Source File",
+            FileType.PDF,
+            pdfPackage,
+            "s3bucketName",
+            "/path/to/test.pdf",
+            objectType = FileObjectType.Source,
+            processingState = FileProcessingState.Unprocessed,
+            0
+          )
+          .await
+    )
+
+    get(
+      s"/${pdfPackage.nodeId}/sources-paged?limit=${PackagesController.FILES_LIMIT_MAX + 1}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val sources = parsedBody.extract[PagedResponse[FileDTO]]
+      sources.results.length should equal(PackagesController.FILES_LIMIT_MAX)
     }
   }
 

@@ -111,33 +111,18 @@ object ExecuteS3ObjectActions extends LazyLogging {
     val deleteObjectF = S3
       .deleteObject(
         bucket = deleteAction.fromBucket,
-        key = s"${deleteAction.baseKey}/${deleteAction.fileKey}",
+        key = deleteAction.deleteFromKey,
         versionId = None,
         s3Headers = S3Headers()
           .withCustomHeaders(Map("x-amz-request-payer" -> "requester"))
       )
-      .run()
-
-    logDeleteComplete(deleteObjectF, deleteAction)
-
-    // execute a list-object-versions, get the DeleteMarker from the response
-    val listObjectVersionsF = S3
-      .listObjectVersions(
-        bucket = deleteAction.fromBucket,
-        prefix = Some(s"${deleteAction.baseKey}/${deleteAction.fileKey}"),
-        s3Headers = S3Headers()
-          .withCustomHeaders(Map("x-amz-request-payer" -> "requester"))
-      )
-      .toMat(accumulateListObjectVersions())(Keep.right)
+      .mapMaterializedValue(result => ())
       .run()
 
     for {
-      deleteMarkers <- listObjectVersionsF
-      // TODO: ensure we get the most recent DeleteMarker
-      deletedAction = deleteAction.copy(
-        s3VersionId = deleteMarkers.head.versionId
-      )
-    } yield deletedAction
+      _ <- deleteObjectF
+      _ = logDeleteComplete(deleteAction)
+    } yield deleteAction
   }
 
   def keepFile(
@@ -160,7 +145,7 @@ object ExecuteS3ObjectActions extends LazyLogging {
     s"s3://${action.toBucket}/${action.copyToKey}"
 
   def deleteUrl(action: DeleteAction): String =
-    s"s3://${action.fromBucket}/${action.baseKey}/${action.fileKey}"
+    s"s3://${action.fromBucket}/${action.deleteFromKey}"
 
   def keepUrl(action: KeepAction): String =
     s"s3://${action.bucket}/${action.baseKey}/${action.fileKey}"
@@ -173,26 +158,9 @@ object ExecuteS3ObjectActions extends LazyLogging {
     logger.info(s"Done copying ${fromUrl(action)} to ${toUrl(action)}")
 
   private def logDeleteComplete(
-    future: Future[Done],
-    deleteAction: DeleteAction
+    action: DeleteAction
   )(implicit
     ec: ExecutionContext
-  ): Unit = {
-    future.onComplete {
-      case Success(action) =>
-        logger.info(s"Done deleting ${deleteUrl(deleteAction)}")
-      case Failure(e) => logger.error(e.getMessage, e)
-    }
-  }
-
-  def accumulateListObjectVersions(
-  ): Sink[(Seq[ListObjectVersionsResultVersions], Seq[DeleteMarkers]), Future[
-    List[DeleteMarkers]
-  ]] =
-    Sink.fold(Nil: List[DeleteMarkers])(
-      (
-        accum,
-        response: (Seq[ListObjectVersionsResultVersions], Seq[DeleteMarkers])
-      ) => response._2.filter(dm => dm.isLatest).head :: accum
-    )
+  ): Unit =
+    logger.info(s"Done deleting ${deleteUrl(action)}")
 }

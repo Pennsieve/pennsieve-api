@@ -288,8 +288,14 @@ case class ChangelogEventPage(
 )
 
 object DataSetsController {
+  // Default values for retrieving datasets (paginated)
+  val DatasetsDefaultLimit: Int = 25
+  val DatasetsMaxLimit: Int = 500
+  val DatasetsDefaultOffset: Int = 0
+
   //Default values for retrieving Dataset children (i.e. packages)
   val DatasetChildrenDefaultLimit: Int = 100
+  val DatasetChildrenMaxLimit: Int = 500
   val DatasetChildrenDefaultOffset: Int = 0
 }
 
@@ -527,7 +533,7 @@ class DataSetsController(
           contributors = contributors.map(_._1),
           includeBannerUrl = true,
           includePublishedDataset = includePublishedDataset,
-          limit = limit.some,
+          limit = limit.min(DataSetsController.DatasetChildrenMaxLimit).some,
           offset = offset.some
         )(
           asyncExecutor,
@@ -670,9 +676,6 @@ class DataSetsController(
   val AllowableOrderByDirectionValues =
     DatasetManager.OrderByDirection.values.map(_.entryName)
 
-  val DatasetsDefaultLimit: Int = 25
-  val DatasetsDefaultOffset: Int = 0
-
   get(
     "/paginated",
     operation(
@@ -681,10 +684,10 @@ class DataSetsController(
         parameters (
           queryParam[Int]("limit").optional
             .description("max number of datasets returned")
-            .defaultValue(DatasetsDefaultLimit),
+            .defaultValue(DataSetsController.DatasetsDefaultLimit),
           queryParam[Int]("offset").optional
             .description("offset used for pagination of results")
-            .defaultValue(DatasetsDefaultOffset),
+            .defaultValue(DataSetsController.DatasetsDefaultOffset),
           queryParam[String]("query").optional
             .description("parameter for the text search"),
           queryParam[String]("publicationStatus").optional
@@ -743,8 +746,14 @@ class DataSetsController(
             .coreErrorToActionResult()
           isGuest = userPermission.getOrElse(DBPermission.Guest) == DBPermission.Guest
 
-          limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
-          offset <- paramT[Int]("offset", default = DatasetsDefaultOffset)
+          limit <- paramT[Int](
+            "limit",
+            default = DataSetsController.DatasetsDefaultLimit
+          )
+          offset <- paramT[Int](
+            "offset",
+            default = DataSetsController.DatasetsDefaultOffset
+          )
 
           orderByDirection <- paramT[DatasetManager.OrderByDirection](
             "orderDirection",
@@ -815,7 +824,7 @@ class DataSetsController(
           datasetsAndCount <- secureContainer.datasetManager
             .getDatasetPaginated(
               withRole = ownerOnly.getOrElse(withRole.getOrElse(Role.Viewer)),
-              limit = limit.some,
+              limit = limit.min(DataSetsController.DatasetsMaxLimit).some,
               offset = offset.some,
               orderBy = (orderBy, orderByDirection),
               status = status,
@@ -4614,10 +4623,10 @@ class DataSetsController(
       parameters (pathParam[String]("id").description("data set id"),
       queryParam[Int]("limit").optional
         .description("max number of status change returned")
-        .defaultValue(DatasetsDefaultLimit),
+        .defaultValue(DataSetsController.DatasetsDefaultLimit),
       queryParam[Int]("offset").optional
         .description("offset used for pagination of results")
-        .defaultValue(DatasetsDefaultOffset))
+        .defaultValue(DataSetsController.DatasetsDefaultOffset))
   )
 
   get("/:id/status-log", operation(getStatusLog)) {
@@ -4635,8 +4644,14 @@ class DataSetsController(
               dataset
             )
             .coreErrorToActionResult()
-          limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
-          offset <- paramT[Int]("offset", default = DatasetsDefaultOffset)
+          limit <- paramT[Int](
+            "limit",
+            default = DataSetsController.DatasetsDefaultLimit
+          )
+          offset <- paramT[Int](
+            "offset",
+            default = DataSetsController.DatasetsDefaultOffset
+          )
           statusLogEntriesAndCount <- secureContainer.datasetManager
             .getStatusLog(dataset, limit, offset)
             .coreErrorToActionResult()
@@ -4749,10 +4764,10 @@ class DataSetsController(
       parameters (
         queryParam[Int]("limit").optional
           .description("max number of datasets returned")
-          .defaultValue(DatasetsDefaultLimit),
+          .defaultValue(DataSetsController.DatasetsDefaultLimit),
         queryParam[Int]("offset").optional
           .description("offset used for pagination of results")
-          .defaultValue(DatasetsDefaultOffset),
+          .defaultValue(DataSetsController.DatasetsDefaultOffset),
         queryParam[String]("query").optional
           .description("parameter for the text search"),
         queryParam[String]("orderBy").optional
@@ -4784,8 +4799,14 @@ class DataSetsController(
           storageServiceClient = secureContainer.storageManager
           traceId <- getTraceId(request)
 
-          limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
-          offset <- paramT[Int]("offset", default = DatasetsDefaultOffset)
+          limit <- paramT[Int](
+            "limit",
+            default = DataSetsController.DatasetsDefaultLimit
+          )
+          offset <- paramT[Int](
+            "offset",
+            default = DataSetsController.DatasetsDefaultOffset
+          )
 
           orderByDirection <- paramT[DatasetManager.OrderByDirection](
             "orderDirection",
@@ -4810,7 +4831,7 @@ class DataSetsController(
             .getPublishedDatasetsForOrganization(
               searchClient,
               organization,
-              Some(limit),
+              limit.min(DataSetsController.DatasetsMaxLimit).some,
               Some(offset),
               (orderBy, orderByDirection),
               textSearch
@@ -4900,7 +4921,7 @@ class DataSetsController(
     parameter pathParam[String]("id").description("data set id")
     parameter queryParam[Int]("limit").optional
       .description("max number event groups")
-      .defaultValue(DatasetsDefaultLimit)
+      .defaultValue(DataSetsController.DatasetsDefaultLimit)
     parameter queryParam[String]("cursor").optional
       .description("cursor to next page of event groups")
     parameter queryParam[String]("category").optional
@@ -4917,7 +4938,10 @@ class DataSetsController(
         for {
           secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
-          limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
+          limit <- paramT[Int](
+            "limit",
+            default = DataSetsController.DatasetsDefaultLimit
+          )
           cursor <- optParamT[ChangelogEventGroupCursor]("cursor")
           category <- optParamT[ChangelogEventCategory]("category")
           startDate <- optParamT[LocalDate]("startDate")
@@ -4984,7 +5008,7 @@ class DataSetsController(
         pathParam[String]("id").description("data set id"),
         queryParam[Int]("limit").optional
           .description("max number of events")
-          .defaultValue(DatasetsDefaultLimit),
+          .defaultValue(DataSetsController.DatasetsDefaultLimit),
         queryParam[String]("cursor").required
           .description("cursor to next page of events")
       )
@@ -4996,7 +5020,10 @@ class DataSetsController(
         for {
           secureContainer <- getSecureContainer()
           datasetId <- paramT[String]("id")
-          limit <- paramT[Int]("limit", default = DatasetsDefaultLimit)
+          limit <- paramT[Int](
+            "limit",
+            default = DataSetsController.DatasetsDefaultLimit
+          )
           cursor <- paramT[ChangelogEventCursor]("cursor")
 
           dataset <- secureContainer.datasetManager

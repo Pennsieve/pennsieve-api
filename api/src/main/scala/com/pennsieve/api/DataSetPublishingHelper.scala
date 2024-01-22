@@ -1078,6 +1078,22 @@ case object DataSetPublishingHelper extends LazyLogging {
         .leftMap(ThrowableError(_): CoreError)
         .toEitherT[Future]
 
+      maybeChangelog <- secureContainer.datasetAssetsManager
+        .getChangelog(dataset)
+
+      changelog <- maybeChangelog match {
+        case Some(r) => EitherT.rightT[Future, CoreError](r)
+        case None =>
+          EitherT.leftT[Future, DatasetAsset](
+            PredicateError("Dataset cannot be revised without a changelog")
+          )
+      }
+
+      changelogPresignedUrl <- datasetAssetClient
+        .generatePresignedUrl(changelog, 1.minute)
+        .leftMap(ThrowableError(_): CoreError)
+        .toEitherT[Future]
+
       discoverRequest = ReviseRequest(
         name = dataset.name,
         description = description,
@@ -1092,6 +1108,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         ownerOrcid = ownerOrcid,
         bannerPresignedUrl = bannerPresignedUrl.toString,
         readmePresignedUrl = readmePresignedUrl.toString,
+        changelogPresignedUrl = changelogPresignedUrl.toString,
         collections =
           Some(collections.map(_.into[InternalCollection].transform).toVector),
         externalPublications = Some(
