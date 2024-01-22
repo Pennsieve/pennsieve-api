@@ -67,6 +67,14 @@ class DatasetRegistrationMapper(organization: Organization)
       .result
       .headOption
 
+  def getBy(
+    dataset: Dataset,
+    registry: String
+  ): Query[DatasetRegistrationTable, DatasetRegistration, Seq] =
+    this
+      .filter(_.datasetId === dataset.id)
+      .filter(_.registry === registry)
+
   def add(
     registration: DatasetRegistration
   )(implicit
