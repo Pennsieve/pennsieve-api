@@ -1756,5 +1756,19 @@ class DatasetManager(
         .toEitherT
     } yield registration
 
-  // TODO: implement deleteRegistration()
+  def removeRegistration(
+    dataset: Dataset,
+    registry: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] =
+    for {
+      _ <- db
+        .run(datasetRegistrationMapper.getBy(dataset, registry).delete)
+        .toEitherT
+        .subflatMap {
+          case 0 => Right(false)
+          case _ => Right(true)
+        }
+    } yield true
 }
