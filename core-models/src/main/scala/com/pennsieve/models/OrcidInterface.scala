@@ -23,6 +23,10 @@ import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax._
 import io.circe.{ HCursor, Json }
 
+object OrcidProfileAccess {
+  def ACTIVITIES_UPDATE = "/activities/update"
+}
+
 object OrcidActivity {
   def WORK = "Work"
 }

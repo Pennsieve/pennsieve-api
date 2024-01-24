@@ -3414,12 +3414,12 @@ class DataSetsController(
                   .removePublisherTeam(secureContainer, validated.dataset)
                   .coreErrorToActionResult()
 
-                // TODO: get dataset owner (unregister will need the ORCID Authorization)
+                // get dataset owner (unregister will need the ORCID Authorization)
                 owner <- secureContainer.datasetManager
                   .getOwner(validated.dataset)
                   .coreErrorToActionResult()
 
-                // TODO: remove publication registrations
+                // remove publication registrations
                 _ <- unregisterPublication(
                   secureContainer,
                   validated.dataset,
@@ -3479,7 +3479,7 @@ class DataSetsController(
   def orcidAuthorized(user: User): Boolean =
     user.orcidAuthorization match {
       case Some(orcidAuth: OrcidAuthorization) =>
-        orcidAuth.scope.contains("/activities/update")
+        orcidAuth.scope.contains(OrcidProfileAccess.ACTIVITIES_UPDATE)
       case None => false
     }
 
