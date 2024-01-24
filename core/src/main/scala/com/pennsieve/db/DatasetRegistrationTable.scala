@@ -107,7 +107,4 @@ class DatasetRegistrationMapper(organization: Organization)
         .head
     } yield updated
   }
-
-  // TODO: implement delete()
-
 }
