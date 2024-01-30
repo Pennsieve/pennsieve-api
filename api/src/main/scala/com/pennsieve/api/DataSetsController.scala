@@ -3491,7 +3491,7 @@ class DataSetsController(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
     user: User
-  ): EitherT[Future, CoreError, Unit] =
+  ): EitherT[Future, CoreError, Option[DatasetRegistration]] =
     for {
       registration <- secureContainer.datasetManager
         .getRegistration(dataset, DatasetRegistry.ORCID)
@@ -3541,30 +3541,40 @@ class DataSetsController(
         )
         .toEitherT
 
-      _ = (registration, putCode) match {
+      registration <- (registration, putCode) match {
         case (None, Some(putCode)) =>
-          secureContainer.datasetManager.addRegistration(
-            DatasetRegistration(
-              datasetId = dataset.id,
-              registry = DatasetRegistry.ORCID,
-              registryId = Some(orcidAuthorization.orcid),
-              category = Some(OrcidActivity.WORK),
-              value = putCode,
-              url = None
+          secureContainer.datasetManager
+            .addRegistration(
+              DatasetRegistration(
+                datasetId = dataset.id,
+                registry = DatasetRegistry.ORCID,
+                registryId = Some(orcidAuthorization.orcid),
+                category = Some(OrcidActivity.WORK),
+                value = putCode,
+                url = None
+              )
             )
-          )
         case (Some(registration), Some(_)) =>
-          secureContainer.datasetManager.updateRegistration(registration)
+          secureContainer.datasetManager
+            .updateRegistration(registration)
         case (_, None) =>
-          Future.successful(()).toEitherT
+          Future
+            .successful(
+              DatasetRegistration(
+                datasetId = -1,
+                registry = DatasetRegistry.NONE,
+                value = ""
+              )
+            )
+            .toEitherT
       }
-    } yield ()
+    } yield Some(registration)
 
   def unregisterOrcidWork(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
     user: User
-  ): EitherT[Future, CoreError, Unit] =
+  ): EitherT[Future, CoreError, Option[Boolean]] =
     for {
       registration <- secureContainer.datasetManager
         .getRegistration(dataset, DatasetRegistry.ORCID)
@@ -3585,10 +3595,10 @@ class DataSetsController(
           Future.successful(false).toEitherT
       }
 
-      _ <- secureContainer.datasetManager
+      removed <- secureContainer.datasetManager
         .removeRegistration(dataset, DatasetRegistry.ORCID)
 
-    } yield ()
+    } yield Some(removed)
 
   def registerPublication(
     secureContainer: SecureAPIContainer,
@@ -3596,17 +3606,22 @@ class DataSetsController(
     user: User,
     completion: PublishCompleteRequest,
     publicationStatus: DatasetPublicationStatus
-  ): EitherT[Future, CoreError, Unit] =
+  ): EitherT[Future, CoreError, Seq[DatasetRegistration]] =
     for {
-      _ <- if (completion.success && registrableEvent(publicationStatus) && orcidAuthorized(
-          user
-        )) {
+      registration <- if (completion.success && registrableEvent(
+          publicationStatus
+        ) && orcidAuthorized(user)) {
         registerOrcidWork(secureContainer, dataset, user)
       } else {
-        Future.successful(()).toEitherT
+        Future.successful(None).toEitherT
       }
 
-    } yield ()
+      result = registration match {
+        case Some(registration) => List(registration)
+        case None => List.empty[DatasetRegistration]
+      }
+
+    } yield result
 
   def unregisterPublication(
     secureContainer: SecureAPIContainer,

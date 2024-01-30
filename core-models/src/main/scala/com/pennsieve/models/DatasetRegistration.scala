@@ -19,6 +19,7 @@ package com.pennsieve.models
 import java.time.ZonedDateTime
 
 object DatasetRegistry {
+  def NONE = "N/A"
   def ORCID = "ORCID"
 }
 
