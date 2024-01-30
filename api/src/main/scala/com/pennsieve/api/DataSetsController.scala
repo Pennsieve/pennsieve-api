@@ -3424,7 +3424,19 @@ class DataSetsController(
                   secureContainer,
                   validated.dataset,
                   owner
-                ).coreErrorToActionResult()
+                ).value
+                  .flatMap {
+                    case Left(error) =>
+                      logger.info(
+                        s"publication unregister failed with error: ${error}"
+                      )
+                      Future.successful(())
+                    case Right(_) =>
+                      logger.info("publication was unregistered at registries")
+                      Future.successful(())
+                  }
+                  .toEitherT
+                  .coreErrorToActionResult()
 
                 // add entries for both Accept and Complete, since the unpublish job is syncronous
                 response <- secureContainer.datasetPublicationStatusManager
