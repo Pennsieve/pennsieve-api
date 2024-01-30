@@ -3491,7 +3491,8 @@ class DataSetsController(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
     user: User
-  ): EitherT[Future, CoreError, Option[DatasetRegistration]] =
+  ): EitherT[Future, CoreError, Option[DatasetRegistration]] = {
+    logger.info("registering publication at ORCID")
     for {
       registration <- secureContainer.datasetManager
         .getRegistration(dataset, DatasetRegistry.ORCID)
@@ -3569,12 +3570,14 @@ class DataSetsController(
             .toEitherT
       }
     } yield Some(registration)
+  }
 
   def unregisterOrcidWork(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
     user: User
-  ): EitherT[Future, CoreError, Option[Boolean]] =
+  ): EitherT[Future, CoreError, Option[Boolean]] = {
+    logger.info("unregistering publication at ORCID")
     for {
       registration <- secureContainer.datasetManager
         .getRegistration(dataset, DatasetRegistry.ORCID)
@@ -3599,6 +3602,7 @@ class DataSetsController(
         .removeRegistration(dataset, DatasetRegistry.ORCID)
 
     } yield Some(removed)
+  }
 
   def registerPublication(
     secureContainer: SecureAPIContainer,
@@ -3606,7 +3610,8 @@ class DataSetsController(
     user: User,
     completion: PublishCompleteRequest,
     publicationStatus: DatasetPublicationStatus
-  ): EitherT[Future, CoreError, Seq[DatasetRegistration]] =
+  ): EitherT[Future, CoreError, Seq[DatasetRegistration]] = {
+    logger.info("registering publication at external registries")
     for {
       registration <- if (completion.success && registrableEvent(
           publicationStatus
@@ -3622,12 +3627,14 @@ class DataSetsController(
       }
 
     } yield result
+  }
 
   def unregisterPublication(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
     user: User
-  ): EitherT[Future, CoreError, Unit] =
+  ): EitherT[Future, CoreError, Unit] = {
+    logger.info("unregistering publication at external registries")
     for {
       _ <- if (orcidAuthorized(user)) {
         unregisterOrcidWork(secureContainer, dataset, user)
@@ -3635,6 +3642,7 @@ class DataSetsController(
         Future.successful(()).toEitherT
       }
     } yield ()
+  }
 
   val publishComplete: OperationBuilder = (apiOperation[Unit]("publishComplete")
     summary "notify API that Discover has completed a publish job"
@@ -3810,7 +3818,29 @@ class DataSetsController(
               owner,
               body,
               publicationStatus
-            ).coreErrorToActionResult()
+            ).value
+              .flatMap {
+                case Left(error) =>
+                  logger.info(
+                    s"publication registration failed with error: ${error}"
+                  )
+                  Future.successful(())
+                case Right(registrations) =>
+                  registrations.length match {
+                    case 0 =>
+                      logger.info(
+                        "publication was not registered with any registries"
+                      )
+                    case count: Int =>
+                      logger.info(
+                        s"publication was registered with ${count} registries"
+                      )
+                  }
+
+                  Future.successful(())
+              }
+              .toEitherT
+              .coreErrorToActionResult()
 
           } yield ()
           else EitherT.rightT[Future, ActionResult](())
