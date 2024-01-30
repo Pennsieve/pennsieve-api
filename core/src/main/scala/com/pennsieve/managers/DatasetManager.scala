@@ -154,6 +154,9 @@ class DatasetManager(
   val organizationManager: OrganizationManager =
     new OrganizationManager(db)
 
+  val datasetRegistrationMapper: DatasetRegistrationMapper =
+    new DatasetRegistrationMapper(organization)
+
   def isLocked(
     dataset: Dataset
   )(implicit
@@ -1718,4 +1721,54 @@ class DatasetManager(
     } yield runInsert
 
   }
+
+  def getRegistration(
+    dataset: Dataset,
+    registry: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[DatasetRegistration]] =
+    for {
+      registration <- db
+        .run(datasetRegistrationMapper.get(dataset, registry))
+        .toEitherT
+    } yield registration
+
+  def addRegistration(
+    registration: DatasetRegistration
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetRegistration] =
+    for {
+      registration <- db
+        .run(datasetRegistrationMapper.add(registration))
+        .toEitherT
+    } yield registration
+
+  def updateRegistration(
+    registration: DatasetRegistration
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetRegistration] =
+    for {
+      registration <- db
+        .run(datasetRegistrationMapper.update(registration))
+        .toEitherT
+    } yield registration
+
+  def removeRegistration(
+    dataset: Dataset,
+    registry: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] =
+    for {
+      _ <- db
+        .run(datasetRegistrationMapper.getBy(dataset, registry).delete)
+        .toEitherT
+        .subflatMap {
+          case 0 => Right(false)
+          case _ => Right(true)
+        }
+    } yield true
 }

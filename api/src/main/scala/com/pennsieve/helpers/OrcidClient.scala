@@ -21,20 +21,48 @@ import akka.http.scaladsl.model.FormData
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import com.pennsieve.models.OrcidAuthorization
+import com.pennsieve.models.{
+  OrcidAuthorization,
+  OrcidExternalId,
+  OrcidTitle,
+  OrcidTitleValue,
+  OrcidWork,
+  OrcidWorkType,
+  OricdExternalIds
+}
 import akka.http.scaladsl.HttpExt
+import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import com.pennsieve.domain.PredicateError
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import io.circe.parser.decode
+import io.circe.syntax._
 
 import scala.concurrent.{ ExecutionContext, Future }
+
+case class OrcidWorkPublishing(
+  orcidId: String,
+  accessToken: String,
+  orcidPutCode: Option[String],
+  publishedDatasetId: Int,
+  title: String,
+  subTitle: String,
+  doi: Option[String]
+)
+
+case class OrcidWorkUnpublishing(
+  orcidId: String,
+  accessToken: String,
+  orcidPutCode: String
+)
 
 trait OrcidClient {
 
   def getToken(authorizationCode: String): Future[OrcidAuthorization]
   def verifyOrcid(orcid: Option[String]): Future[Boolean]
+  def publishWork(work: OrcidWorkPublishing): Future[Option[String]]
+  def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean]
 }
 
 case class OrcidClientConfig(
@@ -43,7 +71,9 @@ case class OrcidClientConfig(
   tokenUrl: String,
   redirectUrl: String,
   readPublicToken: String,
-  getRecordBaseUrl: String
+  getRecordBaseUrl: String,
+  updateProfileBaseUrl: String,
+  discoverAppHost: String
 )
 
 object OrcidClientConfig {
@@ -55,7 +85,10 @@ object OrcidClientConfig {
       tokenUrl = config.as[String]("orcidClient.tokenUrl"),
       redirectUrl = config.as[String]("orcidClient.redirectUrl"),
       readPublicToken = config.as[String]("orcidClient.readPublicToken"),
-      getRecordBaseUrl = config.as[String]("orcidClient.getRecordBaseUrl")
+      getRecordBaseUrl = config.as[String]("orcidClient.getRecordBaseUrl"),
+      updateProfileBaseUrl =
+        config.as[String]("orcidClient.updateProfileBaseUrl"),
+      discoverAppHost = config.as[String]("discover_app.host")
     )
   }
 }
@@ -127,6 +160,99 @@ class OrcidClientImpl(
           }
     }
 
+  }
+
+  override def publishWork(
+    work: OrcidWorkPublishing
+  ): Future[Option[String]] = {
+    import MediaTypes._
+    import HttpCharsets._
+
+    val workRequest = OrcidWork(
+      title = OrcidTitle(
+        title = OrcidTitleValue(value = work.title),
+        subtitle = OrcidTitleValue(value = work.subTitle)
+      ),
+      `type` = OrcidWorkType.DATASET,
+      externalIds =
+        OricdExternalIds(externalId = work.doi match {
+          case Some(doi) =>
+            Seq(
+              OrcidExternalId(
+                externalIdType = "doi",
+                externalIdValue = doi,
+                externalIdUrl =
+                  OrcidTitleValue(value = s"https://doi.org/${doi}"),
+                externalIdRelationship = "self"
+              )
+            )
+          case None => List.empty[OrcidExternalId]
+        }),
+      url = OrcidTitleValue(
+        value =
+          s"https://${orcidClientConfig.discoverAppHost}/datasets/${work.publishedDatasetId}"
+      )
+    )
+
+    val request = work.orcidPutCode match {
+      case Some(putCode: String) =>
+        HttpRequest(
+          method = HttpMethods.PUT,
+          uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work" + "/" + putCode,
+          headers = List(
+            Accept(MediaTypes.`application/json`),
+            Authorization(OAuth2BearerToken(work.accessToken))
+          ),
+          entity = HttpEntity(`application/json`, workRequest.asJson.toString)
+        )
+      case None =>
+        HttpRequest(
+          method = HttpMethods.POST,
+          uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work",
+          headers = List(
+            Accept(MediaTypes.`application/json`),
+            Authorization(OAuth2BearerToken(work.accessToken))
+          ),
+          entity = HttpEntity(`application/json`, workRequest.asJson.toString)
+        )
+    }
+
+    httpClient
+      .singleRequest(request)
+      .flatMap {
+        case HttpResponse(StatusCodes.Created, headers, _, _) =>
+          val headersMap = headers
+            .map(header => header.name().toLowerCase -> header.value())
+            .toMap
+          val putCode = headersMap.get("location") match {
+            case Some(location: String) =>
+              Some(location.split("/").last)
+            case None => None
+          }
+          Future.successful(putCode)
+        case _ =>
+          Future.failed(PredicateError("ORCID Work not added"))
+      }
+  }
+
+  def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean] = {
+    val request = HttpRequest(
+      method = HttpMethods.DELETE,
+      uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work" + "/" + work.orcidPutCode,
+      headers = List(
+        Accept(MediaTypes.`application/json`),
+        Authorization(OAuth2BearerToken(work.accessToken))
+      )
+    )
+
+    httpClient
+      .singleRequest(request)
+      .flatMap {
+        case HttpResponse(StatusCodes.NoContent, headers, _, _) =>
+          Future.successful(true)
+        case _ =>
+          Future.failed(PredicateError("ORCID Work not removed"))
+      }
   }
 
 }

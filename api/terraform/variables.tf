@@ -44,6 +44,8 @@ variable "orcid_token_url" {}
 
 variable "orcid_get_record_base_url" {}
 
+variable "orcid_update_profile_base_url" {}
+
 variable "pennsieve_postgres_database" {
   default = "pennsieve_postgres"
 }

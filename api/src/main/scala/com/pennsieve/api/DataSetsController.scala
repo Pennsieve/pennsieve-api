@@ -54,7 +54,12 @@ import com.pennsieve.helpers.APIContainers.{
   SecureAPIContainer,
   SecureContainerBuilderType
 }
-import com.pennsieve.helpers.Param
+import com.pennsieve.helpers.{
+  OrcidClient,
+  OrcidWorkPublishing,
+  OrcidWorkUnpublishing,
+  Param
+}
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
@@ -307,6 +312,7 @@ class DataSetsController(
   doiClient: DoiClient,
   datasetAssetClient: DatasetAssetClient,
   cognitoClient: CognitoClient,
+  orcidClient: OrcidClient,
   maxFileUploadSize: Int,
   asyncExecutor: ExecutionContext
 )(implicit
@@ -3408,6 +3414,30 @@ class DataSetsController(
                   .removePublisherTeam(secureContainer, validated.dataset)
                   .coreErrorToActionResult()
 
+                // get dataset owner (unregister will need the ORCID Authorization)
+                owner <- secureContainer.datasetManager
+                  .getOwner(validated.dataset)
+                  .coreErrorToActionResult()
+
+                // remove publication registrations
+                _ <- unregisterPublication(
+                  secureContainer,
+                  validated.dataset,
+                  owner
+                ).value
+                  .flatMap {
+                    case Left(error) =>
+                      logger.info(
+                        s"publication unregister failed with error: ${error}"
+                      )
+                      Future.successful(())
+                    case Right(_) =>
+                      logger.info("publication was unregistered at registries")
+                      Future.successful(())
+                  }
+                  .toEitherT
+                  .coreErrorToActionResult()
+
                 // add entries for both Accept and Complete, since the unpublish job is syncronous
                 response <- secureContainer.datasetPublicationStatusManager
                   .create(
@@ -3456,6 +3486,174 @@ class DataSetsController(
 
       val is = result.value.map(CreatedResult)
     }
+  }
+
+  def orcidAuthorized(user: User): Boolean =
+    user.orcidAuthorization match {
+      case Some(orcidAuth: OrcidAuthorization) =>
+        orcidAuth.scope.contains(OrcidProfileAccess.ACTIVITIES_UPDATE)
+      case None => false
+    }
+
+  def registrableEvent(publicationStatus: DatasetPublicationStatus): Boolean =
+    publicationStatus.publicationType == PublicationType.Publication ||
+      publicationStatus.publicationType == PublicationType.Embargo
+
+  def registerOrcidWork(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    user: User
+  ): EitherT[Future, CoreError, Option[DatasetRegistration]] = {
+    logger.info("registering publication at ORCID")
+    for {
+      registration <- secureContainer.datasetManager
+        .getRegistration(dataset, DatasetRegistry.ORCID)
+      orcidAuthorization = user.orcidAuthorization.get
+      registrationValue = registration match {
+        case Some(registration) => Some(registration.value)
+        case None => None
+      }
+
+      organization = secureContainer.organization
+
+      token = JwtAuthenticator.generateServiceToken(
+        1.minute,
+        organization.id,
+        Some(dataset.id)
+      )
+
+      tokenHeader = Authorization(OAuth2BearerToken(token.value))
+
+      doiServiceResponse <- doiClient
+        .getLatestDoi(organization.id, dataset.id, List(tokenHeader))
+        .leftMap {
+          case Left(e) => ServiceError(e.getMessage)
+          case Right(resp) => ServiceError(resp.toString)
+        }
+
+      doi = handleGetDoiResponse(
+        secureContainer.user.nodeId,
+        dataset.id,
+        doiServiceResponse
+      ) match {
+        case Right(doiDTO) => Some(doiDTO.doi)
+        case Left(_) => None
+      }
+
+      putCode <- orcidClient
+        .publishWork(
+          OrcidWorkPublishing(
+            orcidId = orcidAuthorization.orcid,
+            accessToken = orcidAuthorization.accessToken,
+            orcidPutCode = registrationValue,
+            publishedDatasetId = dataset.id,
+            title = dataset.name,
+            subTitle = dataset.description.get,
+            doi = doi
+          )
+        )
+        .toEitherT
+
+      registration <- (registration, putCode) match {
+        case (None, Some(putCode)) =>
+          secureContainer.datasetManager
+            .addRegistration(
+              DatasetRegistration(
+                datasetId = dataset.id,
+                registry = DatasetRegistry.ORCID,
+                registryId = Some(orcidAuthorization.orcid),
+                category = Some(OrcidActivity.WORK),
+                value = putCode,
+                url = None
+              )
+            )
+        case (Some(registration), Some(_)) =>
+          secureContainer.datasetManager
+            .updateRegistration(registration)
+        case (_, None) =>
+          Future
+            .successful(
+              DatasetRegistration(
+                datasetId = -1,
+                registry = DatasetRegistry.NONE,
+                value = ""
+              )
+            )
+            .toEitherT
+      }
+    } yield Some(registration)
+  }
+
+  def unregisterOrcidWork(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    user: User
+  ): EitherT[Future, CoreError, Option[Boolean]] = {
+    logger.info("unregistering publication at ORCID")
+    for {
+      registration <- secureContainer.datasetManager
+        .getRegistration(dataset, DatasetRegistry.ORCID)
+      orcidAuthorization = user.orcidAuthorization.get
+
+      _ <- registration match {
+        case Some(registration) =>
+          orcidClient
+            .unpublishWork(
+              OrcidWorkUnpublishing(
+                orcidId = orcidAuthorization.orcid,
+                accessToken = orcidAuthorization.accessToken,
+                orcidPutCode = registration.value
+              )
+            )
+            .toEitherT
+        case None =>
+          Future.successful(false).toEitherT
+      }
+
+      removed <- secureContainer.datasetManager
+        .removeRegistration(dataset, DatasetRegistry.ORCID)
+
+    } yield Some(removed)
+  }
+
+  def registerPublication(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    user: User,
+    completion: PublishCompleteRequest,
+    publicationStatus: DatasetPublicationStatus
+  ): EitherT[Future, CoreError, Seq[DatasetRegistration]] = {
+    logger.info("registering publication at external registries")
+    for {
+      registration <- if (completion.success && registrableEvent(
+          publicationStatus
+        ) && orcidAuthorized(user)) {
+        registerOrcidWork(secureContainer, dataset, user)
+      } else {
+        Future.successful(None).toEitherT
+      }
+
+      result = registration match {
+        case Some(registration) => List(registration)
+        case None => List.empty[DatasetRegistration]
+      }
+
+    } yield result
+  }
+
+  def unregisterPublication(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    user: User
+  ): EitherT[Future, CoreError, Unit] = {
+    logger.info("unregistering publication at external registries")
+    for {
+      _ <- if (orcidAuthorized(user)) {
+        unregisterOrcidWork(secureContainer, dataset, user)
+      } else {
+        Future.successful(()).toEitherT
+      }
+    } yield ()
   }
 
   val publishComplete: OperationBuilder = (apiOperation[Unit]("publishComplete")
@@ -3624,6 +3822,37 @@ class DataSetsController(
                   )
               case _ => EitherT.rightT[Future, ActionResult](())
             }
+
+            // register publication with external sites/registries
+            _ <- registerPublication(
+              secureContainer,
+              dataset,
+              owner,
+              body,
+              publicationStatus
+            ).value
+              .flatMap {
+                case Left(error) =>
+                  logger.info(
+                    s"publication registration failed with error: ${error}"
+                  )
+                  Future.successful(())
+                case Right(registrations) =>
+                  registrations.length match {
+                    case 0 =>
+                      logger.info(
+                        "publication was not registered with any registries"
+                      )
+                    case count: Int =>
+                      logger.info(
+                        s"publication was registered with ${count} registries"
+                      )
+                  }
+
+                  Future.successful(())
+              }
+              .toEitherT
+              .coreErrorToActionResult()
 
           } yield ()
           else EitherT.rightT[Future, ActionResult](())
