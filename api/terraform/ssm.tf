@@ -384,3 +384,9 @@ resource "aws_ssm_parameter" "identity_token_pool_id" {
   type  = "String"
   value = data.terraform_remote_state.upload_service_v2.outputs.identity_pool_id
 }
+
+resource "aws_ssm_parameter" "publishing_default_workflow" {
+  name  = "/${var.environment_name}/${var.service_name}/publishing-default-workflow"
+  type  = "String"
+  value = var.publishing_default_workflow
+}

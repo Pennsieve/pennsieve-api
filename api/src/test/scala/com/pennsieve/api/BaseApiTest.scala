@@ -188,6 +188,10 @@ trait ApiSuite
         "pennsieve.changelog.sns_topic",
         ConfigValueFactory.fromAnyRef("integration-events")
       )
+      .withValue(
+        "pennsieve.publishing.default_workflow",
+        ConfigValueFactory.fromAnyRef("5")
+      )
 
     insecureContainer = new InsecureContainer(config) with TestCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
