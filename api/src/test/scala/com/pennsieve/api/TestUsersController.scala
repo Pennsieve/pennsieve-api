@@ -35,6 +35,7 @@ import com.pennsieve.helpers.{
 }
 import com.pennsieve.models.DBPermission.Delete
 import com.pennsieve.models.{ DateVersion, Degree, OrcidAuthorization, User }
+import com.typesafe.scalalogging.Logger
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 

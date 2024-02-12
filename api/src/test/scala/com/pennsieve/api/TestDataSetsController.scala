@@ -49,6 +49,7 @@ import com.pennsieve.notifications.{
   NotificationMessage
 }
 import com.pennsieve.traits.PostgresProfile.api._
+import com.typesafe.scalalogging.Logger
 import io.circe.parser.decode
 import io.circe.syntax.EncoderOps
 import org.apache.commons.io.FileUtils

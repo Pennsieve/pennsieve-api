@@ -32,6 +32,7 @@ import com.pennsieve.models.{
   OrcidAuthorization,
   User
 }
+import com.typesafe.scalalogging.Logger
 
 import scala.concurrent.Future
 
