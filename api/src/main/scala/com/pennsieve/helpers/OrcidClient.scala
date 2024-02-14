@@ -204,7 +204,7 @@ class OrcidClientImpl(
       case Some(putCode: String) =>
         HttpRequest(
           method = HttpMethods.PUT,
-          uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work" + "/" + putCode,
+          uri = orcidClientConfig.updateProfileBaseUrl + "/" + work.orcidId + "/work" + "/" + putCode,
           headers = List(
             Accept(MediaTypes.`application/json`),
             Authorization(OAuth2BearerToken(work.accessToken))
@@ -214,7 +214,7 @@ class OrcidClientImpl(
       case None =>
         HttpRequest(
           method = HttpMethods.POST,
-          uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work",
+          uri = orcidClientConfig.updateProfileBaseUrl + "/" + work.orcidId + "/work",
           headers = List(
             Accept(MediaTypes.`application/json`),
             Authorization(OAuth2BearerToken(work.accessToken))
