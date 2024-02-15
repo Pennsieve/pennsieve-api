@@ -46,7 +46,7 @@ case class OrcidWorkPublishing(
   orcidId: String,
   accessToken: String,
   orcidPutCode: Option[String],
-  publishedDatasetId: Int,
+  publishedDatasetId: Option[Int],
   title: String,
   subTitle: String,
   doi: Option[String]
@@ -190,10 +190,12 @@ class OrcidClientImpl(
             )
           case None => List.empty[OrcidExternalId]
         }),
-      url = OrcidTitleValue(
-        value =
-          s"https://${orcidClientConfig.discoverAppHost}/datasets/${work.publishedDatasetId}"
-      )
+      url = OrcidTitleValue(value = work.publishedDatasetId match {
+        case Some(publishedDatasetId: Int) =>
+          s"https://${orcidClientConfig.discoverAppHost}/datasets/${publishedDatasetId}"
+        case None =>
+          s"https://${orcidClientConfig.discoverAppHost}"
+      })
     )
 
     logger.info(

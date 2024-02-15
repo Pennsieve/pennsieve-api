@@ -3502,7 +3502,8 @@ class DataSetsController(
   def registerOrcidWork(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
-    user: User
+    user: User,
+    publishedDatasetId: Option[Int]
   ): EitherT[Future, CoreError, Option[DatasetRegistration]] = {
     logger.info("registering publication at ORCID")
     for {
@@ -3546,7 +3547,7 @@ class DataSetsController(
             orcidId = orcidAuthorization.orcid,
             accessToken = orcidAuthorization.accessToken,
             orcidPutCode = registrationValue,
-            publishedDatasetId = dataset.id,
+            publishedDatasetId = publishedDatasetId,
             title = dataset.name,
             subTitle = dataset.description.get,
             doi = doi
@@ -3628,7 +3629,12 @@ class DataSetsController(
       registration <- if (completion.success && registrableEvent(
           publicationStatus
         ) && orcidAuthorized(user)) {
-        registerOrcidWork(secureContainer, dataset, user)
+        registerOrcidWork(
+          secureContainer,
+          dataset,
+          user,
+          completion.publishedDatasetId
+        )
       } else {
         Future.successful(None).toEitherT
       }
