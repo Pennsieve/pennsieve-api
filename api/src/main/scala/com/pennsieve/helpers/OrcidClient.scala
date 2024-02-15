@@ -249,22 +249,29 @@ class OrcidClientImpl(
   }
 
   def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean] = {
+    logger.info(s"OrcidClient.unpublishWork() OrcidWorkUnpublishing: ${work}")
+
     val request = HttpRequest(
       method = HttpMethods.DELETE,
-      uri = orcidClientConfig.updateProfileBaseUrl + work.orcidId + "/work" + "/" + work.orcidPutCode,
+      uri = orcidClientConfig.updateProfileBaseUrl + "/" + work.orcidId + "/work" + "/" + work.orcidPutCode,
       headers = List(
         Accept(MediaTypes.`application/json`),
         Authorization(OAuth2BearerToken(work.accessToken))
       )
     )
 
+    logger.info(s"OrcidClient.unpublishWork() HttpRequest: ${request}")
+
     httpClient
       .singleRequest(request)
-      .flatMap {
-        case HttpResponse(StatusCodes.NoContent, headers, _, _) =>
-          Future.successful(true)
-        case _ =>
-          Future.failed(PredicateError("ORCID Work not removed"))
+      .flatMap { response: HttpResponse =>
+        logger.info(s"OrcidClient.unpublishWork() HttpResponse: ${response}")
+        response match {
+          case HttpResponse(StatusCodes.NoContent, headers, _, _) =>
+            Future.successful(true)
+          case _ =>
+            Future.failed(PredicateError("ORCID Work not removed"))
+        }
       }
   }
 
