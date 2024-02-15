@@ -3596,6 +3596,8 @@ class DataSetsController(
         .getRegistration(dataset, DatasetRegistry.ORCID)
       orcidAuthorization = user.orcidAuthorization.get
 
+      _ = logger.info(s"unregistering registration: ${registration}")
+
       _ <- registration match {
         case Some(registration) =>
           orcidClient
