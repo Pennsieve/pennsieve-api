@@ -9807,7 +9807,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   }
 
-  test("orcid work json encoding") {
+  test("orcid work json encoding - add record") {
     val json =
       """
         |{
@@ -9847,6 +9847,57 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         )
       ),
       url = OrcidTitleValue(value = "???")
+    )
+
+    val encoded = orcidWork.asJson
+
+    encoded.toString.filterNot(_.isWhitespace) shouldEqual (json.filterNot(
+      _.isWhitespace
+    ))
+  }
+
+  test("orcid work json encoding - update record") {
+    val json =
+      """
+        |{
+        |  "title" : {
+        |    "title" : { "value" : "title" },
+        |    "subtitle" : { "value" : "subtitle" }
+        |  },
+        |  "type" : "data-set",
+        |  "external-ids" : {
+        |    "external-id" : [
+        |      {
+        |        "external-id-type" : "???",
+        |        "external-id-value" : "???",
+        |        "external-id-relationship" : "???",
+        |        "external-id-url" : { "value" : "???" }
+        |      }
+        |    ]
+        |  },
+        |  "url" : { "value" : "???" },
+        |  "put-code" : "1234567"
+        |}
+        |""".stripMargin
+
+    val orcidWork = OrcidWork(
+      title = OrcidTitle(
+        title = OrcidTitleValue(value = "title"),
+        subtitle = OrcidTitleValue(value = "subtitle")
+      ),
+      `type` = "data-set",
+      externalIds = OricdExternalIds(
+        externalId = List(
+          OrcidExternalId(
+            externalIdType = "???",
+            externalIdValue = "???",
+            externalIdUrl = OrcidTitleValue(value = "???"),
+            externalIdRelationship = "???"
+          )
+        )
+      ),
+      url = OrcidTitleValue(value = "???"),
+      putCode = Some("1234567")
     )
 
     val encoded = orcidWork.asJson
