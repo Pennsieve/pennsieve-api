@@ -195,7 +195,8 @@ class OrcidClientImpl(
           s"https://${orcidClientConfig.discoverAppHost}/datasets/${publishedDatasetId}"
         case None =>
           s"https://${orcidClientConfig.discoverAppHost}"
-      })
+      }),
+      putCode = work.orcidPutCode
     )
 
     logger.info(

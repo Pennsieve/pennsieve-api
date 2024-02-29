@@ -91,17 +91,22 @@ case class OrcidWork(
   title: OrcidTitle,
   `type`: String,
   externalIds: OricdExternalIds,
-  url: OrcidTitleValue
+  url: OrcidTitleValue,
+  putCode: Option[String] = None
 )
 
 object OrcidWork {
   implicit val encoder: Encoder[OrcidWork] = new Encoder[OrcidWork] {
-    final def apply(a: OrcidWork): Json = Json.obj(
-      ("title", a.title.asJson),
-      ("type", Json.fromString(a.`type`)),
-      ("external-ids", a.externalIds.asJson),
-      ("url", a.url.asJson)
-    )
+    final def apply(a: OrcidWork): Json =
+      Json
+        .obj(
+          ("title", a.title.asJson),
+          ("type", Json.fromString(a.`type`)),
+          ("external-ids", a.externalIds.asJson),
+          ("url", a.url.asJson),
+          ("put-code", a.putCode.asJson)
+        )
+        .dropNullValues
   }
   implicit val decoder: Decoder[OrcidWork] = deriveDecoder[OrcidWork]
 }
