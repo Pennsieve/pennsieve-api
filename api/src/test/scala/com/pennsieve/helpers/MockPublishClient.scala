@@ -102,7 +102,7 @@ class MockPublishClient(
             status = PublishStatus.PublishInProgress,
             lastPublishedDate = None,
             sponsorship = None,
-            workflowId = 4
+            workflowId = body.workflowId.get // return whatever was asked
           )
         )
       )
