@@ -293,6 +293,7 @@ trait ApiSuite
 
   var secureContainer: SecureAPIContainer = _
   var secureContainerGuest: SecureAPIContainer = _
+  var secureContainerSuperAdmin: SecureAPIContainer = _
   var secureDataSetManager: DatasetManager = _
   var sandboxUserContainer: SecureAPIContainer = _
 
@@ -468,6 +469,8 @@ trait ApiSuite
     secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
     secureContainerGuest =
       secureContainerBuilder(guestUser, loggedInOrganization)
+    secureContainerSuperAdmin =
+      secureContainerBuilder(superAdminUser, loggedInOrganization)
 
     secureDataSetManager = secureContainer.datasetManager
     fileManager = secureContainer.fileManager
