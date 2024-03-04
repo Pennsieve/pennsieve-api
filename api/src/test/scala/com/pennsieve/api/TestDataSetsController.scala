@@ -16,20 +16,25 @@
 
 package com.pennsieve.api
 
+import akka.Done
+
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.aws.email.LoggingEmailer
 import com.pennsieve.clients.{ MockDatasetAssetClient, MockModelServiceClient }
+import com.pennsieve.core.utilities.InsecureContainer
 import com.pennsieve.db.TeamsMapper
 import com.pennsieve.db.OrganizationTeamMapper
 import com.pennsieve.discover.client.definitions.DatasetPublishStatus
 import com.pennsieve.doi.client.definitions._
 import com.pennsieve.doi.models.{ DoiDTO, DoiState }
+import com.pennsieve.domain.CoreError
 import com.pennsieve.dtos.SimpleFileDTO.TypeToSimpleFile
 import com.pennsieve.dtos._
 import com.pennsieve.helpers.APIContainers.SecureAPIContainer
@@ -49,6 +54,7 @@ import com.pennsieve.notifications.{
   NotificationMessage
 }
 import com.pennsieve.traits.PostgresProfile.api._
+import com.typesafe.config.ConfigValueFactory
 import com.typesafe.scalalogging.Logger
 import io.circe.parser.decode
 import io.circe.syntax.EncoderOps
@@ -62,6 +68,7 @@ import org.scalatest.OptionValues._
 import org.scalatra.test.{ BytesPart, FilePart }
 
 import java.time.ZonedDateTime
+import java.util.UUID
 import scala.concurrent.Future
 
 class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
@@ -81,6 +88,19 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   implicit val zonedDateTimeOrdering: Ordering[ZonedDateTime] =
     Ordering.by(_.toInstant)
+
+//  private val NotificationsQueueUrl: String =
+//    insecureContainer.config.getString("sqs.notifications_queue")
+
+  private def sendNotification(
+    notification: NotificationMessage
+  ): EitherT[Future, CoreError, Done] =
+    mockSqsClient
+      .send(
+        insecureContainer.config.getString("sqs.notifications_queue"),
+        notification.asJson.noSpaces
+      )
+      .map(_ => Done)
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -10148,5 +10168,337 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
 
     registrationRemoved shouldEqual (true)
+  }
+
+  test("publishing workflow is 5 by default") {
+    // config is set to "5" meaning: workflow 5 will be used
+    // the organization feature flag is not a factor
+
+    val dataset: Dataset =
+      initializePublicationTest(
+        assignPublisherUserDirectlyToDataset = true,
+        orcidScope = Some("/read-limited /activities/update")
+      ).copy(
+        bannerId = Some(UUID.randomUUID()),
+        readmeId = Some(UUID.randomUUID())
+      )
+
+    val validated = ValidatedPublicationStatusRequest(
+      publicationStatus = PublicationStatus.Requested,
+      publicationType = PublicationType.Publication,
+      dataset = dataset,
+      owner = loggedInUser,
+      embargoReleaseDate = None
+    )
+
+    val contributors = secureContainer.datasetManager
+      .getContributors(dataset)
+      .map(_.map(ContributorDTO(_)))
+      .await
+      .value
+
+    val collections = secureContainer.datasetManager
+      .getCollections(validated.dataset)
+      .map(_.map(CollectionDTO(_)))
+      .await
+      .value
+
+    val publicationInfo = DataSetPublishingHelper
+      .gatherPublicationInfo(validated, contributors, true)
+      .await
+      .value
+
+    val externalPublications = secureContainer.externalPublicationManager
+      .get(validated.dataset)
+      .await
+      .value
+
+    val defaultPublishingWorkflow = insecureContainer.config.getString(
+      "pennsieve.publishing.default_workflow"
+    )
+
+    defaultPublishingWorkflow shouldEqual (PublishingWorkflows.Version5.toString)
+
+    val response = DataSetPublishingHelper
+      .sendPublishRequest(
+        secureContainer,
+        dataset = validated.dataset,
+        owner = validated.owner,
+        ownerBearerToken = loggedInJwt,
+        ownerOrcid = publicationInfo.ownerOrcid,
+        description = publicationInfo.description,
+        license = publicationInfo.license,
+        contributors = contributors.toList,
+        embargo = (validated.publicationType == PublicationType.Embargo),
+        modelServiceClient = new MockModelServiceClient(),
+        publishClient = mockPublishClient,
+        sendNotification = sendNotification,
+        embargoReleaseDate = validated.embargoReleaseDate,
+        collections = collections,
+        externalPublications = externalPublications,
+        defaultPublishingWorkflow = defaultPublishingWorkflow
+      )
+      .await
+      .value
+
+    response.workflowId shouldEqual (PublishingWorkflows.Version5)
+  }
+
+  test("publishing workflow can be set to 4 in config") {
+    // config is set to "4" meaning: workflow 4 will be used
+    // the organization feature flag is not a factor
+
+    val insecureContainer = new InsecureContainer(
+      config.withValue(
+        "pennsieve.publishing.default_workflow",
+        ConfigValueFactory.fromAnyRef("4")
+      )
+    ) with TestCoreContainer
+
+    val dataset: Dataset =
+      initializePublicationTest(
+        assignPublisherUserDirectlyToDataset = false,
+        orcidScope = Some("/read-limited /activities/update")
+      ).copy(
+        bannerId = Some(UUID.randomUUID()),
+        readmeId = Some(UUID.randomUUID())
+      )
+
+    val validated = ValidatedPublicationStatusRequest(
+      publicationStatus = PublicationStatus.Requested,
+      publicationType = PublicationType.Publication,
+      dataset = dataset,
+      owner = loggedInUser,
+      embargoReleaseDate = None
+    )
+
+    val contributors = secureContainer.datasetManager
+      .getContributors(dataset)
+      .map(_.map(ContributorDTO(_)))
+      .await
+      .value
+
+    val collections = secureContainer.datasetManager
+      .getCollections(validated.dataset)
+      .map(_.map(CollectionDTO(_)))
+      .await
+      .value
+
+    val publicationInfo = DataSetPublishingHelper
+      .gatherPublicationInfo(validated, contributors, true)
+      .await
+      .value
+
+    val externalPublications = secureContainer.externalPublicationManager
+      .get(validated.dataset)
+      .await
+      .value
+
+    val defaultPublishingWorkflow = insecureContainer.config.getString(
+      "pennsieve.publishing.default_workflow"
+    )
+
+    defaultPublishingWorkflow shouldEqual (PublishingWorkflows.Version4.toString)
+
+    val response = DataSetPublishingHelper
+      .sendPublishRequest(
+        secureContainer,
+        dataset = validated.dataset,
+        owner = validated.owner,
+        ownerBearerToken = loggedInJwt,
+        ownerOrcid = publicationInfo.ownerOrcid,
+        description = publicationInfo.description,
+        license = publicationInfo.license,
+        contributors = contributors.toList,
+        embargo = (validated.publicationType == PublicationType.Embargo),
+        modelServiceClient = new MockModelServiceClient(),
+        publishClient = mockPublishClient,
+        sendNotification = sendNotification,
+        embargoReleaseDate = validated.embargoReleaseDate,
+        collections = collections,
+        externalPublications = externalPublications,
+        defaultPublishingWorkflow = defaultPublishingWorkflow
+      )
+      .await
+      .value
+
+    response.workflowId shouldEqual (PublishingWorkflows.Version4)
+  }
+
+  test("publishing workflow is determined by feature flag to be 4") {
+    // config is set to "flag" meaning: check for the feature flag
+    // if the organization has the feature flag enabled, then workflow is 5
+    // else the workflow is 4
+    // in this test, the organization does not have the feature flag enabled
+
+    val insecureContainer = new InsecureContainer(
+      config.withValue(
+        "pennsieve.publishing.default_workflow",
+        ConfigValueFactory.fromAnyRef("flag")
+      )
+    ) with TestCoreContainer
+
+    val dataset: Dataset =
+      initializePublicationTest(
+        assignPublisherUserDirectlyToDataset = false,
+        orcidScope = Some("/read-limited /activities/update")
+      ).copy(
+        bannerId = Some(UUID.randomUUID()),
+        readmeId = Some(UUID.randomUUID())
+      )
+
+    val validated = ValidatedPublicationStatusRequest(
+      publicationStatus = PublicationStatus.Requested,
+      publicationType = PublicationType.Publication,
+      dataset = dataset,
+      owner = loggedInUser,
+      embargoReleaseDate = None
+    )
+
+    val contributors = secureContainer.datasetManager
+      .getContributors(dataset)
+      .map(_.map(ContributorDTO(_)))
+      .await
+      .value
+
+    val collections = secureContainer.datasetManager
+      .getCollections(validated.dataset)
+      .map(_.map(CollectionDTO(_)))
+      .await
+      .value
+
+    val publicationInfo = DataSetPublishingHelper
+      .gatherPublicationInfo(validated, contributors, true)
+      .await
+      .value
+
+    val externalPublications = secureContainer.externalPublicationManager
+      .get(validated.dataset)
+      .await
+      .value
+
+    val defaultPublishingWorkflow = insecureContainer.config.getString(
+      "pennsieve.publishing.default_workflow"
+    )
+
+    defaultPublishingWorkflow shouldEqual ("flag")
+
+    val response = DataSetPublishingHelper
+      .sendPublishRequest(
+        secureContainer,
+        dataset = validated.dataset,
+        owner = validated.owner,
+        ownerBearerToken = loggedInJwt,
+        ownerOrcid = publicationInfo.ownerOrcid,
+        description = publicationInfo.description,
+        license = publicationInfo.license,
+        contributors = contributors.toList,
+        embargo = (validated.publicationType == PublicationType.Embargo),
+        modelServiceClient = new MockModelServiceClient(),
+        publishClient = mockPublishClient,
+        sendNotification = sendNotification,
+        embargoReleaseDate = validated.embargoReleaseDate,
+        collections = collections,
+        externalPublications = externalPublications,
+        defaultPublishingWorkflow = defaultPublishingWorkflow
+      )
+      .await
+      .value
+
+    response.workflowId shouldEqual (PublishingWorkflows.Version4)
+  }
+
+  test("publishing workflow is determined by feature flag to be 5") {
+    // config is set to "flag" meaning: check for the feature flag
+    // if the organization has the feature flag enabled, then workflow is 5
+    // else the workflow is 4
+    // in this test, the organization does have the feature flag enabled
+
+    val insecureContainer = new InsecureContainer(
+      config.withValue(
+        "pennsieve.publishing.default_workflow",
+        ConfigValueFactory.fromAnyRef("flag")
+      )
+    ) with TestCoreContainer
+
+    val _ = secureContainerSuperAdmin.organizationManager
+      .setFeatureFlag(
+        FeatureFlag(
+          organizationId = secureContainer.organization.id,
+          feature = Feature.Publishing50Feature,
+          enabled = true
+        )
+      )
+      .await
+      .value
+
+    val dataset: Dataset =
+      initializePublicationTest(
+        assignPublisherUserDirectlyToDataset = false,
+        orcidScope = Some("/read-limited /activities/update")
+      ).copy(
+        bannerId = Some(UUID.randomUUID()),
+        readmeId = Some(UUID.randomUUID())
+      )
+
+    val validated = ValidatedPublicationStatusRequest(
+      publicationStatus = PublicationStatus.Requested,
+      publicationType = PublicationType.Publication,
+      dataset = dataset,
+      owner = loggedInUser,
+      embargoReleaseDate = None
+    )
+
+    val contributors = secureContainer.datasetManager
+      .getContributors(dataset)
+      .map(_.map(ContributorDTO(_)))
+      .await
+      .value
+
+    val collections = secureContainer.datasetManager
+      .getCollections(validated.dataset)
+      .map(_.map(CollectionDTO(_)))
+      .await
+      .value
+
+    val publicationInfo = DataSetPublishingHelper
+      .gatherPublicationInfo(validated, contributors, true)
+      .await
+      .value
+
+    val externalPublications = secureContainer.externalPublicationManager
+      .get(validated.dataset)
+      .await
+      .value
+
+    val defaultPublishingWorkflow = insecureContainer.config.getString(
+      "pennsieve.publishing.default_workflow"
+    )
+
+    defaultPublishingWorkflow shouldEqual ("flag")
+
+    val response = DataSetPublishingHelper
+      .sendPublishRequest(
+        secureContainer,
+        dataset = validated.dataset,
+        owner = validated.owner,
+        ownerBearerToken = loggedInJwt,
+        ownerOrcid = publicationInfo.ownerOrcid,
+        description = publicationInfo.description,
+        license = publicationInfo.license,
+        contributors = contributors.toList,
+        embargo = (validated.publicationType == PublicationType.Embargo),
+        modelServiceClient = new MockModelServiceClient(),
+        publishClient = mockPublishClient,
+        sendNotification = sendNotification,
+        embargoReleaseDate = validated.embargoReleaseDate,
+        collections = collections,
+        externalPublications = externalPublications,
+        defaultPublishingWorkflow = defaultPublishingWorkflow
+      )
+      .await
+      .value
+
+    response.workflowId shouldEqual (PublishingWorkflows.Version5)
   }
 }

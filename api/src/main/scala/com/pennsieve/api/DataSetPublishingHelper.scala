@@ -81,6 +81,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
 
 object PublishingWorkflows {
+  val Version4: Long = 4
   val Version5: Long = 5
 }
 
@@ -897,7 +898,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     sendNotification: NotificationMessage => EitherT[Future, CoreError, Done],
     embargoReleaseDate: Option[LocalDate] = None,
     collections: Seq[CollectionDTO],
-    externalPublications: Seq[ExternalPublication]
+    externalPublications: Seq[ExternalPublication],
+    defaultPublishingWorkflow: String
   )(implicit
     ec: ExecutionContext,
     system: ActorSystem,
@@ -925,6 +927,17 @@ case object DataSetPublishingHelper extends LazyLogging {
 
       newWorkflowEnabled <- secureContainer.organizationManager
         .hasFeatureFlagEnabled(organization.id, Feature.Publishing50Feature)
+
+      workflowId = defaultPublishingWorkflow match {
+        case "4" => Some(PublishingWorkflows.Version4)
+        case "5" => Some(PublishingWorkflows.Version5)
+        case "flag" =>
+          newWorkflowEnabled match {
+            case true => Some(PublishingWorkflows.Version5)
+            case false => Some(PublishingWorkflows.Version4)
+          }
+        case _ => Some(PublishingWorkflows.Version5)
+      }
 
       discoverRequest = PublishRequest(
         name = dataset.name,
@@ -961,10 +974,7 @@ case object DataSetPublishingHelper extends LazyLogging {
             )
             .toVector
         ),
-        workflowId = newWorkflowEnabled match {
-          case true => Some(PublishingWorkflows.Version5)
-          case false => None
-        }
+        workflowId = workflowId
       )
 
       _ = logger.info(

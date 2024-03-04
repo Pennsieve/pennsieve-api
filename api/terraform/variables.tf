@@ -70,6 +70,10 @@ variable "newrelic_agent_enabled" {
   default = "true"
 }
 
+variable "publishing_default_workflow" {
+  default = "5"
+}
+
 locals {
   java_opts = [
     "-javaagent:/usr/local/tomcat/newrelic/newrelic.jar",

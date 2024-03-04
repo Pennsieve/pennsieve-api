@@ -3287,6 +3287,10 @@ class DataSetsController(
                   .gatherPublicationInfo(validated, contributors, isPublisher)
                   .coreErrorToActionResult()
 
+                defaultPublishingWorkflow = insecureContainer.config.getString(
+                  "pennsieve.publishing.default_workflow"
+                )
+
                 _ <- DataSetPublishingHelper
                   .sendPublishRequest(
                     secureContainer,
@@ -3303,7 +3307,8 @@ class DataSetsController(
                     sendNotification = sendNotification,
                     embargoReleaseDate = validated.embargoReleaseDate,
                     collections = collections,
-                    externalPublications = externalPublications
+                    externalPublications = externalPublications,
+                    defaultPublishingWorkflow = defaultPublishingWorkflow
                   )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
