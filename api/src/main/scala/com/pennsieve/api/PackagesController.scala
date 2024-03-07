@@ -630,7 +630,7 @@ class PackagesController(
           )
 
         hasWorkflow = sources
-          .map(_.s3Key)
+          .map(_.name)
           .map(FileUpload.apply)
           .exists(_.info.hasWorkflow)
 

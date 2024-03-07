@@ -4063,7 +4063,7 @@ class TestPackagesController
 
     fileManager
       .create(
-        "file",
+        "file.bfts",
         FileType.BFTS,
         pkg,
         "bucket",
@@ -4101,7 +4101,7 @@ class TestPackagesController
 
     val unprocessedSource = fileManager
       .create(
-        "file",
+        "file.bfts",
         FileType.BFTS,
         pkg,
         "bucket",
@@ -4115,7 +4115,7 @@ class TestPackagesController
 
     val processedSource = fileManager
       .create(
-        "file",
+        "file.bfts",
         FileType.BFTS,
         pkg,
         "bucket",
