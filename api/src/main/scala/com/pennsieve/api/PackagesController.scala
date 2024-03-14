@@ -1063,7 +1063,7 @@ class PackagesController(
     val jobId: UUID = UUID.randomUUID
 
     val fileType =
-      PackagePreview.getFileType(sources.map(_.s3Key).map(FileUpload.apply))
+      PackagePreview.getFileType(sources.map(_.name).map(FileUpload.apply))
 
     for {
       encryptionKey <- utilities
