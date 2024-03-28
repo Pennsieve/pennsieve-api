@@ -18,7 +18,7 @@ ThisBuild / credentials += Credentials(
 // See https://app.clickup.com/t/a8ned9
 ThisBuild / useCoursier := false
 
-ThisBuild / scalaVersion := "2.13.8"
+ThisBuild / scalaVersion := "2.13.13"
 ThisBuild / organization := "com.pennsieve"
 ThisBuild / organizationName := "University of Pennsylvania"
 ThisBuild / licenses := List(
