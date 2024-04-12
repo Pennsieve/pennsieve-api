@@ -71,6 +71,10 @@ object PackagesExport extends LazyLogging {
     implicit val publishContainer: PublishContainer = container
     logger.info("exporting package sources (for 5x)")
 
+    // TODO: get `maxPartSize` from config
+    val multipartUploader =
+      MultipartUploader(container.s3Client, 5 * 1024 * 1024 * 1024)
+
     // get all Packages and transform into PackageFile and FileManifest
     val (currentPackageFileListF, currentFileManifestsF) = PackagesSource()
       .withAttributes(ActorAttributes.supervisionStrategy(supervision))
@@ -90,9 +94,9 @@ object PackagesExport extends LazyLogging {
         currentFileManifests,
         currentPackageFileList
       ).map { fileAction =>
-          logger.info(s"exportPackageSources5x() fileAction: ${fileAction}")
-          fileAction
-        }
+        logger.info(s"exportPackageSources5x() fileAction: ${fileAction}")
+        fileAction
+      }
 
       // Write FileActionList to S3 (will be used by Cleanup Job on failure)
       fileActionListUpload = Storage.uploadToS3(
@@ -105,7 +109,7 @@ object PackagesExport extends LazyLogging {
       // Perform File Actions on S3 (copy, delete, keep)
       (manifestF, nodeIdMapF) = Source(fileActions)
         .withAttributes(ActorAttributes.supervisionStrategy(supervision))
-        .via(ExecuteS3ObjectActions())
+        .via(ExecuteS3ObjectActions(multipartUploader))
         .alsoToMat(buildFileManifest)(Keep.right)
         .toMat(buildPackageExternalIdMap)(Keep.both)
         .run()

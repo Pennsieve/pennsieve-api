@@ -42,6 +42,7 @@ import scala.util.{ Failure, Success }
 
 object ExecuteS3ObjectActions extends LazyLogging {
   def apply(
+             multipartUploader: MultipartUploader
   )(implicit
     container: PublishContainer,
     ec: ExecutionContext,
@@ -54,7 +55,11 @@ object ExecuteS3ObjectActions extends LazyLogging {
         logger.info(s"ExecuteS3ObjectActions() fileAction: ${fileAction}")
         fileAction match {
           case copyAction: CopyAction =>
-            retry(() => copyFile(copyAction), attempts = 5, delay = 5.second)
+            retry(
+              () => copyFile(copyAction, multipartUploader),
+              attempts = 5,
+              delay = 5.second
+            )
           case deleteAction: DeleteAction =>
             retry(
               () => deleteFile(deleteAction),
@@ -68,7 +73,8 @@ object ExecuteS3ObjectActions extends LazyLogging {
   }
 
   def copyFile(
-    copyAction: CopyAction
+    copyAction: CopyAction,
+    multipartUploader: MultipartUploader
   )(implicit
     container: PublishContainer,
     ec: ExecutionContext,
@@ -77,25 +83,17 @@ object ExecuteS3ObjectActions extends LazyLogging {
     logger
       .info(s"Copying ${fromUrl(copyAction)} to ${toUrl(copyAction)}")
 
-    val multipartCopyF = S3
-      .multipartCopy(
-        sourceBucket = copyAction.file.s3Bucket,
-        sourceKey = copyAction.file.s3Key,
-        targetBucket = copyAction.toBucket,
-        targetKey = copyAction.copyToKey,
-        chunkSize = container.s3CopyChunkSize,
-        chunkingParallelism = container.s3CopyChunkParallelism,
-        s3Headers = S3Headers()
-          .withCustomHeaders(Map("x-amz-request-payer" -> "requester"))
-      )
-      //.mapMaterializedValue(_.map(_ => copyAction))
-      .mapMaterializedValue(result => result)
-      .run()
+    val completedCopyF = multipartUploader.copy(
+      sourceBucket = copyAction.file.s3Bucket,
+      sourceKey = copyAction.file.s3Key,
+      destinationBucket = copyAction.toBucket,
+      destinationKey = copyAction.copyToKey
+    )
 
     for {
-      multipartUploadResult <- multipartCopyF
+      completedCopy <- completedCopyF
       _ = logCopyResult(copyAction)
-    } yield (copyAction.copy(s3VersionId = multipartUploadResult.versionId))
+    } yield (copyAction.copy(s3VersionId = Some(completedCopy.versionId)))
   }
 
   def deleteFile(
