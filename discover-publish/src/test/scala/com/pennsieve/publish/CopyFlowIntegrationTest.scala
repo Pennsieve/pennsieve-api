@@ -40,6 +40,9 @@ import org.scalatest.{
   DoNotDiscover,
   Suite
 }
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.s3.S3Client
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -75,6 +78,7 @@ class CopyFlowIntegrationTest
   implicit var executionContext: ExecutionContext = _
 
   implicit var s3: S3 = _
+  var s3ClientV2: S3Client = _
   var sourceBucketName: String = _
   var targetBucketName: String = _
   var sourceS3Key1: String = _
@@ -136,6 +140,20 @@ class CopyFlowIntegrationTest
         .build()
     }
     s3 = new S3(s3Client)
+
+    s3ClientV2 = {
+      val region = config.as[Option[String]]("s3.region") match {
+        case Some(region) => Region.of(region)
+        case None => Region.US_EAST_1
+      }
+
+      val sharedHttpClient = UrlConnectionHttpClient.builder().build()
+
+      S3Client.builder
+        .region(region)
+        .httpClient(sharedHttpClient)
+        .build
+    }
   }
 
   override def beforeEach(): Unit = {
@@ -157,6 +175,7 @@ class CopyFlowIntegrationTest
       PublishContainer(
         config = config,
         s3 = s3,
+        s3Client = s3ClientV2,
         s3Bucket = publishBucket,
         s3AssetBucket = assetBucket,
         s3Key = testKey,
@@ -184,6 +203,7 @@ class CopyFlowIntegrationTest
       PublishContainer(
         config = config,
         s3 = s3,
+        s3Client = s3ClientV2,
         s3Bucket = embargoBucket,
         s3AssetBucket = assetBucket,
         s3Key = testKey,
@@ -260,9 +280,12 @@ class CopyFlowIntegrationTest
       val copyActions =
         makeCopyActions(9, sourceS3Key1, sourceS3Key2, targetKeyPrefix)
 
+      val multipartUploader =
+        MultipartUploader(s3ClientV2, 5 * 1024 * 1024 * 1024)
+
       Await.result(
         Source(copyActions)
-          .via(ExecuteS3ObjectActions())
+          .via(ExecuteS3ObjectActions(multipartUploader))
           .toMat(Sink.ignore)(Keep.right)
           .run(),
         Duration.Inf

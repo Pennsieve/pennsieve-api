@@ -43,6 +43,9 @@ import org.apache.commons.io.IOUtils
 import org.scalatest.{ Assertion, BeforeAndAfterAll, BeforeAndAfterEach, Suite }
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.s3.S3Client
 
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable
@@ -77,6 +80,7 @@ class TestPublish
   implicit var executionContext: ExecutionContext = _
 
   implicit var s3: S3 = _
+  var s3Client: S3Client = _
   var bucket: Bucket = _
 
   val testOrganization: Organization = sampleOrganization
@@ -147,6 +151,14 @@ class TestPublish
     )
 
     s3 = new S3(s3Container.s3Client)
+    s3Client = {
+      val region = Region.US_EAST_1
+      val sharedHttpClient = UrlConnectionHttpClient.builder().build()
+      S3Client.builder
+        .region(region)
+        .httpClient(sharedHttpClient)
+        .build
+    }
   }
 
   override def beforeEach(): Unit = {
@@ -169,6 +181,7 @@ class TestPublish
       PublishContainer(
         config = config,
         s3 = s3,
+        s3Client = s3Client,
         s3Bucket = publishBucket,
         s3AssetBucket = assetBucket,
         s3Key = testKey,
@@ -196,6 +209,7 @@ class TestPublish
       PublishContainer(
         config = config,
         s3 = s3,
+        s3Client = s3Client,
         s3Bucket = embargoBucket,
         s3AssetBucket = assetBucket,
         s3Key = testKey,

@@ -62,6 +62,9 @@ import org.mockserver.model.HttpResponse.response
 import org.scalamock.matchers.ArgCapture.CaptureAll
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach }
 import org.scalatest.Inspectors._
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.s3.S3Client
 
 import java.util.UUID
 import scala.concurrent.ExecutionContext
@@ -182,6 +185,14 @@ class TestPublishS3Requests
   override def beforeEach(): Unit = {
     mockAmazonS3 = mock[AmazonS3]
     val testS3 = new S3(mockAmazonS3)
+    val s3Client = {
+      val region = Region.US_EAST_1
+      val sharedHttpClient = UrlConnectionHttpClient.builder().build()
+      S3Client.builder
+        .region(region)
+        .httpClient(sharedHttpClient)
+        .build
+    }
 
     testUser = createUser(databaseContainer)
     testDataset = createDatasetWithAssets(databaseContainer = databaseContainer)
@@ -189,6 +200,7 @@ class TestPublishS3Requests
     publishContainer = PublishContainer(
       config = config,
       s3 = testS3,
+      s3Client = s3Client,
       s3Bucket = publishBucket,
       s3AssetBucket = assetBucket,
       s3Key = testKey,

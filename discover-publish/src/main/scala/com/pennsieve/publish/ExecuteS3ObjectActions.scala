@@ -42,7 +42,7 @@ import scala.util.{ Failure, Success }
 
 object ExecuteS3ObjectActions extends LazyLogging {
   def apply(
-             multipartUploader: MultipartUploader
+    multipartUploader: MultipartUploader
   )(implicit
     container: PublishContainer,
     ec: ExecutionContext,
