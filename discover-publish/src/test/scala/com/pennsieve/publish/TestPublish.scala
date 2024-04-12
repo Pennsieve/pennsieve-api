@@ -1438,11 +1438,8 @@ class TestPublish
         )
       )
 
-      val fileActions = PackagesExport.computeFileActions(
-        previousFiles,
-        currentFiles,
-        currentPackageFileList
-      )
+      val fileActions =
+        ComputeFileActions(previousFiles, currentFiles, currentPackageFileList)
 
       val copyAction = CopyAction(
         pkg = pkg1,
@@ -1479,11 +1476,8 @@ class TestPublish
       val currentFiles = List.empty[FileManifest]
       val currentPackageFileList = List.empty[PackageFile]
 
-      val fileActions = PackagesExport.computeFileActions(
-        previousFiles,
-        currentFiles,
-        currentPackageFileList
-      )
+      val fileActions =
+        ComputeFileActions(previousFiles, currentFiles, currentPackageFileList)
 
       val deleteAction = DeleteAction(
         fromBucket = publishContainer.s3Bucket,
@@ -1524,11 +1518,8 @@ class TestPublish
         )
       )
 
-      val fileActions = PackagesExport.computeFileActions(
-        previousFiles,
-        currentFiles,
-        currentPackageFileList
-      )
+      val fileActions =
+        ComputeFileActions(previousFiles, currentFiles, currentPackageFileList)
 
       val keepAction = KeepAction(
         pkg = pkg1,
@@ -1586,11 +1577,8 @@ class TestPublish
         )
       )
 
-      val fileActions = PackagesExport.computeFileActions(
-        previousFiles,
-        currentFiles,
-        currentPackageFileList
-      )
+      val fileActions =
+        ComputeFileActions(previousFiles, currentFiles, currentPackageFileList)
 
       val deleteAction = DeleteAction(
         fromBucket = publishContainer.s3Bucket,
@@ -1655,11 +1643,8 @@ class TestPublish
         )
       )
 
-      val fileActions = PackagesExport.computeFileActions(
-        previousFiles,
-        currentFiles,
-        currentPackageFileList
-      )
+      val fileActions =
+        ComputeFileActions(previousFiles, currentFiles, currentPackageFileList)
 
       val deleteAction = DeleteAction(
         fromBucket = publishContainer.s3Bucket,
@@ -1725,11 +1710,8 @@ class TestPublish
         )
       )
 
-      val fileActions = PackagesExport.computeFileActions(
-        previousFiles,
-        currentFiles,
-        currentPackageFileList
-      )
+      val fileActions =
+        ComputeFileActions(previousFiles, currentFiles, currentPackageFileList)
 
       val copyAction = CopyAction(
         pkg = pkg2,
@@ -1782,11 +1764,8 @@ class TestPublish
         )
       )
 
-      val fileActions = PackagesExport.computeFileActions(
-        previousFiles,
-        currentFiles,
-        currentPackageFileList
-      )
+      val fileActions =
+        ComputeFileActions(previousFiles, currentFiles, currentPackageFileList)
 
       val deleteAction = DeleteAction(
         fromBucket = publishContainer.s3Bucket,
