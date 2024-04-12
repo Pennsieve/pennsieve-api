@@ -28,6 +28,10 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.pennsieve.aws.s3.S3
 import net.ceedubs.ficus.Ficus._
 
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient
+import software.amazon.awssdk.services.s3.S3Client
+
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
 import akka.dispatch.MessageDispatcher
@@ -95,6 +99,20 @@ object Main extends App with StrictLogging {
       )
     }
 
+    val s3Client: S3Client = {
+      val region = config.as[Option[String]]("s3.region") match {
+        case Some(region) => Region.of(region)
+        case None => Region.US_EAST_1
+      }
+
+      val sharedHttpClient = UrlConnectionHttpClient.builder().build()
+
+      S3Client.builder
+        .region(region)
+        .httpClient(sharedHttpClient)
+        .build
+    }
+
     val result: Either[AbstractError, Unit] = for {
       publishAction <- getEnv("PUBLISH_ACTION").flatMap(getPublishAction(_))
       userId <- getEnv("USER_ID").map(_.toInt)
@@ -123,6 +141,7 @@ object Main extends App with StrictLogging {
         PublishContainer.secureContainer(
           config = config,
           s3 = s3,
+          s3Client = s3Client,
           s3Key = s3Key,
           s3Bucket = s3Bucket,
           doi = doi,

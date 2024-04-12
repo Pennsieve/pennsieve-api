@@ -34,9 +34,11 @@ import com.pennsieve.utilities.Container
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
 import org.apache.commons.lang3.StringUtils
+
 import scala.concurrent.{ ExecutionContext, Future }
 import com.pennsieve.core.utilities.DatasetAssetsContainer
 import io.circe.parser.decode
+import software.amazon.awssdk.services.s3.S3Client
 
 case class InsecureDBContainer(config: Config, organization: Organization)
     extends Container
@@ -50,6 +52,7 @@ case class InsecureDBContainer(config: Config, organization: Organization)
 
 trait PublishContainerConfig {
   def s3: S3
+  def s3Client: S3Client
   def s3Bucket: String
   def s3AssetBucket: String
   def s3Key: String
@@ -75,6 +78,7 @@ trait PublishContainerConfig {
 case class PublishContainer(
   config: Config,
   s3: S3,
+  s3Client: S3Client,
   s3Bucket: String,
   s3AssetBucket: String,
   s3Key: String,
@@ -119,6 +123,7 @@ object PublishContainer {
   def secureContainer(
     config: Config,
     s3: S3,
+    s3Client: S3Client,
     s3Key: String,
     s3Bucket: String,
     doi: String,
@@ -188,6 +193,7 @@ object PublishContainer {
       PublishContainer(
         config = config,
         s3 = s3,
+        s3Client = s3Client,
         s3Bucket = s3Bucket,
         s3AssetBucket = config.as[String]("s3.asset-bucket"),
         // Ensure all S3 keys have a trailing slash
