@@ -62,7 +62,7 @@ lazy val auditMiddlewareVersion = "1.0.3"
 lazy val authMiddlewareVersion = "5.1.3"
 
 lazy val awsVersion = "1.11.931"
-lazy val awsV2Version = "2.15.58"
+lazy val awsV2Version = "2.25.19"
 
 lazy val catsVersion = "2.6.1"
 
@@ -617,6 +617,8 @@ lazy val discoverPublishSettings = Seq(
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+    "software.amazon.awssdk" % "s3" % awsV2Version,
+    "software.amazon.awssdk" % "url-connection-client" % awsV2Version,
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
     "org.scalamock" %% "scalamock" % "5.2.0" % Test,
     "org.mock-server" % "mockserver-client-java-no-dependencies" % "5.14.0" % Test
