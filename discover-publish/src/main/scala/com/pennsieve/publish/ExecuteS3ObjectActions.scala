@@ -84,10 +84,12 @@ object ExecuteS3ObjectActions extends LazyLogging {
       .info(s"Copying ${fromUrl(copyAction)} to ${toUrl(copyAction)}")
 
     val completedCopyF = multipartUploader.copy(
-      sourceBucket = copyAction.file.s3Bucket,
-      sourceKey = copyAction.file.s3Key,
-      destinationBucket = copyAction.toBucket,
-      destinationKey = copyAction.copyToKey
+      UploadRequest(
+        sourceBucket = copyAction.file.s3Bucket,
+        sourceKey = copyAction.file.s3Key,
+        destinationBucket = copyAction.toBucket,
+        destinationKey = copyAction.copyToKey
+      )
     )
 
     for {
