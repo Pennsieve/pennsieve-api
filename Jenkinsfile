@@ -132,13 +132,9 @@ def generatePublishContainerStep(String service, String sbt, String imageTag, cr
             unstash name: "${remoteCache}"
 
             // Handle exceptions to standard service deploys
-            // discover-publish and uploads-consumer utilize multiple containers
+            // uploads-consumer utilizes multiple containers
             def images, tag, buildPath
             switch(service) {
-                case 'discover-publish':
-                    (images, tag) = [[service, 'discover-pgdump-postgres'], imageTag]
-                    buildPath = 'discover-publish/'
-                    break
                 case 'uploads-consumer':
                     (images, tag) = [[service, 'clamd'], imageTag]
                     buildPath = 'uploads-consumer/clamd/'
