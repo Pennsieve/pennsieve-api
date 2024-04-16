@@ -608,32 +608,6 @@ lazy val bfAwsSettings = Seq(
   )
 )
 
-lazy val discoverPublishSettings = Seq(
-  name := "discover-publish",
-  libraryDependencies ++= Seq(
-    "com.lightbend.akka" %% "akka-stream-alpakka-s3" % alpakkaVersion,
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-http-xml" % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
-    "org.scalamock" %% "scalamock" % "5.2.0" % Test,
-    "org.mock-server" % "mockserver-client-java-no-dependencies" % "5.14.0" % Test
-  ),
-  excludeDependencies ++= unwantedDependencies,
-  docker / dockerfile := {
-    val artifact: File = assembly.value
-    val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/openjdk:8-alpine3.9") {
-      copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("java", "-jar", artifactTargetPath)
-    }
-  },
-  docker / imageNames := Seq(ImageName("pennsieve/discover-publish:latest")),
-  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
-)
-
 lazy val organizationStorageMigrationSettings =
   Seq(
     name := "organization-storage-migration",
@@ -762,13 +736,6 @@ lazy val `bf-aws` = project
   .settings(bfAwsSettings)
   .enablePlugins(AutomateHeaderPlugin)
 
-lazy val `discover-publish` = project
-  .enablePlugins(sbtdocker.DockerPlugin)
-  .enablePlugins(AutomateHeaderPlugin)
-  .settings(commonSettings: _*)
-  .settings(discoverPublishSettings: _*)
-  .dependsOn(core % "test->test;compile->compile")
-
 lazy val `organization-storage-migration` = project
   .enablePlugins(sbtdocker.DockerPlugin)
   .enablePlugins(AutomateHeaderPlugin)
@@ -809,7 +776,6 @@ lazy val root = (project in file("."))
     `core-models`,
     `core-clients`,
     `bf-aws`,
-    `discover-publish`,
     `unused-organization-migration`,
     `message-templates`,
     `invite-cognito-user`

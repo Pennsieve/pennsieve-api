@@ -66,7 +66,6 @@ timestamps {
                     'admin',
                     'api',
                     'authorization-service',
-                    'discover-publish',
                     'etl-data-cli',
                     'jobs',
                     'uploads-consumer'
