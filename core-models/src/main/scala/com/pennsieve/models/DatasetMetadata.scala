@@ -215,11 +215,13 @@ object DatasetMetadata {
     }
 }
 
-case class FileChecksum(alg: String, ssb: String)
+case class FileManifestChecksum(alg: String, ssb: String)
 
-object FileChecksum {
-  implicit val encoder: Encoder[FileChecksum] = deriveEncoder[FileChecksum]
-  implicit val decoder: Decoder[FileChecksum] = deriveDecoder[FileChecksum]
+object FileManifestChecksum {
+  implicit val encoder: Encoder[FileManifestChecksum] =
+    deriveEncoder[FileManifestChecksum]
+  implicit val decoder: Decoder[FileManifestChecksum] =
+    deriveDecoder[FileManifestChecksum]
 }
 
 case class FileManifest(
@@ -230,7 +232,7 @@ case class FileManifest(
   sourcePackageId: Option[String] = None,
   id: Option[UUID] = None,
   s3VersionId: Option[String] = None,
-  checksum: Option[FileChecksum] = None
+  checksum: Option[FileManifestChecksum] = None
 ) extends Ordered[FileManifest] {
 
   def this(
@@ -240,6 +242,9 @@ case class FileManifest(
     sourcePackageId: Option[String]
   ) =
     this(FilenameUtils.getName(path), path, size, fileType, sourcePackageId)
+
+  def withChecksum(checksum: FileManifestChecksum): FileManifest =
+    this.copy(checksum = Some(checksum))
 
   // Order files lexicographically by path
   def compare(that: FileManifest) =
@@ -260,7 +265,7 @@ object FileManifest {
         sourcePackageId <- c.downField("sourcePackageId").as[Option[String]]
         id <- c.downField("id").as[Option[UUID]]
         s3VersionId <- c.downField("s3VersionId").as[Option[String]]
-        checksum <- c.downField("checksum").as[Option[FileChecksum]]
+        checksum <- c.downField("checksum").as[Option[FileManifestChecksum]]
 
         mappedName = if (name.isEmpty) {
           FilenameUtils.getName(path)
@@ -306,8 +311,7 @@ object FileManifest {
     size: Long,
     fileType: FileType,
     sourcePackageId: Option[String],
-    s3VersionId: Option[String],
-    checksum: Option[FileChecksum] = None
+    s3VersionId: Option[String]
   ): FileManifest = {
     FileManifest(
       name = FilenameUtils.getName(path),
@@ -316,8 +320,7 @@ object FileManifest {
       fileType = fileType,
       sourcePackageId = sourcePackageId,
       id = None,
-      s3VersionId = s3VersionId,
-      checksum = checksum
+      s3VersionId = s3VersionId
     )
   }
 }
