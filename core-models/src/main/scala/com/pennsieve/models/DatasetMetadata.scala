@@ -22,8 +22,8 @@ import io.circe._
 import io.circe.syntax._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import org.apache.commons.io.comparator.NameFileComparator
-import java.time.LocalDate
 
+import java.time.LocalDate
 import cats.syntax.functor._
 import org.apache.commons.io.FilenameUtils
 import io.circe.{ Decoder, DecodingFailure, Encoder, HCursor }
@@ -222,7 +222,8 @@ case class FileManifest(
   fileType: FileType,
   sourcePackageId: Option[String] = None,
   id: Option[UUID] = None,
-  s3VersionId: Option[String] = None
+  s3VersionId: Option[String] = None,
+  sha256: Option[String] = None
 ) extends Ordered[FileManifest] {
 
   def this(
@@ -232,6 +233,9 @@ case class FileManifest(
     sourcePackageId: Option[String]
   ) =
     this(FilenameUtils.getName(path), path, size, fileType, sourcePackageId)
+
+  def withSHA256(value: String): FileManifest =
+    this.copy(sha256 = Some(value))
 
   // Order files lexicographically by path
   def compare(that: FileManifest) =
@@ -252,6 +256,7 @@ object FileManifest {
         sourcePackageId <- c.downField("sourcePackageId").as[Option[String]]
         id <- c.downField("id").as[Option[UUID]]
         s3VersionId <- c.downField("s3VersionId").as[Option[String]]
+        sha256 <- c.downField("sha256").as[Option[String]]
 
         mappedName = if (name.isEmpty) {
           FilenameUtils.getName(path)
@@ -266,7 +271,8 @@ object FileManifest {
           fileType,
           sourcePackageId,
           id,
-          s3VersionId
+          s3VersionId,
+          sha256
         )
       }
   }
@@ -305,7 +311,8 @@ object FileManifest {
       fileType = fileType,
       sourcePackageId = sourcePackageId,
       id = None,
-      s3VersionId = s3VersionId
+      s3VersionId = s3VersionId,
+      sha256 = None
     )
   }
 }

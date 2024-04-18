@@ -94,4 +94,25 @@ class ExternalIdSpec extends AnyWordSpecLike with Matchers {
       Some("N:package:1")
     )
   }
+
+  "A FileManifest with SHA256" in {
+    decode[FileManifest]("""{
+        "name" : "testName",
+        "path" : "packages/brain.dcm",
+        "size" : 15010,
+        "fileType" : "DICOM",
+        "sourcePackageId" : "N:package:1",
+        "s3VersionId": "a1b2c3d4",
+        "sha256": "xcv43dfl=-11"
+    }""").value shouldBe FileManifest(
+      "testName",
+      "packages/brain.dcm",
+      15010,
+      FileType.DICOM,
+      Some("N:package:1"),
+      None,
+      Some("a1b2c3d4"),
+      Some("xcv43dfl=-11")
+    )
+  }
 }
