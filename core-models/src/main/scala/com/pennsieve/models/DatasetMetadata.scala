@@ -22,8 +22,8 @@ import io.circe._
 import io.circe.syntax._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import org.apache.commons.io.comparator.NameFileComparator
-import java.time.LocalDate
 
+import java.time.LocalDate
 import cats.syntax.functor._
 import org.apache.commons.io.FilenameUtils
 import io.circe.{ Decoder, DecodingFailure, Encoder, HCursor }
@@ -215,15 +215,6 @@ object DatasetMetadata {
     }
 }
 
-case class FileManifestChecksum(alg: String, ssb: String)
-
-object FileManifestChecksum {
-  implicit val encoder: Encoder[FileManifestChecksum] =
-    deriveEncoder[FileManifestChecksum]
-  implicit val decoder: Decoder[FileManifestChecksum] =
-    deriveDecoder[FileManifestChecksum]
-}
-
 case class FileManifest(
   name: String,
   path: String,
@@ -232,7 +223,7 @@ case class FileManifest(
   sourcePackageId: Option[String] = None,
   id: Option[UUID] = None,
   s3VersionId: Option[String] = None,
-  checksum: Option[FileManifestChecksum] = None
+  sha256: Option[String] = None
 ) extends Ordered[FileManifest] {
 
   def this(
@@ -243,8 +234,8 @@ case class FileManifest(
   ) =
     this(FilenameUtils.getName(path), path, size, fileType, sourcePackageId)
 
-  def withChecksum(checksum: FileManifestChecksum): FileManifest =
-    this.copy(checksum = Some(checksum))
+  def withSHA256(value: String): FileManifest =
+    this.copy(sha256 = Some(value))
 
   // Order files lexicographically by path
   def compare(that: FileManifest) =
@@ -265,7 +256,7 @@ object FileManifest {
         sourcePackageId <- c.downField("sourcePackageId").as[Option[String]]
         id <- c.downField("id").as[Option[UUID]]
         s3VersionId <- c.downField("s3VersionId").as[Option[String]]
-        checksum <- c.downField("checksum").as[Option[FileManifestChecksum]]
+        sha256 <- c.downField("sha256").as[Option[String]]
 
         mappedName = if (name.isEmpty) {
           FilenameUtils.getName(path)
@@ -281,7 +272,7 @@ object FileManifest {
           sourcePackageId,
           id,
           s3VersionId,
-          checksum
+          sha256
         )
       }
   }
@@ -320,7 +311,8 @@ object FileManifest {
       fileType = fileType,
       sourcePackageId = sourcePackageId,
       id = None,
-      s3VersionId = s3VersionId
+      s3VersionId = s3VersionId,
+      sha256 = None
     )
   }
 }
