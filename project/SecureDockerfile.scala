@@ -10,6 +10,6 @@ abstract class SecureDockerfile(image: String) extends Dockerfile {
     "wget",
     "-qO",
     "/home/pennsieve/.postgresql/root.crt",
-    "https://s3.amazonaws.com/rds-downloads/rds-ca-2019-root.pem"
+    "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
   )
 }
