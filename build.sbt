@@ -501,6 +501,7 @@ lazy val inviteCognitoUserSettings = Seq(
   assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
+import sbtdocker.Dockerfile
 lazy val etlDataCLISettings = Seq(
   name := "etl-data-cli",
   libraryDependencies ++= Seq("com.github.scopt" %% "scopt" % "3.7.1"),
@@ -510,17 +511,14 @@ lazy val etlDataCLISettings = Seq(
     val script: File = new File("etl-data-cli/etl-data.sh")
     val artifactTargetPath = s"/app/${artifact.name}"
 
-    new SecureDockerfile("pennsieve/base-processor-java-python:6-43b7408") {
-
+    new Dockerfile {
+      from("pennsieve/base-processor-java-python:6-43b7408")
       env("ARTIFACT_TARGET_PATH", artifactTargetPath)
       copy(artifact, artifactTargetPath)
       copy(script, "/app/etl-data")
-      run("mkdir", "-p", "/root/.postgresql")
-      run(
-        "wget",
-        "-qO",
-        "/root/.postgresql/root.crt",
-        "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
+      addRaw(
+        "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem",
+        "/root/.postgresql/root.crt"
       )
       entryPoint("")
     }
