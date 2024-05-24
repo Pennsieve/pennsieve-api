@@ -17,6 +17,7 @@
 package com.pennsieve.api
 
 import com.pennsieve.dtos.{
+  APITokenSecretDTO,
   Builders,
   DatasetStatusDTO,
   OrganizationDTO,
@@ -44,15 +45,15 @@ import com.pennsieve.managers.{
 import com.pennsieve.models._
 import com.pennsieve.models.DateVersion._
 import com.pennsieve.models.DBPermission.{ Administer, Delete }
-import com.pennsieve.core.utilities.checkOrErrorT
+import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
 import com.pennsieve.domain.InvalidAction
 import com.pennsieve.domain.StorageAggregation.{ sorganizations, susers }
 import com.pennsieve.web.Settings
 import cats.data._
 import cats.implicits._
+
 import java.time.Duration
 import shapeless._
-
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
 import com.pennsieve.aws.email.Email
@@ -69,7 +70,6 @@ import scala.concurrent.{ ExecutionContext, Future }
 import org.scalatra._
 import org.scalatra.swagger.Swagger
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder
-
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminCreateUserRequest;
 
 case class CreateGroupRequest(name: String)
@@ -1712,6 +1712,87 @@ class OrganizationsController(
         } yield ()
 
       val is = result.value.map(NoContentResult(_))
+    }
+  }
+
+  case class CreateOrganizationIntegrationUser(purpose: Option[String])
+  case class OrganizationIntegrationUser(
+    user: User,
+    tokenSecret: Option[APITokenSecretDTO]
+  )
+  val createOrganizationIntegrationUserOperation
+    : OperationBuilder = (apiOperation[OrganizationIntegrationUser](
+    "createOrganizationIntegrationUser"
+  )
+    summary "create an integration user in the organization (internal use only)"
+    parameters (
+      bodyParam[CreateOrganizationIntegrationUser]("body")
+    ))
+  post(
+    "/:organizationId/integration-user",
+    operation(createOrganizationIntegrationUserOperation)
+  ) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, OrganizationIntegrationUser] =
+        for {
+          // ensure this is invoked by a service internally
+          _ <- {
+            FutureEitherHelpers.assert(isServiceClaim(request))(
+              Forbidden("Internal service only")
+            )
+          }
+
+          secureContainer <- getSecureContainer()
+          body <- extractOrErrorT[CreateOrganizationIntegrationUser](parsedBody)
+
+          // create the integration user
+          //   if the request body contains a purpose, the user will be named: "Integration-User {purpose}"
+          //   else the user will be named "Integration User"
+          integrationUser <- secureContainer.userManager
+            .createIntegrationUser(
+              User(
+                nodeId = NodeCodes.generateId(NodeCodes.userCode),
+                "",
+                firstName = body.purpose match {
+                  case Some(_) => "Integration-User"
+                  case None => "Integration"
+                },
+                middleInitial = None,
+                isIntegrationUser = true,
+                degree = None,
+                lastName = body.purpose match {
+                  case Some(purpose) => purpose
+                  case None => "User"
+                }
+              )
+            )
+            .coreErrorToActionResult()
+
+          // add the integration user to the organization
+          _ <- insecureContainer.organizationManager
+            .addUser(
+              secureContainer.organization,
+              integrationUser,
+              DBPermission.Delete
+            )
+            .coreErrorToActionResult()
+
+          // create API key and secret for the integration user
+          tokenSecret <- insecureContainer.tokenManager
+            .create(
+              name = "Integration-user",
+              user = integrationUser,
+              organization = secureContainer.organization,
+              cognitoClient = cognitoClient
+            )
+            .coreErrorToActionResult()
+
+        } yield
+          OrganizationIntegrationUser(
+            user = integrationUser,
+            tokenSecret = Some(APITokenSecretDTO(tokenSecret))
+          )
+      override val is: Future[ActionResult] = result.value.map(CreatedResult)
     }
   }
 
