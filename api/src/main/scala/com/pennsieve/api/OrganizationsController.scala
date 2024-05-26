@@ -186,6 +186,12 @@ case class UpdateDataUseAgreementRequest(
   isDefault: Option[Boolean] = None
 )
 
+case class CreateOrganizationIntegrationUser(purpose: Option[String])
+case class OrganizationIntegrationUser(
+  user: User,
+  tokenSecret: Option[APITokenSecretDTO]
+)
+
 class OrganizationsController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
@@ -1715,19 +1721,15 @@ class OrganizationsController(
     }
   }
 
-  case class CreateOrganizationIntegrationUser(purpose: Option[String])
-  case class OrganizationIntegrationUser(
-    user: User,
-    tokenSecret: Option[APITokenSecretDTO]
-  )
   val createOrganizationIntegrationUserOperation
     : OperationBuilder = (apiOperation[OrganizationIntegrationUser](
     "createOrganizationIntegrationUser"
   )
     summary "create an integration user in the organization (internal use only)"
     parameters (
+      pathParam[String]("organizationId").description("Organization ID"),
       bodyParam[CreateOrganizationIntegrationUser]("body")
-    ))
+  ))
   post(
     "/:organizationId/integration-user",
     operation(createOrganizationIntegrationUserOperation)
@@ -1743,6 +1745,7 @@ class OrganizationsController(
           }
 
           secureContainer <- getSecureContainer()
+          organizationId <- paramT[String]("organizationId")
           body <- extractOrErrorT[CreateOrganizationIntegrationUser](parsedBody)
 
           // create the integration user
