@@ -348,28 +348,6 @@ class TestUsersController extends BaseApiTest {
     }
   }
 
-//  test("orcid creation") {
-//    val orcidRequest = write(
-//      ORCIDRequest(
-//        ORCIDAuthorizationInfo(
-//          source = "orcid-redirect-response",
-//          code = testAuthorizationCode
-//        )
-//      )
-//    )
-//
-//    postJson(
-//      s"/orcid",
-//      orcidRequest,
-//      headers = authorizationHeader(loggedInJwt)
-//    ) {
-//      status should equal(200)
-//      val result = parsedBody.extract[OrcidDTO]
-//      result.name should be(orcidAuthorization.name)
-//      result.orcid should be(orcidAuthorization.orcid)
-//    }
-//  }
-
   test("orcid link succeeds with valid body") {
     val validRequest = write(
       ORCIDRequest(
