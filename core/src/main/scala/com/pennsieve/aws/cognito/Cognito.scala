@@ -364,8 +364,12 @@ class Cognito(
         .toScala
         .map(response => response.userAttributes())
 
+      // TODO: if there is an "identities" entry, we will need to filter on `providerName`
+      // TODO: this will be imperative once we support multiple Identity Providers
+      // TODO: for now, we can determine by the presence of a non-empty value (it will be ORCID)
       result = attributes.asScala.toList
-        .map(_.name().equals("identities"))
+        .filter(_.name.equals("identities"))
+        .map(!_.value.equals("[]"))
         .foldLeft(false)(_ || _)
 
     } yield result

@@ -61,6 +61,10 @@ class MockCognito() extends CognitoClient {
   val userPasswordSets: mutable.ArrayBuffer[String] =
     mutable.ArrayBuffer.empty
 
+  val usersWithLinkedOrcidId: mutable.ArrayBuffer[String] =
+    // loggedInUser(me) and externalUser(other)
+    mutable.ArrayBuffer() ++= List[String]("test@test.com", "test@external.com")
+
   def inviteUser(
     email: Email,
     suppressEmail: Boolean = false,
@@ -116,7 +120,8 @@ class MockCognito() extends CognitoClient {
     providerName: String
   )(implicit
     ec: ExecutionContext
-  ): Future[Boolean] = Future.successful(true)
+  ): Future[Boolean] =
+    Future.successful(usersWithLinkedOrcidId.contains(username))
 
   def unlinkExternalUser(
     providerName: String,
@@ -126,6 +131,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     unlinkedExternalUsers.append((providerName, attributeName, attributeValue))
+    usersWithLinkedOrcidId -= attributeValue
     Future.successful(())
   }
 
