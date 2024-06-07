@@ -648,7 +648,7 @@ class UserController(
         _ <- if (loggedInUser.orcidAuthorization.isDefined)
           Right(()).toEitherT[Future]
         else
-          Left(BadRequest(Error("ORCID id is not configured.")))
+          Left(BadRequest(Error("ORCiD ID is not linked.")))
             .toEitherT[Future]
 
         orcidId = loggedInUser.orcidAuthorization.get.orcid

@@ -348,8 +348,8 @@ class TestUsersController extends BaseApiTest {
     }
   }
 
-  test("orcid creation") {
-    val orcidRequest = write(
+  test("orcid link succeeds with valid body") {
+    val validRequest = write(
       ORCIDRequest(
         ORCIDAuthorizationInfo(
           source = "orcid-redirect-response",
@@ -360,7 +360,7 @@ class TestUsersController extends BaseApiTest {
 
     postJson(
       s"/orcid",
-      orcidRequest,
+      validRequest,
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
@@ -370,7 +370,24 @@ class TestUsersController extends BaseApiTest {
     }
   }
 
-  test("orcid deletion") {
+  test("orcid link fails with invalid body") {
+    val invalidRequest = write(
+      ORCIDAuthorizationInfo(
+        source = "orcid-redirect-response",
+        code = testAuthorizationCode
+      )
+    )
+
+    postJson(
+      s"/orcid",
+      invalidRequest,
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(400)
+    }
+  }
+
+  test("orcid unlink succeeds with linked Cognito identity") {
     val orcidRequest = write(
       ORCIDRequest(
         ORCIDAuthorizationInfo(
@@ -379,6 +396,7 @@ class TestUsersController extends BaseApiTest {
         )
       )
     )
+    // first we POST to link the ORCID iD, then we DELETE to unlink it
     postJson(
       s"/orcid",
       orcidRequest,
@@ -389,6 +407,36 @@ class TestUsersController extends BaseApiTest {
         body shouldBe empty
         status should equal(200)
       }
+    }
+  }
+
+  test("orcid unlink succeeds without linked Cognito identity") {
+    val orcidRequest = write(
+      ORCIDRequest(
+        ORCIDAuthorizationInfo(
+          source = "orcid-redirect-response",
+          code = testAuthorizationCode
+        )
+      )
+    )
+    // first we POST to link the ORCID iD, then we DELETE to unlink it
+    postJson(
+      s"/orcid",
+      orcidRequest,
+      headers = authorizationHeader(colleagueJwt)
+    ) {
+      status should equal(200)
+      delete(s"/orcid", headers = authorizationHeader(colleagueJwt)) {
+        body shouldBe empty
+        status should equal(200)
+      }
+    }
+  }
+
+  test("orcid unlink fails when ORCID iD is not linked") {
+    delete(s"/orcid", headers = authorizationHeader(externalJwt)) {
+      body shouldBe """{"message":"ORCiD ID is not linked."}"""
+      status should equal(400)
     }
   }
 
