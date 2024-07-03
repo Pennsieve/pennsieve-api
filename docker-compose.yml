@@ -3,6 +3,7 @@ services:
   postgres:
     hostname: postgres
     image: pennsieve/postgres:16.3
+    platform: linux/amd64
     environment:
       POSTGRES_PASSWORD: password
       PGPASSWORD: password
