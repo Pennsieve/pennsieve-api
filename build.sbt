@@ -77,7 +77,7 @@ lazy val flywayVersion = "4.2.0"
 lazy val json4sVersion = "3.5.5"
 
 lazy val jettyVersion = "9.1.3.v20140225"
-lazy val postgresVersion = "42.1.4"
+lazy val postgresVersion = "42.7.3"
 lazy val scalatraVersion = "2.7.1"
 
 lazy val scalatestVersion = "3.2.11"
