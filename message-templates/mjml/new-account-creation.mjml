@@ -106,6 +106,15 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
+          <p>If the above button does not work, please copy and paste the following link into your web browser:</p>
+          <tt>${setup_url}/${username}/${code}</tt>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0">
           <p>Need help? Contact us at <a href="mailto:support@${domain}">support@${domain}</a> for assistance.</p>
         </mj-text>
       </mj-column>
