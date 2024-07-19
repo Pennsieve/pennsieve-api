@@ -157,6 +157,9 @@ class DatasetManager(
   val datasetRegistrationMapper: DatasetRegistrationMapper =
     new DatasetRegistrationMapper(organization)
 
+  val datasetReleaseMapper: DatasetReleaseMapper =
+    new DatasetReleaseMapper(organization)
+
   def isLocked(
     dataset: Dataset
   )(implicit
@@ -1771,4 +1774,31 @@ class DatasetManager(
           case _ => Right(true)
         }
     } yield true
+
+  def getRelease(
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[DatasetRelease]] =
+    for {
+      release <- db.run(datasetReleaseMapper.get(datasetId)).toEitherT
+    } yield (release)
+
+  def addRelease(
+    release: DatasetRelease
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetRelease] =
+    for {
+      release <- db.run(datasetReleaseMapper.add(release)).toEitherT
+    } yield release
+
+  def updateRelease(
+    release: DatasetRelease
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetRelease] =
+    for {
+      release <- db.run(datasetReleaseMapper.update(release)).toEitherT
+    } yield release
 }

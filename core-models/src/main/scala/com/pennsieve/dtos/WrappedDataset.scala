@@ -17,9 +17,9 @@
 package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
-
 import com.pennsieve.models.{
   Dataset,
+  DatasetRelease,
   DatasetState,
   DatasetStatus,
   DatasetType,
@@ -33,21 +33,26 @@ case class WrappedDataset(
   id: String,
   name: String,
   description: Option[String],
-  state: DatasetState = DatasetState.READY,
+  state: DatasetState,
   createdAt: ZonedDateTime,
   updatedAt: ZonedDateTime,
-  packageType: String = "DataSet", // DO NOT SET: For backwards compatibility with the frontend (Polymer v.1) application
+  packageType: String, // DO NOT SET: For backwards compatibility with the frontend (Polymer v.1) application
   datasetType: DatasetType, // Do not change the name of this property. If you change it to something like `type` it'll break the python client
   status: String,
-  automaticallyProcessPackages: Boolean = false,
+  automaticallyProcessPackages: Boolean,
   license: Option[License],
-  tags: List[String] = List.empty,
-  dataUseAgreementId: Option[Int] = None,
-  intId: Int
+  tags: List[String],
+  dataUseAgreementId: Option[Int],
+  intId: Int,
+  release: Option[DatasetRelease]
 )
 
 object WrappedDataset {
-  def apply(dataset: Dataset, status: DatasetStatus): WrappedDataset = {
+  def apply(
+    dataset: Dataset,
+    status: DatasetStatus,
+    release: Option[DatasetRelease] = None
+  ): WrappedDataset = {
     WrappedDataset(
       id = dataset.nodeId,
       name = dataset.name,
@@ -56,12 +61,14 @@ object WrappedDataset {
       createdAt = dataset.createdAt,
       updatedAt = dataset.updatedAt,
       datasetType = dataset.`type`,
+      packageType = "DataSet",
       status = status.name,
       automaticallyProcessPackages = dataset.automaticallyProcessPackages,
       license = dataset.license,
       tags = dataset.tags,
       dataUseAgreementId = dataset.dataUseAgreementId,
-      intId = dataset.id
+      intId = dataset.id,
+      release = release
     )
   }
 
