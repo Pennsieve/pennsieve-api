@@ -47,6 +47,7 @@ import com.pennsieve.models.{
   DatasetRelease,
   DatasetStatus,
   DatasetStatusInUse,
+  DatasetType,
   FeatureFlag,
   File,
   FileObjectType,
@@ -242,7 +243,7 @@ object Builders {
         Future[Option[List[PackageDTO]]](None).toEitherT
       }
 
-      datasetRelease <- if (dataset.`type`.equals("release")) {
+      datasetRelease <- if (dataset.`type`.equals(DatasetType.Release)) {
         secureContainer.datasetManager.getRelease(dataset.id)
       } else {
         Future[Option[DatasetRelease]](None).toEitherT
