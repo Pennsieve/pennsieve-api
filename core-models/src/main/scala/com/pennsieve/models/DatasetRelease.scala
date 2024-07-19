@@ -22,7 +22,7 @@ import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import java.time.ZonedDateTime
 
 final case class DatasetRelease(
-  id: Int,
+  id: Int = 0,
   datasetId: Int,
   origin: String,
   url: String,
