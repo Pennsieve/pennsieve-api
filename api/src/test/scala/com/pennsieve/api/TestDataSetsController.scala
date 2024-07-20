@@ -10554,6 +10554,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       val dto = parsedBody.extract[DataSetDTO]
       dto.content.datasetType should equal(DatasetType.Release)
       dto.content.release shouldNot equal(None)
+      dto.content.release.get should equal(release)
     }
   }
 }
