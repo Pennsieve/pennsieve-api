@@ -1297,7 +1297,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val user = createUser()
     val dataset = createDataset(user = user)
     val dm = datasetManager(user = user)
-    val notAllowed = dm
+    val _ = dm
       .addRelease(
         DatasetRelease(
           datasetId = dataset.id,
@@ -1334,6 +1334,22 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val updated = dm.getRelease(dataset.id).await.value.get
     assert(updated.label == update.label)
     assert(updated.marker == update.marker)
+  }
+
+  it should "fail to update when there is no pre-existing one" in {
+    val user = createUser()
+    val dataset = createDataset(user = user, `type` = DatasetType.Release)
+    val dm = datasetManager(user = user)
+    val _ = dm
+      .updateRelease(
+        DatasetRelease(
+          datasetId = dataset.id,
+          origin = "GitHub",
+          url = "https://github.com/Pennsieve/test-repo-x2"
+        )
+      )
+      .await
+      .isLeft shouldBe true
   }
 
   it should "be 'None' when a dataset does not have one" in {
