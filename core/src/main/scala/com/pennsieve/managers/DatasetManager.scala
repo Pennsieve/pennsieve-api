@@ -1792,6 +1792,10 @@ class DatasetManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, DatasetRelease] =
     for {
+      dataset <- get(release.datasetId)
+      _ <- FutureEitherHelpers.assert(
+        dataset.`type`.equals(DatasetType.Release)
+      )(PredicateError(s"dataset type must be ${DatasetType.Release.toString}"))
       release <- db.run(datasetReleaseMapper.add(release)).toEitherT
     } yield release
 
@@ -1801,6 +1805,10 @@ class DatasetManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, DatasetRelease] =
     for {
+      dataset <- get(release.datasetId)
+      _ <- FutureEitherHelpers.assert(
+        dataset.`type`.equals(DatasetType.Release)
+      )(PredicateError(s"dataset type must be ${DatasetType.Release.toString}"))
       release <- db.run(datasetReleaseMapper.update(release)).toEitherT
     } yield release
 }
