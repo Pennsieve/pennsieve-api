@@ -10501,4 +10501,60 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     response.workflowId shouldEqual (PublishingWorkflows.Version5)
   }
+
+  test(
+    "dataset release is not included in the DatasetDTO for a 'research' type dataset"
+  ) {
+    // create a dataset
+    val ds = createDataSet("test-dataset-dto-for-type-research")
+
+    // get the dataset
+    get(
+      s"/${ds.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      // check the response
+      status should equal(200)
+      val dto = parsedBody.extract[DataSetDTO]
+      dto.content.datasetType should equal(DatasetType.Research)
+      dto.content.release should equal(None)
+    }
+  }
+
+  test(
+    "dataset release is included in the DatasetDTO for a 'release' type dataset"
+  ) {
+    // create a dataset
+    val ds = createDataSet(
+      "test-dataset-dto-for-type-release",
+      `type` = DatasetType.Release
+    )
+
+    val release = secureContainer.datasetManager
+      .addRelease(
+        DatasetRelease(
+          datasetId = ds.id,
+          origin = "GitHub",
+          url = "https://github.com/Pennsieve/test-repo",
+          label = Some("v1.0.0"),
+          marker = Some("1ab2c98"),
+          releaseDate = Some(ZonedDateTime.now())
+        )
+      )
+      .await
+      .value
+
+    // get the dataset
+    get(
+      s"/${ds.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      // check the response
+      status should equal(200)
+      val dto = parsedBody.extract[DataSetDTO]
+      dto.content.datasetType should equal(DatasetType.Release)
+      dto.content.release shouldNot equal(None)
+      dto.content.release.get should equal(release)
+    }
+  }
 }

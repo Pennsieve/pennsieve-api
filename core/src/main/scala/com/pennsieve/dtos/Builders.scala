@@ -44,8 +44,10 @@ import com.pennsieve.models.{
   DatasetAsset,
   DatasetContributor,
   DatasetPublicationStatus,
+  DatasetRelease,
   DatasetStatus,
   DatasetStatusInUse,
+  DatasetType,
   FeatureFlag,
   File,
   FileObjectType,
@@ -241,6 +243,12 @@ object Builders {
         Future[Option[List[PackageDTO]]](None).toEitherT
       }
 
+      datasetRelease <- if (dataset.`type`.equals(DatasetType.Release)) {
+        secureContainer.datasetManager.getRelease(dataset.id)
+      } else {
+        Future[Option[DatasetRelease]](None).toEitherT
+      }
+
       collaboratorCounts <- secureContainer.datasetManager
         .getCollaboratorCounts(dataset)
 
@@ -280,7 +288,7 @@ object Builders {
 
     } yield
       DataSetDTO(
-        WrappedDataset(dataset, status),
+        WrappedDataset(dataset, status, datasetRelease),
         secureContainer.organization.nodeId,
         children,
         owner.nodeId,

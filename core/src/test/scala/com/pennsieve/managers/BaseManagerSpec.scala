@@ -24,6 +24,7 @@ import com.pennsieve.models.{
   DBPermission,
   Dataset,
   DatasetState,
+  DatasetType,
   Degree,
   File,
   FileObjectType,
@@ -407,7 +408,8 @@ trait ManagerSpec
     name: String = generateRandomString(),
     state: DatasetState = DatasetState.READY,
     description: Option[String] = None,
-    tags: List[String] = List.empty
+    tags: List[String] = List.empty,
+    `type`: DatasetType = DatasetType.Research
   ): Dataset = {
     val status = datasetStatusManager(organization)
       .create(s"status for $name".take(20))
@@ -421,7 +423,8 @@ trait ManagerSpec
         description = description,
         state = state,
         statusId = Some(status.id),
-        tags = tags
+        tags = tags,
+        `type` = `type`
       )
       .await
       .value

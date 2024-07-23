@@ -24,6 +24,7 @@ import org.scalatest.EitherValues._
 import org.scalatest.matchers.should.Matchers._
 import slick.jdbc.PostgresProfile.api._
 
+import java.time.ZonedDateTime
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class DatasetManagerSpec extends BaseManagerSpec {
@@ -1271,4 +1272,90 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
   }
 
+  "a dataset release" should "be added to a dataset of type 'release'" in {
+    val user = createUser()
+    val dataset = createDataset(user = user, `type` = DatasetType.Release)
+    val dm = datasetManager(user = user)
+    val release = dm
+      .addRelease(
+        DatasetRelease(
+          datasetId = dataset.id,
+          origin = "GitHub",
+          url = "https://github.com/Pennsieve/test-repo-x1",
+          label = Some("v0.0.1"),
+          marker = Some("423c1ba"),
+          releaseDate = Some(ZonedDateTime.now())
+        )
+      )
+      .await
+      .value
+
+    assert(dm.getRelease(dataset.id).await.value == Some(release))
+  }
+
+  it should "not be added to a dataset that is not type 'release'" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val dm = datasetManager(user = user)
+    val _ = dm
+      .addRelease(
+        DatasetRelease(
+          datasetId = dataset.id,
+          origin = "GitHub",
+          url = "https://github.com/Pennsieve/test-repo-x3"
+        )
+      )
+      .await
+      .isLeft shouldBe true
+  }
+
+  it should "be updated with new details" in {
+    val user = createUser()
+    val dataset = createDataset(user = user, `type` = DatasetType.Release)
+    val dm = datasetManager(user = user)
+    val release = dm
+      .addRelease(
+        DatasetRelease(
+          datasetId = dataset.id,
+          origin = "GitHub",
+          url = "https://github.com/Pennsieve/test-repo-x2"
+        )
+      )
+      .await
+      .value
+
+    val update = release.copy(
+      label = Some("v1.0.0"),
+      marker = Some("9b44a7e"),
+      releaseDate = Some(ZonedDateTime.now())
+    )
+
+    val _ = dm.updateRelease(update).await.value
+    val updated = dm.getRelease(dataset.id).await.value.get
+    assert(updated.label == update.label)
+    assert(updated.marker == update.marker)
+  }
+
+  it should "fail to update when there is no pre-existing one" in {
+    val user = createUser()
+    val dataset = createDataset(user = user, `type` = DatasetType.Release)
+    val dm = datasetManager(user = user)
+    val _ = dm
+      .updateRelease(
+        DatasetRelease(
+          datasetId = dataset.id,
+          origin = "GitHub",
+          url = "https://github.com/Pennsieve/test-repo-x2"
+        )
+      )
+      .await
+      .isLeft shouldBe true
+  }
+
+  it should "be 'None' when a dataset does not have one" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val dm = datasetManager(user = user)
+    assert(dm.getRelease(dataset.id).await.value == None)
+  }
 }

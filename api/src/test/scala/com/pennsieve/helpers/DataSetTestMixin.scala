@@ -25,6 +25,7 @@ import com.pennsieve.models.{
   DatasetAsset,
   DatasetIntegration,
   DatasetState,
+  DatasetType,
   Degree,
   FileType,
   IntegrationTarget,
@@ -64,7 +65,8 @@ trait DataSetTestMixin {
     license: Option[License] = Some(License.`Apache 2.0`),
     tags: List[String] = List("tag"),
     dataUseAgreement: Option[DataUseAgreement] = None,
-    container: SecureAPIContainer = secureContainer
+    container: SecureAPIContainer = secureContainer,
+    `type`: DatasetType = DatasetType.Research
   )(implicit
     ec: ExecutionContext
   ): Dataset =
@@ -77,7 +79,8 @@ trait DataSetTestMixin {
         statusId = status,
         license = license,
         tags = tags,
-        dataUseAgreement = dataUseAgreement
+        dataUseAgreement = dataUseAgreement,
+        `type` = `type`
       )
       .await match {
       case Left(error) => throw error
