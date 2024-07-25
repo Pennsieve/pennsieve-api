@@ -1,0 +1,14 @@
+    <mj-section background-color="#011f5b" padding="0px 0px 0px 20px">
+      <mj-column>
+        <mj-raw>
+          <picture>
+            <source height="67" width="320" srcset="Upenn_FullLogo_Reverse_RGB.png" media="(max-width: 500px)" style="display: block" alt="Pennsieve Logo">
+            <img height="76" width="220" style="padding: 50px 0 20px 0" src="Upenn_FullLogo_Reverse_RGB.png" style="display: block" alt="Pennsieve Logo">
+          </picture>
+        </mj-raw>
+      </mj-column>
+          <mj-column background-color="#011f5b">
+            <mj-text color="#ffffff" padding-top="55px" font-family="EB Garamond, serif" font-size="24px">Pennsieve Platform <i>for</i></mj-text>
+            <mj-text color="#ffffff" font-family="EB Garamond, serif" font-size="24px">Data Management</mj-text>
+          </mj-column>
+    </mj-section>
