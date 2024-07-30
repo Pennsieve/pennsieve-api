@@ -527,26 +527,6 @@ lazy val etlDataCLISettings = Seq(
   assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
-lazy val uploadsConsumerSettings = Seq(
-  name := "uploads-consumer",
-  libraryDependencies ++= Seq(
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-stream-contrib" % akkaStreamContribVersion,
-    "com.dimafeng" %% "testcontainers-scala" % testContainersVersion % Test
-  ),
-  excludeDependencies ++= unwantedDependencies,
-  docker / dockerfile := {
-    val artifact: File = assembly.value
-    val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/openjdk:8-alpine3.9") {
-      copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("java", "-jar", artifactTargetPath)
-    }
-  },
-  docker / imageNames := Seq(ImageName("pennsieve/uploads-consumer:latest")),
-  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
-)
-
 lazy val bfAkkaSettings = Seq(
   name := "bf-akka",
   libraryDependencies ++= Seq(
@@ -698,17 +678,6 @@ lazy val migrations = project
   .enablePlugins(AutomateHeaderPlugin)
   .settings(migrationsSettings: _*)
 
-lazy val `uploads-consumer` = project
-  .dependsOn(
-    core % "test->test;compile->compile",
-    `bf-akka` % "test->test;compile->compile",
-    `bf-akka-http` % "test->test;compile->compile"
-  )
-  .enablePlugins(sbtdocker.DockerPlugin)
-  .enablePlugins(AutomateHeaderPlugin)
-  .settings(commonSettings: _*)
-  .settings(uploadsConsumerSettings: _*)
-
 lazy val `etl-data-cli` = project
   .dependsOn(core % "test->test;compile->compile")
   .enablePlugins(sbtdocker.DockerPlugin)
@@ -769,7 +738,6 @@ lazy val root = (project in file("."))
     core,
     jobs,
     `etl-data-cli`,
-    `uploads-consumer`,
     `bf-akka`,
     `core-models`,
     `core-clients`,

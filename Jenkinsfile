@@ -67,8 +67,7 @@ timestamps {
                     'api',
                     'authorization-service',
                     'etl-data-cli',
-                    'jobs',
-                    'uploads-consumer'
+                    'jobs'
                 ]
 
                 def containers = services + [
@@ -132,13 +131,8 @@ def generatePublishContainerStep(String service, String sbt, String imageTag, cr
             unstash name: "${remoteCache}"
 
             // Handle exceptions to standard service deploys
-            // uploads-consumer utilizes multiple containers
             def images, tag, buildPath
             switch(service) {
-                case 'uploads-consumer':
-                    (images, tag) = [[service, 'clamd'], imageTag]
-                    buildPath = 'uploads-consumer/clamd/'
-                    break
                 default:
                     (images, tag) = [[service], imageTag]
                     break
