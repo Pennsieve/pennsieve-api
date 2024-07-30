@@ -1,0 +1,18 @@
+<mjml>
+  <mj-body>
+    <mj-section background-color="#011f5b" padding="0px 0px 0px 20px">
+      <mj-column>
+        <mj-raw>
+          <picture>
+            <source height="67" width="320" srcset="https://app.pennsieve.net/assets/Upenn_FullLogo_Reverse_RGB-24d7f51c.png" media="(max-width: 500px)" style="display: block" alt="Pennsieve Logo">
+            <img height="76" width="220" style="padding: 50px 0 20px 0" src="https://app.pennsieve.net/assets/Upenn_FullLogo_Reverse_RGB-24d7f51c.png" style="display: block" alt="Pennsieve Logo">
+          </picture>
+        </mj-raw>
+      </mj-column>
+          <mj-column background-color="#011f5b">
+            <mj-text color="#ffffff" padding-top="55px" font-family="EB Garamond, serif" font-size="24px">Pennsieve Platform <i>for</i></mj-text>
+            <mj-text color="#ffffff" font-family="EB Garamond, serif" font-size="24px">Data Management</mj-text>
+          </mj-column>
+    </mj-section>
+  </mj-body>	
+</mjml>

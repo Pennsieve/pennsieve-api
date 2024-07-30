@@ -4,7 +4,7 @@
     <mj-attributes>
       <mj-section padding="0 43px 0 37px" />
       <mj-text padding="0" />
-      <mj-button background-color="#2760ff" padding="12px 16px" color="#ffffff" font-size="14px" />
+      <mj-button background-color="#011f5b" padding="12px 16px" color="#ffffff" font-size="14px" />
       <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif" font-size="16px" line-height="1.5em" />
       <mj-class name="full-section" padding-left="0" padding-right="0" />
       <mj-class name="copy-section" padding-left="20px" padding-right="20px" />
@@ -16,7 +16,8 @@
         line-height: 1.125rem;
       }
       .social-wrap, .social-wrap a {
-        color: #fff;
+        color: #ffffff;
+        background-color: #011f5b;
         margin: 0;
       }
       .img-linkedin {
@@ -40,9 +41,9 @@
   <mj-body>
     <mj-section mj-class="full-section" padding-top="48px">
       <mj-column>
-        <mj-table container-background-color="#5039F7" padding="0" mj-class="footer-table">
+        <mj-table container-background-color="#011f5b" padding="0" mj-class="footer-table">
           <tr style="height: 72px">
-            <td class="footer-blackfynn-logo-wrap" align="center" width="44" height="72" style="padding: 0 14px 0 14px; background-color: #3828AD;">
+            <td class="footer-blackfynn-logo-wrap" align="center" width="44" height="72" style="padding: 0 14px 0 14px; background-color: #011f5b;">
               <img class="footer-blackfynn-logo" align="center" src="https://app.pennsieve.net/static/emails/img/Pennsieve-Icon-White.png" alt="Pennsieve logo" height="32" width="32" />
             </td>
             <td background-color="#5039F7" style="padding: 0 0 0 20px" vertical-align="center">
@@ -61,7 +62,7 @@
           <p>This email was sent to ${emailAddress}.</p>
         </mj-text>
         <mj-text padding="0" css-class="copyright-wrap" font-size="12px" line-height="18px">
-          <p>Copyright &copy; 2021 University of Pennsylvania.<br>Penn Institute for Biomedical Informatics.</br> All rights reserved.</p>
+          <p>Copyright &copy; 2024 University of Pennsylvania.<br>Penn Institute for Biomedical Informatics.</br> All rights reserved.</p>
         </mj-text>
       </mj-column>
     </mj-section>
