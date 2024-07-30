@@ -16,7 +16,8 @@
         line-height: 1.125rem;
       }
       .social-wrap, .social-wrap a {
-        color: #fff;
+        color: #ffffff;
+        background-color: #011f5b;
         margin: 0;
       }
       .img-linkedin {
@@ -61,7 +62,7 @@
           <p>This email was sent to ${emailAddress}.</p>
         </mj-text>
         <mj-text padding="0" css-class="copyright-wrap" font-size="12px" line-height="18px">
-          <p>Copyright &copy; 2021 University of Pennsylvania.<br>Penn Institute for Biomedical Informatics.</br> All rights reserved.</p>
+          <p>Copyright &copy; 2024 University of Pennsylvania.<br>Penn Institute for Biomedical Informatics.</br> All rights reserved.</p>
         </mj-text>
       </mj-column>
     </mj-section>

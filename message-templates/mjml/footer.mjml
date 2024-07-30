@@ -16,7 +16,8 @@
         line-height: 1.125rem;
       }
       .social-wrap, .social-wrap a {
-        color: #fff;
+        color: #ffffff;
+        background-color: #011f5b;
         margin: 0;
       }
       .img-linkedin {
@@ -45,9 +46,9 @@
             <td class="footer-blackfynn-logo-wrap" align="center" width="44" height="72" style="padding: 0 14px 0 14px; background-color: #011f5b;">
               <img class="footer-blackfynn-logo" align="center" src="https://app.pennsieve.net/static/emails/img/Pennsieve-Icon-White.png" alt="Pennsieve logo" height="32" width="32" />
             </td>
-            <td background-color="#011f5b" style="padding: 0 0 0 20px" vertical-align="center">
-              <p class="social-wrap">
-                Follow us on <a href="https://twitter.com/pennsieve1"><img src="https://app.pennsieve.net/static/emails/img/Twitter_Logo_Desktop_2x.png" height="16" width="16" alt="Twitter logo"></a>&nbsp;<a href="https://twitter.com/pennsieve1">Twitter</a>
+            <td style="color: #ffffff;" background-color="#011f5b" style="padding: 0 0 0 20px" vertical-align="center">
+              <p>
+                Follow us on <a href="https://twitter.com/pennsieve1"><img src="https://app.pennsieve.net/static/emails/img/Twitter_Logo_Desktop_2x.png" height="16" width="16" alt="Twitter logo"></a>&nbsp;<a style="color: #ffffff;" href="https://twitter.com/pennsieve1">Twitter</a>
               </p>
             </td>
           </tr>

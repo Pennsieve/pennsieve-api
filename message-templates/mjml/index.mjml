@@ -44,7 +44,7 @@
     <mj-include path="./header.mjml" />
 
     <mj-section mj-class="full-section" padding-top="0" padding-bottom="20px">
-      <mj-column background-color="#5039F7" padding="18px 20px 35px 20px">
+      <mj-column background-color="#011f5b" padding="18px 20px 35px 20px">
         <mj-text color="#ffffff" padding="0">
           <h1>Welcome</h1>
           <h2>You’re now a member of Pennsieve Discover</h2>
@@ -64,7 +64,7 @@
       <mj-column padding-top="22px" padding-bottom="27px">
         <mj-table width="33px" padding="0" line-height="4px">
           <tr>
-            <td height="4" width="33" style="background-color: #5039F7; border-radius: 3px">&nbsp;</td>
+            <td height="4" width="33" style="background-color: #011f5b; border-radius: 3px">&nbsp;</td>
           </tr>
         </mj-table>
       </mj-column>
@@ -106,7 +106,7 @@
 
     <mj-section mj-class="copy-section">
       <mj-column padding="16px 0 0">
-        <mj-button padding="0" align="left" href="https://app.blackfynn.io">
+        <mj-button padding="0" align="left" href="https://app.pennsieve.io">
           Get Started
         </mj-button>
       </mj-column>

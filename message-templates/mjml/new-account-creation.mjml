@@ -54,14 +54,6 @@
 
     <mj-section mj-class="copy-section">
       <mj-column>
-        <mj-text mj-class="kicker">
-          Manage, analyze, visualize and collaborate on scientific data — all in one powerful, cloud-based platform.
-        </mj-text>
-      </mj-column>
-    </mj-section>
-        
-    <mj-section mj-class="copy-section">
-      <mj-column>
         <mj-text padding="16px 0">
 	        <p>${customMessage}</p>
         </mj-text>
@@ -71,7 +63,7 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
-          <p>To finish creating your account, confirm your email and complete your registration within the next 30 days:</p>
+          <p>Click Complete Registration to finish creating your account.</p>
         </mj-text>
       </mj-column>
     </mj-section>
@@ -79,17 +71,8 @@
     <mj-section mj-class="copy-section">
       <mj-column padding="16px 0">
         <mj-text height="40px">
-          <!--[if mso]>
-            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://app.${domain}/invitation/accept/${username}/${code} style="height:40px;v-text-anchor:middle;width:200px;" arcsize="8%" stroke="f" fillcolor="#5039F7">
-              <w:anchorlock/>
-              <center>
-            <![endif]-->
                 <a href="${setup_url}/${username}/${code}"
           style="background-color:#011f5b;border-radius:3px;color:#ffffff;display:inline-block;font-family:sans-serif;font-size:14px;font-weight:500;line-height:40px;text-align:center;text-decoration:none;width:200px;-webkit-text-size-adjust:none;">Complete Registration</a>
-            <!--[if mso]>
-              </center>
-            </v:roundrect>
-          <![endif]-->
         </mj-text>
       </mj-column>
     </mj-section>
@@ -97,7 +80,7 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
-          <p>If the above button does not work, please copy and paste the following link into your web browser:</p>
+          <p>If the above button does not work, copy and paste this link into your web browser:</p>
           <tt>${setup_url}/${username}/${code}</tt>
         </mj-text>
       </mj-column>
@@ -106,7 +89,7 @@
     <mj-section mj-class="copy-section">
       <mj-column>
         <mj-text padding="16px 0">
-          <p>Need help? Contact us at <a href="mailto:support@${domain}">support@${domain}</a> for assistance.</p>
+          <p>Need help? Email us at <a href="mailto:support@${domain}">support@${domain}</a>.</p>
         </mj-text>
       </mj-column>
     </mj-section>
