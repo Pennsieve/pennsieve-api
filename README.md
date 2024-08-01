@@ -93,3 +93,5 @@ Individual services are deployed to production via Jenkins service-deploy jobs. 
 [pennsieve-api-release](https://jenkins.pennsieve.cc/job/service-deploy/job/pennsieve-prod/job/us-east-1/job/prod-vpc-use1/job/prod/job/pennsieve-api-release/)
 job to deploy _all_ services to production and (optionally) run the Postgres
 migrations.
+
+rev. 2024/07/31
