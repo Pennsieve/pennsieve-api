@@ -276,7 +276,7 @@ object EitherTErrorHandler {
               false
             ).toActionResult()
           case error: UsernameExistsError =>
-            // logger.error(error.getMessage)
+            //logger.error(error.stackTraceToString)
             ErrorResponse(
               ErrorResponseType.BadRequest,
               error,
