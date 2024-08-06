@@ -18,25 +18,8 @@ package com.pennsieve.helpers.either
 
 import cats.data._
 import cats.implicits._
-import com.pennsieve.domain.{
-  CoreError,
-  DatasetRolePermissionError,
-  InvalidAction,
-  InvalidChallengeResponseError,
-  InvalidId,
-  InvalidJWT,
-  LockedDatasetError,
-  MissingDataUseAgreement,
-  MissingTraceId,
-  NotFound,
-  OperationNoLongerSupported,
-  PackagePreviewExpected,
-  PermissionError,
-  PredicateError,
-  StaleUpdateError,
-  UnauthorizedError
-}
-import enumeratum.{ CirceEnum, Enum, EnumEntry }
+import com.pennsieve.domain.{CoreError, DatasetRolePermissionError, InvalidAction, InvalidChallengeResponseError, InvalidId, InvalidJWT, LockedDatasetError, MissingDataUseAgreement, MissingTraceId, NotFound, OperationNoLongerSupported, PackagePreviewExpected, PermissionError, PredicateError, StaleUpdateError, UnauthorizedError, UsernameExistsError}
+import enumeratum.{CirceEnum, Enum, EnumEntry}
 import org.scalatra._
 import com.pennsieve.web.Settings
 //import com.typesafe.scalalogging.{ LazyLogging, Logger }
@@ -290,6 +273,12 @@ object EitherTErrorHandler {
             ErrorResponse(
               ErrorResponseType.PreconditionFailed,
               staleUpdateError,
+              false
+            ).toActionResult()
+          case error: UsernameExistsError =>
+            ErrorResponse(
+              ErrorResponseType.BadRequest,
+              error,
               false
             ).toActionResult()
           case error =>

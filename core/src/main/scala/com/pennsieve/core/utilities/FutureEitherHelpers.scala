@@ -18,9 +18,10 @@ package com.pennsieve.core.utilities
 
 import cats.data._
 import cats.implicits._
-import com.pennsieve.domain.{ CoreError, ExceptionError }
+import com.pennsieve.domain.{CoreError, ExceptionError, UsernameExistsError}
+import software.amazon.awssdk.services.cognitoidentityprovider.model.{CognitoIdentityProviderException, UsernameExistsException}
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 object FutureEitherHelpers {
 
@@ -60,6 +61,7 @@ object FutureEitherHelpers {
         ec: ExecutionContext
       ): EitherT[Future, CoreError, A] =
         f.toEitherT[CoreError] {
+          case e: UsernameExistsException => UsernameExistsError(e)
           case e: CoreError => e
           case e: Exception => ExceptionError(e)
         }

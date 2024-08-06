@@ -191,3 +191,9 @@ case class UnauthorizedError(message: String) extends CoreError {
 case class StaleUpdateError(message: String) extends CoreError {
   final override def getMessage: String = message
 }
+
+case class UsernameExistsError(exception: Exception) extends CoreError {
+  final override def getMessage: String = s"An account with the given email already exists"
+
+  this.initCause(exception)
+}
