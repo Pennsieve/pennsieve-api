@@ -19,7 +19,7 @@ package com.pennsieve.core.utilities
 import cats.data._
 import cats.implicits._
 import com.pennsieve.domain.{CoreError, ExceptionError, UsernameExistsError}
-import software.amazon.awssdk.services.cognitoidentityprovider.model.{CognitoIdentityProviderException, UsernameExistsException}
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UsernameExistsException
 
 import scala.concurrent.{ExecutionContext, Future}
 

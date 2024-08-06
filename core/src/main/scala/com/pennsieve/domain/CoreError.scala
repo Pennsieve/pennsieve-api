@@ -16,7 +16,7 @@
 
 package com.pennsieve.domain
 
-import com.pennsieve.models.{ DBPermission, PackageType }
+import com.pennsieve.models.{DBPermission, PackageType}
 import com.pennsieve.utilities.AbstractError
 
 sealed trait CoreError extends AbstractError
