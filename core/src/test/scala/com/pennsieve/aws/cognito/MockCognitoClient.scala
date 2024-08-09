@@ -25,6 +25,8 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 class MockCognito() extends CognitoClient {
 
+  var exception: Throwable = null
+
   val sentInvites: mutable.ArrayBuffer[Email] =
     mutable.ArrayBuffer.empty
 
@@ -75,15 +77,14 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
     sentInvites.append(email)
-    Future.successful(CognitoId.UserPoolId.randomId())
+    response(CognitoId.UserPoolId.randomId())
   }
 
   def getCognitoId(
     username: String
   )(implicit
     ec: ExecutionContext
-  ): Future[String] =
-    Future.successful(CognitoId.UserPoolId.randomId().toString)
+  ): Future[String] = response(CognitoId.UserPoolId.randomId().toString)
 
   def resendUserInvite(
     email: Email,
@@ -92,7 +93,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[CognitoId.UserPoolId] = {
     reSentInvites.update(email, cognitoId)
-    Future.successful(cognitoId)
+    response(cognitoId)
   }
 
   def createClientToken(
@@ -103,7 +104,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[CognitoId.TokenPoolId] = {
     sentTokenInvites.append(token)
-    Future.successful(CognitoId.TokenPoolId.randomId())
+    response(CognitoId.TokenPoolId.randomId())
   }
 
   def deleteClientToken(
@@ -112,7 +113,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     sentDeletes.append(token)
-    Future.successful(())
+    response(())
   }
 
   def hasExternalUserLink(
@@ -121,7 +122,7 @@ class MockCognito() extends CognitoClient {
   )(implicit
     ec: ExecutionContext
   ): Future[Boolean] =
-    Future.successful(usersWithLinkedOrcidId.contains(username))
+    response(usersWithLinkedOrcidId.contains(username))
 
   def unlinkExternalUser(
     providerName: String,
@@ -132,7 +133,7 @@ class MockCognito() extends CognitoClient {
   ): Future[Unit] = {
     unlinkedExternalUsers.append((providerName, attributeName, attributeValue))
     usersWithLinkedOrcidId -= attributeValue
-    Future.successful(())
+    response(())
   }
 
   def deleteUser(
@@ -141,7 +142,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     deletedUsers.append(username)
-    Future.successful(())
+    response(())
   }
 
   def disableUser(
@@ -150,7 +151,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     disabledUsers.append(username)
-    Future.successful(())
+    response(())
   }
 
   def deleteUserAttributes(
@@ -160,7 +161,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Unit] = {
     deletedUserAttributes.append((username, attributeNames))
-    Future.successful(())
+    response(())
   }
 
   def updateUserAttribute(
@@ -171,7 +172,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Boolean] = {
     updatedUserAttributes.append((username, (attributeName, attributeValue)))
-    Future.successful(true)
+    response(true)
   }
 
   def updateUserAttributes(
@@ -184,7 +185,7 @@ class MockCognito() extends CognitoClient {
       case (name, value) =>
         updatedUserAttributes.append((username, (name, value)))
     }
-    Future.successful(true)
+    response(true)
   }
 
   def authenticateUser(
@@ -194,7 +195,7 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Boolean] = {
     authenticatedUsers.append(username)
-    Future.successful(true)
+    response(true)
   }
 
   def setUserPassword(
@@ -204,10 +205,19 @@ class MockCognito() extends CognitoClient {
     ec: ExecutionContext
   ): Future[Boolean] = {
     userPasswordSets.append(username)
-    Future.successful(true)
+    response(true)
+  }
+
+  private def response[T](responseIfNoException: T): Future[T] = {
+    if (exception == null) {
+      Future.successful(responseIfNoException)
+    } else {
+      Future.failed(exception)
+    }
   }
 
   def reset(): Unit = {
+    exception = null
     sentDeletes.clear()
     sentInvites.clear()
     sentTokenInvites.clear()

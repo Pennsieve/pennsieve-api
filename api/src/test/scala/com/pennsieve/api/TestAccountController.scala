@@ -23,6 +23,7 @@ import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 import pdi.jwt.{ JwtAlgorithm, JwtCirce }
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UsernameExistsException
 
 import java.time.{ Duration, Instant }
 import java.util.UUID
@@ -73,6 +74,8 @@ class TestAccountController extends BaseApiTest {
   val recaptchaClient: AntiSpamChallengeClient =
     new MockRecaptchaClient()
 
+  val mockCognito = new MockCognito()
+
   override def afterStart(): Unit = {
     super.afterStart()
 
@@ -80,12 +83,17 @@ class TestAccountController extends BaseApiTest {
       new AccountController(
         insecureContainer,
         cognitoConfig,
-        new MockCognito(),
+        mockCognito,
         recaptchaClient,
         system.dispatcher
       ),
       "/*"
     )
+  }
+
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    mockCognito.reset()
   }
 
   test("swagger") {
@@ -157,7 +165,6 @@ class TestAccountController extends BaseApiTest {
 
   // TODO update this
   test("create new account without an organization") {
-    val mockCognito = new MockCognito()
 
     val newUserRequest = CreateUserWithRecaptchaRequest(
       firstName = "test",
@@ -172,6 +179,27 @@ class TestAccountController extends BaseApiTest {
     postJson("/sign-up", write(newUserRequest)) {
       status should be(200)
       assert(body.contains(welcomeOrganization.nodeId))
+    }
+  }
+
+  test(
+    "sign up with an already existent email address should result in a 409 error"
+  ) {
+    val newUserRequest = CreateUserWithRecaptchaRequest(
+      firstName = "test",
+      middleInitial = None,
+      lastName = "tester",
+      degree = None,
+      title = Some(""),
+      email = "guest@test.com",
+      recaptchaToken = "foooo"
+    )
+
+    mockCognito.exception = UsernameExistsException.builder().build()
+
+    postJson("/sign-up", write(newUserRequest)) {
+      status should be(409)
+      body should include("An account with the given email already exists")
     }
   }
 
