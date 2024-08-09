@@ -18,27 +18,10 @@ package com.pennsieve.helpers.either
 
 import cats.data._
 import cats.implicits._
-import com.pennsieve.domain.{
-  CoreError,
-  DatasetRolePermissionError,
-  InvalidAction,
-  InvalidChallengeResponseError,
-  InvalidId,
-  InvalidJWT,
-  LockedDatasetError,
-  MissingDataUseAgreement,
-  MissingTraceId,
-  NotFound,
-  OperationNoLongerSupported,
-  PackagePreviewExpected,
-  PermissionError,
-  PredicateError,
-  StaleUpdateError,
-  UnauthorizedError
-}
+import com.pennsieve.domain.{ NotFound, _ }
+import com.pennsieve.web.Settings
 import enumeratum.{ CirceEnum, Enum, EnumEntry }
 import org.scalatra._
-import com.pennsieve.web.Settings
 //import com.typesafe.scalalogging.{ LazyLogging, Logger }
 
 import scala.collection.immutable
@@ -59,6 +42,7 @@ object ErrorResponseType
   case object Unauthorized extends ErrorResponseType
   case object PreconditionFailed extends ErrorResponseType
   case object Locked extends ErrorResponseType
+  case object Conflict extends ErrorResponseType
 }
 
 case class ErrorResponse(
@@ -112,6 +96,13 @@ object ErrorResponse {
           `type` = `type`.entryName,
           message = error.getMessage(),
           code = 404,
+          stackTrace = stackTrace
+        )
+      case ErrorResponseType.Conflict =>
+        new ErrorResponse(
+          `type` = `type`.entryName,
+          message = error.getMessage(),
+          code = 409,
           stackTrace = stackTrace
         )
       case ErrorResponseType.PreconditionFailed =>
@@ -292,6 +283,10 @@ object EitherTErrorHandler {
               staleUpdateError,
               false
             ).toActionResult()
+          case error: UsernameExistsError =>
+            //logger.error(error.stackTraceToString)
+            ErrorResponse(ErrorResponseType.Conflict, error, false)
+              .toActionResult()
           case error =>
             //logger.error(error.getMessage)
             //logger.error(error.stackTraceToString)
