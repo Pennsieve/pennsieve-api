@@ -16,7 +16,7 @@
 
 package com.pennsieve.domain
 
-import com.pennsieve.models.{DBPermission, PackageType}
+import com.pennsieve.models.{ DBPermission, PackageType }
 import com.pennsieve.utilities.AbstractError
 
 sealed trait CoreError extends AbstractError
@@ -193,7 +193,8 @@ case class StaleUpdateError(message: String) extends CoreError {
 }
 
 case class UsernameExistsError(exception: Exception) extends CoreError {
-  final override def getMessage: String = s"An account with the given email already exists"
+  final override def getMessage: String =
+    s"An account with the given email already exists"
 
   this.initCause(exception)
 }
