@@ -221,6 +221,12 @@ trait PostgresProfile
         jsonString => jsonString.as[OrcidAuthorization].toOption.get
       )
 
+    implicit val organizationCustomizationMapper =
+      MappedColumnType.base[OrganizationCustomization, Json](
+        OrganizationCustomization => OrganizationCustomization.asJson,
+        jsonString => jsonString.as[OrganizationCustomization].toOption.get
+      )
+
     implicit val datasetStatusMapper =
       MappedColumnType.base[DefaultDatasetStatus, String](
         s => s.entryName,

@@ -37,6 +37,7 @@ final case class Organization(
   storageBucket: Option[String] = None,
   publishBucket: Option[String] = None,
   embargoBucket: Option[String] = None,
+  customization: Option[OrganizationCustomization] = None,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   updatedAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0
