@@ -42,6 +42,8 @@ final class DatasetReleaseTable(schema: String, tag: Tag)
   def tags = column[List[String]]("tags")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
   def updatedAt = column[ZonedDateTime]("updated_at", O.AutoInc)
+  def releaseStatus = column[String]("release_status")
+  def publishingStatus = column[String]("publishing_status")
 
   def * =
     (
@@ -55,7 +57,9 @@ final class DatasetReleaseTable(schema: String, tag: Tag)
       properties,
       tags,
       createdAt,
-      updatedAt
+      updatedAt,
+      releaseStatus,
+      publishingStatus
     ).mapTo[DatasetRelease]
 }
 
@@ -65,9 +69,20 @@ class DatasetReleaseMapper(organization: Organization)
     datasetId: Int
   )(implicit
     ec: ExecutionContext
+  ): DBIO[Seq[DatasetRelease]] =
+    this
+      .filter(_.datasetId === datasetId)
+      .result
+
+  def getLatest(
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
   ): DBIO[Option[DatasetRelease]] =
     this
       .filter(_.datasetId === datasetId)
+      .sortBy(_.createdAt.desc)
+      .take(1)
       .result
       .headOption
 

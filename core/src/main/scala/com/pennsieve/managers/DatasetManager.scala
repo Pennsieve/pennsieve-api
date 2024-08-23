@@ -1783,7 +1783,7 @@ class DatasetManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Option[DatasetRelease]] =
     for {
-      release <- db.run(datasetReleaseMapper.get(datasetId)).toEitherT
+      release <- db.run(datasetReleaseMapper.getLatest(datasetId)).toEitherT
     } yield (release)
 
   def addRelease(
