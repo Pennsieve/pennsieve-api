@@ -1777,13 +1777,27 @@ class DatasetManager(
         }
     } yield true
 
-  def getRelease(
+  def getReleases(
     datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[Seq[DatasetRelease]]] =
+    for {
+      releases <- db.run(datasetReleaseMapper.getAll(datasetId)).toEitherT
+    } yield
+      (releases.length match {
+        case 0 => None
+        case _ => Some(releases)
+      })
+
+  def getRelease(
+    datasetId: Int,
+    label: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Option[DatasetRelease]] =
     for {
-      release <- db.run(datasetReleaseMapper.getLatest(datasetId)).toEitherT
+      release <- db.run(datasetReleaseMapper.get(datasetId, label)).toEitherT
     } yield (release)
 
   def addRelease(

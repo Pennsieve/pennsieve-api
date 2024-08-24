@@ -65,13 +65,15 @@ final class DatasetReleaseTable(schema: String, tag: Tag)
 
 class DatasetReleaseMapper(organization: Organization)
     extends TableQuery(new DatasetReleaseTable(organization.schemaId, _)) {
-  def get(
+
+  def getAll(
     datasetId: Int
   )(implicit
     ec: ExecutionContext
   ): DBIO[Seq[DatasetRelease]] =
     this
       .filter(_.datasetId === datasetId)
+      .sortBy(_.createdAt.desc)
       .result
 
   def getLatest(
@@ -83,6 +85,18 @@ class DatasetReleaseMapper(organization: Organization)
       .filter(_.datasetId === datasetId)
       .sortBy(_.createdAt.desc)
       .take(1)
+      .result
+      .headOption
+
+  def get(
+    datasetId: Int,
+    label: String
+  )(implicit
+    ec: ExecutionContext
+  ): DBIO[Option[DatasetRelease]] =
+    this
+      .filter(_.datasetId === datasetId)
+      .filter(_.label === label)
       .result
       .headOption
 

@@ -44,14 +44,14 @@ case class WrappedDataset(
   tags: List[String],
   dataUseAgreementId: Option[Int],
   intId: Int,
-  release: Option[DatasetRelease]
+  releases: Option[Seq[DatasetRelease]]
 )
 
 object WrappedDataset {
   def apply(
     dataset: Dataset,
     status: DatasetStatus,
-    release: Option[DatasetRelease] = None
+    releases: Option[Seq[DatasetRelease]] = None
   ): WrappedDataset = {
     WrappedDataset(
       id = dataset.nodeId,
@@ -68,7 +68,7 @@ object WrappedDataset {
       tags = dataset.tags,
       dataUseAgreementId = dataset.dataUseAgreementId,
       intId = dataset.id,
-      release = release
+      releases = releases
     )
   }
 
