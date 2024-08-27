@@ -1272,6 +1272,31 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
   }
 
+  "dataset selection" should "permit filtering by `type`" in {
+    val user = createUser()
+    val dm = datasetManager(user = user)
+    // create a dataset, type = 'research'
+    val dataset1 = createDataset(user = user, `type` = DatasetType.Research)
+    // create a dataset, type = 'release'
+    val dataset2 = createDataset(user = user, `type` = DatasetType.Release)
+    val (datasets, count) = dm
+      .getDatasetPaginated(
+        withRole = Role.Owner,
+        limit = Some(5),
+        offset = Some(0),
+        orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
+        status = None,
+        textSearch = None,
+        datasetType = Some(DatasetType.Release)
+      )
+      .await
+      .value
+
+    count shouldEqual 1
+    datasets.length shouldEqual 1
+    datasets.head.dataset shouldBe dataset2
+  }
+
   "a dataset release" should "be added to a dataset of type 'release'" in {
     val releaseLabel = "v0.0.1"
     val user = createUser()

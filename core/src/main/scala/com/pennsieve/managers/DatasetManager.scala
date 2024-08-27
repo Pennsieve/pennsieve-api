@@ -1477,7 +1477,8 @@ class DatasetManager(
     canPublish: Option[Boolean] = None,
     restrictToRole: Boolean = false,
     collectionId: Option[Int] = None,
-    isGuest: Boolean = false
+    isGuest: Boolean = false,
+    datasetType: Option[DatasetType] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Seq[DatasetAndStatus], Long)] = {
@@ -1499,8 +1500,9 @@ class DatasetManager(
           val query = datasetsMapper.withoutDeleted
             .filter(_.id.inSet(datasetIds))
 
-            // (2) Only match datasets with the supplied status:
+            // (2) Only match datasets with the supplied status and dataset type:
             .filterOpt(status)(_.statusId === _.id)
+            .filterOpt(datasetType)(_.`type` === _)
 
             // (3) Add users:
             .join(datasetUser)
