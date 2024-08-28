@@ -350,6 +350,8 @@ class DataSetsController(
 
   implicit val publicationTypeParam = Param.enumParam(PublicationType)
 
+  implicit val datasetTypeParam = Param.enumParam(DatasetType)
+
   implicit val orderByColumnParam =
     Param.enumParam(DatasetManager.OrderByColumn)
 
@@ -729,7 +731,9 @@ class DataSetsController(
             .description(
               "If true, information about publication will be returned"
             )
-            .defaultValue(false)
+            .defaultValue(false),
+          queryParam[String]("type").optional
+            .description("Specify the type of datasets to be returned")
       )
     )
   ) {
@@ -821,6 +825,8 @@ class DataSetsController(
 
           canPublish <- optParamT[Boolean]("canPublish")
 
+          datasetType <- optParamT[DatasetType]("type")
+
           datasetsAndCount <- secureContainer.datasetManager
             .getDatasetPaginated(
               withRole = ownerOnly.getOrElse(withRole.getOrElse(Role.Viewer)),
@@ -834,7 +840,8 @@ class DataSetsController(
               canPublish = canPublish,
               restrictToRole = withRole.isDefined || ownerOnly.isDefined,
               collectionId = collectionId,
-              isGuest
+              isGuest = isGuest,
+              datasetType = datasetType
             )
             .coreErrorToActionResult()
 

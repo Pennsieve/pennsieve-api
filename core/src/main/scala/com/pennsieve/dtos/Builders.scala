@@ -243,10 +243,10 @@ object Builders {
         Future[Option[List[PackageDTO]]](None).toEitherT
       }
 
-      datasetRelease <- if (dataset.`type`.equals(DatasetType.Release)) {
-        secureContainer.datasetManager.getRelease(dataset.id)
+      datasetReleases <- if (dataset.`type`.equals(DatasetType.Release)) {
+        secureContainer.datasetManager.getReleases(dataset.id)
       } else {
-        Future[Option[DatasetRelease]](None).toEitherT
+        Future[Option[Seq[DatasetRelease]]](None).toEitherT
       }
 
       collaboratorCounts <- secureContainer.datasetManager
@@ -288,7 +288,7 @@ object Builders {
 
     } yield
       DataSetDTO(
-        WrappedDataset(dataset, status, datasetRelease),
+        WrappedDataset(dataset, status, datasetReleases),
         secureContainer.organization.nodeId,
         children,
         owner.nodeId,

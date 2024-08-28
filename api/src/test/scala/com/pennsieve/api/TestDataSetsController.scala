@@ -10517,7 +10517,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val dto = parsedBody.extract[DataSetDTO]
       dto.content.datasetType should equal(DatasetType.Research)
-      dto.content.release should equal(None)
+      dto.content.releases should equal(None)
     }
   }
 
@@ -10553,8 +10553,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val dto = parsedBody.extract[DataSetDTO]
       dto.content.datasetType should equal(DatasetType.Release)
-      dto.content.release shouldNot equal(None)
-      dto.content.release.get should equal(release)
+      dto.content.releases shouldNot equal(None)
+      dto.content.releases.get.length should equal(1)
+      dto.content.releases.get should equal(Seq(release))
     }
   }
 }

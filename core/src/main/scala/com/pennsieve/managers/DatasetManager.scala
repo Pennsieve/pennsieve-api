@@ -1477,7 +1477,8 @@ class DatasetManager(
     canPublish: Option[Boolean] = None,
     restrictToRole: Boolean = false,
     collectionId: Option[Int] = None,
-    isGuest: Boolean = false
+    isGuest: Boolean = false,
+    datasetType: Option[DatasetType] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Seq[DatasetAndStatus], Long)] = {
@@ -1499,8 +1500,9 @@ class DatasetManager(
           val query = datasetsMapper.withoutDeleted
             .filter(_.id.inSet(datasetIds))
 
-            // (2) Only match datasets with the supplied status:
+            // (2) Only match datasets with the supplied status and dataset type:
             .filterOpt(status)(_.statusId === _.id)
+            .filterOpt(datasetType)(_.`type` === _)
 
             // (3) Add users:
             .join(datasetUser)
@@ -1777,13 +1779,27 @@ class DatasetManager(
         }
     } yield true
 
-  def getRelease(
+  def getReleases(
     datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[Seq[DatasetRelease]]] =
+    for {
+      releases <- db.run(datasetReleaseMapper.getAll(datasetId)).toEitherT
+    } yield
+      (releases.length match {
+        case 0 => None
+        case _ => Some(releases)
+      })
+
+  def getRelease(
+    datasetId: Int,
+    label: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Option[DatasetRelease]] =
     for {
-      release <- db.run(datasetReleaseMapper.get(datasetId)).toEitherT
+      release <- db.run(datasetReleaseMapper.get(datasetId, label)).toEitherT
     } yield (release)
 
   def addRelease(

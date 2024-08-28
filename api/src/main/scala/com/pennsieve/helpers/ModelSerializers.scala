@@ -75,7 +75,9 @@ object ModelSerializers {
     Json4s.serializer(ChangelogEventName),
     Json4s.serializer(EventGroupPeriod),
     Json4s.serializer(RelationshipType),
-    Json4s.serializer(IntegrationTarget)
+    Json4s.serializer(IntegrationTarget),
+    Json4s.serializer(DatasetReleaseStatus),
+    Json4s.serializer(DatasetReleasePublishingStatus)
   )
 }
 
