@@ -68,8 +68,9 @@ final case class DatasetRelease(
   tags: List[String] = List.empty,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   updatedAt: ZonedDateTime = ZonedDateTime.now(),
-  releaseStatus: String = DatasetReleaseStatus.Created.toString,
-  publishingStatus: String = DatasetReleasePublishingStatus.Initial.toString
+  releaseStatus: DatasetReleaseStatus = DatasetReleaseStatus.Created,
+  publishingStatus: DatasetReleasePublishingStatus =
+    DatasetReleasePublishingStatus.Initial
 )
 
 object DatasetRelease {

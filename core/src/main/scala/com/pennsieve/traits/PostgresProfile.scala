@@ -206,6 +206,18 @@ trait PostgresProfile
     implicit val datasetTypeMapper = MappedColumnType
       .base[DatasetType, String](_.entryName, DatasetType.withName)
 
+    implicit val datasetReleaseStatusMapper =
+      MappedColumnType.base[DatasetReleaseStatus, String](
+        _.entryName,
+        DatasetReleaseStatus.withName
+      )
+
+    implicit val datasetReleasePublishingStatusMapper =
+      MappedColumnType.base[DatasetReleasePublishingStatus, String](
+        _.entryName,
+        DatasetReleasePublishingStatus.withName
+      )
+
     implicit val embargoAccessMapper = MappedColumnType
       .base[EmbargoAccess, String](_.entryName, EmbargoAccess.withName)
 

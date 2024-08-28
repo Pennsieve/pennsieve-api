@@ -19,6 +19,8 @@ package com.pennsieve.db
 import com.pennsieve.models.{
   Dataset,
   DatasetRelease,
+  DatasetReleasePublishingStatus,
+  DatasetReleaseStatus,
   ModelProperty,
   Organization
 }
@@ -42,8 +44,9 @@ final class DatasetReleaseTable(schema: String, tag: Tag)
   def tags = column[List[String]]("tags")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
   def updatedAt = column[ZonedDateTime]("updated_at", O.AutoInc)
-  def releaseStatus = column[String]("release_status")
-  def publishingStatus = column[String]("publishing_status")
+  def releaseStatus = column[DatasetReleaseStatus]("release_status")
+  def publishingStatus =
+    column[DatasetReleasePublishingStatus]("publishing_status")
 
   def * =
     (
