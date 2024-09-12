@@ -450,7 +450,8 @@ class OrganizationManager(db: Database) {
 
 case class UpdateOrganization(
   name: Option[String],
-  subscription: Option[Subscription]
+  subscription: Option[Subscription],
+  customColors: Option[(String, String)]
 )
 
 class SecureOrganizationManager(val db: Database, val actor: User)
@@ -676,7 +677,7 @@ class SecureOrganizationManager(val db: Database, val actor: User)
         case None => FutureEitherHelpers.unit
       }
 
-      updatedOrganization <- details.name match {
+      _ <- details.name match {
         case Some(name) =>
           for {
             result <- db
@@ -686,23 +687,57 @@ class SecureOrganizationManager(val db: Database, val actor: User)
                   .map(_.name)
                   .update(name)
               )
+              .toEitherT[CoreError]
+
+            _ <- FutureEitherHelpers.assert(result == 1)(
+              Error("failed to update organization name")
+            )
+          } yield ()
+        case None =>
+          Either.right[CoreError, Unit](()).toEitherT[Future]
+      }
+
+      _ <- details.customColors match {
+        case Some(customColors) =>
+          for {
+            result <- db
+              .run(
+                OrganizationsMapper
+                  .filter(_.id === organization.id)
+                  .map(_.customization)
+                  .update(
+                    organization.customization
+                      .map(_.copy(customColors = Some(customColors)))
+                      .orElse(
+                        Some(
+                          OrganizationCustomization(
+                            customColors = Some(customColors),
+                            bannerImageS3URL = None
+                          )
+                        )
+                      )
+                  )
+              )
               .toEitherT
 
             _ <- FutureEitherHelpers.assert(result == 1)(
               Error("failed to update organization name")
             )
-
-            organization <- db
-              .run(
-                OrganizationsMapper
-                  .filter(_.id === organization.id)
-                  .result
-                  .headOption
-              )
-              .whenNone[CoreError](NotFound(s"Organization ($organization.id)"))
-          } yield organization
+          } yield ()
         case None =>
+          Either.right[CoreError, Unit](()).toEitherT[Future]
+      }
+      updatedOrganization <- (details.name, details.customColors) match {
+        case (None, None) =>
           Either.right[CoreError, Organization](organization).toEitherT[Future]
+        case _ =>
+          db.run(
+              OrganizationsMapper
+                .filter(_.id === organization.id)
+                .result
+                .headOption
+            )
+            .whenNone[CoreError](NotFound(s"Organization ($organization.id)"))
       }
     } yield updatedOrganization
 

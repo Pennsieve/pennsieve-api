@@ -21,9 +21,8 @@ import io.circe.generic.extras.semiauto._
 import io.circe.{ Decoder, Encoder }
 
 final case class OrganizationCustomization(
-  customColor1: String,
-  customColor2: String,
-  bannerImageS3URL: String
+  customColors: Option[(String, String)],
+  bannerImageS3URL: Option[String]
 )
 
 object OrganizationCustomization {
