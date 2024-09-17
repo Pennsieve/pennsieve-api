@@ -1108,19 +1108,21 @@ class PackageManager(datasetManager: DatasetManager) {
       .map(_.to(Seq))
       .toEitherT
 
-  case class PackageExport(
-    depth: Int,
-    datasetId: Int,
-    parentId: Int,
-    path: Seq[String],
-    id: Int,
-    nodeId: String,
-    name: String,
-    `type`: PackageType,
-    state: PackageState
-  )
+//  case class PackageExport(
+//    depth: Int,
+//    datasetId: Int,
+//    parentId: Int,
+//    path: Seq[String],
+//    id: Int,
+//    nodeId: String,
+//    name: String,
+//    `type`: PackageType,
+//    state: PackageState
+//  )
 
-  implicit val packageList: GetResult[PackageExport] =
+  type PackagePath = (Package, Seq[String])
+
+  implicit val packageList: GetResult[PackagePath] =
     GetResult { p =>
       val depth = p.<<[Int]
       val datasetId = p.<<[Int]
@@ -1132,16 +1134,32 @@ class PackageManager(datasetManager: DatasetManager) {
       val `type` = p.<<[String]
       val state = p.<<[String]
 
-      PackageExport(
-        depth = depth,
-        datasetId = datasetId,
-        parentId = parentId,
-        path = path,
-        id = id,
-        nodeId = nodeId,
-        name = name,
-        `type` = PackageType.withName(`type`),
-        state = PackageState.withName(state)
+//      PackageExport(
+//        depth = depth,
+//        datasetId = datasetId,
+//        parentId = parentId,
+//        path = path,
+//        id = id,
+//        nodeId = nodeId,
+//        name = name,
+//        `type` = PackageType.withName(`type`),
+//        state = PackageState.withName(state)
+//      )
+      (
+        Package(
+          datasetId = datasetId,
+          id = id,
+          nodeId = nodeId,
+          name = name,
+          `type` = PackageType.withName(`type`),
+          state = PackageState.withName(state),
+          parentId = parentId match {
+            case id if id > 0 => Some(id)
+            case _ => None
+          },
+          ownerId = None
+        ),
+        path
       )
     }
 
@@ -1149,7 +1167,7 @@ class PackageManager(datasetManager: DatasetManager) {
     dataset: Dataset
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Seq[PackageExport]] =
+  ): EitherT[Future, CoreError, Seq[PackagePath]] =
     db.run {
         sql"""
            WITH RECURSIVE export_packages AS (
@@ -1191,7 +1209,7 @@ class PackageManager(datasetManager: DatasetManager) {
             from export_packages
             where state not in (${PackageState.DELETING.entryName},${PackageState.DELETED.entryName},${PackageState.RESTORING.entryName});
          """
-          .as[PackageExport]
+          .as[PackagePath]
       }
       .map(_.to(Seq))
       .toEitherT
