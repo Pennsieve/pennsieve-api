@@ -1065,7 +1065,9 @@ class PackageManagerSpec extends BaseManagerSpec {
     result1.value.map(_._2) shouldBe Vector(Seq(file, otherFile))
   }
 
-  "package export" should "have empty path for top-level package" in {
+  behavior of "package export"
+
+  it should "have empty path for top-level package" in {
     val user = createUser()
     val pm = packageManager(user = user)
 
@@ -1076,7 +1078,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     result.head._2.length shouldEqual 0
   }
 
-  "package export" should "provide the folder path for packages" in {
+  it should "provide the folder path for packages" in {
     val user = createUser()
     val pm = packageManager(user = user)
 
@@ -1151,7 +1153,7 @@ class PackageManagerSpec extends BaseManagerSpec {
       .map(_._2) shouldBe Vector(Seq(dataFolderName, derivedFolderName))
   }
 
-  "package export" should "return a zero-length response for a dataset with no packages" in {
+  it should "return a zero-length response for a dataset with no packages" in {
     val user = createUser()
     val pm = packageManager(user = user)
 
