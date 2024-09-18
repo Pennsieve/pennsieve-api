@@ -1072,8 +1072,8 @@ class PackageManagerSpec extends BaseManagerSpec {
     val dataset = createDataset(user = user)
     val p = createPackage(user = user, dataset = dataset)
     val result = pm.exportAll(dataset).await.value
-    result.length shouldEqual (1)
-    result.head._2.length shouldEqual (0)
+    result.length shouldEqual 1
+    result.head._2.length shouldEqual 0
   }
 
   "package export" should "provide the folder path for packages" in {
@@ -1149,6 +1149,15 @@ class PackageManagerSpec extends BaseManagerSpec {
     result
       .filter((_._1.name.equals(derivedFileName)))
       .map(_._2) shouldBe Vector(Seq(dataFolderName, derivedFolderName))
+  }
+
+  "package export" should "return a zero-length response for a dataset with no packages" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+
+    val dataset = createDataset(user = user)
+    val result = pm.exportAll(dataset).await.value
+    result.length shouldBe 0
   }
 
 }
