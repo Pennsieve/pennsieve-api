@@ -1180,8 +1180,8 @@ class PackageManager(datasetManager: DatasetManager) {
                      name,
                      type,
                      state
-              from "367".packages
-              where dataset_id = 2190
+              from "#${organization.schemaId}".packages
+              where dataset_id = ${dataset.id}
                 and parent_id is null
               union
               select parents.depth+1 as depth,
@@ -1193,7 +1193,7 @@ class PackageManager(datasetManager: DatasetManager) {
                      children.name,
                      children.type,
                      children.state
-              from "367".packages children
+              from "#${organization.schemaId}".packages children
               INNER JOIN export_packages parents
               ON children.parent_id = parents.id
             )
