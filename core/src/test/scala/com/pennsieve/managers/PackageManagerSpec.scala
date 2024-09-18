@@ -1065,4 +1065,15 @@ class PackageManagerSpec extends BaseManagerSpec {
     result1.value.map(_._2) shouldBe Vector(Seq(file, otherFile))
   }
 
+  "package export" should "have empty path for top-level package" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+
+    val dataset = createDataset(user = user)
+    val p = createPackage(user = user, dataset = dataset)
+    val result = pm.exportAll(dataset).await.value
+    result.length shouldEqual (1)
+    result.head._2.length shouldEqual (0)
+  }
+
 }
