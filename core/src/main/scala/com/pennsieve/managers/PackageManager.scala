@@ -1108,23 +1108,10 @@ class PackageManager(datasetManager: DatasetManager) {
       .map(_.to(Seq))
       .toEitherT
 
-//  case class PackageExport(
-//    depth: Int,
-//    datasetId: Int,
-//    parentId: Int,
-//    path: Seq[String],
-//    id: Int,
-//    nodeId: String,
-//    name: String,
-//    `type`: PackageType,
-//    state: PackageState
-//  )
-
   type PackagePath = (Package, Seq[String])
 
   implicit val packageList: GetResult[PackagePath] =
     GetResult { p =>
-      val depth = p.<<[Int]
       val datasetId = p.<<[Int]
       val parentId = p.<<[Int]
       val path = p.<<[Seq[String]]
@@ -1134,17 +1121,6 @@ class PackageManager(datasetManager: DatasetManager) {
       val `type` = p.<<[String]
       val state = p.<<[String]
 
-//      PackageExport(
-//        depth = depth,
-//        datasetId = datasetId,
-//        parentId = parentId,
-//        path = path,
-//        id = id,
-//        nodeId = nodeId,
-//        name = name,
-//        `type` = PackageType.withName(`type`),
-//        state = PackageState.withName(state)
-//      )
       (
         Package(
           datasetId = datasetId,
@@ -1171,8 +1147,7 @@ class PackageManager(datasetManager: DatasetManager) {
     db.run {
         sql"""
            WITH RECURSIVE export_packages AS (
-              select 0 AS depth,
-                     dataset_id,
+              select dataset_id,
                      parent_id,
                      ARRAY[]::VARCHAR[] as path,
                      id,
@@ -1184,8 +1159,7 @@ class PackageManager(datasetManager: DatasetManager) {
               where dataset_id = ${dataset.id}
                 and parent_id is null
               union
-              select parents.depth+1 as depth,
-                     children.dataset_id,
+              select children.dataset_id,
                      children.parent_id,
                      (parents.path || parents.name)::VARCHAR[] as path,
                      children.id,
@@ -1197,8 +1171,7 @@ class PackageManager(datasetManager: DatasetManager) {
               INNER JOIN export_packages parents
               ON children.parent_id = parents.id
             )
-          select depth,
-                 dataset_id,
+          select dataset_id,
                  parent_id,
                  path,
                  id,
