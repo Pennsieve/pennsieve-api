@@ -687,10 +687,10 @@ class SecureOrganizationManager(val db: Database, val actor: User)
                   .map(_.name)
                   .update(name)
               )
-              .toEitherT[CoreError]
+              .toEitherT
 
             _ <- FutureEitherHelpers.assert(result == 1)(
-              Error("failed to update organization name")
+              (Error("failed to update organization name"): CoreError)
             )
           } yield ()
         case None =>
@@ -721,7 +721,7 @@ class SecureOrganizationManager(val db: Database, val actor: User)
               .toEitherT
 
             _ <- FutureEitherHelpers.assert(result == 1)(
-              Error("failed to update organization name")
+              (Error("failed to update organization name"): CoreError)
             )
           } yield ()
         case None =>
