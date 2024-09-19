@@ -18,7 +18,7 @@ package com.pennsieve.managers
 
 import cats.syntax.either._
 import cats.instances.future._
-import com.pennsieve.domain.NotFound
+import com.pennsieve.domain.{ CoreError, NotFound }
 import com.pennsieve.models.{
   DBPermission,
   Feature,
@@ -259,6 +259,29 @@ class UserOrganizationManagerSpec
         .await
         .isLeft
     )
+  }
+
+  "updating an organization" should "update the custom color palette" in {
+    val colors = Some(("#ABC", "EFG"))
+    val organization = createOrganization()
+    assert(organization.customization.isEmpty)
+
+    val updatedOrganization: Either[CoreError, Organization] =
+      organizationManager()
+        .update(
+          organizationNodeId = organization.nodeId,
+          details = UpdateOrganization(
+            name = None,
+            subscription = None,
+            customColors = colors
+          )
+        )
+        .await
+
+    assert(updatedOrganization.isRight)
+    assert(updatedOrganization.value.customization.isDefined)
+    assert(updatedOrganization.value.customization.get.customColors == colors)
+    assert(updatedOrganization.value.name == organization.name)
   }
 
   "removing a user from an organization" should "remove that user from the org's teams" in {
