@@ -22,7 +22,7 @@ import com.pennsieve.models.SubscriptionStatus.{
   ConfirmedSubscription => Confirmed,
   PendingSubscription => Pending
 }
-import com.pennsieve.models.{ Feature, Subscription }
+import com.pennsieve.models.{ Feature, OrganizationCustomization, Subscription }
 
 sealed trait SubscriptionDTO
 case class PendingSubscription(`type`: Option[String] = None)
@@ -51,6 +51,7 @@ case class OrganizationDTO(
   terms: Option[String],
   features: Set[Feature],
   storage: Option[Long],
+  customization: Option[OrganizationCustomization],
   customTermsOfService: Option[CustomTermsOfServiceDTO],
   intId: Int
 )
