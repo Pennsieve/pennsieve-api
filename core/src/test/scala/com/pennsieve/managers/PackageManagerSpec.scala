@@ -1065,4 +1065,101 @@ class PackageManagerSpec extends BaseManagerSpec {
     result1.value.map(_._2) shouldBe Vector(Seq(file, otherFile))
   }
 
+  behavior of "package export"
+
+  it should "have empty path for top-level package" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+
+    val dataset = createDataset(user = user)
+    val p = createPackage(user = user, dataset = dataset)
+    val result = pm.exportAll(dataset).await.value
+    result.length shouldEqual 1
+    result.head._2.length shouldEqual 0
+  }
+
+  it should "provide the folder path for packages" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+
+    val dataset = createDataset(user = user)
+
+    // create the folder structure
+    val dataFolderName = "data"
+    val sourceFolderName = "source"
+    val derivedFolderName = "derived"
+
+    val dataFolderPackage =
+      createPackage(user = user, dataset = dataset, name = dataFolderName)
+    val sourceFolderPackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = sourceFolderName,
+      parent = Some(dataFolderPackage)
+    )
+    val derivedFolderPackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = derivedFolderName,
+      parent = Some(dataFolderPackage)
+    )
+
+    // attach files to the packages
+    val manifestFileName = "manifest.json"
+    val sourceFileName = "source.dat"
+    val derivedFileName = "derived.csv"
+
+    val manifestFilePackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = manifestFileName,
+      `type` = PackageType.Unsupported,
+      parent = Some(dataFolderPackage)
+    )
+    val manifestFile =
+      createFile(container = manifestFilePackage, name = manifestFileName)
+
+    val sourceFilePackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = sourceFileName,
+      `type` = PackageType.Unknown,
+      parent = Some(sourceFolderPackage)
+    )
+    val sourceFile =
+      createFile(container = sourceFolderPackage, name = sourceFileName)
+
+    val derivedFilePackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = derivedFileName,
+      `type` = PackageType.CSV,
+      parent = Some(derivedFolderPackage)
+    )
+    val derivedFile =
+      createFile(container = derivedFolderPackage, name = derivedFileName)
+
+    val result = pm.exportAll(dataset).await.value
+
+    result.length shouldEqual (6)
+    result
+      .filter((_._1.name.equals(manifestFileName)))
+      .map(_._2) shouldBe Vector(Seq(dataFolderName))
+    result.filter((_._1.name.equals(sourceFileName))).map(_._2) shouldBe Vector(
+      Seq(dataFolderName, sourceFolderName)
+    )
+    result
+      .filter((_._1.name.equals(derivedFileName)))
+      .map(_._2) shouldBe Vector(Seq(dataFolderName, derivedFolderName))
+  }
+
+  it should "return a zero-length response for a dataset with no packages" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+
+    val dataset = createDataset(user = user)
+    val result = pm.exportAll(dataset).await.value
+    result.length shouldBe 0
+  }
+
 }

@@ -1107,4 +1107,83 @@ class PackageManager(datasetManager: DatasetManager) {
       }
       .map(_.to(Seq))
       .toEitherT
+
+  type PackagePath = (Package, Seq[String])
+
+  implicit val packageList: GetResult[PackagePath] =
+    GetResult { p =>
+      val datasetId = p.<<[Int]
+      val parentId = p.<<[Int]
+      val path = p.<<[Seq[String]]
+      val id = p.<<[Int]
+      val nodeId = p.<<[String]
+      val name = p.<<[String]
+      val `type` = p.<<[String]
+      val state = p.<<[String]
+
+      (
+        Package(
+          datasetId = datasetId,
+          id = id,
+          nodeId = nodeId,
+          name = name,
+          `type` = PackageType.withName(`type`),
+          state = PackageState.withName(state),
+          parentId = parentId match {
+            case id if id > 0 => Some(id)
+            case _ => None
+          },
+          ownerId = None
+        ),
+        path
+      )
+    }
+
+  def exportAll(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[PackagePath]] =
+    db.run {
+        sql"""
+           WITH RECURSIVE export_packages AS (
+              select dataset_id,
+                     parent_id,
+                     ARRAY[]::VARCHAR[] as path,
+                     id,
+                     node_id,
+                     name,
+                     type,
+                     state
+              from "#${organization.schemaId}".packages
+              where dataset_id = ${dataset.id}
+                and parent_id is null
+              union
+              select children.dataset_id,
+                     children.parent_id,
+                     (parents.path || parents.name)::VARCHAR[] as path,
+                     children.id,
+                     children.node_id,
+                     children.name,
+                     children.type,
+                     children.state
+              from "#${organization.schemaId}".packages children
+              INNER JOIN export_packages parents
+              ON children.parent_id = parents.id
+            )
+          select dataset_id,
+                 parent_id,
+                 path,
+                 id,
+                 node_id,
+                 name,
+                 type,
+                 state
+            from export_packages
+            where state not in (${PackageState.DELETING.entryName},${PackageState.DELETED.entryName},${PackageState.RESTORING.entryName});
+         """
+          .as[PackagePath]
+      }
+      .map(_.to(Seq))
+      .toEitherT
 }
