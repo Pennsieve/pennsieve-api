@@ -185,9 +185,19 @@ object Builders {
                 )
                 .toEitherT[Future]
 
+              datasetReleases <- if (dataset.`type`.equals(DatasetType.Release)) {
+                secureContainer.datasetManager.getReleases(dataset.id)
+              } else {
+                Future[Option[Seq[DatasetRelease]]](None).toEitherT
+              }
+
             } yield
               DataSetDTO(
-                content = WrappedDataset(dataset, datasetAndStatus.status),
+                content = WrappedDataset(
+                  dataset,
+                  datasetAndStatus.status,
+                  datasetReleases
+                ),
                 organization = secureContainer.organization.nodeId,
                 children = None,
                 owner = owner.nodeId,
