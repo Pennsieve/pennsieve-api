@@ -32,6 +32,7 @@ object DatasetReleaseStatus
     with CirceEnum[DatasetReleaseStatus] {
   val values: immutable.IndexedSeq[DatasetReleaseStatus] = findValues
 
+  case object Never extends DatasetReleaseStatus
   case object Created extends DatasetReleaseStatus
   case object Deleted extends DatasetReleaseStatus
   case object Edited extends DatasetReleaseStatus
@@ -48,6 +49,7 @@ object DatasetReleasePublishingStatus
     with CirceEnum[DatasetReleasePublishingStatus] {
   val values: immutable.IndexedSeq[DatasetReleasePublishingStatus] = findValues
 
+  case object Never extends DatasetReleasePublishingStatus
   case object Initial extends DatasetReleasePublishingStatus
   case object Ready extends DatasetReleasePublishingStatus
   case object NotReady extends DatasetReleasePublishingStatus
