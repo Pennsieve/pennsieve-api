@@ -29,6 +29,7 @@ import com.pennsieve.domain._
 import com.pennsieve.managers.OrganizationManager.Invite
 import com.pennsieve.models.SubscriptionStatus.PendingSubscription
 import com.pennsieve.models._
+import com.pennsieve.models.Organization.ColorTheme
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.AbstractError
 import com.pennsieve.core.utilities.MessageTemplates
@@ -450,7 +451,8 @@ class OrganizationManager(db: Database) {
 
 case class UpdateOrganization(
   name: Option[String],
-  subscription: Option[Subscription]
+  subscription: Option[Subscription],
+  colorTheme: Option[ColorTheme]
 )
 
 class SecureOrganizationManager(val db: Database, val actor: User)
@@ -676,7 +678,7 @@ class SecureOrganizationManager(val db: Database, val actor: User)
         case None => FutureEitherHelpers.unit
       }
 
-      updatedOrganization <- details.name match {
+      _ <- details.name match {
         case Some(name) =>
           for {
             result <- db
@@ -689,20 +691,43 @@ class SecureOrganizationManager(val db: Database, val actor: User)
               .toEitherT
 
             _ <- FutureEitherHelpers.assert(result == 1)(
-              Error("failed to update organization name")
+              (Error("failed to update organization name"): CoreError)
             )
+          } yield ()
+        case None =>
+          Either.right[CoreError, Unit](()).toEitherT[Future]
+      }
 
-            organization <- db
+      _ <- details.colorTheme match {
+        case Some(_) =>
+          for {
+            result <- db
               .run(
                 OrganizationsMapper
                   .filter(_.id === organization.id)
-                  .result
-                  .headOption
+                  .map(_.colorTheme)
+                  .update(details.colorTheme)
               )
-              .whenNone[CoreError](NotFound(s"Organization ($organization.id)"))
-          } yield organization
+              .toEitherT
+
+            _ <- FutureEitherHelpers.assert(result == 1)(
+              (Error("failed to update organization name"): CoreError)
+            )
+          } yield ()
         case None =>
+          Either.right[CoreError, Unit](()).toEitherT[Future]
+      }
+      updatedOrganization <- (details.name, details.colorTheme) match {
+        case (None, None) =>
           Either.right[CoreError, Organization](organization).toEitherT[Future]
+        case _ =>
+          db.run(
+              OrganizationsMapper
+                .filter(_.id === organization.id)
+                .result
+                .headOption
+            )
+            .whenNone[CoreError](NotFound(s"Organization ($organization.id)"))
       }
     } yield updatedOrganization
 
