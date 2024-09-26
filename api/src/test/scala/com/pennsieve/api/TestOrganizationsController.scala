@@ -170,7 +170,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
           UpdateOrganization(
             name = Some("Boom"),
             subscription = None,
-            customColors = None
+            colorTheme = None
           )
         )
 
@@ -185,7 +185,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("set an organization custom colors") {
+  test("set an organization color theme") {
     get(
       s"/${loggedInOrganization.nodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -198,7 +198,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
           UpdateOrganization(
             name = None,
             subscription = None,
-            customColors = Some(colors)
+            colorTheme = Some(colors)
           )
         )
 
@@ -220,7 +220,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         UpdateOrganization(
           name = Some("Boom"),
           subscription = None,
-          customColors = None
+          colorTheme = None
         )
       )
 
@@ -237,7 +237,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val updateReq = write(
       UpdateOrganization(
         name = Some("Boom"),
-        customColors = None,
+        colorTheme = None,
         subscription = Some(
           Subscription(
             organizationId = loggedInOrganization.id,
@@ -291,7 +291,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
         UpdateOrganization(
           name = None,
           subscription = Some(newSubscription),
-          customColors = None
+          colorTheme = None
         )
       )
 

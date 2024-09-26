@@ -778,7 +778,8 @@ object Builders {
       subscriptionState = SubscriptionDTO(subscription),
       features = featureFlags.filter(_.enabled).map(_.feature).toSet,
       storage = storage,
-      customization = organization.customization,
+      colorTheme = organization.colorTheme,
+      bannerImageURI = organization.bannerImageURI,
       customTermsOfService = organization.customTermsOfServiceVersion
         .map(
           updatedAt => CustomTermsOfServiceDTO(updatedAt, organization.nodeId)

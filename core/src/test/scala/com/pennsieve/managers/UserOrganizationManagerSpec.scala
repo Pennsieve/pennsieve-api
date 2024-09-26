@@ -261,10 +261,10 @@ class UserOrganizationManagerSpec
     )
   }
 
-  "updating an organization" should "update the custom color palette" in {
-    val colors = Some(("#ABC", "EFG"))
+  "updating an organization" should "update the color theme" in {
+    val colorTheme = Some(("#ABC", "EFG"))
     val organization = createOrganization()
-    assert(organization.customization.isEmpty)
+    assert(organization.colorTheme.isEmpty)
 
     val updatedOrganization: Either[CoreError, Organization] =
       organizationManager()
@@ -273,14 +273,13 @@ class UserOrganizationManagerSpec
           details = UpdateOrganization(
             name = None,
             subscription = None,
-            customColors = colors
+            colorTheme = colorTheme
           )
         )
         .await
 
     assert(updatedOrganization.isRight)
-    assert(updatedOrganization.value.customization.isDefined)
-    assert(updatedOrganization.value.customization.get.customColors == colors)
+    assert(updatedOrganization.value.colorTheme == colorTheme)
     assert(updatedOrganization.value.name == organization.name)
   }
 

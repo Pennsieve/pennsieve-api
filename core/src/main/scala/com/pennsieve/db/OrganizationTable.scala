@@ -18,7 +18,7 @@ package com.pennsieve.db
 
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.models._
-import com.pennsieve.models.OrganizationCustomization
+import com.pennsieve.models.Organization.ColorTheme
 
 import java.time.ZonedDateTime
 import com.pennsieve.domain.InvalidOrganization
@@ -47,7 +47,8 @@ final class OrganizationsTable(tag: Tag)
   def storageBucket = column[Option[String]]("storage_bucket")
   def publishBucket = column[Option[String]]("publish_bucket")
   def embargoBucket = column[Option[String]]("embargo_bucket")
-  def customization = column[Option[OrganizationCustomization]]("customization")
+  def colorTheme = column[Option[ColorTheme]]("color_theme")
+  def bannerImageURI = column[Option[String]]("banner_image_uri")
 
   def * =
     (
@@ -60,7 +61,8 @@ final class OrganizationsTable(tag: Tag)
       storageBucket,
       publishBucket,
       embargoBucket,
-      customization,
+      colorTheme,
+      bannerImageURI,
       createdAt,
       updatedAt,
       id

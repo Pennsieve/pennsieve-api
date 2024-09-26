@@ -1,2 +1,3 @@
 ALTER TABLE organizations
-	ADD COLUMN customization JSONB;
+	ADD COLUMN color_theme JSONB,
+	ADD COLUMN banner_image_uri TEXT;

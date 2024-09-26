@@ -29,6 +29,7 @@ import com.pennsieve.domain._
 import com.pennsieve.managers.OrganizationManager.Invite
 import com.pennsieve.models.SubscriptionStatus.PendingSubscription
 import com.pennsieve.models._
+import com.pennsieve.models.Organization.ColorTheme
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.utilities.AbstractError
 import com.pennsieve.core.utilities.MessageTemplates
@@ -451,7 +452,7 @@ class OrganizationManager(db: Database) {
 case class UpdateOrganization(
   name: Option[String],
   subscription: Option[Subscription],
-  customColors: Option[(String, String)]
+  colorTheme: Option[ColorTheme]
 )
 
 class SecureOrganizationManager(val db: Database, val actor: User)
@@ -697,26 +698,15 @@ class SecureOrganizationManager(val db: Database, val actor: User)
           Either.right[CoreError, Unit](()).toEitherT[Future]
       }
 
-      _ <- details.customColors match {
-        case Some(customColors) =>
+      _ <- details.colorTheme match {
+        case Some(_) =>
           for {
             result <- db
               .run(
                 OrganizationsMapper
                   .filter(_.id === organization.id)
-                  .map(_.customization)
-                  .update(
-                    organization.customization
-                      .map(_.copy(customColors = Some(customColors)))
-                      .orElse(
-                        Some(
-                          OrganizationCustomization(
-                            customColors = Some(customColors),
-                            bannerImageS3URL = None
-                          )
-                        )
-                      )
-                  )
+                  .map(_.colorTheme)
+                  .update(details.colorTheme)
               )
               .toEitherT
 
@@ -727,7 +717,7 @@ class SecureOrganizationManager(val db: Database, val actor: User)
         case None =>
           Either.right[CoreError, Unit](()).toEitherT[Future]
       }
-      updatedOrganization <- (details.name, details.customColors) match {
+      updatedOrganization <- (details.name, details.colorTheme) match {
         case (None, None) =>
           Either.right[CoreError, Organization](organization).toEitherT[Future]
         case _ =>
