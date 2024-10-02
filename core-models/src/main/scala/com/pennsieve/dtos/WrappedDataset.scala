@@ -24,6 +24,7 @@ import com.pennsieve.models.{
   DatasetStatus,
   DatasetType,
   DefaultDatasetStatus,
+  ExternalRepository,
   License
 }
 import io.circe.{ Decoder, Encoder }
@@ -44,6 +45,7 @@ case class WrappedDataset(
   tags: List[String],
   dataUseAgreementId: Option[Int],
   intId: Int,
+  repository: Option[ExternalRepository],
   releases: Option[Seq[DatasetRelease]]
 )
 
@@ -51,6 +53,7 @@ object WrappedDataset {
   def apply(
     dataset: Dataset,
     status: DatasetStatus,
+    repository: Option[ExternalRepository],
     releases: Option[Seq[DatasetRelease]] = None
   ): WrappedDataset = {
     WrappedDataset(
@@ -68,6 +71,7 @@ object WrappedDataset {
       tags = dataset.tags,
       dataUseAgreementId = dataset.dataUseAgreementId,
       intId = dataset.id,
+      repository = repository,
       releases = releases
     )
   }

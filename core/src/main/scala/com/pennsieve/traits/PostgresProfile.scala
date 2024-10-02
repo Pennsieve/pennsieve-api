@@ -166,6 +166,24 @@ trait PostgresProfile
         s => IntegrationTarget.withName(s)
       )
 
+    implicit val externalRepositoryTypeMapper =
+      MappedColumnType.base[ExternalRepositoryType, String](
+        _.entryName,
+        ExternalRepositoryType.withName
+      )
+
+    implicit val externalRepositoryStatusMapper =
+      MappedColumnType.base[ExternalRepositoryStatus, String](
+        _.entryName,
+        ExternalRepositoryStatus.withName
+      )
+
+    implicit val syncSettingsMapper =
+      MappedColumnType.base[List[SyncSetting], Json](
+        settings => settings.asJson,
+        json => json.as[List[SyncSetting]].toOption.get
+      )
+
     implicit val annotationPathElementMapper =
       MappedColumnType.base[List[PathElement], Json](
         elements => elements.asJson,
