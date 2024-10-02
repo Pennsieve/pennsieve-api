@@ -1831,6 +1831,19 @@ class DatasetManager(
       release <- db.run(datasetReleaseMapper.update(release)).toEitherT
     } yield release
 
+  def addExternalRepository(
+    extRepo: ExternalRepository
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, ExternalRepository] =
+    for {
+      dataset <- get(extRepo.datasetId.get)
+      _ <- FutureEitherHelpers.assert(
+        dataset.`type`.equals(DatasetType.Release)
+      )(PredicateError(s"dataset type must be ${DatasetType.Release.toString}"))
+      repo <- db.run(externalRepositoryMapper.add(extRepo)).toEitherT
+    } yield repo
+
   def getExternalRepository(
     organizationId: Int,
     datasetId: Int

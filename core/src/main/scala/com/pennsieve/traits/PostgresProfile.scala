@@ -178,10 +178,10 @@ trait PostgresProfile
         ExternalRepositoryStatus.withName
       )
 
-    implicit val syncSettingsMapper =
-      MappedColumnType.base[List[SyncSetting], Json](
+    implicit val synchronizationSettingsMapper =
+      MappedColumnType.base[SynchrnonizationSettings, Json](
         settings => settings.asJson,
-        json => json.as[List[SyncSetting]].toOption.get
+        json => json.as[SynchrnonizationSettings].toOption.get
       )
 
     implicit val annotationPathElementMapper =
