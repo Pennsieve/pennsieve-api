@@ -53,7 +53,7 @@ object WrappedDataset {
   def apply(
     dataset: Dataset,
     status: DatasetStatus,
-    repository: Option[ExternalRepository],
+    repository: Option[ExternalRepository] = None,
     releases: Option[Seq[DatasetRelease]] = None
   ): WrappedDataset = {
     WrappedDataset(
