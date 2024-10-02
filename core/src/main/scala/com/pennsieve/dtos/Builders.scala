@@ -48,6 +48,7 @@ import com.pennsieve.models.{
   DatasetStatus,
   DatasetStatusInUse,
   DatasetType,
+  ExternalRepository,
   FeatureFlag,
   File,
   FileObjectType,
@@ -185,6 +186,15 @@ object Builders {
                 )
                 .toEitherT[Future]
 
+              organizationId = secureContainer.organization.id
+
+              repository <- if (dataset.`type`.equals(DatasetType.Release)) {
+                secureContainer.datasetManager
+                  .getExternalRepository(organizationId, dataset.id)
+              } else {
+                Future[Option[ExternalRepository]](None).toEitherT
+              }
+
               datasetReleases <- if (dataset.`type`.equals(DatasetType.Release)) {
                 secureContainer.datasetManager.getReleases(dataset.id)
               } else {
@@ -196,6 +206,7 @@ object Builders {
                 content = WrappedDataset(
                   dataset,
                   datasetAndStatus.status,
+                  repository,
                   datasetReleases
                 ),
                 organization = secureContainer.organization.nodeId,
@@ -253,6 +264,15 @@ object Builders {
         Future[Option[List[PackageDTO]]](None).toEitherT
       }
 
+      organizationId = secureContainer.organization.id
+
+      repository <- if (dataset.`type`.equals(DatasetType.Release)) {
+        secureContainer.datasetManager
+          .getExternalRepository(organizationId, dataset.id)
+      } else {
+        Future[Option[ExternalRepository]](None).toEitherT
+      }
+
       datasetReleases <- if (dataset.`type`.equals(DatasetType.Release)) {
         secureContainer.datasetManager.getReleases(dataset.id)
       } else {
@@ -298,7 +318,7 @@ object Builders {
 
     } yield
       DataSetDTO(
-        WrappedDataset(dataset, status, datasetReleases),
+        WrappedDataset(dataset, status, repository, datasetReleases),
         secureContainer.organization.nodeId,
         children,
         owner.nodeId,
