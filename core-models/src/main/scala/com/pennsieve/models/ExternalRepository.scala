@@ -18,17 +18,25 @@ package com.pennsieve.models
 
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-
 import enumeratum._
 import enumeratum.EnumEntry._
 
 import java.time.ZonedDateTime
+import java.util.UUID
 import scala.collection.immutable
 
-case class SyncSetting(setting: String, value: Boolean)
-object SyncSetting {
-  implicit val encoder: Encoder[SyncSetting] = deriveEncoder[SyncSetting]
-  implicit val decoder: Decoder[SyncSetting] = deriveDecoder[SyncSetting]
+case class SynchrnonizationSettings(
+  banner: Boolean,
+  changelog: Boolean,
+  contributors: Boolean,
+  license: Boolean,
+  readme: Boolean
+)
+object SynchrnonizationSettings {
+  implicit val encoder: Encoder[SynchrnonizationSettings] =
+    deriveEncoder[SynchrnonizationSettings]
+  implicit val decoder: Decoder[SynchrnonizationSettings] =
+    deriveDecoder[SynchrnonizationSettings]
 }
 
 sealed trait ExternalRepositoryType extends EnumEntry with Snakecase
@@ -64,10 +72,10 @@ case class ExternalRepository(
   organizationId: Int,
   userId: Int,
   datasetId: Option[Int] = None,
-  applicationId: Option[Int] = None,
+  applicationId: Option[UUID] = None,
   status: ExternalRepositoryStatus,
   autoProcess: Boolean = false,
-  synchronize: List[SyncSetting] = List.empty,
+  synchronize: Option[SynchrnonizationSettings] = None,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   updatedAt: ZonedDateTime = ZonedDateTime.now()
 )

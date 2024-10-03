@@ -20,13 +20,14 @@ import com.pennsieve.models.{
   ExternalRepository,
   ExternalRepositoryStatus,
   ExternalRepositoryType,
-  SyncSetting
+  SynchrnonizationSettings
 }
-
 import com.pennsieve.traits.PostgresProfile.api._
 import slick.dbio.Effect
+import slick.lifted.MappedToBase.mappedToIsomorphism
 
 import java.time.ZonedDateTime
+import java.util.UUID
 
 final class ExternalRepositoriesTable(tag: Tag)
     extends Table[ExternalRepository](
@@ -42,10 +43,10 @@ final class ExternalRepositoriesTable(tag: Tag)
   def organizationId = column[Int]("organization_id")
   def userId = column[Int]("user_id")
   def datasetId = column[Option[Int]]("dataset_id")
-  def applicationId = column[Option[Int]]("application_id")
+  def applicationId = column[Option[UUID]]("application_id")
   def status = column[ExternalRepositoryStatus]("status")
   def autoProcess = column[Boolean]("auto_process")
-  def synchronize = column[List[SyncSetting]]("synchronize")
+  def synchronize = column[Option[SynchrnonizationSettings]]("synchronize")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
   def updatedAt = column[ZonedDateTime]("updated_at", O.AutoInc)
 
@@ -69,6 +70,13 @@ final class ExternalRepositoriesTable(tag: Tag)
 
 class ExternalRepositoryMapper
     extends TableQuery(new ExternalRepositoriesTable(_)) {
+  def add(extRepo: ExternalRepository): DBIOAction[
+    ExternalRepository,
+    NoStream,
+    Effect.Write with Effect.Transactional with Effect
+  ] =
+    (this returning this) += extRepo
+
   def getExternalRepository(
     organizationId: Int,
     datasetId: Int
