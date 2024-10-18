@@ -124,6 +124,29 @@ case class DatasetMetadataV4_0(
   pennsieveSchemaVersion: String = "4.0"
 ) extends DatasetMetadata
 
+case class ReleaseMetadataV5_0(
+  origin: String, // GitHub
+  url: String, // https://github.com/org/repo
+  label: String, // tag
+  marker: String // commit hash
+)
+object ReleaseMetadataV5_0 {
+  implicit val encoder: Encoder[ReleaseMetadataV5_0] =
+    deriveEncoder[ReleaseMetadataV5_0]
+  implicit val decoder: Decoder[ReleaseMetadataV5_0] =
+    deriveDecoder[ReleaseMetadataV5_0]
+}
+
+case class ReferenceMetadataV5_0(
+  ids: Seq[String] // list of DOIs
+)
+object ReferenceMetadataV5_0 {
+  implicit val encoder: Encoder[ReferenceMetadataV5_0] =
+    deriveEncoder[ReferenceMetadataV5_0]
+  implicit val decoder: Decoder[ReferenceMetadataV5_0] =
+    deriveDecoder[ReferenceMetadataV5_0]
+}
+
 case class DatasetMetadataV5_0(
   pennsieveDatasetId: Int,
   version: Int,
@@ -139,13 +162,22 @@ case class DatasetMetadataV5_0(
   `@id`: String, // DOI
   publisher: String = "The University of Pennsylvania",
   `@context`: String = "http://schema.org/",
-  `@type`: String = "Dataset",
+  `@type`: String = "Dataset", // or "Release" , "Collection"
   schemaVersion: String = "http://schema.org/version/3.7/",
   collections: Option[List[PublishedCollection]] = None,
   relatedPublications: Option[List[PublishedExternalPublication]] = None,
   files: List[FileManifest] = List.empty,
-  pennsieveSchemaVersion: String = "4.0"
+  release: Option[ReleaseMetadataV5_0],
+  references: Option[ReferenceMetadataV5_0],
+  pennsieveSchemaVersion: String = "5.0"
 ) extends DatasetMetadata
+
+object DatasetMetadataV5_0 {
+  implicit val encoder: Encoder[DatasetMetadataV5_0] =
+    deriveEncoder[DatasetMetadataV5_0]
+  implicit val decoder: Decoder[DatasetMetadataV5_0] =
+    deriveDecoder[DatasetMetadataV5_0]
+}
 
 object DatasetMetadataV4_0 {
   implicit val encoder: Encoder[DatasetMetadataV4_0] =
@@ -204,6 +236,7 @@ object DatasetMetadata {
               stringSchema match {
                 case "3.0" => c.as[DatasetMetadataV3_0]
                 case "4.0" => c.as[DatasetMetadataV4_0]
+                case "5.0" => c.as[DatasetMetadataV5_0]
                 case _ =>
                   Left(
                     DecodingFailure(s"Could not recognize schema", c.history)

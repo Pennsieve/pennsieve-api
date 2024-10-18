@@ -35,7 +35,8 @@ object License extends Enum[License] with CirceEnum[License] {
   case object `Creative Commons Zero 1.0 Universal` extends License
   case object `Creative Commons Attribution` extends License
   case object `Creative Commons Attribution - ShareAlike` extends License
-  case object `Creative Commons Attribution - NonCommercial-ShareAlike` extends License
+  case object `Creative Commons Attribution - NonCommercial-ShareAlike`
+      extends License
   case object `Eclipse Public License 2.0` extends License
   case object `GNU Affero General Public License v3.0` extends License
   case object `GNU General Public License v2.0` extends License
@@ -48,7 +49,8 @@ object License extends Enum[License] with CirceEnum[License] {
   case object `Mozilla Public License 2.0` extends License
   case object `Open Data Commons Open Database` extends License
   case object `Open Data Commons Attribution` extends License
-  case object `Open Data Commons Public Domain Dedication and License` extends License
+  case object `Open Data Commons Public Domain Dedication and License`
+      extends License
   case object `The Unlicense` extends License
 
   val licenseUri: Map[License, String] = Map(
