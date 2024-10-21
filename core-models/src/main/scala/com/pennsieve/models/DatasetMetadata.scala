@@ -167,8 +167,8 @@ case class DatasetMetadataV5_0(
   collections: Option[List[PublishedCollection]] = None,
   relatedPublications: Option[List[PublishedExternalPublication]] = None,
   files: List[FileManifest] = List.empty,
-  release: Option[ReleaseMetadataV5_0],
-  references: Option[ReferenceMetadataV5_0],
+  release: Option[ReleaseMetadataV5_0] = None,
+  references: Option[ReferenceMetadataV5_0] = None,
   pennsieveSchemaVersion: String = "5.0"
 ) extends DatasetMetadata
 
