@@ -160,6 +160,9 @@ class DatasetManager(
   val datasetReleaseMapper: DatasetReleaseMapper =
     new DatasetReleaseMapper(organization)
 
+  val externalRepositoryMapper: ExternalRepositoryMapper =
+    new ExternalRepositoryMapper()
+
   def isLocked(
     dataset: Dataset
   )(implicit
@@ -1477,7 +1480,8 @@ class DatasetManager(
     canPublish: Option[Boolean] = None,
     restrictToRole: Boolean = false,
     collectionId: Option[Int] = None,
-    isGuest: Boolean = false
+    isGuest: Boolean = false,
+    datasetType: Option[DatasetType] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Seq[DatasetAndStatus], Long)] = {
@@ -1499,8 +1503,9 @@ class DatasetManager(
           val query = datasetsMapper.withoutDeleted
             .filter(_.id.inSet(datasetIds))
 
-            // (2) Only match datasets with the supplied status:
+            // (2) Only match datasets with the supplied status and dataset type:
             .filterOpt(status)(_.statusId === _.id)
+            .filterOpt(datasetType)(_.`type` === _)
 
             // (3) Add users:
             .join(datasetUser)
@@ -1777,13 +1782,27 @@ class DatasetManager(
         }
     } yield true
 
-  def getRelease(
+  def getReleases(
     datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[Seq[DatasetRelease]]] =
+    for {
+      releases <- db.run(datasetReleaseMapper.getAll(datasetId)).toEitherT
+    } yield
+      (releases.length match {
+        case 0 => None
+        case _ => Some(releases)
+      })
+
+  def getRelease(
+    datasetId: Int,
+    label: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Option[DatasetRelease]] =
     for {
-      release <- db.run(datasetReleaseMapper.get(datasetId)).toEitherT
+      release <- db.run(datasetReleaseMapper.get(datasetId, label)).toEitherT
     } yield (release)
 
   def addRelease(
@@ -1811,4 +1830,32 @@ class DatasetManager(
       )(PredicateError(s"dataset type must be ${DatasetType.Release.toString}"))
       release <- db.run(datasetReleaseMapper.update(release)).toEitherT
     } yield release
+
+  def addExternalRepository(
+    extRepo: ExternalRepository
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, ExternalRepository] =
+    for {
+      dataset <- get(extRepo.datasetId.get)
+      _ <- FutureEitherHelpers.assert(
+        dataset.`type`.equals(DatasetType.Release)
+      )(PredicateError(s"dataset type must be ${DatasetType.Release.toString}"))
+      repo <- db.run(externalRepositoryMapper.add(extRepo)).toEitherT
+    } yield repo
+
+  def getExternalRepository(
+    organizationId: Int,
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[ExternalRepository]] =
+    for {
+      repository <- db
+        .run(
+          externalRepositoryMapper
+            .getExternalRepository(organizationId, datasetId)
+        )
+        .toEitherT
+    } yield repository
 }

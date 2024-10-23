@@ -190,10 +190,12 @@ class OrcidClientImpl(
             )
           case None => List.empty[OrcidExternalId]
         }),
-      url = OrcidTitleValue(value = work.publishedDatasetId match {
-        case Some(publishedDatasetId: Int) =>
+      url = OrcidTitleValue(value = (work.doi, work.publishedDatasetId) match {
+        case (Some(doi), _) =>
+          s"https://doi.org/${doi}"
+        case (None, Some(publishedDatasetId: Int)) =>
           s"https://${orcidClientConfig.discoverAppHost}/datasets/${publishedDatasetId}"
-        case None =>
+        case (None, None) =>
           s"https://${orcidClientConfig.discoverAppHost}"
       }),
       putCode = work.orcidPutCode

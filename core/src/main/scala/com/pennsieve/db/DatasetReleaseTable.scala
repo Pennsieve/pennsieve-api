@@ -19,6 +19,8 @@ package com.pennsieve.db
 import com.pennsieve.models.{
   Dataset,
   DatasetRelease,
+  DatasetReleasePublishingStatus,
+  DatasetReleaseStatus,
   ModelProperty,
   Organization
 }
@@ -42,6 +44,9 @@ final class DatasetReleaseTable(schema: String, tag: Tag)
   def tags = column[List[String]]("tags")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
   def updatedAt = column[ZonedDateTime]("updated_at", O.AutoInc)
+  def releaseStatus = column[DatasetReleaseStatus]("release_status")
+  def publishingStatus =
+    column[DatasetReleasePublishingStatus]("publishing_status")
 
   def * =
     (
@@ -55,19 +60,46 @@ final class DatasetReleaseTable(schema: String, tag: Tag)
       properties,
       tags,
       createdAt,
-      updatedAt
+      updatedAt,
+      releaseStatus,
+      publishingStatus
     ).mapTo[DatasetRelease]
 }
 
 class DatasetReleaseMapper(organization: Organization)
     extends TableQuery(new DatasetReleaseTable(organization.schemaId, _)) {
-  def get(
+
+  def getAll(
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): DBIO[Seq[DatasetRelease]] =
+    this
+      .filter(_.datasetId === datasetId)
+      .sortBy(_.createdAt.desc)
+      .result
+
+  def getLatest(
     datasetId: Int
   )(implicit
     ec: ExecutionContext
   ): DBIO[Option[DatasetRelease]] =
     this
       .filter(_.datasetId === datasetId)
+      .sortBy(_.createdAt.desc)
+      .take(1)
+      .result
+      .headOption
+
+  def get(
+    datasetId: Int,
+    label: String
+  )(implicit
+    ec: ExecutionContext
+  ): DBIO[Option[DatasetRelease]] =
+    this
+      .filter(_.datasetId === datasetId)
+      .filter(_.label === label)
       .result
       .headOption
 

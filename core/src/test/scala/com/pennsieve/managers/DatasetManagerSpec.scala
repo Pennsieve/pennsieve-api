@@ -1272,7 +1272,33 @@ class DatasetManagerSpec extends BaseManagerSpec {
 
   }
 
+  "dataset selection" should "permit filtering by `type`" in {
+    val user = createUser()
+    val dm = datasetManager(user = user)
+    // create a dataset, type = 'research'
+    val dataset1 = createDataset(user = user, `type` = DatasetType.Research)
+    // create a dataset, type = 'release'
+    val dataset2 = createDataset(user = user, `type` = DatasetType.Release)
+    val (datasets, count) = dm
+      .getDatasetPaginated(
+        withRole = Role.Owner,
+        limit = Some(5),
+        offset = Some(0),
+        orderBy = (OrderByColumn.Name, OrderByDirection.Asc),
+        status = None,
+        textSearch = None,
+        datasetType = Some(DatasetType.Release)
+      )
+      .await
+      .value
+
+    count shouldEqual 1
+    datasets.length shouldEqual 1
+    datasets.head.dataset shouldBe dataset2
+  }
+
   "a dataset release" should "be added to a dataset of type 'release'" in {
+    val releaseLabel = "v0.0.1"
     val user = createUser()
     val dataset = createDataset(user = user, `type` = DatasetType.Release)
     val dm = datasetManager(user = user)
@@ -1282,7 +1308,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
           datasetId = dataset.id,
           origin = "GitHub",
           url = "https://github.com/Pennsieve/test-repo-x1",
-          label = Some("v0.0.1"),
+          label = Some(releaseLabel),
           marker = Some("423c1ba"),
           releaseDate = Some(ZonedDateTime.now())
         )
@@ -1290,7 +1316,7 @@ class DatasetManagerSpec extends BaseManagerSpec {
       .await
       .value
 
-    assert(dm.getRelease(dataset.id).await.value == Some(release))
+    assert(dm.getRelease(dataset.id, releaseLabel).await.value == Some(release))
   }
 
   it should "not be added to a dataset that is not type 'release'" in {
@@ -1324,14 +1350,15 @@ class DatasetManagerSpec extends BaseManagerSpec {
       .await
       .value
 
+    val releaseLabel = "v1.0.0"
     val update = release.copy(
-      label = Some("v1.0.0"),
+      label = Some(releaseLabel),
       marker = Some("9b44a7e"),
       releaseDate = Some(ZonedDateTime.now())
     )
 
     val _ = dm.updateRelease(update).await.value
-    val updated = dm.getRelease(dataset.id).await.value.get
+    val updated = dm.getRelease(dataset.id, releaseLabel).await.value.get
     assert(updated.label == update.label)
     assert(updated.marker == update.marker)
   }
@@ -1356,6 +1383,34 @@ class DatasetManagerSpec extends BaseManagerSpec {
     val user = createUser()
     val dataset = createDataset(user = user)
     val dm = datasetManager(user = user)
-    assert(dm.getRelease(dataset.id).await.value == None)
+    assert(dm.getReleases(dataset.id).await.value == None)
+  }
+
+  it should "be ordered by createdAt timestamp when there are multiple releases" in {
+    val user = createUser()
+    val dataset = createDataset(user = user, `type` = DatasetType.Release)
+    val dm = datasetManager(user = user)
+    val releaseDetails =
+      Seq(("v1.0.0", "abc123"), ("v2.0.0", "def234"), ("v3.0.0", "ghi345"))
+    releaseDetails.foreach(
+      details =>
+        dm.addRelease(
+            DatasetRelease(
+              datasetId = dataset.id,
+              origin = "GitHub",
+              url = "https://github.com/Pennsieve/test-repo-x1",
+              label = Some(details._1),
+              marker = Some(details._2),
+              releaseDate = Some(ZonedDateTime.now())
+            )
+          )
+          .await
+    )
+
+    val releases = dm.getReleases(dataset.id).await.value.get
+    assert(releases.length == 3)
+    assert(
+      releases.map(r => (r.label.get, r.marker.get)) == releaseDetails.reverse
+    )
   }
 }

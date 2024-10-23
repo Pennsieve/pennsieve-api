@@ -48,6 +48,7 @@ import com.pennsieve.models.{
   DatasetStatus,
   DatasetStatusInUse,
   DatasetType,
+  ExternalRepository,
   FeatureFlag,
   File,
   FileObjectType,
@@ -185,9 +186,29 @@ object Builders {
                 )
                 .toEitherT[Future]
 
+              organizationId = secureContainer.organization.id
+
+              repository <- if (dataset.`type`.equals(DatasetType.Release)) {
+                secureContainer.datasetManager
+                  .getExternalRepository(organizationId, dataset.id)
+              } else {
+                Future[Option[ExternalRepository]](None).toEitherT
+              }
+
+              datasetReleases <- if (dataset.`type`.equals(DatasetType.Release)) {
+                secureContainer.datasetManager.getReleases(dataset.id)
+              } else {
+                Future[Option[Seq[DatasetRelease]]](None).toEitherT
+              }
+
             } yield
               DataSetDTO(
-                content = WrappedDataset(dataset, datasetAndStatus.status),
+                content = WrappedDataset(
+                  dataset,
+                  datasetAndStatus.status,
+                  repository,
+                  datasetReleases
+                ),
                 organization = secureContainer.organization.nodeId,
                 children = None,
                 owner = owner.nodeId,
@@ -243,10 +264,19 @@ object Builders {
         Future[Option[List[PackageDTO]]](None).toEitherT
       }
 
-      datasetRelease <- if (dataset.`type`.equals(DatasetType.Release)) {
-        secureContainer.datasetManager.getRelease(dataset.id)
+      organizationId = secureContainer.organization.id
+
+      repository <- if (dataset.`type`.equals(DatasetType.Release)) {
+        secureContainer.datasetManager
+          .getExternalRepository(organizationId, dataset.id)
       } else {
-        Future[Option[DatasetRelease]](None).toEitherT
+        Future[Option[ExternalRepository]](None).toEitherT
+      }
+
+      datasetReleases <- if (dataset.`type`.equals(DatasetType.Release)) {
+        secureContainer.datasetManager.getReleases(dataset.id)
+      } else {
+        Future[Option[Seq[DatasetRelease]]](None).toEitherT
       }
 
       collaboratorCounts <- secureContainer.datasetManager
@@ -288,7 +318,7 @@ object Builders {
 
     } yield
       DataSetDTO(
-        WrappedDataset(dataset, status, datasetRelease),
+        WrappedDataset(dataset, status, repository, datasetReleases),
         secureContainer.organization.nodeId,
         children,
         owner.nodeId,

@@ -167,6 +167,24 @@ trait PostgresProfile
         s => IntegrationTarget.withName(s)
       )
 
+    implicit val externalRepositoryTypeMapper =
+      MappedColumnType.base[ExternalRepositoryType, String](
+        _.entryName,
+        ExternalRepositoryType.withName
+      )
+
+    implicit val externalRepositoryStatusMapper =
+      MappedColumnType.base[ExternalRepositoryStatus, String](
+        _.entryName,
+        ExternalRepositoryStatus.withName
+      )
+
+    implicit val synchronizationSettingsMapper =
+      MappedColumnType.base[SynchrnonizationSettings, Json](
+        settings => settings.asJson,
+        json => json.as[SynchrnonizationSettings].toOption.get
+      )
+
     implicit val annotationPathElementMapper =
       MappedColumnType.base[List[PathElement], Json](
         elements => elements.asJson,
@@ -206,6 +224,18 @@ trait PostgresProfile
 
     implicit val datasetTypeMapper = MappedColumnType
       .base[DatasetType, String](_.entryName, DatasetType.withName)
+
+    implicit val datasetReleaseStatusMapper =
+      MappedColumnType.base[DatasetReleaseStatus, String](
+        _.entryName,
+        DatasetReleaseStatus.withName
+      )
+
+    implicit val datasetReleasePublishingStatusMapper =
+      MappedColumnType.base[DatasetReleasePublishingStatus, String](
+        _.entryName,
+        DatasetReleasePublishingStatus.withName
+      )
 
     implicit val embargoAccessMapper = MappedColumnType
       .base[EmbargoAccess, String](_.entryName, EmbargoAccess.withName)

@@ -10517,7 +10517,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val dto = parsedBody.extract[DataSetDTO]
       dto.content.datasetType should equal(DatasetType.Research)
-      dto.content.release should equal(None)
+      dto.content.releases should equal(None)
     }
   }
 
@@ -10553,8 +10553,193 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val dto = parsedBody.extract[DataSetDTO]
       dto.content.datasetType should equal(DatasetType.Release)
-      dto.content.release shouldNot equal(None)
-      dto.content.release.get should equal(release)
+      dto.content.releases shouldNot equal(None)
+      dto.content.releases.get.length should equal(1)
+      dto.content.releases.get should equal(Seq(release))
     }
   }
+
+  test(
+    "external repository is included in DatasetDTO for a 'release' type dataset"
+  ) {
+    val repoName = "test-dataset-for-external-repo"
+    val repoUrl = s"https://github.com/Pennsieve/${repoName}"
+
+    // create dataset type='release'
+    val ds = createDataSet(repoName, `type` = DatasetType.Release)
+
+    // create the dataset release
+    val release = secureContainer.datasetManager
+      .addRelease(
+        DatasetRelease(
+          datasetId = ds.id,
+          origin = "GitHub",
+          url = repoUrl,
+          label = Some("v1.0.0"),
+          marker = Some("1ab2c98"),
+          releaseDate = Some(ZonedDateTime.now())
+        )
+      )
+      .await
+      .value
+
+    // create external repo
+    val extRepo = ExternalRepository(
+      origin = "GitHub",
+      `type` = ExternalRepositoryType.Publishing,
+      url = repoUrl,
+      organizationId = secureContainer.organization.id,
+      userId = secureContainer.user.id,
+      datasetId = Some(ds.id),
+      status = ExternalRepositoryStatus.Enabled,
+      autoProcess = true
+    )
+    val repo = secureContainer.datasetManager
+      .addExternalRepository(extRepo)
+      .await
+      .value
+
+    // get /paginated?type=release
+    get(
+      s"/paginated?type=release",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val returnedDatasets = parsedBody
+        .extract[PaginatedDatasets]
+        .datasets
+
+      returnedDatasets.length shouldEqual 1
+      val headDataset = returnedDatasets.head
+      headDataset.content.datasetType shouldBe DatasetType.Release
+      headDataset.content.repository.isDefined shouldBe true
+      //println(headDataset.asJson)
+    }
+  }
+
+  test("external repository synchronization flags can be missing") {
+    val repoName = "test-dataset-for-external-repo"
+    val repoUrl = s"https://github.com/Pennsieve/${repoName}"
+
+    // create dataset type='release'
+    val ds = createDataSet(repoName, `type` = DatasetType.Release)
+
+    // create the dataset release
+    val release = secureContainer.datasetManager
+      .addRelease(
+        DatasetRelease(
+          datasetId = ds.id,
+          origin = "GitHub",
+          url = repoUrl,
+          label = Some("v1.0.0"),
+          marker = Some("1ab2c98"),
+          releaseDate = Some(ZonedDateTime.now())
+        )
+      )
+      .await
+      .value
+
+    // create external repo
+    val extRepo = ExternalRepository(
+      origin = "GitHub",
+      `type` = ExternalRepositoryType.Publishing,
+      url = repoUrl,
+      organizationId = secureContainer.organization.id,
+      userId = secureContainer.user.id,
+      datasetId = Some(ds.id),
+      status = ExternalRepositoryStatus.Enabled,
+      autoProcess = true
+    )
+    val repo = secureContainer.datasetManager
+      .addExternalRepository(extRepo)
+      .await
+      .value
+
+    // get /paginated?type=release
+    get(
+      s"/paginated?type=release",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val returnedDatasets = parsedBody
+        .extract[PaginatedDatasets]
+        .datasets
+
+      returnedDatasets.length shouldEqual 1
+      val headDataset = returnedDatasets.head
+      headDataset.content.datasetType shouldBe DatasetType.Release
+      headDataset.content.repository.isDefined shouldBe true
+      val returnedRepo = headDataset.content.repository.get
+      returnedRepo.synchronize.isDefined shouldBe false
+      //println(headDataset.asJson)
+    }
+  }
+
+  test("external repository includes synchronization flags when set") {
+    val repoName = "test-dataset-for-external-repo"
+    val repoUrl = s"https://github.com/Pennsieve/${repoName}"
+
+    // create dataset type='release'
+    val ds = createDataSet(repoName, `type` = DatasetType.Release)
+
+    // create the dataset release
+    val release = secureContainer.datasetManager
+      .addRelease(
+        DatasetRelease(
+          datasetId = ds.id,
+          origin = "GitHub",
+          url = repoUrl,
+          label = Some("v1.0.0"),
+          marker = Some("1ab2c98"),
+          releaseDate = Some(ZonedDateTime.now())
+        )
+      )
+      .await
+      .value
+
+    // create external repo with synchronization flags
+    val syncFlags = SynchrnonizationSettings(
+      banner = false,
+      changelog = false,
+      contributors = true,
+      license = true,
+      readme = true
+    )
+    val extRepo = ExternalRepository(
+      origin = "GitHub",
+      `type` = ExternalRepositoryType.Publishing,
+      url = repoUrl,
+      organizationId = secureContainer.organization.id,
+      userId = secureContainer.user.id,
+      datasetId = Some(ds.id),
+      status = ExternalRepositoryStatus.Enabled,
+      autoProcess = true,
+      synchronize = Some(syncFlags)
+    )
+    val repo = secureContainer.datasetManager
+      .addExternalRepository(extRepo)
+      .await
+      .value
+
+    // get /paginated?type=release
+    get(
+      s"/paginated?type=release",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val returnedDatasets = parsedBody
+        .extract[PaginatedDatasets]
+        .datasets
+
+      returnedDatasets.length shouldEqual 1
+      val headDataset = returnedDatasets.head
+      headDataset.content.datasetType shouldBe DatasetType.Release
+      headDataset.content.repository.isDefined shouldBe true
+      val returnedRepo = headDataset.content.repository.get
+      returnedRepo.synchronize.isDefined shouldBe true
+      returnedRepo.synchronize.get shouldEqual syncFlags
+      //println(headDataset.asJson)
+    }
+  }
+
 }
