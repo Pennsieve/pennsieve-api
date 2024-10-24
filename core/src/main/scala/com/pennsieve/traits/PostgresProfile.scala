@@ -20,6 +20,7 @@ import java.sql.{ PreparedStatement, ResultSet, Timestamp }
 import java.time.{ ZoneOffset, ZonedDateTime }
 import cats.implicits._
 import com.pennsieve.models._
+import com.pennsieve.models.Organization.ColorTheme
 import com.pennsieve.timeseries.AnnotationData
 import com.pennsieve.utilities.AbstractError
 import com.github.tminglei.slickpg._
@@ -249,6 +250,12 @@ trait PostgresProfile
       MappedColumnType.base[OrcidAuthorization, Json](
         orcidAuthorization => orcidAuthorization.asJson,
         jsonString => jsonString.as[OrcidAuthorization].toOption.get
+      )
+
+    implicit val colorThemeMapper =
+      MappedColumnType.base[ColorTheme, Json](
+        colorTheme => colorTheme.asJson,
+        jsonString => jsonString.as[ColorTheme].toOption.get
       )
 
     implicit val datasetStatusMapper =
