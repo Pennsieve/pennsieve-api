@@ -324,7 +324,7 @@ class DiscussionsController(
     summary "delete a discussion"
     parameter pathParam[String]("discussionId")
       .description("the id of the discussion")
-    deprecated
+    deprecated true
     notes "This endpoint is deprecated and will be removed on Nov 1 2025")
 
   delete("/:discussionId", operation(deleteDiscussionOperation)) {
