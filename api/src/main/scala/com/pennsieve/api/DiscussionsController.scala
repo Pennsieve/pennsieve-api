@@ -74,9 +74,8 @@ class DiscussionsController(
   val getDiscussionOperation = (apiOperation[Option[DiscussionsResponse]](
     "getDiscussionOperation"
   )
-    summary "get a discussion"
-    parameter pathParam[String]("id").description("the id of the package")
-    notes "This endpoint is deprecated and will be removed on Nov 1 2025")
+    summary "get a discussion(deprecated)"
+    parameter pathParam[String]("id").description("the id of the package"))
 
 
   get("/package/:id", operation(getDiscussionOperation)) {
@@ -159,9 +158,8 @@ class DiscussionsController(
   }
 
   val createCommentOperation = (apiOperation[CommentResponse]("createComment")
-    summary "creates a comment and/or a discussion"
-    parameter bodyParam[CreateCommentRequest]("createAnnotationRequest")
-    notes "This endpoint is deprecated and will be removed on Nov 1 2025")
+    summary "creates a comment and/or a discussion(deprecated)"
+    parameter bodyParam[CreateCommentRequest]("createAnnotationRequest"))
 
   post("/", operation(createCommentOperation)) {
     val req = parsedBody.extract[CreateCommentRequest]
@@ -258,12 +256,11 @@ class DiscussionsController(
   }
 
   val deleteCommentOperation = (apiOperation[Int]("deleteComment")
-    summary "delete a comment"
+    summary "delete a comment(deprecated)"
     parameter pathParam[String]("commentId")
       .description("the id of the comment")
     parameter pathParam[String]("discussionId")
-      .description("the id of the discussion")
-    notes "This endpoint is deprecated and will be removed on Nov 1 2025")
+      .description("the id of the discussion"))
 
   delete("/:discussionId/comment/:commentId", operation(deleteCommentOperation)) {
 
@@ -321,10 +318,9 @@ class DiscussionsController(
   }
 
   val deleteDiscussionOperation = (apiOperation[Int]("deleteDiscussion")
-    summary "delete a discussion"
+    summary "delete a discussion(deprecated)"
     parameter pathParam[String]("discussionId")
-      .description("the id of the discussion")
-    notes "This endpoint is deprecated and will be removed on Nov 1 2025")
+      .description("the id of the discussion"))
 
   delete("/:discussionId", operation(deleteDiscussionOperation)) {
 
@@ -374,14 +370,13 @@ class DiscussionsController(
   }
 
   val updateCommentOperation = (apiOperation[CommentResponse]("updateComment")
-    summary "updates an comment"
+    summary "updates an comment(deprecated)"
     parameter bodyParam[UpdateCommentRequest]("body")
       .description("the comment to add")
     parameter pathParam[String]("discussionId")
       .description("the id of the discussion")
     parameter pathParam[String]("commentId")
-      .description("the id of the comment")
-    notes "This endpoint is deprecated and will be removed on Nov 1 2025")
+      .description("the id of the comment"))
 
   put("/:discussionId/comment/:commentId", operation(updateCommentOperation)) {
     val req = parsedBody.extract[UpdateCommentRequest]
