@@ -76,13 +76,13 @@ class DiscussionsController(
   )
     summary "get a discussion"
     parameter pathParam[String]("id").description("the id of the package")
-    deprecated true
     notes "This endpoint is deprecated and will be removed on Nov 1 2025")
 
 
   get("/package/:id", operation(getDiscussionOperation)) {
 
     response.setHeader("Warning", "299 - 'getDiscussionOperation' is deprecated and will be removed on Nov 1 2025")
+    response.setHeader("Deprecated", "True")
 
     new AsyncResult {
       val result = for {
@@ -161,13 +161,13 @@ class DiscussionsController(
   val createCommentOperation = (apiOperation[CommentResponse]("createComment")
     summary "creates a comment and/or a discussion"
     parameter bodyParam[CreateCommentRequest]("createAnnotationRequest")
-    deprecated true
     notes "This endpoint is deprecated and will be removed on Nov 1 2025")
 
   post("/", operation(createCommentOperation)) {
     val req = parsedBody.extract[CreateCommentRequest]
 
     response.setHeader("Warning", "299 - 'createComment' is deprecated and will be removed on Nov 1 2025")
+    response.setHeader("Deprecated", "True")
 
     new AsyncResult {
       val result = for {
@@ -263,12 +263,12 @@ class DiscussionsController(
       .description("the id of the comment")
     parameter pathParam[String]("discussionId")
       .description("the id of the discussion")
-    deprecated true
     notes "This endpoint is deprecated and will be removed on Nov 1 2025")
 
   delete("/:discussionId/comment/:commentId", operation(deleteCommentOperation)) {
 
     response.setHeader("Warning", "299 - 'deleteComment' is deprecated and will be removed on Nov 1 2025")
+    response.setHeader("Deprecated", "True")
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Int] = for {
@@ -324,12 +324,12 @@ class DiscussionsController(
     summary "delete a discussion"
     parameter pathParam[String]("discussionId")
       .description("the id of the discussion")
-    deprecated true
     notes "This endpoint is deprecated and will be removed on Nov 1 2025")
 
   delete("/:discussionId", operation(deleteDiscussionOperation)) {
 
     response.setHeader("Warning", "299 - 'deleteDiscussion' is deprecated and will be removed on Nov 1 2025")
+    response.setHeader("Deprecated", "True")
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Int] = for {
@@ -381,13 +381,13 @@ class DiscussionsController(
       .description("the id of the discussion")
     parameter pathParam[String]("commentId")
       .description("the id of the comment")
-    deprecated true
     notes "This endpoint is deprecated and will be removed on Nov 1 2025")
 
   put("/:discussionId/comment/:commentId", operation(updateCommentOperation)) {
     val req = parsedBody.extract[UpdateCommentRequest]
 
     response.setHeader("Warning", "299 - 'updateComment' is deprecated and will be removed on Nov 1 2025")
+    response.setHeader("Deprecated", "True")
 
 
     new AsyncResult {
