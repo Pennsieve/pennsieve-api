@@ -76,7 +76,7 @@ class DiscussionsController(
   )
     summary "get a discussion"
     parameter pathParam[String]("id").description("the id of the package"))
-    deprecated true
+    deprecated
     notes "This endpoint is deprecated and will be removed on Nov 1 2025"
 
   get("/package/:id", operation(getDiscussionOperation)) {
@@ -160,7 +160,7 @@ class DiscussionsController(
   val createCommentOperation = (apiOperation[CommentResponse]("createComment")
     summary "creates a comment and/or a discussion"
     parameter bodyParam[CreateCommentRequest]("createAnnotationRequest"))
-    deprecated true
+    deprecated
     notes "This endpoint is deprecated and will be removed on Nov 1 2025"
 
   post("/", operation(createCommentOperation)) {
@@ -323,7 +323,7 @@ class DiscussionsController(
     summary "delete a discussion"
     parameter pathParam[String]("discussionId")
       .description("the id of the discussion"))
-    deprecated true
+    deprecated
     notes "This endpoint is deprecated and will be removed on Nov 1 2025"
 
   delete("/:discussionId", operation(deleteDiscussionOperation)) {
