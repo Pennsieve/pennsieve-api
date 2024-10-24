@@ -161,7 +161,7 @@ class DiscussionsController(
   val createCommentOperation = (apiOperation[CommentResponse]("createComment")
     summary "creates a comment and/or a discussion"
     parameter bodyParam[CreateCommentRequest]("createAnnotationRequest")
-    deprecated
+    deprecated true
     notes "This endpoint is deprecated and will be removed on Nov 1 2025")
 
   post("/", operation(createCommentOperation)) {
