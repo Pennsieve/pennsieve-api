@@ -74,7 +74,7 @@ class DiscussionsController(
   val getDiscussionOperation = (apiOperation[Option[DiscussionsResponse]](
     "getDiscussionOperation"
   )
-    summary "get a discussion(deprecated)"
+    summary "get a discussion[deprecated]"
     parameter pathParam[String]("id").description("the id of the package"))
 
 
@@ -158,7 +158,7 @@ class DiscussionsController(
   }
 
   val createCommentOperation = (apiOperation[CommentResponse]("createComment")
-    summary "creates a comment and/or a discussion(deprecated)"
+    summary "creates a comment and/or a discussion[deprecated]"
     parameter bodyParam[CreateCommentRequest]("createAnnotationRequest"))
 
   post("/", operation(createCommentOperation)) {
@@ -256,7 +256,7 @@ class DiscussionsController(
   }
 
   val deleteCommentOperation = (apiOperation[Int]("deleteComment")
-    summary "delete a comment(deprecated)"
+    summary "delete a comment[deprecated]"
     parameter pathParam[String]("commentId")
       .description("the id of the comment")
     parameter pathParam[String]("discussionId")
@@ -318,7 +318,7 @@ class DiscussionsController(
   }
 
   val deleteDiscussionOperation = (apiOperation[Int]("deleteDiscussion")
-    summary "delete a discussion(deprecated)"
+    summary "delete a discussion[deprecated]"
     parameter pathParam[String]("discussionId")
       .description("the id of the discussion"))
 
@@ -370,7 +370,7 @@ class DiscussionsController(
   }
 
   val updateCommentOperation = (apiOperation[CommentResponse]("updateComment")
-    summary "updates an comment(deprecated)"
+    summary "updates a comment[deprecated]"
     parameter bodyParam[UpdateCommentRequest]("body")
       .description("the comment to add")
     parameter pathParam[String]("discussionId")

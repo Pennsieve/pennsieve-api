@@ -88,6 +88,15 @@ class TestDiscussionsController extends BaseApiTest {
     ) {
       status should equal(201)
 
+      response.getHeader("Warning") should include(
+        "299 - 'createComment' is deprecated and will be removed on Nov 1 2025"
+      )
+
+      // Print all response headers for debugging
+      response.headers.foreach { case (name, values) =>
+        println(s"Header: $name = ${values.mkString(", ")}")
+      }
+
       val json = parse(response.body)
       compact(render(json \ "discussion" \ "package_id")) should include(
         s"${personal.id}"
