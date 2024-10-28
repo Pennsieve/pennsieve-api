@@ -260,7 +260,8 @@ class DiscussionsController(
     parameter pathParam[String]("commentId")
       .description("the id of the comment")
     parameter pathParam[String]("discussionId")
-      .description("the id of the discussion"))
+      .description("the id of the discussion")
+    deprecated(true))
 
   delete("/:discussionId/comment/:commentId", operation(deleteCommentOperation)) {
 
