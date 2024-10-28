@@ -98,6 +98,7 @@ class TestDiscussionsController extends BaseApiTest {
       }
 
       val json = parse(response.body)
+      println(json)
       compact(render(json \ "discussion" \ "package_id")) should include(
         s"${personal.id}"
       )
