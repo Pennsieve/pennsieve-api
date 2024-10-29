@@ -88,11 +88,6 @@ class TestDiscussionsController extends BaseApiTest {
     ) {
       status should equal(201)
 
-      // Print all response headers for debugging
-      response.headers.foreach { case (name, values) =>
-        println(s"Header: $name = ${values.mkString(", ")}")
-      }
-
       val json = parse(response.body)
       compact(render(json \ "discussion" \ "package_id")) should include(
         s"${personal.id}"
