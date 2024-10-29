@@ -103,6 +103,7 @@ object APIContainers {
     with ApiSQSContainer
     with ApiSNSContainer
     with JobSchedulingServiceContainer
+    with IntegrationServiceContainer
   type SecureAPIContainer = APIContainer
     with SecureContainer
     with SecureCoreContainer

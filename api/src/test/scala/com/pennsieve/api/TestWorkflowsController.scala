@@ -17,10 +17,11 @@
 package com.pennsieve.api
 
 import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.clients.CreateWorkflowRequest
 import com.pennsieve.helpers.{ DataSetTestMixin, MockAuditLogger }
 import org.json4s.jackson.Serialization.write
 
-class TestWorkflowsController extends BaseApiTest with DataSetTestMixin {
+class TestWorkflowsController extends BaseApiTest {
 
   val auditLogger = new MockAuditLogger()
   val mockCognito = new MockCognito()
@@ -32,8 +33,6 @@ class TestWorkflowsController extends BaseApiTest with DataSetTestMixin {
       new WorkflowsController(
         insecureContainer,
         secureContainerBuilder,
-        system,
-        auditLogger,
         mockCognito,
         system.dispatcher
       ),
@@ -46,7 +45,8 @@ class TestWorkflowsController extends BaseApiTest with DataSetTestMixin {
       CreateWorkflowRequest(
         workflowName = "CyTOF-analysis-pipeline",
         description = "Pipeline for running end-to-end analysis on CyTOF data",
-        secret = "secretkey"
+        secret = "secretkey",
+        datasetId = "someDatasetId"
       )
     )
 

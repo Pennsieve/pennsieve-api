@@ -17,10 +17,11 @@
 package com.pennsieve.api
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
 import cats.data.EitherT
 import cats.implicits._
-import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.core.utilities.JwtAuthenticator
 import com.pennsieve.dtos.{ APITokenSecretDTO, WorkflowDTO }
 import com.pennsieve.helpers.APIContainers.{
   InsecureAPIContainer,
@@ -31,20 +32,15 @@ import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.models.{ DBPermission, NodeCodes, User }
 import org.scalatra._
 import org.scalatra.swagger.Swagger
+import com.pennsieve.clients.CreateWorkflowRequest
+import com.pennsieve.domain.PredicateError
 
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ ExecutionContext, Future }
-
-case class CreateWorkflowRequest(
-  workflowName: String,
-  description: String,
-  secret: String
-)
 
 class WorkflowsController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
-  system: ActorSystem,
-  auditLogger: Auditor,
   cognitoClient: CognitoClient,
   asyncExecutor: ExecutionContext
 )(implicit
@@ -69,16 +65,15 @@ class WorkflowsController(
       val result: EitherT[Future, ActionResult, WorkflowDTO] = for {
         secureContainer <- getSecureContainer()
         body <- extractOrErrorT[CreateWorkflowRequest](parsedBody)
-
         _ = body
 
         // All integrations have an associated user
-        integrationUser <- secureContainer.userManager
+        workflowIntegrationUser <- secureContainer.userManager
           .createIntegrationUser(
             User(
               nodeId = NodeCodes.generateId(NodeCodes.userCode),
               "",
-              firstName = "Integration",
+              firstName = "Workflow-Integration",
               middleInitial = None,
               isIntegrationUser = true,
               degree = None,
@@ -91,7 +86,7 @@ class WorkflowsController(
         _ <- insecureContainer.organizationManager
           .addUser(
             secureContainer.organization,
-            integrationUser,
+            workflowIntegrationUser,
             DBPermission.Delete
           )
           .coreErrorToActionResult()
@@ -99,14 +94,27 @@ class WorkflowsController(
         // Create the API-Token and Secret:
         tokenSecret <- insecureContainer.tokenManager
           .create(
-            name = "Integration-user",
-            user = integrationUser,
+            name = "Workflow-Integration-user",
+            user = workflowIntegrationUser,
             organization = secureContainer.organization,
             cognitoClient = cognitoClient
           )
           .coreErrorToActionResult()
 
-        // TODO: Call integration-service: /workflows endpoint to create workflow
+        // call integration-service: /workflows endpoint to create workflow
+        dataset <- secureContainer.datasetManager
+          .getByNodeId(body.datasetId)
+          .coreErrorToActionResult()
+
+        serviceToken = JwtAuthenticator.generateServiceToken(
+          1.minute,
+          secureContainer.organization.id,
+          Some(dataset.id)
+        )
+
+        _ <- insecureContainer.integrationServiceClient
+          .postWorkflows(body.workflowName, serviceToken)
+          .coreErrorToActionResult()
 
       } yield WorkflowDTO(Some(APITokenSecretDTO(tokenSecret)))
 
