@@ -17,7 +17,10 @@
 package com.pennsieve.api
 
 import com.pennsieve.aws.cognito.MockCognito
-import com.pennsieve.clients.CreateWorkflowRequest
+import com.pennsieve.clients.{
+  CreateWorkflowRequest,
+  MockIntegrationServiceClient
+}
 import com.pennsieve.helpers.{ DataSetTestMixin, MockAuditLogger }
 import org.json4s.jackson.Serialization.write
 
@@ -25,6 +28,7 @@ class TestWorkflowsController extends BaseApiTest {
 
   val auditLogger = new MockAuditLogger()
   val mockCognito = new MockCognito()
+  val mockIntegrationServiceClient = new MockIntegrationServiceClient()
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -34,6 +38,7 @@ class TestWorkflowsController extends BaseApiTest {
         insecureContainer,
         secureContainerBuilder,
         mockCognito,
+        mockIntegrationServiceClient,
         system.dispatcher
       ),
       "/*"

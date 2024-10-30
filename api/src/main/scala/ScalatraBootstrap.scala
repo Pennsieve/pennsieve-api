@@ -300,6 +300,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
         bootstrapHelper.cognitoClient,
+        bootstrapHelper.integrationServiceClient,
         ec
       )
       context mount (workflowsController, "/workflows-integration/*", "workflows-integration")

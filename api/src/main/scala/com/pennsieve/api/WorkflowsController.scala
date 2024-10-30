@@ -16,11 +16,10 @@
 
 package com.pennsieve.api
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.clients.{ CreateWorkflowRequest, IntegrationServiceClient }
 import com.pennsieve.core.utilities.JwtAuthenticator
 import com.pennsieve.dtos.{ APITokenSecretDTO, WorkflowDTO }
 import com.pennsieve.helpers.APIContainers.{
@@ -32,8 +31,6 @@ import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.models.{ DBPermission, NodeCodes, User }
 import org.scalatra._
 import org.scalatra.swagger.Swagger
-import com.pennsieve.clients.CreateWorkflowRequest
-import com.pennsieve.domain.PredicateError
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ ExecutionContext, Future }
@@ -42,6 +39,7 @@ class WorkflowsController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
   cognitoClient: CognitoClient,
+  integrationServiceClient: IntegrationServiceClient,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -112,7 +110,7 @@ class WorkflowsController(
           Some(dataset.id)
         )
 
-        _ <- insecureContainer.integrationServiceClient
+        _ <- integrationServiceClient
           .postWorkflows(body.workflowName, serviceToken)
           .coreErrorToActionResult()
 

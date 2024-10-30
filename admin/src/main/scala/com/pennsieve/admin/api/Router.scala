@@ -19,25 +19,17 @@ package com.pennsieve.admin.api
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.pennsieve.admin.api.Router.{
-  InsecureResourceContainer,
-  SecureResourceContainer,
-  SecureResourceContainerBuilder
-}
+import com.pennsieve.admin.api.Router.{InsecureResourceContainer, SecureResourceContainer, SecureResourceContainerBuilder}
 import com.pennsieve.admin.api.services._
 import com.pennsieve.akka.http.directives.AuthorizationDirectives.admin
-import com.pennsieve.akka.http.{ RouteService, SwaggerDocService }
+import com.pennsieve.akka.http.{RouteService, SwaggerDocService}
 import com.pennsieve.aws.email.EmailContainer
-import com.pennsieve.aws.cognito.{ CognitoClient, CognitoContainer }
+import com.pennsieve.aws.cognito.{CognitoClient, CognitoContainer}
 import com.pennsieve.aws.queue.SQSContainer
-import com.pennsieve.clients.{
-  CustomTermsOfServiceClientContainer,
-  JobSchedulingServiceContainer,
-  JobSchedulingServiceContainerImpl
-}
+import com.pennsieve.clients.{CustomTermsOfServiceClientContainer, IntegrationServiceContainer, JobSchedulingServiceContainer, JobSchedulingServiceContainerImpl}
 import com.pennsieve.core.utilities._
 import com.pennsieve.discover.client.publish.PublishClient
-import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.models.{Organization, User}
 import com.pennsieve.utilities._
 import io.swagger.models.Scheme
 import net.ceedubs.ficus.Ficus._
@@ -55,6 +47,7 @@ object Router {
       with JobSchedulingServiceContainer
       with CustomTermsOfServiceClientContainer
       with CognitoContainer
+      with IntegrationServiceContainer
   type SecureResourceContainer = ResourceContainer
     with SecureContainer
     with SecureCoreContainer
