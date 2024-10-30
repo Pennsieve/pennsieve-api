@@ -94,4 +94,4 @@ Individual services are deployed to production via Jenkins service-deploy jobs. 
 job to deploy _all_ services to production and (optionally) run the Postgres
 migrations.
 
-rev. 2024/07/31
+rev. 2024/10/30
