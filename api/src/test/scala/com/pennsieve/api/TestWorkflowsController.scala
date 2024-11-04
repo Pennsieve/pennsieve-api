@@ -21,6 +21,7 @@ import com.pennsieve.clients.{
   CreateWorkflowRequest,
   MockIntegrationServiceClient
 }
+import com.pennsieve.dtos.WorkflowDTO
 import com.pennsieve.helpers.MockAuditLogger
 import org.json4s.jackson.Serialization.write
 
@@ -59,6 +60,8 @@ class TestWorkflowsController extends BaseApiTest {
 
     postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(201)
+      val workflow = parsedBody.extract[WorkflowDTO]
+      workflow.name should equal("CyTOF-analysis-pipeline")
     }
   }
 }

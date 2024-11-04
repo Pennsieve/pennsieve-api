@@ -16,4 +16,7 @@
 
 package com.pennsieve.dtos
 
-final case class WorkflowDTO(tokenSecret: Option[APITokenSecretDTO])
+final case class WorkflowDTO(
+  name: String,
+  tokenSecret: Option[APITokenSecretDTO]
+)

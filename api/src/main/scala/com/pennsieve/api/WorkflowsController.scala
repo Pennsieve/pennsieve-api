@@ -116,9 +116,8 @@ class WorkflowsController(
           )
           .coreErrorToActionResult()
 
-      } yield WorkflowDTO(Some(APITokenSecretDTO(tokenSecret)))
-
-      val _ = result
+      } yield
+        WorkflowDTO(body.workflowName, Some(APITokenSecretDTO(tokenSecret)))
 
       override val is: Future[ActionResult] = result.value.map(CreatedResult)
     }
