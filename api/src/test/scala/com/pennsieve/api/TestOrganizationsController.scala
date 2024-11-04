@@ -166,7 +166,13 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       body should include(loggedInOrganization.name)
 
       val createReq =
-        write(UpdateOrganization(name = Some("Boom"), subscription = None))
+        write(
+          UpdateOrganization(
+            name = Some("Boom"),
+            subscription = None,
+            colorTheme = None
+          )
+        )
 
       putJson(
         s"/${loggedInOrganization.nodeId}",
@@ -179,9 +185,44 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("set an organization color theme") {
+    get(
+      s"/${loggedInOrganization.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val colors = ("ABC", "EFG")
+      val createReq =
+        write(
+          UpdateOrganization(
+            name = None,
+            subscription = None,
+            colorTheme = Some(colors)
+          )
+        )
+
+      putJson(
+        s"/${loggedInOrganization.nodeId}",
+        createReq,
+        headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+      ) {
+        status should equal(200)
+        body should include(colors._1)
+        body should include(colors._2)
+      }
+    }
+  }
+
   test("demo user should not be able to update the demo organization") {
     val createReq =
-      write(UpdateOrganization(name = Some("Boom"), subscription = None))
+      write(
+        UpdateOrganization(
+          name = Some("Boom"),
+          subscription = None,
+          colorTheme = None
+        )
+      )
 
     putJson(
       s"/${sandboxOrganization.nodeId}",
@@ -196,6 +237,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val updateReq = write(
       UpdateOrganization(
         name = Some("Boom"),
+        colorTheme = None,
         subscription = Some(
           Subscription(
             organizationId = loggedInOrganization.id,
@@ -246,7 +288,11 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val updateReq =
       write(
-        UpdateOrganization(name = None, subscription = Some(newSubscription))
+        UpdateOrganization(
+          name = None,
+          subscription = Some(newSubscription),
+          colorTheme = None
+        )
       )
 
     putJson(

@@ -160,6 +160,9 @@ class DatasetManager(
   val datasetReleaseMapper: DatasetReleaseMapper =
     new DatasetReleaseMapper(organization)
 
+  val externalRepositoryMapper: ExternalRepositoryMapper =
+    new ExternalRepositoryMapper()
+
   def isLocked(
     dataset: Dataset
   )(implicit
@@ -1827,4 +1830,32 @@ class DatasetManager(
       )(PredicateError(s"dataset type must be ${DatasetType.Release.toString}"))
       release <- db.run(datasetReleaseMapper.update(release)).toEitherT
     } yield release
+
+  def addExternalRepository(
+    extRepo: ExternalRepository
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, ExternalRepository] =
+    for {
+      dataset <- get(extRepo.datasetId.get)
+      _ <- FutureEitherHelpers.assert(
+        dataset.`type`.equals(DatasetType.Release)
+      )(PredicateError(s"dataset type must be ${DatasetType.Release.toString}"))
+      repo <- db.run(externalRepositoryMapper.add(extRepo)).toEitherT
+    } yield repo
+
+  def getExternalRepository(
+    organizationId: Int,
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[ExternalRepository]] =
+    for {
+      repository <- db
+        .run(
+          externalRepositoryMapper
+            .getExternalRepository(organizationId, datasetId)
+        )
+        .toEitherT
+    } yield repository
 }
