@@ -51,7 +51,9 @@ class TestWorkflowsController extends BaseApiTest {
         workflowName = "CyTOF-analysis-pipeline",
         description = "Pipeline for running end-to-end analysis on CyTOF data",
         secret = "secretkey",
-        datasetIntId = 1900
+        datasetIntId = 1900,
+        apiToken = "someToken",
+        apiSecret = "someSecret"
       )
     )
 

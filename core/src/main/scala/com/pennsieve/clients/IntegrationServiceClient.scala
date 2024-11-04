@@ -36,7 +36,9 @@ case class CreateWorkflowRequest(
   workflowName: String,
   description: String,
   secret: String,
-  datasetIntId: Int
+  datasetIntId: Int,
+  apiToken: String,
+  apiSecret: String
 )
 
 object CreateWorkflowRequest {
@@ -54,7 +56,6 @@ trait IntegrationServiceClient {
 
   def postWorkflows(
     request: CreateWorkflowRequest,
-    tokenSecret: (Token, TokenSecret),
     token: Jwt.Token
   ): EitherT[Future, CoreError, HttpResponse]
 }
@@ -95,7 +96,6 @@ class IntegrationServiceClientImpl(
 
   def postWorkflows(
     request: CreateWorkflowRequest,
-    tokenSecret: (Token, TokenSecret),
     token: Jwt.Token
   ): EitherT[Future, CoreError, HttpResponse] = {
     val requestData = ByteString(request.asJson.noSpaces)

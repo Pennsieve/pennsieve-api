@@ -107,7 +107,13 @@ class WorkflowsController(
         )
 
         _ <- integrationServiceClient
-          .postWorkflows(body, tokenSecret, serviceToken)
+          .postWorkflows(
+            body.copy(
+              apiToken = tokenSecret._1.token,
+              apiSecret = tokenSecret._2.plaintext
+            ),
+            serviceToken
+          )
           .coreErrorToActionResult()
 
       } yield WorkflowDTO(Some(APITokenSecretDTO(tokenSecret)))

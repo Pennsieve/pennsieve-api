@@ -34,7 +34,6 @@ class MockIntegrationServiceClient(
 
   def postWorkflows(
     request: CreateWorkflowRequest,
-    tokenSecret: (Token, TokenSecret),
     token: Jwt.Token
   ): EitherT[Future, CoreError, HttpResponse] = {
     EitherT.rightT[Future, CoreError](HttpResponse(201))
