@@ -15,23 +15,5 @@
  */
 
 package com.pennsieve.dtos
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.{ Decoder, Encoder }
 
 final case class WorkflowDTO(tokenSecret: Option[APITokenSecretDTO])
-
-object WorkflowDTO {
-
-  implicit val encoder: Encoder[WorkflowDTO] = deriveEncoder[WorkflowDTO]
-  implicit val decoder: Decoder[WorkflowDTO] = deriveDecoder[WorkflowDTO]
-
-  def apply(tokenSecretDTO: Option[APITokenSecretDTO]): WorkflowDTO = {
-    tokenSecretDTO match {
-      case Some(tokenSecretDTO) =>
-        WorkflowDTO(Some(tokenSecretDTO))
-      case _ =>
-        WorkflowDTO(None)
-    }
-
-  }
-}

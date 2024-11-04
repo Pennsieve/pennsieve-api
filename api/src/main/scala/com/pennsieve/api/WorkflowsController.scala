@@ -118,7 +118,9 @@ class WorkflowsController(
 
       } yield WorkflowDTO(Some(APITokenSecretDTO(tokenSecret)))
 
-      override val is: Future[ActionResult] = result.value.map(OkResult(_))
+      val _ = result
+
+      override val is: Future[ActionResult] = result.value.map(CreatedResult)
     }
   }
 }
