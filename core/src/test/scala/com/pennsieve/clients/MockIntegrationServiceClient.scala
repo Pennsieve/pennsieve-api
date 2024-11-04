@@ -17,69 +17,24 @@
 package com.pennsieve.clients
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{ HttpHeader, HttpRequest, HttpResponse }
+import akka.http.scaladsl.model.HttpResponse
 import cats.data.EitherT
-import com.pennsieve.jobscheduling.clients.generated.definitions.{
-  Job,
-  UploadResult
-}
-import com.pennsieve.jobscheduling.clients.generated.jobs.{
-  CompleteUploadResponse,
-  CreateResponse,
-  GetPackageStateResponse,
-  JobsClient
-}
-import com.pennsieve.jobscheduling.commons.JobState.Running
-import com.pennsieve.models.{ JobId, PackageState, Payload }
-import com.pennsieve.utilities.Container
-import net.ceedubs.ficus.Ficus._
+import com.pennsieve.auth.middleware.Jwt
+import com.pennsieve.domain.CoreError
 
-import java.time.OffsetDateTime
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{ ExecutionContext, Future }
 
-trait MockIntegrationServiceContainer extends IntegrationServiceContainer {
-  self: Container =>
-
-  lazy val integrationServiceConfigPath = "integration_service"
-
-  lazy val uploadServiceHost: String =
-    config.as[String](s"$integrationServiceConfigPath.host")
-
-  override val integrationServiceClient: IntegrationServiceClient =
-    new LocalIntegrationServiceClient()
-}
-
 class MockIntegrationServiceClient(
-  implicit
-  httpClient: HttpRequest => Future[HttpResponse],
-  ec: ExecutionContext,
-  system: ActorSystem
-) extends JobsClient("mock-job-scheduling-service-host") {
+)(implicit
+  override val system: ActorSystem,
+  override val ec: ExecutionContext
+) extends IntegrationServiceClient {
+  override val integrationServiceHost = "test-integration-service-url"
 
-  val payloadsSent: ArrayBuffer[Payload] = ArrayBuffer.empty[Payload]
-  val availableJobs: ArrayBuffer[JobId] = ArrayBuffer.empty[JobId]
-  val notProcessingJobs: ArrayBuffer[JobId] = ArrayBuffer.empty[JobId]
-
-  override def create(
-    organizationId: Int,
-    jobId: String,
-    payload: Payload,
-    headers: List[HttpHeader]
-  ): EitherT[Future, Either[Throwable, HttpResponse], CreateResponse] = {
-    payloadsSent += payload
-    availableJobs += JobId(java.util.UUID.fromString(jobId))
-    val job = Job(
-      java.util.UUID.fromString(jobId),
-      organizationId,
-      Some(payload.userId),
-      1,
-      Running,
-      OffsetDateTime.now(),
-      OffsetDateTime.now()
-    )
-    EitherT.rightT[Future, Either[Throwable, HttpResponse]](
-      CreateResponse.Created(job)
-    )
+  def postWorkflows(
+    workflowName: String,
+    token: Jwt.Token
+  ): EitherT[Future, CoreError, HttpResponse] = {
+    EitherT.rightT[Future, CoreError](HttpResponse(201))
   }
 }

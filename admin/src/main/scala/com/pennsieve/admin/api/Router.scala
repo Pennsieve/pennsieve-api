@@ -23,10 +23,10 @@ import com.pennsieve.admin.api.Router.{InsecureResourceContainer, SecureResource
 import com.pennsieve.admin.api.services._
 import com.pennsieve.akka.http.directives.AuthorizationDirectives.admin
 import com.pennsieve.akka.http.{RouteService, SwaggerDocService}
+import com.pennsieve.aws.cognito.CognitoContainer
 import com.pennsieve.aws.email.EmailContainer
-import com.pennsieve.aws.cognito.{CognitoClient, CognitoContainer}
 import com.pennsieve.aws.queue.SQSContainer
-import com.pennsieve.clients.{CustomTermsOfServiceClientContainer, IntegrationServiceContainer, JobSchedulingServiceContainer, JobSchedulingServiceContainerImpl}
+import com.pennsieve.clients.{CustomTermsOfServiceClientContainer, JobSchedulingServiceContainer, JobSchedulingServiceContainerImpl}
 import com.pennsieve.core.utilities._
 import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.models.{Organization, User}
@@ -47,7 +47,6 @@ object Router {
       with JobSchedulingServiceContainer
       with CustomTermsOfServiceClientContainer
       with CognitoContainer
-      with IntegrationServiceContainer
   type SecureResourceContainer = ResourceContainer
     with SecureContainer
     with SecureCoreContainer

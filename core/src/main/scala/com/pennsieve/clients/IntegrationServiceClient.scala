@@ -21,14 +21,12 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.util.ByteString
 import cats.data.EitherT
-import cats.instances.future._
 import cats.syntax.either._
 import com.pennsieve.auth.middleware.Jwt
-import com.pennsieve.domain.CoreError
-import com.pennsieve.utilities.Container
+import com.pennsieve.domain.{CoreError, ServiceError}
 import com.typesafe.scalalogging.StrictLogging
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 case class CreateWorkflowRequest(
   workflowName: String,
@@ -36,8 +34,6 @@ case class CreateWorkflowRequest(
   secret: String,
   datasetId: String
 )
-
-case class IntegrationWorkflow(workflowName: String)
 
 trait IntegrationServiceClient {
   val integrationServiceHost: String
@@ -49,21 +45,6 @@ trait IntegrationServiceClient {
     workflowName: String,
     token: Jwt.Token
   ): EitherT[Future, CoreError, HttpResponse]
-}
-
-class LocalIntegrationServiceClient(
-)(implicit
-  override val system: ActorSystem,
-  override val ec: ExecutionContext
-) extends IntegrationServiceClient {
-  override val integrationServiceHost = "test-integration-service-url"
-
-  def postWorkflows(
-    workflowName: String,
-    token: Jwt.Token
-  ): EitherT[Future, CoreError, HttpResponse] = {
-    EitherT.rightT[Future, CoreError](HttpResponse(201))
-  }
 }
 
 class IntegrationServiceClientImpl(
@@ -90,11 +71,11 @@ class IntegrationServiceClientImpl(
             if (resp.status.isSuccess) {
               resp.asRight
             } else {
-//              val error = CoreError(
-//                s"Error communicating with the integration service: ${resp.toString}"
-//              )
-//              logger.error(error.message)
-              Left[CoreError, HttpResponse](null)
+              val error = ServiceError(
+                s"Error communicating with the integration service: ${resp.toString}"
+              )
+              logger.error(error.message)
+              Left[CoreError, HttpResponse](error)
             }
         )
     )
@@ -117,32 +98,4 @@ class IntegrationServiceClientImpl(
     )
   }
 
-}
-
-trait IntegrationServiceContainer { self: Container =>
-  implicit val system: ActorSystem
-  implicit val ec: ExecutionContext
-
-  val integrationServiceHost: String
-  val integrationServiceClient: IntegrationServiceClient
-}
-
-trait IntegrationServiceContainerImpl extends IntegrationServiceContainer {
-  self: Container =>
-  implicit val system: ActorSystem
-  implicit val ec: ExecutionContext
-
-  val integrationServiceHost: String
-  override lazy val integrationServiceClient: IntegrationServiceClient =
-    new IntegrationServiceClientImpl(integrationServiceHost)
-}
-
-trait LocalIntegrationServiceContainer extends IntegrationServiceContainer {
-  self: Container =>
-  implicit val system: ActorSystem
-  implicit val ec: ExecutionContext
-
-  val integrationServiceHost: String
-  override val integrationServiceClient: IntegrationServiceClient =
-    new LocalIntegrationServiceClient
 }
