@@ -21,6 +21,7 @@ import akka.http.scaladsl.model.HttpResponse
 import cats.data.EitherT
 import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.domain.CoreError
+import com.pennsieve.models.{ Token, TokenSecret }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -32,7 +33,8 @@ class MockIntegrationServiceClient(
   override val integrationServiceHost = "test-integration-service-url"
 
   def postWorkflows(
-    workflowName: String,
+    request: CreateWorkflowRequest,
+    tokenSecret: (Token, TokenSecret),
     token: Jwt.Token
   ): EitherT[Future, CoreError, HttpResponse] = {
     EitherT.rightT[Future, CoreError](HttpResponse(201))

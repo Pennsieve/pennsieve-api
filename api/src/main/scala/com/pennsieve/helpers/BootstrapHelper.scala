@@ -18,12 +18,16 @@ package com.pennsieve.helpers
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import com.blackfynn.clients.{AntiSpamChallengeClient, RecaptchaClient}
-import com.pennsieve.audit.middleware.{AuditLogger, Auditor, GatewayHost}
-import com.pennsieve.aws.cognito.{Cognito, CognitoClient, CognitoConfig}
-import com.pennsieve.aws.email.{AWSEmailContainer, EmailContainer, LocalEmailContainer}
+import com.blackfynn.clients.{ AntiSpamChallengeClient, RecaptchaClient }
+import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
+import com.pennsieve.aws.cognito.{ Cognito, CognitoClient, CognitoConfig }
+import com.pennsieve.aws.email.{
+  AWSEmailContainer,
+  EmailContainer,
+  LocalEmailContainer
+}
 import com.pennsieve.aws.queue._
-import com.pennsieve.aws.s3.{AWSS3Container, LocalS3Container}
+import com.pennsieve.aws.s3.{ AWSS3Container, LocalS3Container }
 import com.pennsieve.aws.sns._
 import com.pennsieve.client.NotificationServiceClient
 import com.pennsieve.clients._
@@ -32,7 +36,7 @@ import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.discover.client.search.SearchClient
 import com.pennsieve.doi.client.doi.DoiClient
 import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
-import com.pennsieve.models.{Organization, User}
+import com.pennsieve.models.{ Organization, User }
 import com.pennsieve.service.utilities.SingleHttpResponder
 import com.pennsieve.traits.TimeSeriesDBContainer
 import com.pennsieve.utilities.Container

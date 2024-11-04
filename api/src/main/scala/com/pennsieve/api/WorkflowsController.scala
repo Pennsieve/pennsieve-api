@@ -80,7 +80,7 @@ class WorkflowsController(
           )
           .coreErrorToActionResult()
 
-        // Adding the integrationuser to the organization
+        // Adding the workflowIntegrationUser to the organization
         _ <- insecureContainer.organizationManager
           .addUser(
             secureContainer.organization,
@@ -100,18 +100,14 @@ class WorkflowsController(
           .coreErrorToActionResult()
 
         // call integration-service: /workflows endpoint to create workflow
-        dataset <- secureContainer.datasetManager
-          .getByNodeId(body.datasetId)
-          .coreErrorToActionResult()
-
         serviceToken = JwtAuthenticator.generateServiceToken(
           1.minute,
           secureContainer.organization.id,
-          Some(dataset.id)
+          Some(body.datasetIntId)
         )
 
         _ <- integrationServiceClient
-          .postWorkflows(body.workflowName, serviceToken)
+          .postWorkflows(body, tokenSecret, serviceToken)
           .coreErrorToActionResult()
 
       } yield WorkflowDTO(Some(APITokenSecretDTO(tokenSecret)))

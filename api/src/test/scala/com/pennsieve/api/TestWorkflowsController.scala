@@ -17,7 +17,10 @@
 package com.pennsieve.api
 
 import com.pennsieve.aws.cognito.MockCognito
-import com.pennsieve.clients.{CreateWorkflowRequest, MockIntegrationServiceClient}
+import com.pennsieve.clients.{
+  CreateWorkflowRequest,
+  MockIntegrationServiceClient
+}
 import com.pennsieve.helpers.MockAuditLogger
 import org.json4s.jackson.Serialization.write
 
@@ -48,7 +51,7 @@ class TestWorkflowsController extends BaseApiTest {
         workflowName = "CyTOF-analysis-pipeline",
         description = "Pipeline for running end-to-end analysis on CyTOF data",
         secret = "secretkey",
-        datasetId = "someDatasetId"
+        datasetIntId = 1900
       )
     )
 

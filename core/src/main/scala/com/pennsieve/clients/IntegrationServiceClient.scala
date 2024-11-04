@@ -23,17 +23,28 @@ import akka.util.ByteString
 import cats.data.EitherT
 import cats.syntax.either._
 import com.pennsieve.auth.middleware.Jwt
-import com.pennsieve.domain.{CoreError, ServiceError}
+import com.pennsieve.domain.{ CoreError, ServiceError }
+import com.pennsieve.models.{ Token, TokenSecret }
 import com.typesafe.scalalogging.StrictLogging
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.syntax.EncoderOps
+import io.circe.{ Decoder, Encoder }
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 case class CreateWorkflowRequest(
   workflowName: String,
   description: String,
   secret: String,
-  datasetId: String
+  datasetIntId: Int
 )
+
+object CreateWorkflowRequest {
+  implicit def encoder: Encoder[CreateWorkflowRequest] =
+    deriveEncoder[CreateWorkflowRequest]
+  implicit def decoder: Decoder[CreateWorkflowRequest] =
+    deriveDecoder[CreateWorkflowRequest]
+}
 
 trait IntegrationServiceClient {
   val integrationServiceHost: String
@@ -42,7 +53,8 @@ trait IntegrationServiceClient {
   implicit val ec: ExecutionContext
 
   def postWorkflows(
-    workflowName: String,
+    request: CreateWorkflowRequest,
+    tokenSecret: (Token, TokenSecret),
     token: Jwt.Token
   ): EitherT[Future, CoreError, HttpResponse]
 }
@@ -82,17 +94,17 @@ class IntegrationServiceClientImpl(
   }
 
   def postWorkflows(
-    workflowName: String,
+    request: CreateWorkflowRequest,
+    tokenSecret: (Token, TokenSecret),
     token: Jwt.Token
   ): EitherT[Future, CoreError, HttpResponse] = {
-    val byteArray = Array[Byte](1, 2, 3, 4)
-    val byteString = ByteString(byteArray)
+    val requestData = ByteString(request.asJson.noSpaces)
     makeRequest(
       HttpRequest(
         HttpMethods.POST,
         s"$integrationServiceHost/workflows",
         entity = HttpEntity
-          .Strict(ContentType(MediaTypes.`application/json`), byteString)
+          .Strict(ContentType(MediaTypes.`application/json`), requestData)
       ),
       token
     )
