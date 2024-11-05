@@ -49,10 +49,11 @@ class TestWorkflowsController extends BaseApiTest {
   test("create a workflow") {
     val req = write(
       CreateWorkflowRequest(
-        workflowName = "CyTOF-analysis-pipeline",
+        name = "CyTOF-analysis-pipeline",
         description = "Pipeline for running end-to-end analysis on CyTOF data",
         secret = "secretkey",
         datasetIntId = 1900,
+        organizationIntId = 2000,
         apiToken = "someToken",
         apiSecret = "someSecret"
       )
@@ -62,6 +63,9 @@ class TestWorkflowsController extends BaseApiTest {
       status should equal(201)
       val workflow = parsedBody.extract[WorkflowDTO]
       workflow.name should equal("CyTOF-analysis-pipeline")
+      workflow.description should equal(
+        "Pipeline for running end-to-end analysis on CyTOF data"
+      )
     }
   }
 }

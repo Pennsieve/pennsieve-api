@@ -109,6 +109,7 @@ class WorkflowsController(
         _ <- integrationServiceClient
           .postWorkflows(
             body.copy(
+              organizationIntId = secureContainer.organization.id,
               apiToken = tokenSecret._1.token,
               apiSecret = tokenSecret._2.plaintext
             ),
@@ -117,7 +118,12 @@ class WorkflowsController(
           .coreErrorToActionResult()
 
       } yield
-        WorkflowDTO(body.workflowName, Some(APITokenSecretDTO(tokenSecret)))
+        WorkflowDTO(
+          body.name,
+          body.description,
+          body.secret,
+          Some(APITokenSecretDTO(tokenSecret))
+        )
 
       override val is: Future[ActionResult] = result.value.map(CreatedResult)
     }

@@ -24,7 +24,6 @@ import cats.data.EitherT
 import cats.syntax.either._
 import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.domain.{ CoreError, ServiceError }
-import com.pennsieve.models.{ Token, TokenSecret }
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax.EncoderOps
@@ -33,10 +32,11 @@ import io.circe.{ Decoder, Encoder }
 import scala.concurrent.{ ExecutionContext, Future }
 
 case class CreateWorkflowRequest(
-  workflowName: String,
+  name: String,
   description: String,
   secret: String,
   datasetIntId: Int,
+  organizationIntId: Int,
   apiToken: String,
   apiSecret: String
 )
