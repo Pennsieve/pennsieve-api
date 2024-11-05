@@ -18,66 +18,39 @@ package com.pennsieve.helpers
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import com.amazonaws.ClientConfiguration
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
-import com.amazonaws.services.s3.S3ClientOptions
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
-import com.pennsieve.aws.cognito.{ CognitoClient, CognitoConfig }
-import com.pennsieve.aws.s3.AWSS3Container
-import com.pennsieve.aws.s3.LocalS3Container
-import net.ceedubs.ficus.Ficus._
+import com.blackfynn.clients.{ AntiSpamChallengeClient, RecaptchaClient }
+import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
+import com.pennsieve.aws.cognito.{ Cognito, CognitoClient, CognitoConfig }
 import com.pennsieve.aws.email.{
   AWSEmailContainer,
   EmailContainer,
   LocalEmailContainer
 }
-import com.pennsieve.clients._
-import com.pennsieve.aws.cognito.Cognito
-import com.pennsieve.aws.sns.{
-  AWSSNSContainer,
-  LocalSNSContainer,
-  SNS,
-  SNSClient,
-  SNSContainer
-}
-import com.pennsieve.aws.queue.{
-  AWSSQSContainer,
-  LocalSQSContainer,
-  SQS,
-  SQSClient,
-  SQSContainer
-}
-import com.pennsieve.web.Settings
-import com.pennsieve.models.{ Organization, User }
-import com.typesafe.config.Config
+import com.pennsieve.aws.queue._
+import com.pennsieve.aws.s3.{ AWSS3Container, LocalS3Container }
+import com.pennsieve.aws.sns._
 import com.pennsieve.client.NotificationServiceClient
+import com.pennsieve.clients._
 import com.pennsieve.core.utilities._
 import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.discover.client.search.SearchClient
 import com.pennsieve.doi.client.doi.DoiClient
-import com.pennsieve.utilities.Container
+import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
+import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.service.utilities.SingleHttpResponder
 import com.pennsieve.traits.TimeSeriesDBContainer
+import com.pennsieve.utilities.Container
+import com.pennsieve.web.Settings
+import com.typesafe.config.Config
+import net.ceedubs.ficus.Ficus._
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
-import org.joda.time.DateTime
-import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
-import com.pennsieve.service.utilities.{
-  QueueHttpResponder,
-  SingleHttpResponder
-}
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.services.sns.SnsAsyncClient
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 import java.util.concurrent.TimeUnit
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
-import com.blackfynn.clients.{ AntiSpamChallengeClient, RecaptchaClient }
-import com.pennsieve.audit.middleware.{ AuditLogger, Auditor, GatewayHost }
-import org.apache.http.ssl.SSLContexts
-import software.amazon.awssdk.services.sns.SnsAsyncClient
-
-import java.util.Date
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.ExecutionContext
 
 trait ApiSQSContainer { self: Container =>
   val sqs_queue: String = config.as[String]("sqs.queue")
@@ -212,6 +185,12 @@ trait BaseBootstrapHelper {
     verifyUrl = config.as[String]("recaptcha.site_verify_url"),
     secretKey = config.as[String]("recaptcha.secret_key")
   )
+
+  lazy val integrationServiceClient: IntegrationServiceClient =
+    new IntegrationServiceClientImpl(
+      integrationServiceHost =
+        config.as[String]("pennsieve.integration_service.host")
+    )
 }
 
 class LocalBootstrapHelper(
@@ -222,7 +201,7 @@ class LocalBootstrapHelper(
 
   lazy val objectStore: ObjectStore = new S3ObjectStore(insecureContainer.s3)
 
-  override val insecureContainer =
+  override val insecureContainer = {
     new InsecureContainer(config) with InsecureCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with LocalSQSContainer with LocalS3Container
@@ -235,6 +214,7 @@ class LocalBootstrapHelper(
       override val jobSchedulingServiceRateLimit: Int =
         config.as[Int]("pennsieve.job_scheduling_service.rate_limit")
     }
+  }
 
   lazy val customTermsOfServiceClient: CustomTermsOfServiceClient =
     new S3CustomTermsOfServiceClient(
