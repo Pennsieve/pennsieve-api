@@ -98,6 +98,10 @@ class TestDiscussionsController extends BaseApiTest {
       compact(render(json \ "comment" \ "message")) should include(
         "this is my home folder"
       )
+      // Check that warning header has notice about deprecation
+      response.getHeader("Warning") should include(
+        "deprecated"
+      )
     }
   }
 
@@ -140,6 +144,10 @@ class TestDiscussionsController extends BaseApiTest {
       compact(render(json \ "discussion" \ "annotation_id")) should include(
         s"${annotation.id}"
       )
+      // Check that warning header has notice about deprecation
+      response.getHeader("Warning") should include(
+        "deprecated"
+      )
     }
   }
 
@@ -163,6 +171,11 @@ class TestDiscussionsController extends BaseApiTest {
       val fetch = discussionManager.get(discussion.id).await
       status should equal(200)
       assert(fetch.isLeft)
+
+      // Check that warning header has notice about deprecation
+      response.getHeader("Warning") should include(
+        "deprecated"
+      )
     }
   }
 
@@ -175,6 +188,10 @@ class TestDiscussionsController extends BaseApiTest {
       status should equal(200)
       assert(body.contains("Fine, thanks"))
       assert(body.contains(loggedInUser.nodeId))
+      // Check that warning header has notice about deprecation
+      response.getHeader("Warning") should include(
+        "deprecated"
+      )
     }
   }
 
@@ -197,6 +214,11 @@ class TestDiscussionsController extends BaseApiTest {
 
       assert(upd.message == newmsg)
 
+      // Check that warning header has notice about deprecation
+      response.getHeader("Warning") should include(
+        "deprecated"
+      )
+
     }
   }
 
@@ -211,6 +233,10 @@ class TestDiscussionsController extends BaseApiTest {
       val fetched =
         secureContainer.discussionManager.getComment(comment.id).await
       assert(fetched.isLeft)
+      // Check that warning header has notice about deprecation
+      response.getHeader("Warning") should include(
+        "deprecated"
+      )
     }
   }
 
