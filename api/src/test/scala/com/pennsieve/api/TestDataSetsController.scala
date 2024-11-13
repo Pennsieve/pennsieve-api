@@ -4972,9 +4972,15 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       alreadySentMessagesSubjectList,
       List(
         "Dataset Submitted for Review", //submitted
+        "Dataset Submitted for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted for Review", //cc: Publishers Team (publisher)
         "Dataset Revision needed", //rejected
         "Dataset Submitted for Review", //submitted
+        "Dataset Submitted for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted for Review", //cc: Publishers Team (publisher)
         "Dataset Submitted for Review", //submitted again after cancel (cancel doe snot send email for now)
+        "Dataset Submitted for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted for Review", //cc: Publishers Team (publisher)
         "Dataset Accepted", //accepted
         "Dataset Published to Pennsieve Discover" //published
       )
