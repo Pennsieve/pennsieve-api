@@ -99,9 +99,7 @@ class TestDiscussionsController extends BaseApiTest {
         "this is my home folder"
       )
       // Check that warning header has notice about deprecation
-      response.getHeader("Warning") should include(
-        "deprecated"
-      )
+      response.getHeader("Warning") should include("deprecated")
     }
   }
 
@@ -145,9 +143,7 @@ class TestDiscussionsController extends BaseApiTest {
         s"${annotation.id}"
       )
       // Check that warning header has notice about deprecation
-      response.getHeader("Warning") should include(
-        "deprecated"
-      )
+      response.getHeader("Warning") should include("deprecated")
     }
   }
 
@@ -173,9 +169,7 @@ class TestDiscussionsController extends BaseApiTest {
       assert(fetch.isLeft)
 
       // Check that warning header has notice about deprecation
-      response.getHeader("Warning") should include(
-        "deprecated"
-      )
+      response.getHeader("Warning") should include("deprecated")
     }
   }
 
@@ -189,9 +183,7 @@ class TestDiscussionsController extends BaseApiTest {
       assert(body.contains("Fine, thanks"))
       assert(body.contains(loggedInUser.nodeId))
       // Check that warning header has notice about deprecation
-      response.getHeader("Warning") should include(
-        "deprecated"
-      )
+      response.getHeader("Warning") should include("deprecated")
     }
   }
 
@@ -215,9 +207,7 @@ class TestDiscussionsController extends BaseApiTest {
       assert(upd.message == newmsg)
 
       // Check that warning header has notice about deprecation
-      response.getHeader("Warning") should include(
-        "deprecated"
-      )
+      response.getHeader("Warning") should include("deprecated")
 
     }
   }
@@ -234,9 +224,7 @@ class TestDiscussionsController extends BaseApiTest {
         secureContainer.discussionManager.getComment(comment.id).await
       assert(fetched.isLeft)
       // Check that warning header has notice about deprecation
-      response.getHeader("Warning") should include(
-        "deprecated"
-      )
+      response.getHeader("Warning") should include("deprecated")
     }
   }
 
