@@ -405,11 +405,12 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     organization: Organization,
-    owner: User
+    owner: User,
+    publishers: Seq[User]
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
-    uniqueEmails(owner, contributors.map(_.email))
+    uniqueEmails(owner, contributors.map(_.email) ++ publishers.map(_.email))
       .traverse { contributorEmail =>
         {
           val message =

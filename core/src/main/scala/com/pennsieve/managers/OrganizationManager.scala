@@ -475,6 +475,18 @@ class SecureOrganizationManager(val db: Database, val actor: User)
     } yield members.map(_.id) contains actor.id
   }
 
+  def getPublishingTeamMembers(
+    organization: Organization
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[User]] =
+    for {
+      publisherTeam <- getPublisherTeam(organization)
+      members <- db
+        .run(TeamsMapper.getUsers(publisherTeam._1.id).result)
+        .toEitherT
+    } yield members
+
   def hasPermission(
     organization: Organization,
     permission: DBPermission

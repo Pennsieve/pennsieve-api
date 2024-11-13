@@ -3086,13 +3086,18 @@ class DataSetsController(
             )
             .coreErrorToActionResult()
 
+          publishers <- secureContainer.organizationManager
+            .getPublishingTeamMembers(secureContainer.organization)
+            .coreErrorToActionResult()
+
           _ <- if (validated.publicationType == PublicationType.Publication) {
             DataSetPublishingHelper.emailContributorsPublicationRequest(
               insecureContainer,
               contributors,
               validated.dataset,
               secureContainer.organization,
-              secureContainer.user
+              secureContainer.user,
+              publishers
             )
           } else {
             EitherT
