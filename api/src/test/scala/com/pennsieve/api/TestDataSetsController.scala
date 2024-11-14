@@ -4968,19 +4968,21 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sentEmails
 
+    // Note: the 'colleague' user is added to the Publishers team in initializePublicationTest()
+    // and the 'publisher' user is added to the Publishers team in ApiSuite.beforeEach()
     sentMessages.map(_.subject).toList shouldBe List.concat(
       alreadySentMessagesSubjectList,
       List(
         "Dataset Submitted for Review", //submitted
-        "Dataset Submitted for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted for Review", //cc: Publishers Team (publisher)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
         "Dataset Revision needed", //rejected
         "Dataset Submitted for Review", //submitted
-        "Dataset Submitted for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted for Review", //cc: Publishers Team (publisher)
-        "Dataset Submitted for Review", //submitted again after cancel (cancel doe snot send email for now)
-        "Dataset Submitted for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted for Review", //cc: Publishers Team (publisher)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
+        "Dataset Submitted for Review", //submitted again after cancel (cancel does not send email for now)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
         "Dataset Accepted", //accepted
         "Dataset Published to Pennsieve Discover" //published
       )
