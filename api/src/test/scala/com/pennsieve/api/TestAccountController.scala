@@ -23,7 +23,6 @@ import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 import pdi.jwt.{ JwtAlgorithm, JwtCirce }
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.cognitoidentityprovider.model.UsernameExistsException
 
 import java.time.{ Duration, Instant }
 import java.util.UUID

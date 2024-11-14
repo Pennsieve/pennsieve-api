@@ -31,7 +31,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDisableProviderForUserRequest,
   AdminDisableUserRequest,
   AdminGetUserRequest,
-  AdminInitiateAuthRequest,
   AdminSetUserPasswordRequest,
   AdminUpdateUserAttributesRequest,
   AttributeType,

@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
 
 import java.util.UUID
 
+// A test class for AccountController that uses a real CognitoClient implementation with a mock CognitoIdentityProviderAsyncClient
 class TestAccountControllerMockIdentityProvider extends BaseApiTest {
 
   private val cognitoConfig: CognitoConfig = CognitoConfig(
