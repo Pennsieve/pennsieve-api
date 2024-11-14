@@ -3100,6 +3100,24 @@ class DataSetsController(
               .coreErrorToActionResult()
           }
 
+          publishers <- secureContainer.organizationManager
+            .getPublishingTeamMembers(secureContainer.organization)
+            .coreErrorToActionResult()
+
+          _ <- if (validated.publicationType == PublicationType.Publication) {
+            DataSetPublishingHelper.emailPublishersPublicationRequest(
+              insecureContainer,
+              secureContainer.user,
+              validated.dataset,
+              secureContainer.organization,
+              publishers
+            )
+          } else {
+            EitherT
+              .rightT[Future, CoreError](List[SesMessageResult]())
+              .coreErrorToActionResult()
+          }
+
         } yield response
       val is = result.value.map(CreatedResult)
     }

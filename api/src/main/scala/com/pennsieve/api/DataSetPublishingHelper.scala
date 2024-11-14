@@ -443,6 +443,51 @@ case object DataSetPublishingHelper extends LazyLogging {
       }
   }
 
+  def emailPublishersPublicationRequest(
+    insecureContainer: InsecureAPIContainer,
+    owner: User,
+    dataset: Dataset,
+    organization: Organization,
+    publishers: Seq[User]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, ActionResult, Seq[SesMessageResult]] = {
+    publishers
+      .traverse { publisher =>
+        {
+          val message =
+            insecureContainer.messageTemplates
+              .datasetSubmittedForReview(
+                organizationName = organization.name,
+                organizationNodeId = organization.nodeId,
+                datasetName = dataset.name,
+                datasetNodeId = dataset.nodeId,
+                ownerName = owner.fullName,
+                ownerEmailAddress = owner.email,
+                date = today(),
+                emailAddress = publisher.email
+              )
+
+          val subject =
+            "Dataset Submitted to Publishers for Review"
+
+          logger.info(
+            s"Sent email to Publisher ${publisher.email} after receiving a request for publication for the dataset ${dataset.nodeId}"
+          )
+
+          insecureContainer.emailer
+            .sendEmail(
+              to = Email(publisher.email),
+              from = Settings.support_email,
+              message = message,
+              subject = subject
+            )
+            .leftMap(error => InternalServerError(error.getMessage))
+            .toEitherT[Future]
+        }
+      }
+  }
+
   def emailManagersEmbargoAccessRequested(
     insecureContainer: InsecureAPIContainer,
     requestingUser: User,

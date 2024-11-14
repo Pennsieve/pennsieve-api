@@ -4968,13 +4968,21 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sentEmails
 
+    // Note: the 'colleague' user is added to the Publishers team in initializePublicationTest()
+    // and the 'publisher' user is added to the Publishers team in ApiSuite.beforeEach()
     sentMessages.map(_.subject).toList shouldBe List.concat(
       alreadySentMessagesSubjectList,
       List(
         "Dataset Submitted for Review", //submitted
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
         "Dataset Revision needed", //rejected
         "Dataset Submitted for Review", //submitted
-        "Dataset Submitted for Review", //submitted again after cancel (cancel doe snot send email for now)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
+        "Dataset Submitted for Review", //submitted again after cancel (cancel does not send email for now)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
+        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
         "Dataset Accepted", //accepted
         "Dataset Published to Pennsieve Discover" //published
       )
@@ -10742,4 +10750,43 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("email is sent to Publishers on publication request") {
+    val ds = createDataSet("email-to-publishers")
+    addBannerAndReadme(ds)
+    val pkg = createPackage(ds, "some-package", `type` = CSV)
+    createFile(pkg, FileObjectType.Source, FileProcessingState.Processed)
+
+    val orcidAuth = OrcidAuthorization(
+      name = "John Doe",
+      accessToken = "64918a80-dd0c-dd0c-dd0c-dd0c64918a80",
+      expiresIn = 631138518,
+      tokenType = "bearer",
+      orcid = "0000-0012-3456-7890",
+      scope = "/authenticate",
+      refreshToken = "64918a80-dd0c-dd0c-dd0c-dd0c64918a80"
+    )
+
+    val updatedUser = loggedInUser.copy(orcidAuthorization = Some(orcidAuth))
+    secureContainer.userManager.update(updatedUser).await
+
+    postJson(
+      s"/${ds.nodeId}/publication/request?publicationType=publication&comments=please%20review",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+      (parsedBody \ "datasetId")
+        .extract[Int] shouldBe ds.id
+      (parsedBody \ "publicationStatus")
+        .extract[PublicationStatus] shouldBe PublicationStatus.Requested
+      (parsedBody \ "createdBy").extract[Int] shouldBe loggedInUser.id
+      (parsedBody \ "comments").extract[String] shouldBe "please review"
+
+    }
+
+    // check emails...
+    insecureContainer.emailer
+      .asInstanceOf[LoggingEmailer]
+      .sendEmailTo(publisherUser.email) shouldBe true
+  }
 }
