@@ -3086,17 +3086,30 @@ class DataSetsController(
             )
             .coreErrorToActionResult()
 
-          publishers <- secureContainer.organizationManager
-            .getPublishingTeamMembers(secureContainer.organization)
-            .coreErrorToActionResult()
-
           _ <- if (validated.publicationType == PublicationType.Publication) {
             DataSetPublishingHelper.emailContributorsPublicationRequest(
               insecureContainer,
               contributors,
               validated.dataset,
               secureContainer.organization,
+              secureContainer.user
+            )
+          } else {
+            EitherT
+              .rightT[Future, CoreError](List[SesMessageResult]())
+              .coreErrorToActionResult()
+          }
+
+          publishers <- secureContainer.organizationManager
+            .getPublishingTeamMembers(secureContainer.organization)
+            .coreErrorToActionResult()
+
+          _ <- if (validated.publicationType == PublicationType.Publication) {
+            DataSetPublishingHelper.emailPublishersPublicationRequest(
+              insecureContainer,
               secureContainer.user,
+              validated.dataset,
+              secureContainer.organization,
               publishers
             )
           } else {

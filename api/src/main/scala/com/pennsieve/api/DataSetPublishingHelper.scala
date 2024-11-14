@@ -405,12 +405,11 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     organization: Organization,
-    owner: User,
-    publishers: Seq[User]
+    owner: User
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
-    val set1 = uniqueEmails(owner, contributors.map(_.email))
+    uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
           val message =
@@ -442,8 +441,18 @@ case object DataSetPublishingHelper extends LazyLogging {
 
         }
       }
+  }
 
-    val _ = publishers
+  def emailPublishersPublicationRequest(
+    insecureContainer: InsecureAPIContainer,
+    owner: User,
+    dataset: Dataset,
+    organization: Organization,
+    publishers: Seq[User]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, ActionResult, Seq[SesMessageResult]] = {
+    publishers
       .traverse { publisher =>
         {
           val message =
@@ -477,8 +486,6 @@ case object DataSetPublishingHelper extends LazyLogging {
             .toEitherT[Future]
         }
       }
-
-    set1
   }
 
   def emailManagersEmbargoAccessRequested(
