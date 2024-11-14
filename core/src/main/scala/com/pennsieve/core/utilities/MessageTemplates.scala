@@ -307,4 +307,26 @@ class MessageTemplates(
       customMessage = customMessage,
       setupAccountLink = setupAccountLink
     )
+
+  def datasetSubmittedForReview(
+    organizationName: String,
+    organizationNodeId: String,
+    datasetName: String,
+    datasetNodeId: String,
+    ownerName: String,
+    ownerEmailAddress: String,
+    emailAddress: String,
+    date: String
+  ): String =
+    GeneratedMessageTemplates.datasetSubmittedForReview(
+      host = host,
+      organizationName = organizationName,
+      organizationNodeId = organizationNodeId,
+      datasetName = datasetName,
+      datasetNodeId = datasetNodeId,
+      ownerName = ownerName,
+      ownerEmailAddress = ownerEmailAddress,
+      emailAddress = emailAddress,
+      date = date
+    )
 }

@@ -104,4 +104,8 @@ class LoggingEmailer extends Emailer with LazyLogging {
     subject: String
   ): Either[Throwable, SesMessageResult] =
     sendEmail(EmailToSend(to, from, message, subject))
+
+  def sendEmailTo(recipient: String): Boolean = {
+    sentEmails.filter(_.to.address.equalsIgnoreCase(recipient)).length > 0
+  }
 }

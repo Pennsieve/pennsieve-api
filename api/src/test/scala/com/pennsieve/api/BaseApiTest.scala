@@ -259,6 +259,7 @@ trait ApiSuite
   var integrationUser: User = _
   var guestUser: User = _
   var orcidUser: User = _
+  var publisherUser: User = _
 
   var pennsieve: Organization = _
   var loggedInOrganization: Organization = _
@@ -434,6 +435,25 @@ trait ApiSuite
     Some(CognitoId.UserPoolId(UUID.randomUUID()))
   )
 
+  val publisher = User(
+    NodeCodes.generateId(NodeCodes.userCode),
+    "publisher@test.com",
+    "Publish",
+    Some("T"),
+    "Approver",
+    Some(Degree.MS),
+    "cred",
+    "",
+    "http://test.com",
+    0,
+    false,
+    false,
+    None,
+    true,
+    None,
+    Some(CognitoId.UserPoolId(UUID.randomUUID()))
+  )
+
   override def afterEach(): Unit = {
     super.afterEach()
 
@@ -465,6 +485,7 @@ trait ApiSuite
     integrationUser = userManager.create(integrationUserDefinition).await.value
     guestUser = userManager.create(guest).await.value
     orcidUser = userManager.create(userWithORCID).await.value
+    publisherUser = userManager.create(publisher).await.value
 
     secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
     secureContainerGuest =
@@ -510,6 +531,20 @@ trait ApiSuite
       .value
     organizationManager
       .addUser(loggedInOrganization, orcidUser, Guest)
+      .await
+      .value
+    organizationManager
+      .addUser(loggedInOrganization, publisherUser, Administer)
+      .await
+      .value
+
+    val (publishingTeam, _) = insecureContainer.organizationManager
+      .getPublisherTeam(loggedInOrganization)
+      .await
+      .value
+
+    val publishingTeamUser = teamManager
+      .addUser(publishingTeam, publisherUser, DBPermission.Administer)
       .await
       .value
 

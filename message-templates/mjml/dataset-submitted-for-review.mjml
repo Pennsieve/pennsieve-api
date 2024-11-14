@@ -1,0 +1,109 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-text padding="0" />
+      <mj-button background-color="#5039F7" padding="12px 16px" color="#ffffff" font-size="14px" />
+      <mj-body background-color="#ffffff" />
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif" font-size="16px" line-height="1.5em" />
+      <mj-class name="kicker" font-size="16px" line-height="24px" />
+      <mj-class name="full-section" padding-left="0" padding-right="0" />
+      <mj-class name="copy-section" padding-left="20px" padding-right="20px" text-align="left" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      h1 {
+        font-size: 1.875em;
+        font-weight: 700;
+        line-height: 1.2;
+        margin: 1rem 0;
+      }
+      h2 {
+        font-size: 1.25em;
+        margin: 0;
+      }
+      h3 {
+        font-size: .875em;
+        font-weight: bold;
+        margin: 0;
+      }
+      p {
+        font-size: .875em;
+        margin: 0;
+        line-height: 1.5rem;
+      }
+      .divider {
+        background: #2760ff;
+        height: 4px;
+        width: 33px;
+      }
+      .body {
+        overflow: hidden;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="body">
+    <mj-include path="./header.mjml" />
+
+    <mj-section mj-class="full-section" padding-top="0" padding-bottom="20px">
+      <mj-column background-color="#011f5b" padding="18px 20px 35px 20px">
+        <mj-text color="#ffffff" padding="0">
+          <h1>Dataset Publication Requested</h1>
+          <h2>A dataset publication has been submitted for review.</h2>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+   <mj-section mj-class="copy-section">
+      <mj-column>
+        <mj-text padding="16px 0" mj-class="kicker">
+          <p>A request to review a dataset publication has been submitted to the Publishing Team in the <b>${organizationName}</b> workspace. </p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  <mj-section mj-class="copy-section">
+    <mj-column>
+      <mj-table font-size="14px" cellpadding="4px">
+        <tr>
+          <td width="22%"><b>Dataset Name</b></td>
+          <td>${datasetName}</td>
+        </tr>
+        <tr>
+          <td width="22%"><b>Dataset Id</b></td>
+          <td>${datasetNodeId}</td>
+        </tr>
+        <tr>
+          <td width="22%"><b>Submitted by</b></td>
+          <td>${ownerName} (${ownerEmailAddress})</td>
+        </tr>
+        <tr>
+          <td width="22%"><b>Submitted on</b></td>
+          <td>${date}</td>
+        </tr>
+      </mj-table>
+    </mj-column>
+  </mj-section>
+
+
+    <mj-section mj-class="copy-section">
+      <mj-column padding="16px 0">
+        <mj-text height="40px">
+          <!--[if mso]>
+            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://${host}/${organizationNodeId}/datasets/${datasetNodeId}" style="height:40px;v-text-anchor:middle;width:200px;" arcsize="8%" stroke="f" fillcolor="#5039F7">
+              <w:anchorlock/>
+              <center>
+            <![endif]-->
+                <a href="https://${host}/${organizationNodeId}/datasets/${datasetNodeId}"
+          style="background-color:#011f5b;border-radius:3px;color:#ffffff;display:inline-block;font-family:sans-serif;font-size:14px;font-weight:500;line-height:40px;text-align:center;text-decoration:none;width:200px;-webkit-text-size-adjust:none;">View dataset</a>
+            <!--[if mso]>
+              </center>
+            </v:roundrect>
+          <![endif]-->
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+
+    <mj-include path="./footer-discover.mjml" />
+
+  </mj-body>
+</mjml>
