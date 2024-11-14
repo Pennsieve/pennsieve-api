@@ -60,24 +60,29 @@
       </mj-column>
     </mj-section>
 
- <mj-section mj-class="copy-section">
-      <mj-column width="96px">
-        <mj-text padding="16px 0">
-          <p>Dataset name:</p>
-          <p>Dataset Id:</p>
-          <p>Submitted by:</p>
-          <p>Submitted on:</p>
-        </mj-text>
-      </mj-column>
-   <mj-column>
-     <mj-text padding="16px 0">
-          <p>${datasetName}</p>
-          <p>${datasetNodeId}</p>
-          <p>${ownerName} (${ownerEmailAddress})</p>
-          <p>${date}</p>
-     </mj-text>
-   </mj-column>
-    </mj-section>
+  <mj-section mj-class="copy-section">
+    <mj-column>
+      <mj-table font-size="14px" cellpadding="4px">
+        <tr>
+          <td width="22%"><b>Dataset Name</b></td>
+          <td>${datasetName}</td>
+        </tr>
+        <tr>
+          <td width="22%"><b>Dataset Id</b></td>
+          <td>${datasetNodeId}</td>
+        </tr>
+        <tr>
+          <td width="22%"><b>Submitted by</b></td>
+          <td>${ownerName} (${ownerEmailAddress})</td>
+        </tr>
+        <tr>
+          <td width="22%"><b>Submitted on</b></td>
+          <td>${date}</td>
+        </tr>
+      </mj-table>
+    </mj-column>
+  </mj-section>
+
 
     <mj-section mj-class="copy-section">
       <mj-column padding="16px 0">
