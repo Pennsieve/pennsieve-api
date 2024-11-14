@@ -62,7 +62,6 @@ object FutureEitherHelpers {
       ): EitherT[Future, CoreError, A] =
         f.toEitherT[CoreError] {
           case e: CoreError => e
-          case e: UsernameExistsException => UsernameExistsError(e)
           case e: Exception => ExceptionError(e)
         }
     }

@@ -182,27 +182,6 @@ class TestAccountController extends BaseApiTest {
     }
   }
 
-  test(
-    "sign up with an already existent email address should result in a 409 error"
-  ) {
-    val newUserRequest = CreateUserWithRecaptchaRequest(
-      firstName = "test",
-      middleInitial = None,
-      lastName = "tester",
-      degree = None,
-      title = Some(""),
-      email = "guest@test.com",
-      recaptchaToken = "foooo"
-    )
-
-    mockCognito.exception = UsernameExistsException.builder().build()
-
-    postJson("/sign-up", write(newUserRequest)) {
-      status should be(409)
-      body should include("An account with the given email already exists")
-    }
-  }
-
   ignore("update an external user invite") {
     // create a User
     val cognitoId = UUID.fromString(pennsieveUserId)
