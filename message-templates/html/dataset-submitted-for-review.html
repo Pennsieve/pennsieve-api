@@ -74,11 +74,6 @@
         width: 100% !important;
         max-width: 100%;
       }
-
-      .mj-column-px-96 {
-        width: 96px !important;
-        max-width: 96px;
-      }
     }
   </style>
   <style media="screen and (min-width:320px)">
@@ -90,11 +85,6 @@
     .moz-text-html .mj-column-per-100 {
       width: 100% !important;
       max-width: 100%;
-    }
-
-    .moz-text-html .mj-column-px-96 {
-      width: 96px !important;
-      max-width: 96px;
     }
   </style>
   <style type="text/css">
@@ -210,35 +200,30 @@
         <tbody>
           <tr>
             <td style="direction:ltr;font-size:0px;padding:0 43px 0 37px;padding-left:20px;padding-right:20px;text-align:left;">
-              <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:96px;" ><![endif]-->
-              <div class="mj-column-px-96 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
+              <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:560px;" ><![endif]-->
+              <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
                 <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="vertical-align:top;" width="100%">
                   <tbody>
                     <tr>
-                      <td align="left" style="font-size:0px;padding:16px 0;word-break:break-word;">
-                        <div style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size:16px;line-height:1.5em;text-align:left;color:#000000;">
-                          <p style="font-size: .875em; margin: 0; line-height: 1.5rem;">Dataset name:</p>
-                          <p style="font-size: .875em; margin: 0; line-height: 1.5rem;">Dataset Id:</p>
-                          <p style="font-size: .875em; margin: 0; line-height: 1.5rem;">Submitted by:</p>
-                          <p style="font-size: .875em; margin: 0; line-height: 1.5rem;">Submitted on:</p>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <!--[if mso | IE]></td><td class="" style="vertical-align:top;width:280px;" ><![endif]-->
-              <div class="mj-column-per-50 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-                <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="vertical-align:top;" width="100%">
-                  <tbody>
-                    <tr>
-                      <td align="left" style="font-size:0px;padding:16px 0;word-break:break-word;">
-                        <div style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size:16px;line-height:1.5em;text-align:left;color:#000000;">
-                          <p style="font-size: .875em; margin: 0; line-height: 1.5rem;">${datasetName}</p>
-                          <p style="font-size: .875em; margin: 0; line-height: 1.5rem;">${datasetNodeId}</p>
-                          <p style="font-size: .875em; margin: 0; line-height: 1.5rem;">${ownerName} (${ownerEmailAddress})</p>
-                          <p style="font-size: .875em; margin: 0; line-height: 1.5rem;">${date}</p>
-                        </div>
+                      <td align="left" style="font-size:0px;padding:10px 25px;word-break:break-word;">
+                        <table cellpadding="4px" cellspacing="0" width="100%" border="0" style="color:#000000;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size:14px;line-height:1.5em;table-layout:auto;width:100%;border:none;">
+                          <tr>
+                            <td width="22%"><b>Dataset Name</b></td>
+                            <td>${datasetName}</td>
+                          </tr>
+                          <tr>
+                            <td width="22%"><b>Dataset Id</b></td>
+                            <td>${datasetNodeId}</td>
+                          </tr>
+                          <tr>
+                            <td width="22%"><b>Submitted by</b></td>
+                            <td>${ownerName} (${ownerEmailAddress})</td>
+                          </tr>
+                          <tr>
+                            <td width="22%"><b>Submitted on</b></td>
+                            <td>${date}</td>
+                          </tr>
+                        </table>
                       </td>
                     </tr>
                   </tbody>
