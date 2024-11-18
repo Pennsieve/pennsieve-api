@@ -42,17 +42,22 @@ class InternalDataSetsController(
 
   override val pennsieveSwaggerTag = "DataSetsInternal"
 
-  val touchDataSetOperation: OperationBuilder = (apiOperation[Unit](
-    "touchDataSet"
-  )
-    summary "touch the updatedAt timestamp for a data set (Internal Use Only)"
-    parameters (
-      pathParam[Int]("id").description("data set id")
-    ))
+  val touchDataSetOperation: OperationBuilder =
+    (apiOperation[Unit]("touchDataSet")
+      summary "touch the updatedAt timestamp for a data set (Internal Use Only) [deprecated]"
+      parameters (
+        pathParam[Int]("id").description("data set id")
+      ) deprecate)
 
   post("/:id/touch", operation(touchDataSetOperation)) {
 
+    response.setHeader(
+      "Warning",
+      "299 - 'touchDataSetOperation' is deprecated and will be removed on Nov 18 2025"
+    )
+
     new AsyncResult {
+
       val result: EitherT[Future, ActionResult, Unit] = for {
         datasetId <- paramT[Int]("id")
 
