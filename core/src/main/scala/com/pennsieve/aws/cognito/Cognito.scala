@@ -31,7 +31,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   AdminDisableProviderForUserRequest,
   AdminDisableUserRequest,
   AdminGetUserRequest,
-  AdminInitiateAuthRequest,
   AdminSetUserPasswordRequest,
   AdminUpdateUserAttributesRequest,
   AttributeType,
@@ -40,7 +39,8 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
   InitiateAuthRequest,
   MessageActionType,
   ProviderUserIdentifierType,
-  UserType
+  UserType,
+  UsernameExistsException
 }
 
 import java.util.UUID
@@ -48,6 +48,11 @@ import scala.jdk.CollectionConverters._
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.compat.java8.OptionConverters._
+
+// Helper to unwrap exception so we can match on cause
+object CausedBy {
+  def unapply(e: Throwable): Option[Throwable] = Option(e.getCause)
+}
 
 trait CognitoClient {
 
@@ -489,6 +494,11 @@ class Cognito(
       cognitoResponse <- client
         .adminCreateUser(request)
         .toScala
+        .recoverWith {
+          // The exception we want to match on is wrapped in a CompletionException
+          case CausedBy(ex: UsernameExistsException) =>
+            Future.failed(com.pennsieve.domain.UsernameExistsError(ex))
+        }
 
       cognitoId <- parseCognitoId(cognitoResponse.user()) match {
         case Some(cognitoId) => Future.successful(cognitoId)

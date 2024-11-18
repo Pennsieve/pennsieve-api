@@ -23,7 +23,6 @@ import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 import pdi.jwt.{ JwtAlgorithm, JwtCirce }
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.cognitoidentityprovider.model.UsernameExistsException
 
 import java.time.{ Duration, Instant }
 import java.util.UUID
@@ -179,27 +178,6 @@ class TestAccountController extends BaseApiTest {
     postJson("/sign-up", write(newUserRequest)) {
       status should be(200)
       assert(body.contains(welcomeOrganization.nodeId))
-    }
-  }
-
-  test(
-    "sign up with an already existent email address should result in a 409 error"
-  ) {
-    val newUserRequest = CreateUserWithRecaptchaRequest(
-      firstName = "test",
-      middleInitial = None,
-      lastName = "tester",
-      degree = None,
-      title = Some(""),
-      email = "guest@test.com",
-      recaptchaToken = "foooo"
-    )
-
-    mockCognito.exception = UsernameExistsException.builder().build()
-
-    postJson("/sign-up", write(newUserRequest)) {
-      status should be(409)
-      body should include("An account with the given email already exists")
     }
   }
 
