@@ -188,7 +188,14 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     get("/api-docs/swagger.json") {
       status should equal(200)
-      println(body)
+
+      // The internal touch endpoint should be documented as deprecated
+      val internalDatasetsTouchDoc = parsedBody \ "paths" \ "/internal/{id}/touch" \ "post"
+
+      val summary = (internalDatasetsTouchDoc \ "summary").extract[String]
+      summary should endWith("[deprecated]")
+
+      (internalDatasetsTouchDoc \ "deprecated").extract[Boolean] shouldBe true
     }
   }
 
@@ -9026,7 +9033,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  test("touch updatedAt timestamp with a service claim") {
+  test("touch updatedAt timestamp with a service claim is deprecated") {
     val dataset = createDataSet("dataset")
 
     post(
@@ -9034,6 +9041,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       headers = jwtServiceAuthorizationHeader(loggedInOrganization)
     ) {
       status should equal(200)
+
+      response.headers should contain key "Warning"
+      response.getHeader("Warning") should include("deprecated")
     }
 
     secureContainer.datasetManager

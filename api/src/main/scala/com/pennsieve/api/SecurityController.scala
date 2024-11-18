@@ -58,18 +58,22 @@ class SecurityController(
     // the session ID.
   }
 
-  val getTemporaryUploadCredentials = (apiOperation[Unit](
-    "getTemporaryUploadCredentials"
-  )
-    summary "(DEPRECATED) gets temporary credentials for a users folder in the s3 bucket"
-    parameters (
-      pathParam[String]("dataset")
-    ))
+  val getTemporaryUploadCredentials =
+    (apiOperation[Unit]("getTemporaryUploadCredentials")
+      summary "gets temporary credentials for a users folder in the s3 bucket[deprecated]"
+      parameters (
+        pathParam[String]("dataset")
+      ) deprecate)
 
   get(
     "/user/credentials/upload/:dataset",
     operation(getTemporaryUploadCredentials)
   ) {
+
+    response.setHeader(
+      "Warning",
+      "299 - 'getTemporaryUploadCredentials' is deprecated and will be removed on Nov 13 2025"
+    )
 
     new AsyncResult {
       val results: EitherT[Future, ActionResult, Unit] = {
