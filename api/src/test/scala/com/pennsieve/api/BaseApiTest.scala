@@ -249,7 +249,6 @@ trait ApiSuite
   var annotationManager: AnnotationManager = _
   var discussionManager: DiscussionManager = _
   var dimensionManager: DimensionManager = _
-  var onboardingManager: OnboardingManager = _
 
   var loggedInUser: User = _
   var colleagueUser: User = _
@@ -500,7 +499,6 @@ trait ApiSuite
     annotationManager = secureContainer.annotationManager
     discussionManager = secureContainer.discussionManager
     dimensionManager = secureContainer.dimensionManager
-    onboardingManager = secureContainer.onboardingManager
     timeSeriesManager = secureContainer.timeSeriesManager
     teamManager = secureContainer.teamManager
     storageManager = secureContainer.storageManager
