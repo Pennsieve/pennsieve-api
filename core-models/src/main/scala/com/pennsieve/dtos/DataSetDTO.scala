@@ -38,7 +38,7 @@ case class DataSetDTO(
   canPublish: Boolean,
   locked: Boolean,
   bannerPresignedUrl: Option[URL] = None,
-  role: Option[Role],
+  role: Option[Role] = None,
   packageTypeCounts: Option[Map[String, Int]] = None
 )
 
