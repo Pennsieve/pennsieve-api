@@ -37,7 +37,9 @@ case class DataSetDTO(
   properties: List[ModelPropertiesDTO] = List.empty,
   canPublish: Boolean,
   locked: Boolean,
-  bannerPresignedUrl: Option[URL] = None
+  bannerPresignedUrl: Option[URL] = None,
+  role: Option[Role],
+  packageTypeCounts: Option[Map[String, Int]] = None
 )
 
 object DataSetDTO {
