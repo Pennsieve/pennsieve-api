@@ -572,8 +572,14 @@ class DataSetsController(
         parameters (
           pathParam[String]("id").description("data set id")
         )
+      deprecate
     )
   ) {
+    response.setHeader(
+      "Warning",
+      "299 - GET /datasets/:id/packageTypeCounts is deprecated and will be removed by December 31, 2025"
+    )
+
     new AsyncResult {
 
       val result: EitherT[Future, ActionResult, Map[String, Long]] = for {
@@ -613,8 +619,14 @@ class DataSetsController(
             )
             .defaultValue(false)
       )
+      deprecate
     )
   ) {
+    response.setHeader(
+      "Warning",
+      "299 - GET /datasets is deprecated and will be removed by December 31, 2025"
+    )
+
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[DataSetDTO]] =
         for {
@@ -2534,9 +2546,17 @@ class DataSetsController(
   )
     summary "get the user's effective role on the dataset"
     parameters
-      pathParam[String]("id").description("data set id"))
+      pathParam[String]("id").description("data set id")
+    deprecate
+    )
+
 
   get("/:id/role", operation(getDatasetRole)) {
+    response.setHeader(
+      "Warning",
+      "299 - GET /datasets/:id/role is deprecated and will be removed by December 31, 2025"
+    )
+
     new AsyncResult {
       val results: EitherT[Future, ActionResult, DatasetRoleResponse] =
         for {
