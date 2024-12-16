@@ -202,7 +202,6 @@ trait SecureCoreContainer
 
   lazy val discussionManager: DiscussionManager =
     new DiscussionManager(self.organization, db)
-  lazy val onboardingManager = new OnboardingManager(db)
   override lazy val organizationManager: SecureOrganizationManager =
     new SecureOrganizationManager(db, user)
   lazy val tokenManager: SecureTokenManager =

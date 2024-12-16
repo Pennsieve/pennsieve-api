@@ -62,7 +62,6 @@ object ModelSerializers {
     Json4s.serializer(DatasetType),
     Json4s.serializer(DatasetState),
     Json4s.serializer(PublishStatus),
-    Json4s.serializer(OnboardingEventType),
     Json4s.serializer(DefaultDatasetStatus),
     Json4s.serializer(License),
     Json4s.serializer(DoiState),

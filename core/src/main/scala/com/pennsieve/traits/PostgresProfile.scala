@@ -104,12 +104,6 @@ trait PostgresProfile
         s => FileObjectType.withName(s)
       )
 
-    implicit val onboardingEventTypeMapper =
-      MappedColumnType.base[OnboardingEventType, String](
-        e => e.entryName,
-        e => OnboardingEventType.withName(e)
-      )
-
     implicit val packageTypeMapper = MappedColumnType
       .base[PackageType, String](t => t.entryName, s => PackageType.withName(s))
 
