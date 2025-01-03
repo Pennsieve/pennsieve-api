@@ -571,8 +571,7 @@ class DataSetsController(
         summary "gets a data package type counts"
         parameters (
           pathParam[String]("id").description("data set id")
-        )
-      deprecate
+        ) deprecate
     )
   ) {
     response.setHeader(
@@ -618,8 +617,7 @@ class DataSetsController(
               "If true, information about publication will be returned"
             )
             .defaultValue(false)
-      )
-      deprecate
+      ) deprecate
     )
   ) {
     response.setHeader(
@@ -2541,15 +2539,11 @@ class DataSetsController(
     }
   }
 
-  val getDatasetRole: OperationBuilder = (apiOperation[DatasetRoleResponse](
-    "getDatasetRole"
-  )
-    summary "get the user's effective role on the dataset"
-    parameters
-      pathParam[String]("id").description("data set id")
-    deprecate
-    )
-
+  val getDatasetRole: OperationBuilder =
+    (apiOperation[DatasetRoleResponse]("getDatasetRole")
+      summary "get the user's effective role on the dataset"
+      parameters
+        pathParam[String]("id").description("data set id") deprecate)
 
   get("/:id/role", operation(getDatasetRole)) {
     response.setHeader(

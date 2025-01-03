@@ -1740,9 +1740,7 @@ class PackagesController(
     parameter pathParam[Int]("id")
       .description("the integer id of the package to update")
     parameter bodyParam[SetStorageRequest]("body")
-      .description("request body containing the new size of the package")
-    deprecate
-    )
+      .description("request body containing the new size of the package") deprecate)
 
   // this endpoint is deprecated and will go away in a future release v2.7.3
   put("/:id/storage", operation(putStorageOperation)) {
