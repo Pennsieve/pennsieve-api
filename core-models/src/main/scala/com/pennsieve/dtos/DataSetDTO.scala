@@ -39,7 +39,7 @@ case class DataSetDTO(
   locked: Boolean,
   bannerPresignedUrl: Option[URL] = None,
   role: Option[Role] = None,
-  packageTypeCounts: Option[Map[String, Int]] = None
+  packageTypeCounts: Option[Map[String, Long]] = None
 )
 
 object DataSetDTO {
