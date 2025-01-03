@@ -234,8 +234,8 @@ object Builders {
                 canPublish = datasetAndStatus.canPublish,
                 locked = datasetAndStatus.locked,
                 bannerPresignedUrl = datasetBanners.get(dataset.id),
-                packageTypeCounts = counts,
-                role = role
+                packageTypeCounts = Some(counts),
+                role = Some(role)
               )
         }
     } yield dtos
