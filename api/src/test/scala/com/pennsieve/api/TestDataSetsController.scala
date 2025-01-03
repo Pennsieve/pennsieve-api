@@ -5394,7 +5394,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     // The embargo release date should be propagated through the workflow
     get(
       s"/${dataset.nodeId}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
 
       status shouldBe 200
