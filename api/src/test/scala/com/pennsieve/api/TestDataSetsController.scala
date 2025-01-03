@@ -10799,4 +10799,56 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sendEmailTo(publisherUser.email) shouldBe true
   }
+
+  test("get datasets endpoint includes role and packageTypeCounts") {
+    val dataset = createDataSet("test-dataset-for-role-and-packageTypeCounts")
+    addBannerAndReadme(dataset)
+    val folder = createPackage(dataset, "folder")
+    val primary = createPackage(
+      dataset,
+      "primary.img",
+      `type` = PackageType.Image,
+      parent = Some(folder)
+    )
+    val secondary = createPackage(
+      dataset,
+      "secondary.img",
+      `type` = PackageType.Image,
+      parent = Some(folder)
+    )
+    val derived = createPackage(
+      dataset,
+      "derived.csv",
+      `type` = PackageType.CSV,
+      parent = Some(folder)
+    )
+    val report = createPackage(
+      dataset,
+      "report.pdf",
+      `type` = PackageType.PDF,
+      parent = Some(folder)
+    )
+
+    get(
+      s"/${dataset.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      response.getHeader(HttpHeaders.ETAG) shouldBe dataset.etag.asHeader
+
+      val dto = parsedBody.extract[DataSetDTO]
+
+      dto.role.isDefined shouldBe true
+      dto.role.get shouldBe Role.Owner
+
+      dto.packageTypeCounts.isDefined shouldBe true
+      val packageTypeCounts = dto.packageTypeCounts.get
+      packageTypeCounts.keys.size shouldEqual 4
+      packageTypeCounts.get("Collection") shouldBe Some(1)
+      packageTypeCounts.get("Image") shouldBe Some(2)
+      packageTypeCounts.get("CSV") shouldBe Some(1)
+      packageTypeCounts.get("PDF") shouldBe Some(1)
+    }
+  }
+
 }
