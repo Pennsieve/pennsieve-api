@@ -571,9 +571,14 @@ class DataSetsController(
         summary "gets a data package type counts"
         parameters (
           pathParam[String]("id").description("data set id")
-        )
+        ) deprecate
     )
   ) {
+    response.setHeader(
+      "Warning",
+      "299 - GET /datasets/:id/packageTypeCounts is deprecated and will be removed by December 31, 2025"
+    )
+
     new AsyncResult {
 
       val result: EitherT[Future, ActionResult, Map[String, Long]] = for {
@@ -612,9 +617,14 @@ class DataSetsController(
               "If true, information about publication will be returned"
             )
             .defaultValue(false)
-      )
+      ) deprecate
     )
   ) {
+    response.setHeader(
+      "Warning",
+      "299 - GET /datasets is deprecated and will be removed by December 31, 2025"
+    )
+
     new AsyncResult {
       val result: EitherT[Future, ActionResult, List[DataSetDTO]] =
         for {
@@ -2529,14 +2539,18 @@ class DataSetsController(
     }
   }
 
-  val getDatasetRole: OperationBuilder = (apiOperation[DatasetRoleResponse](
-    "getDatasetRole"
-  )
-    summary "get the user's effective role on the dataset"
-    parameters
-      pathParam[String]("id").description("data set id"))
+  val getDatasetRole: OperationBuilder =
+    (apiOperation[DatasetRoleResponse]("getDatasetRole")
+      summary "get the user's effective role on the dataset"
+      parameters
+        pathParam[String]("id").description("data set id") deprecate)
 
   get("/:id/role", operation(getDatasetRole)) {
+    response.setHeader(
+      "Warning",
+      "299 - GET /datasets/:id/role is deprecated and will be removed by December 31, 2025"
+    )
+
     new AsyncResult {
       val results: EitherT[Future, ActionResult, DatasetRoleResponse] =
         for {

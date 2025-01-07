@@ -1740,10 +1740,15 @@ class PackagesController(
     parameter pathParam[Int]("id")
       .description("the integer id of the package to update")
     parameter bodyParam[SetStorageRequest]("body")
-      .description("request body containing the new size of the package"))
+      .description("request body containing the new size of the package") deprecate)
 
   // this endpoint is deprecated and will go away in a future release v2.7.3
   put("/:id/storage", operation(putStorageOperation)) {
+    response.setHeader(
+      "Warning",
+      "299 - PUT /packages/:id/storage is deprecated and will be removed by December 31, 2025"
+    )
+
     new AsyncResult {
       val result: EitherT[Future, ActionResult, SetStorageResponse] = for {
         pkgId <- paramT[Int]("id")

@@ -188,6 +188,15 @@ object Builders {
 
               organizationId = secureContainer.organization.id
 
+              user = secureContainer.user
+
+              role <- secureContainer.datasetManager
+                .maxRole(dataset, user)
+
+              counts <- secureContainer.packageManager
+                .packageTypes(dataset)
+                .map(_.map { case (k, v) => (k.toString, v.toLong) })
+
               repository <- if (dataset.`type`.equals(DatasetType.Release)) {
                 secureContainer.datasetManager
                   .getExternalRepository(organizationId, dataset.id)
@@ -224,7 +233,9 @@ object Builders {
                 ),
                 canPublish = datasetAndStatus.canPublish,
                 locked = datasetAndStatus.locked,
-                bannerPresignedUrl = datasetBanners.get(dataset.id)
+                bannerPresignedUrl = datasetBanners.get(dataset.id),
+                packageTypeCounts = Some(counts),
+                role = Some(role)
               )
         }
     } yield dtos
@@ -284,6 +295,15 @@ object Builders {
 
       owner <- secureContainer.datasetManager.getOwner(dataset)
 
+      user = secureContainer.user
+
+      role <- secureContainer.datasetManager
+        .maxRole(dataset, user)
+
+      counts <- secureContainer.packageManager
+        .packageTypes(dataset)
+        .map(_.map { case (k, v) => (k.toString, v.toLong) })
+
       publishedStatuses <- if (includePublishedDataset) {
         getPublishedDatasetsFromDiscover(
           secureContainer.organization,
@@ -331,7 +351,9 @@ object Builders {
         ),
         canPublish = canPublish,
         locked = locked,
-        bannerPresignedUrl = bannerPresignedUrl
+        bannerPresignedUrl = bannerPresignedUrl,
+        packageTypeCounts = Some(counts),
+        role = Some(role)
       )
   }
 
