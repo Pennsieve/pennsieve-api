@@ -110,6 +110,6 @@ data "terraform_remote_state" "africa_south_region" {
   config = {
     bucket = "${var.aws_account}-terraform-state"
     key    = "aws/af-south-1/terraform.tfstate"
-    region = "af-south-1"
+    region = "us-east-1"
   }
 }
