@@ -202,14 +202,14 @@ data "aws_iam_policy_document" "s3_iam_policy_document" {
       "${data.terraform_remote_state.platform_infrastructure.outputs.rejoin_storage_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.precision_storage_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.precision_storage_bucket_arn}/*",
+      data.terraform_remote_state.africa_south_region.outputs.af_south_s3_storage_bucket_arn,
+      "${data.terraform_remote_state.africa_south_region.outputs.af_south_s3_storage_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.uploads_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.uploads_bucket_arn}/*",
       data.terraform_remote_state.platform_infrastructure.outputs.dataset_assets_bucket_arn,
       "${data.terraform_remote_state.platform_infrastructure.outputs.dataset_assets_bucket_arn}/*",
       data.terraform_remote_state.upload_service_v2.outputs.uploads_bucket_arn,
       "${data.terraform_remote_state.upload_service_v2.outputs.uploads_bucket_arn}/*",
-      data.terraform_remote_state.africa_south_region.outputs.af_south_s3_storage_bucket_arn,
-      "${data.terraform_remote_state.africa_south_region.outputs.af_south_s3_storage_bucket_arn}/*",
     ]
   }
 
