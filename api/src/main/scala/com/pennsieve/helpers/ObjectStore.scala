@@ -60,30 +60,42 @@ class S3ObjectStore(s3Client: S3) extends ObjectStore {
       .map(_.getContentMD5)
       .leftMap(t => InternalServerError(t.getMessage))
 
- def getPresignedUrl(
-  bucket: String,
-  key: String,
-  duration: Date,
-  fileName: String
-): Either[ActionResult, URL] = {
-  
-  val request = new GeneratePresignedUrlRequest(bucket, key)
-    .withExpiration(duration)
-    .withResponseHeaders(
-      new ResponseHeaderOverrides()
-        .withContentDisposition(s"""attachment; filename="$fileName"""")
+  def getRegionFromBucket(bucket: String): String = {
+    val regionMappings: Map[String, String] = Map(
+      "afs-1"  -> "af-south-1",
+      "use-1"  -> "us-east-1",
+      "use-2"  -> "us-east-2",
+      "usw-1"  -> "us-west-1",
+      "usw-2"  -> "us-west-2",
+      // Add more regions
     )
-
-  try {
-    val url = bucket match {
-      case b if b.contains("afs-1") => AFSClient.generatePresignedUrl(request)
-      case _                        => s3Client.generatePresignedUrl(request)
-    }
-    url.asRight
-  } catch {
-    case t: Throwable => InternalServerError(t.getMessage).asLeft
+    regionMappings
+      .collectFirst { case (suffix, region) if bucket.endsWith(suffix) => region }
+      .getOrElse("us-east-1")
   }
-}
+
+  def getPresignedUrl(
+    bucket: String,
+    key: String,
+    duration: Date,
+    fileName: String
+  ): Either[ActionResult, URL] = {
+    val region = getRegionFromBucket(bucket)
+    val s3ClientRegional = createS3Client(region)
+
+    Either
+      .catchNonFatal {
+        s3ClientRegional.generatePresignedUrl(
+          new GeneratePresignedUrlRequest(bucket, key)
+            .withExpiration(duration)
+            .withResponseHeaders(
+              new ResponseHeaderOverrides()
+                .withContentDisposition(s"""attachment; filename="$fileName"""")
+            )
+        )
+      }
+      .leftMap(t => InternalServerError(t.getMessage))
+  }
 
   def getListing(
     bucket: String,

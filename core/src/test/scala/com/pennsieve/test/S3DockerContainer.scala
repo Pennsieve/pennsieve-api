@@ -82,12 +82,13 @@ final class S3DockerContainerImpl
         ConfigValueFactory.fromAnyRef("us-east-1")
       )
 
-  def s3Client: AmazonS3 = {
+
+  def createS3Client(region: String): AmazonS3 = {
     val creds = new BasicAWSCredentials(accessKey, secretKey)
     val credsProvider = new AWSStaticCredentialsProvider(creds)
-    val endpoint = new EndpointConfiguration(endpointUrl, "us-east-1")
-    val clientConfig =
-      new ClientConfiguration().withSignerOverride("AWSS3V4SignerType")
+    val endpoint = new EndpointConfiguration(endpointUrl, region)
+    val clientConfig = new ClientConfiguration().withSignerOverride("AWSS3V4SignerType")
+
     AmazonS3ClientBuilder
       .standard()
       .withCredentials(credsProvider)
@@ -96,20 +97,6 @@ final class S3DockerContainerImpl
       .withClientConfiguration(clientConfig)
       .build()
   }
-  def s3ClientAFS: AmazonS3 = {
-    val creds = new BasicAWSCredentials(accessKey, secretKey)
-    val credsProvider = new AWSStaticCredentialsProvider(creds)
-    val endpoint = new EndpointConfiguration(endpointUrl, "af-south-1")
-    val clientConfig =
-      new ClientConfiguration().withSignerOverride("AWSS3V4SignerType")
-    AmazonS3ClientBuilder
-      .standard()
-      .withCredentials(credsProvider)
-      .withEndpointConfiguration(endpoint)
-      .withPathStyleAccessEnabled(true)
-      .withClientConfiguration(clientConfig)
-      .build()
-}
 
 trait S3DockerContainer extends StackedDockerContainer {
   val s3Container = DockerContainers.s3Container
