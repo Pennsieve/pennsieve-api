@@ -60,22 +60,30 @@ class S3ObjectStore(s3Client: S3) extends ObjectStore {
       .map(_.getContentMD5)
       .leftMap(t => InternalServerError(t.getMessage))
 
-  def getPresignedUrl(
-    bucket: String,
-    key: String,
-    duration: Date,
-    fileName: String
-  ): Either[ActionResult, URL] =
-    s3Client
-      .generatePresignedUrl(
-        new GeneratePresignedUrlRequest(bucket, key)
-          .withExpiration(duration)
-          .withResponseHeaders(
-            new ResponseHeaderOverrides()
-              .withContentDisposition(s"""attachment; filename="$fileName"""")
-          )
-      )
-      .leftMap(t => InternalServerError(t.getMessage))
+ def getPresignedUrl(
+  bucket: String,
+  key: String,
+  duration: Date,
+  fileName: String
+): Either[ActionResult, URL] = {
+  
+  val request = new GeneratePresignedUrlRequest(bucket, key)
+    .withExpiration(duration)
+    .withResponseHeaders(
+      new ResponseHeaderOverrides()
+        .withContentDisposition(s"""attachment; filename="$fileName"""")
+    )
+
+  try {
+    val url = bucket match {
+      case b if b.contains("afs-1") => AFSClient.generatePresignedUrl(request)
+      case _                        => s3Client.generatePresignedUrl(request)
+    }
+    url.asRight
+  } catch {
+    case t: Throwable => InternalServerError(t.getMessage).asLeft
+  }
+}
 
   def getListing(
     bucket: String,

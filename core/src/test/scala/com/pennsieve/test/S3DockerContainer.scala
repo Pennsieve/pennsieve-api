@@ -96,6 +96,19 @@ final class S3DockerContainerImpl
       .withClientConfiguration(clientConfig)
       .build()
   }
+  def s3ClientAFS: AmazonS3 = {
+    val creds = new BasicAWSCredentials(accessKey, secretKey)
+    val credsProvider = new AWSStaticCredentialsProvider(creds)
+    val endpoint = new EndpointConfiguration(endpointUrl, "af-south-1")
+    val clientConfig =
+      new ClientConfiguration().withSignerOverride("AWSS3V4SignerType")
+    AmazonS3ClientBuilder
+      .standard()
+      .withCredentials(credsProvider)
+      .withEndpointConfiguration(endpoint)
+      .withPathStyleAccessEnabled(true)
+      .withClientConfiguration(clientConfig)
+      .build()
 }
 
 trait S3DockerContainer extends StackedDockerContainer {
