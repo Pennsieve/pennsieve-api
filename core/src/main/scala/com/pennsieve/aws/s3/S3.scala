@@ -17,14 +17,41 @@
 package com.pennsieve.aws.s3
 
 import cats.implicits._
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3URI}
-import com.amazonaws.services.s3.model.{Bucket, CannedAccessControlList, CompleteMultipartUploadRequest, CompleteMultipartUploadResult, CopyObjectRequest, CopyObjectResult, CopyPartRequest, CopyPartResult, DeleteObjectsRequest, GeneratePresignedUrlRequest, GetObjectMetadataRequest, GetObjectRequest, HeadBucketRequest, HeadBucketResult, InitiateMultipartUploadRequest, InitiateMultipartUploadResult, ListObjectsRequest, ObjectListing, ObjectMetadata, PartETag, PutObjectRequest, PutObjectResult, S3Object, S3ObjectSummary}
+import com.amazonaws.services.s3.{ AmazonS3, AmazonS3URI }
+import com.amazonaws.services.s3.model.{
+  Bucket,
+  CannedAccessControlList,
+  CompleteMultipartUploadRequest,
+  CompleteMultipartUploadResult,
+  CopyObjectRequest,
+  CopyObjectResult,
+  CopyPartRequest,
+  CopyPartResult,
+  DeleteObjectRequest,
+  DeleteObjectsRequest,
+  DeleteVersionRequest,
+  GeneratePresignedUrlRequest,
+  GetObjectMetadataRequest,
+  GetObjectRequest,
+  HeadBucketRequest,
+  HeadBucketResult,
+  InitiateMultipartUploadRequest,
+  InitiateMultipartUploadResult,
+  ListObjectsRequest,
+  ObjectListing,
+  ObjectMetadata,
+  PartETag,
+  PutObjectRequest,
+  PutObjectResult,
+  S3Object,
+  S3ObjectSummary,
+  VersionListing
+}
 
-import java.io.{File, InputStream}
+import java.io.{ File, InputStream }
 import java.net.URL
 import scala.jdk.CollectionConverters._
 import scala.annotation.tailrec
-import scala.collection.concurrent.TrieMap
 
 trait S3Trait {
   def getObject(s3URI: AmazonS3URI): Either[Throwable, S3Object]
@@ -432,9 +459,9 @@ class S3(val client: AmazonS3) extends S3Trait {
   def generatePresignedUrl(
     request: GeneratePresignedUrlRequest
   ): Either[Throwable, URL] =
-      Either.catchNonFatal {
-        client.generatePresignedUrl(request);
-      }
+    Either.catchNonFatal {
+      client.generatePresignedUrl(request)
+    }
 
   def headBucket(bucket: String): Either[Throwable, HeadBucketResult] =
     Either.catchNonFatal {
