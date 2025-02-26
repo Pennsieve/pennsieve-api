@@ -463,6 +463,19 @@ class S3(val client: AmazonS3) extends S3Trait {
       client.generatePresignedUrl(request)
     }
 
+  def generatePresignedUrl(request: GeneratePresignedUrlRequest, region:String): Either[Throwable, URL] =
+    Either.catchNonFatal {
+      client.generatePresignedUrl(
+        request.toBuilder()
+            .overrideConfiguration(
+                AwsRequestOverrideConfiguration.builder()
+                    .region(region) 
+                    .build()
+            )
+            .build()
+      );
+    }
+
   def headBucket(bucket: String): Either[Throwable, HeadBucketResult] =
     Either.catchNonFatal {
       client.headBucket(new HeadBucketRequest(bucket))
