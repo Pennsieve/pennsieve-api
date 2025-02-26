@@ -135,7 +135,8 @@ trait S3Trait {
   ): Either[Throwable, CompleteMultipartUploadResult]
 
   def generatePresignedUrl(
-    request: GeneratePresignedUrlRequest
+    request: GeneratePresignedUrlRequest,
+    region: String
   ): Either[Throwable, URL]
 
   def headBucket(bucket: String): Either[Throwable, HeadBucketResult]
@@ -457,13 +458,9 @@ class S3(val client: AmazonS3) extends S3Trait {
     }
 
   def generatePresignedUrl(
-    request: GeneratePresignedUrlRequest
-  ): Either[Throwable, URL] =
-    Either.catchNonFatal {
-      client.generatePresignedUrl(request)
-    }
+    request: GeneratePresignedUrlRequest): Either[Throwable, URL] {
 
-  def generatePresignedUrl(request: GeneratePresignedUrlRequest, region:String): Either[Throwable, URL] =
+    val region = client.getBucketLocation(request.getBucketName())
     Either.catchNonFatal {
       client.generatePresignedUrl(
         request.toBuilder()
@@ -475,6 +472,7 @@ class S3(val client: AmazonS3) extends S3Trait {
             .build()
       );
     }
+  }
 
   def headBucket(bucket: String): Either[Throwable, HeadBucketResult] =
     Either.catchNonFatal {
