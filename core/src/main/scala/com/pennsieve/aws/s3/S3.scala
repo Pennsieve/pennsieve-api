@@ -135,8 +135,7 @@ trait S3Trait {
   ): Either[Throwable, CompleteMultipartUploadResult]
 
   def generatePresignedUrl(
-    request: GeneratePresignedUrlRequest,
-    region: String
+    request: GeneratePresignedUrlRequest
   ): Either[Throwable, URL]
 
   def headBucket(bucket: String): Either[Throwable, HeadBucketResult]

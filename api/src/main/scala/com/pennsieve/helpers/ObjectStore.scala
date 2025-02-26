@@ -54,8 +54,6 @@ trait ObjectStore {
 
 class S3ObjectStore(s3Client: S3) extends ObjectStore {
 
-  // private val regionalClientsMap = new TrieMap[String, AmazonS3]()
-
   def getMD5(bucket: String, key: String): Either[ActionResult, String] =
     s3Client
       .getObjectMetadata(bucket, key)
