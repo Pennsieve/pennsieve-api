@@ -41,7 +41,7 @@ final class S3DockerContainerImpl
       ),
       waitStrategy = Some(new HttpWaitStrategy().forPath("/minio/health/live")),
       command = Seq("server", "/tmp")
-    ) {
+    )
 
   def mappedPort(): Int = super.mappedPort(S3DockerContainer.port)
   val accessKey: String = S3DockerContainer.accessKey
