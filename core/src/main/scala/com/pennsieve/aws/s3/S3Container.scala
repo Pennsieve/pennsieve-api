@@ -48,7 +48,8 @@ trait AWSS3Container extends S3Container { self: Container =>
       .standard()
       .withClientConfiguration(s3ClientConfiguration)
       .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
-      .withRegion(s3_region)
+      .withRegion(s3_region) // is this still needed?
+      .withForceGlobalBucketAccessEnabled(true)
       .build()
   )
 

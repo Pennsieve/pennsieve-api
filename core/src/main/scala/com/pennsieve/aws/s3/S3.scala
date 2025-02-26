@@ -17,11 +17,8 @@
 package com.pennsieve.aws.s3
 
 import cats.implicits._
-import com.amazonaws.ClientConfiguration
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder, AmazonS3URI}
-import com.amazonaws.services.s3.model.{Bucket, CannedAccessControlList, CompleteMultipartUploadRequest, CompleteMultipartUploadResult, CopyObjectRequest, CopyObjectResult, CopyPartRequest, CopyPartResult, DeleteObjectRequest, DeleteObjectsRequest, DeleteVersionRequest, GeneratePresignedUrlRequest, GetObjectMetadataRequest, GetObjectRequest, HeadBucketRequest, HeadBucketResult, InitiateMultipartUploadRequest, InitiateMultipartUploadResult, ListObjectsRequest, ObjectListing, ObjectMetadata, PartETag, PutObjectRequest, PutObjectResult, S3Object, S3ObjectSummary, VersionListing}
-import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3URI}
+import com.amazonaws.services.s3.model.{Bucket, CannedAccessControlList, CompleteMultipartUploadRequest, CompleteMultipartUploadResult, CopyObjectRequest, CopyObjectResult, CopyPartRequest, CopyPartResult, DeleteObjectsRequest, GeneratePresignedUrlRequest, GetObjectMetadataRequest, GetObjectRequest, HeadBucketRequest, HeadBucketResult, InitiateMultipartUploadRequest, InitiateMultipartUploadResult, ListObjectsRequest, ObjectListing, ObjectMetadata, PartETag, PutObjectRequest, PutObjectResult, S3Object, S3ObjectSummary}
 
 import java.io.{File, InputStream}
 import java.net.URL
@@ -229,7 +226,6 @@ trait S3Trait {
 }
 
 class S3(val client: AmazonS3) extends S3Trait {
-  private val regionalClientsMap = new TrieMap[String, AmazonS3]()
 
   def getObject(s3URI: AmazonS3URI): Either[Throwable, S3Object] =
     getObject(s3URI.getBucket, s3URI.getKey, false)
@@ -433,48 +429,12 @@ class S3(val client: AmazonS3) extends S3Trait {
       client.completeMultipartUpload(request.withRequesterPays(true))
     }
 
-  private def getRegionFromBucket(bucket: String): String = {
-    val regionMappings: Map[String, String] = Map(
-      "afs-1"  -> "af-south-1",
-      "use-1"  -> "us-east-1",
-      "use-2"  -> "us-east-2",
-      "usw-1"  -> "us-west-1",
-      "usw-2"  -> "us-west-2",
-      // Add more regions
-    )
-    regionMappings
-      .collectFirst { case (suffix, region) if bucket.endsWith(suffix) => region }
-      .getOrElse("us-east-1")
-  }
-
   def generatePresignedUrl(
     request: GeneratePresignedUrlRequest
-  ): Either[Throwable, URL] = {
-
-    val bucketName = request.getBucketName
-    val region = getRegionFromBucket(bucketName)
-    var regionalClientConfig: AmazonS3 = null
-    
-    regionalClientConfig = regionalClientsMap.getOrElseUpdate(region, {
-      val regionalConfig = new ClientConfiguration().withSignerOverride("AWSS3V4SignerType")
-          AmazonS3ClientBuilder.standard()
-             .withClientConfiguration(regionalConfig)
-             .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
-             .withRegion(region)
-             .build()
-           })
-
-    if (!region.equals("us-east-1")) {
-      Either.catchNonFatal{
-        regionalClientConfig.generatePresignedUrl(request)
-      }
-    }
-    else{
+  ): Either[Throwable, URL] =
       Either.catchNonFatal {
         client.generatePresignedUrl(request);
       }
-    }
-  }
 
   def headBucket(bucket: String): Either[Throwable, HeadBucketResult] =
     Either.catchNonFatal {
