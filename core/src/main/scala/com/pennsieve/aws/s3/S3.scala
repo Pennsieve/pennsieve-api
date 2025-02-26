@@ -229,6 +229,7 @@ trait S3Trait {
 }
 
 class S3(val client: AmazonS3) extends S3Trait {
+  private val regionalClientsMap = new TrieMap[String, AmazonS3]()
 
   def getObject(s3URI: AmazonS3URI): Either[Throwable, S3Object] =
     getObject(s3URI.getBucket, s3URI.getKey, false)
@@ -450,19 +451,17 @@ class S3(val client: AmazonS3) extends S3Trait {
     request: GeneratePresignedUrlRequest
   ): Either[Throwable, URL] = {
 
-    val regionalClientsMap = new TrieMap[String, AmazonS3]()
-
     val bucketName = request.getBucketName
     val region = getRegionFromBucket(bucketName)
     var regionalClientConfig: AmazonS3 = null
-
+    
     regionalClientConfig = regionalClientsMap.getOrElseUpdate(region, {
-             var regionalClientConfig = new ClientConfiguration().withSignerOverride("AWSS3V4SignerType")
-             AmazonS3ClientBuilder.standard()
-               .withClientConfiguration(regionalClientConfig)
-               .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
-               .withRegion(region)
-               .build()
+      val regionalConfig = new ClientConfiguration().withSignerOverride("AWSS3V4SignerType")
+          AmazonS3ClientBuilder.standard()
+             .withClientConfiguration(regionalConfig)
+             .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
+             .withRegion(region)
+             .build()
            })
 
     if (!region.equals("us-east-1")) {
