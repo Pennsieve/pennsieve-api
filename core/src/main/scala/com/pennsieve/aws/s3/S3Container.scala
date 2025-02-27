@@ -62,6 +62,7 @@ trait LocalS3Container extends S3Container { self: Container =>
       .standard()
       .withClientConfiguration(s3ClientConfiguration)
       .withCredentials(LocalAWSCredentialsProvider.credentialsProviderChain)
+      .withForceGlobalBucketAccessEnabled(true)
       .withEndpointConfiguration(
         new EndpointConfiguration(s3_host, s3_region.getName)
       )
