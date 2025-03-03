@@ -19,16 +19,17 @@ package com.pennsieve.helpers
 import com.pennsieve.api.Error
 import com.pennsieve.helpers.either.EitherErrorHandler.implicits._
 import com.pennsieve.web.Settings
-
-import com.pennsieve.aws.s3.S3
+import com.pennsieve.aws.s3.{S3, S3ClientFactory}
 import com.amazonaws.services.s3.model._
 import cats.syntax.either._
+import com.amazonaws.services.s3.AmazonS3
+
 import java.net.URL
-import org.scalatra.{ ActionResult, InternalServerError, NotFound }
+import org.scalatra.{ActionResult, InternalServerError, NotFound}
+
 import scala.util.Try
 import scala.concurrent.duration._
 import java.util.Date
-
 import scala.annotation.tailrec
 
 /**
@@ -65,17 +66,39 @@ class S3ObjectStore(s3Client: S3) extends ObjectStore {
     key: String,
     duration: Date,
     fileName: String
-  ): Either[ActionResult, URL] =
-    s3Client
-      .generatePresignedUrl(
-        new GeneratePresignedUrlRequest(bucket, key)
-          .withExpiration(duration)
-          .withResponseHeaders(
-            new ResponseHeaderOverrides()
-              .withContentDisposition(s"""attachment; filename="$fileName"""")
-          )
-      )
+  ): Either[ActionResult, URL] = {
+    val region = S3ClientFactory.getRegionFromBucket(bucket)
+
+    if (region == "us-east-1") {
+      generateUrl(s3Client.client, bucket, key, duration, fileName)
+    } else {
+      // New logic for non-us-east-1 regions
+      val regionalS3Client = S3ClientFactory.getClientForRegion(region)
+      generateUrl(regionalS3Client, bucket, key, duration, fileName)
+    }
+  }
+
+  private def generateUrl(
+    client: AmazonS3,
+    bucket: String,
+    key: String,
+    duration: Date,
+    fileName: String
+  ): Either[ActionResult, URL] = {
+
+    Either
+      .catchNonFatal {
+        client.generatePresignedUrl(
+          new GeneratePresignedUrlRequest(bucket, key)
+            .withExpiration(duration)
+            .withResponseHeaders(
+              new ResponseHeaderOverrides()
+                .withContentDisposition(s"""attachment; filename="$fileName"""")
+            )
+        )
+      }
       .leftMap(t => InternalServerError(t.getMessage))
+  }
 
   def getListing(
     bucket: String,

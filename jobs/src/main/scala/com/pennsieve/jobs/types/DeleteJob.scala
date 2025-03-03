@@ -158,7 +158,6 @@ object DeleteJob {
         .standard()
         .withPathStyleAccessEnabled(pathStyleAccess)
         .withClientConfiguration(clientConfig)
-        .withForceGlobalBucketAccessEnabled(true)
       endpoint match {
         case Some(ep) =>
           val endpointConfig = new EndpointConfiguration(s"$ep", region)

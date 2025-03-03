@@ -90,7 +90,6 @@ final class S3DockerContainerImpl
       new ClientConfiguration().withSignerOverride("AWSS3V4SignerType")
     AmazonS3ClientBuilder
       .standard()
-      .withForceGlobalBucketAccessEnabled(true)
       .withCredentials(credsProvider)
       .withEndpointConfiguration(endpoint)
       .withPathStyleAccessEnabled(true)
