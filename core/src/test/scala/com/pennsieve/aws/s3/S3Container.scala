@@ -44,6 +44,7 @@ trait AWSS3Container extends S3Container { self: Container =>
       .standard()
       .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
       .withRegion(s3_region)
+      .withForceGlobalBucketAccessEnabled(true)
       .build()
   )
 
@@ -59,6 +60,7 @@ trait LocalS3Container extends S3Container { self: Container =>
         new EndpointConfiguration(s3_host, s3_region.getName())
       )
       .withPathStyleAccessEnabled(true)
+      .withForceGlobalBucketAccessEnabled(true)
       .build()
   )
 

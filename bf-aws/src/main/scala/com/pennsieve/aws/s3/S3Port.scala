@@ -38,6 +38,7 @@ class AWSS3Port(region: Regions) extends S3Port {
       .standard()
       .withClientConfiguration(clientConfiguration)
       .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
+      .withForceGlobalBucketAccessEnabled(true)
       .withRegion(region)
       .build()
 
@@ -54,6 +55,7 @@ class LocalS3Port(host: String, region: Regions) extends S3Port {
         new EndpointConfiguration(host, region.getName)
       )
       .withPathStyleAccessEnabled(true)
+      .withForceGlobalBucketAccessEnabled(true)
       .build()
 
 }
