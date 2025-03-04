@@ -56,10 +56,11 @@ trait ObjectStore {
 class S3ObjectStore() extends ObjectStore {
 
   def getMD5(bucket: String, key: String): Either[ActionResult, String] = {
-      S3ClientFactory.getClientForBucket(bucket)
-      .getObjectMetadata(bucket, key)
-      .map(_.getContentMD5)
-      .leftMap(t => InternalServerError(t.getMessage))
+      S3ClientFactory
+        .getClientForBucket(bucket)
+        .getObjectMetadata(bucket, key)
+        .map(_.getContentMD5)
+        .leftMap(t => InternalServerError(t.getMessage))
   }
   def getPresignedUrl(
     bucket: String,
@@ -68,7 +69,8 @@ class S3ObjectStore() extends ObjectStore {
     fileName: String
   ): Either[ActionResult, URL] = {
     // Create region appropriate client
-      S3ClientFactory.getClientForBucket(bucket).generatePresignedUrl(
+      S3ClientFactory
+        .getClientForBucket(bucket).generatePresignedUrl(
           new GeneratePresignedUrlRequest(bucket, key)
             .withExpiration(duration)
             .withResponseHeaders(
@@ -83,7 +85,8 @@ class S3ObjectStore() extends ObjectStore {
     bucket: String,
     prefix: String
   ): Either[ActionResult, Map[String, Long]] = {
-    S3ClientFactory.getClientForBucket(bucket)
+    S3ClientFactory
+      .getClientForBucket(bucket)
       .objectSummaries(bucket, prefix)
       .map(_.map(obj => (obj.getKey, obj.getSize)).toMap)
       .leftMap(t => InternalServerError(t.getMessage))
