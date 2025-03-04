@@ -220,7 +220,7 @@ class LocalBootstrapHelper(
   override val system: ActorSystem
 ) extends BaseBootstrapHelper {
 
-  lazy val objectStore: ObjectStore = new S3ObjectStore(insecureContainer.s3)
+  lazy val objectStore: ObjectStore = new S3ObjectStore()
 
   override val insecureContainer =
     new InsecureContainer(config) with InsecureCoreContainer
@@ -273,7 +273,7 @@ class AWSBootstrapHelper(
   override val ec: ExecutionContext
 ) extends BaseBootstrapHelper {
 
-  lazy val objectStore: ObjectStore = new S3ObjectStore(insecureContainer.s3)
+  lazy val objectStore: ObjectStore = new S3ObjectStore()
 
   override val insecureContainer =
     new InsecureContainer(config) with InsecureCoreContainer

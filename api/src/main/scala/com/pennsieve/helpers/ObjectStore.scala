@@ -53,42 +53,22 @@ trait ObjectStore {
 
 }
 
-class S3ObjectStore(s3Client: S3) extends ObjectStore {
+class S3ObjectStore() extends ObjectStore {
 
-  def getMD5(bucket: String, key: String): Either[ActionResult, String] =
-    s3Client
+  def getMD5(bucket: String, key: String): Either[ActionResult, String] = {
+      S3ClientFactory.getClientForBucket(bucket)
       .getObjectMetadata(bucket, key)
       .map(_.getContentMD5)
       .leftMap(t => InternalServerError(t.getMessage))
-
+  }
   def getPresignedUrl(
     bucket: String,
     key: String,
     duration: Date,
     fileName: String
   ): Either[ActionResult, URL] = {
-    val region = S3ClientFactory.getRegionFromBucket(bucket)
-
-    if (region == "us-east-1") {
-      generateUrl(s3Client.client, bucket, key, duration, fileName)
-    } else {
-      // New logic for non-us-east-1 regions
-      val regionalS3Client = S3ClientFactory.getClientForRegion(region)
-      generateUrl(regionalS3Client, bucket, key, duration, fileName)
-    }
-  }
-
-  private def generateUrl(
-    client: AmazonS3,
-    bucket: String,
-    key: String,
-    duration: Date,
-    fileName: String
-  ): Either[ActionResult, URL] = {
-
-    Either
-      .catchNonFatal {
-        client.generatePresignedUrl(
+    // Create region appropriate client
+      S3ClientFactory.getClientForBucket(bucket).generatePresignedUrl(
           new GeneratePresignedUrlRequest(bucket, key)
             .withExpiration(duration)
             .withResponseHeaders(
@@ -96,7 +76,6 @@ class S3ObjectStore(s3Client: S3) extends ObjectStore {
                 .withContentDisposition(s"""attachment; filename="$fileName"""")
             )
         )
-      }
       .leftMap(t => InternalServerError(t.getMessage))
   }
 
@@ -104,7 +83,7 @@ class S3ObjectStore(s3Client: S3) extends ObjectStore {
     bucket: String,
     prefix: String
   ): Either[ActionResult, Map[String, Long]] = {
-    s3Client
+    S3ClientFactory.getClientForBucket(bucket)
       .objectSummaries(bucket, prefix)
       .map(_.map(obj => (obj.getKey, obj.getSize)).toMap)
       .leftMap(t => InternalServerError(t.getMessage))
