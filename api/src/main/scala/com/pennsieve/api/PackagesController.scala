@@ -1369,9 +1369,14 @@ class PackagesController(
       queryParam[Int]("offset")
         .description("offset used for pagination of results")
         .defaultValue(FILES_OFFSET_DEFAULT)
-  ))
+  ) deprecate)
 
   get("/:id/sources", operation(getPackageSources)) {
+
+    response.setHeader(
+      "Warning",
+      "299 - GET /packages/:id/sources is deprecated and will be removed by December 31, 2025"
+    )
 
     new AsyncResult {
       val result: EitherT[Future, ActionResult, Seq[FileDTO]] = for {
