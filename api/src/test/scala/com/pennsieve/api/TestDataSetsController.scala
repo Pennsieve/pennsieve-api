@@ -89,19 +89,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   implicit val zonedDateTimeOrdering: Ordering[ZonedDateTime] =
     Ordering.by(_.toInstant)
 
-//  private val NotificationsQueueUrl: String =
-//    insecureContainer.config.getString("sqs.notifications_queue")
-
-  private def sendNotification(
-    notification: NotificationMessage
-  ): EitherT[Future, CoreError, Done] =
-    mockSqsClient
-      .send(
-        insecureContainer.config.getString("sqs.notifications_queue"),
-        notification.asJson.noSpaces
-      )
-      .map(_ => Done)
-
   override def afterStart(): Unit = {
     super.afterStart()
 
@@ -10250,7 +10237,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         embargo = (validated.publicationType == PublicationType.Embargo),
         modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
-        sendNotification = sendNotification,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
         externalPublications = externalPublications,
@@ -10331,7 +10317,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         embargo = (validated.publicationType == PublicationType.Embargo),
         modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
-        sendNotification = sendNotification,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
         externalPublications = externalPublications,
@@ -10414,7 +10399,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         embargo = (validated.publicationType == PublicationType.Embargo),
         modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
-        sendNotification = sendNotification,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
         externalPublications = externalPublications,
@@ -10508,7 +10492,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         embargo = (validated.publicationType == PublicationType.Embargo),
         modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
-        sendNotification = sendNotification,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
         externalPublications = externalPublications,

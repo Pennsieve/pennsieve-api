@@ -379,18 +379,6 @@ class DataSetsController(
       (value \ childString) != JNothing
   }
 
-  /**
-    * Send a notification to the legacy (not "center") notification service.
-    *
-    * TODO: combine this with the `NotificationServiceClient`. It is probably
-    * better to use this SQS version instead of the REST client.
-    */
-  private def sendNotification(
-    notification: NotificationMessage
-  ): EitherT[Future, CoreError, Done] =
-    sqsClient
-      .send(NotificationsQueueUrl, notification.asJson.noSpaces)
-      .map(_ => Done)
   //FIRST INSTANCE OF SETETAGHEADER
   private def setETagHeader(
     etag: ETag
@@ -1304,8 +1292,7 @@ class DataSetsController(
             organization,
             dataset,
             secureContainer.user,
-            publishClient,
-            sendNotification
+            publishClient
           )(ec, system, jwtConfig)
           .coreErrorToActionResult()
 
@@ -3343,7 +3330,6 @@ class DataSetsController(
                     embargo = (validated.publicationType == PublicationType.Embargo),
                     modelServiceClient = modelServiceClient,
                     publishClient = publishClient,
-                    sendNotification = sendNotification,
                     embargoReleaseDate = validated.embargoReleaseDate,
                     collections = collections,
                     externalPublications = externalPublications,
@@ -3389,7 +3375,6 @@ class DataSetsController(
                     contributors.toList,
                     publishClient,
                     datasetAssetClient,
-                    sendNotification,
                     collections,
                     externalPublications
                   )(ec, system, jwtConfig)
@@ -3438,8 +3423,7 @@ class DataSetsController(
                     secureContainer.organization,
                     validated.dataset,
                     secureContainer.user,
-                    publishClient,
-                    sendNotification
+                    publishClient
                   )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
@@ -3501,8 +3485,7 @@ class DataSetsController(
                     secureContainer.organization,
                     validated.dataset,
                     secureContainer.user,
-                    publishClient,
-                    sendNotification
+                    publishClient
                   )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
@@ -3832,7 +3815,6 @@ class DataSetsController(
               body.error
             )
           }
-          _ <- sendNotification(notification).coreErrorToActionResult()
 
           _ <- if (body.success) for {
             publishedDatasetId <- body.publishedDatasetId
@@ -3958,8 +3940,7 @@ class DataSetsController(
               secureContainer.organization,
               dataset,
               secureContainer.user,
-              publishClient,
-              sendNotification
+              publishClient
             )(ec, system, jwtConfig)
             .coreErrorToActionResult()
 

@@ -940,7 +940,6 @@ case object DataSetPublishingHelper extends LazyLogging {
     embargo: Boolean,
     modelServiceClient: ModelServiceClient,
     publishClient: PublishClient,
-    sendNotification: NotificationMessage => EitherT[Future, CoreError, Done],
     embargoReleaseDate: Option[LocalDate] = None,
     collections: Seq[CollectionDTO],
     externalPublications: Seq[ExternalPublication],
@@ -1060,21 +1059,6 @@ case object DataSetPublishingHelper extends LazyLogging {
         }} version=${response.publishedVersionCount + 1} embargo=$embargo"
       )
 
-      notification = DiscoverPublishNotification(
-        List(secureContainer.user.id),
-        MessageType.DatasetUpdate,
-        "Dataset publish job submitted.",
-        dataset.id,
-        response.publishedDatasetId,
-        response.publishedVersionCount,
-        response.lastPublishedDate,
-        response.status,
-        success = true,
-        None
-      )
-
-      _ <- sendNotification(notification)
-
     } yield response
   }
 
@@ -1091,7 +1075,6 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: List[ContributorDTO],
     publishClient: PublishClient,
     datasetAssetClient: DatasetAssetClient,
-    sendNotification: NotificationMessage => EitherT[Future, CoreError, Done],
     collections: Seq[CollectionDTO],
     externalPublications: Seq[ExternalPublication]
   )(implicit
@@ -1205,21 +1188,6 @@ case object DataSetPublishingHelper extends LazyLogging {
         }} version=${response.publishedVersionCount}"
       )
 
-      _ <- sendNotification(
-        DiscoverPublishNotification(
-          List(secureContainer.user.id),
-          MessageType.DatasetUpdate,
-          "Dataset revised",
-          dataset.id,
-          response.publishedDatasetId,
-          response.publishedVersionCount,
-          response.lastPublishedDate,
-          response.status,
-          success = true,
-          None
-        )
-      )
-
     } yield response
 
   }
@@ -1231,8 +1199,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     organization: Organization,
     dataset: Dataset,
     user: User,
-    publishClient: PublishClient,
-    sendNotification: NotificationMessage => EitherT[Future, CoreError, Done]
+    publishClient: PublishClient
   )(implicit
     ec: ExecutionContext,
     system: ActorSystem,
@@ -1262,28 +1229,6 @@ case object DataSetPublishingHelper extends LazyLogging {
               .pure[Future, CoreError](None: Option[DatasetPublishStatus])
           )
         }
-
-      _ <- status match {
-        case Some(status) => {
-          val notification = DiscoverPublishNotification(
-            List(user.id),
-            MessageType.DatasetUpdate,
-            s"Dataset ${dataset.name} has been unpublished.",
-            dataset.id,
-            status.publishedDatasetId,
-            status.publishedVersionCount,
-            status.lastPublishedDate,
-            status.status,
-            success = true,
-            None
-          )
-          sendNotification(notification)
-        }
-        case None =>
-          EitherT
-            .pure[Future, CoreError](Done)
-      }
-
     } yield status
   }
 
@@ -1294,8 +1239,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     organization: Organization,
     dataset: Dataset,
     user: User,
-    publishClient: PublishClient,
-    sendNotification: NotificationMessage => EitherT[Future, CoreError, Done]
+    publishClient: PublishClient
   )(implicit
     ec: ExecutionContext,
     system: ActorSystem,
@@ -1323,27 +1267,6 @@ case object DataSetPublishingHelper extends LazyLogging {
             handleNotFound = EitherT.leftT(NotFound(dataset.nodeId))
           )
         }
-
-      _ <- status match {
-        case Some(status) => {
-          val notification = DiscoverPublishNotification(
-            List(user.id),
-            MessageType.DatasetUpdate,
-            s"Dataset ${dataset.name} is being released to Discover",
-            dataset.id,
-            status.publishedDatasetId,
-            status.publishedVersionCount,
-            status.lastPublishedDate,
-            status.status,
-            success = true,
-            None
-          )
-          sendNotification(notification)
-        }
-        case None =>
-          EitherT
-            .pure[Future, CoreError](Done)
-      }
 
     } yield status
   }
