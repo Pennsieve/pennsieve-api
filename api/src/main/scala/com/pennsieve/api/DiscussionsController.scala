@@ -20,7 +20,6 @@ import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
-import com.pennsieve.client.NotificationServiceClient
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, JwtAuthenticator }
 import com.pennsieve.domain.{ CoreError, NotFound }
@@ -60,7 +59,6 @@ class DiscussionsController(
   val insecureContainer: InsecureAPIContainer,
   val secureContainerBuilder: SecureContainerBuilderType,
   auditLogger: Auditor,
-  notificationServiceClient: NotificationServiceClient,
   asyncExecutor: ExecutionContext
 )(implicit
   val swagger: Swagger
@@ -148,15 +146,13 @@ class DiscussionsController(
     pkg: Package,
     token: String
   ): NotificationMessage = {
-    val notify = MentionNotification(
+    MentionNotification(
       users.map(_.id).toList,
       Mention,
       comment.message,
       pkg.nodeId,
       pkg.name
     )
-    notificationServiceClient.notify(notify, token)
-    notify
   }
 
   val createCommentOperation = (apiOperation[CommentResponse]("createComment")
