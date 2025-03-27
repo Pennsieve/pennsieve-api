@@ -8084,6 +8084,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.publicationStatus shouldBe PublicationStatus.Completed
       response.publicationType shouldBe PublicationType.Revision
     }
+
+    mockPublishClient.reviseRequests should contain(
+      (loggedInOrganization.id, dataset.id)
+    )
   }
 
   test("notify the Discover service to unpublish a dataset") {
@@ -8106,6 +8110,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 201
     }
+
+    mockPublishClient.unpublishRequests should contain(
+      (loggedInOrganization.id, dataset.id)
+    )
 
   }
 
