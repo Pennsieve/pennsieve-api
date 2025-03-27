@@ -64,11 +64,6 @@ import com.pennsieve.managers.{ DatasetAssetsManager, DatasetManager }
 import com.pennsieve.models.PublicationStatus.Requested
 import com.pennsieve.models.PublicationType.Revision
 import com.pennsieve.models._
-import com.pennsieve.notifications.{
-  DiscoverPublishNotification,
-  MessageType,
-  NotificationMessage
-}
 import com.pennsieve.web.Settings
 import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._

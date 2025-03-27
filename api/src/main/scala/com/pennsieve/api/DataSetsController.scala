@@ -71,11 +71,6 @@ import com.pennsieve.managers.{
   DatasetManager
 }
 import com.pennsieve.models._
-import com.pennsieve.notifications.{
-  DiscoverPublishNotification,
-  MessageType,
-  NotificationMessage
-}
 import com.pennsieve.web.Settings
 import io.circe.syntax._
 
@@ -3782,37 +3777,11 @@ class DataSetsController(
             .map(_.map(ContributorDTO(_)))
             .coreErrorToActionResult()
 
-          notification = if (body.success) {
+          _ = if (body.success) {
             logger.info(s"Publish complete for dataset ${dataset.nodeId}")
-
-            DiscoverPublishNotification(
-              List(owner.id),
-              MessageType.DatasetUpdate,
-              "Dataset published to Discover.",
-              dataset.id,
-              body.publishedDatasetId,
-              body.publishedVersionCount,
-              body.lastPublishedDate,
-              body.status,
-              success = true,
-              None
-            )
           } else {
             logger.error(
               s"Publish failed for dataset ${dataset.nodeId}: ${body.error}"
-            )
-
-            DiscoverPublishNotification(
-              List(owner.id),
-              MessageType.DatasetUpdate,
-              "Dataset publish failed.",
-              dataset.id,
-              body.publishedDatasetId,
-              body.publishedVersionCount,
-              body.lastPublishedDate,
-              body.status,
-              success = false,
-              body.error
             )
           }
 
