@@ -574,46 +574,6 @@ object Builders {
       )
   }
 
-  /**
-    * Note: used by notifications-service
-    *
-    * @param `package`
-    * @param dataset
-    * @param organization
-    * @param executionContext
-    * @param container
-    * @tparam DIContainer
-    * @return
-    */
-  def insecure_basicPackageDTO[DIContainer <: DatabaseContainer](
-    `package`: Package,
-    dataset: Dataset,
-    organization: Organization
-  )(implicit
-    executionContext: ExecutionContext,
-    container: DIContainer
-  ): EitherT[Future, CoreError, PackageDTO] = {
-    val packagesMapper = new PackagesMapper(organization)
-    val storageManager = StorageManager.create(container, organization)
-
-    for {
-      parent <- container.db.run(packagesMapper.getParent(`package`)).toEitherT
-      parentStorage <- parent.map { p =>
-        storageManager.getStorage(spackages, List(p.id))
-      } getOrElse Future.successful(emptyStorage).toEitherT
-
-      parentDTO = parent.map(
-        p => PackageDTO.simple(p, dataset, parentStorage.get(p.id).flatten)
-      )
-
-      storageMap <- storageManager.getStorage(spackages, List(`package`.id))
-      storage = storageMap.get(`package`.id).flatten
-    } yield
-      PackageDTO
-        .simple(`package`, dataset, storage)
-        .copy(parent = parentDTO)
-  }
-
   def collaboratorsDTO[DIContainer <: OrganizationManagerContainer](
     collaborators: Collaborators
   )(
