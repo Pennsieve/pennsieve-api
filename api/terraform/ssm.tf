@@ -193,18 +193,6 @@ resource "aws_ssm_parameter" "new_relic_license_key" {
   }
 }
 
-resource "aws_ssm_parameter" "notifications_host" {
-  name  = "/${var.environment_name}/${var.service_name}/notifications-host"
-  type  = "String"
-  value = "https://${data.terraform_remote_state.notifications_service.outputs.internal_fqdn}"
-}
-
-resource "aws_ssm_parameter" "notifications_sqs_queue" {
-  name  = "/${var.environment_name}/${var.service_name}/notifications-sqs-queue"
-  type  = "String"
-  value = data.terraform_remote_state.platform_infrastructure.outputs.notifications_queue_id
-}
-
 resource "aws_ssm_parameter" "orcid_client_id" {
   name  = "/${var.environment_name}/${var.service_name}/orcid-client-id"
   type  = "String"

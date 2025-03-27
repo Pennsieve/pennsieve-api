@@ -121,17 +121,6 @@ data "terraform_remote_state" "job_scheduling_service" {
   }
 }
 
-# Import Notifications Data
-data "terraform_remote_state" "notifications_service" {
-  backend = "s3"
-
-  config = {
-    bucket = "${var.aws_account}-terraform-state"
-    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/notifications-service/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
 # Import Platform Infrastructure Data
 data "terraform_remote_state" "platform_infrastructure" {
   backend = "s3"
