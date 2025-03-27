@@ -30,9 +30,6 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.helpers.ResultHandlers.{ CreatedResult, OkResult }
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.models.{ Comment, Package, User }
-import com.pennsieve.notifications.MessageType.Mention
-import com.pennsieve.notifications.{ MentionNotification, NotificationMessage }
 import org.scalatra.swagger.Swagger
 import org.scalatra.{ ActionResult, AsyncResult, Forbidden, ScalatraServlet }
 
@@ -140,21 +137,6 @@ class DiscussionsController(
     }
   }
 
-  def sendMentionNotifications(
-    users: Set[User],
-    comment: Comment,
-    pkg: Package,
-    token: String
-  ): NotificationMessage = {
-    MentionNotification(
-      users.map(_.id).toList,
-      Mention,
-      comment.message,
-      pkg.nodeId,
-      pkg.name
-    )
-  }
-
   val createCommentOperation = (apiOperation[CommentResponse]("createComment")
     summary "creates a comment and/or a discussion[deprecated]"
     parameter bodyParam[CreateCommentRequest]("createAnnotationRequest")
@@ -218,21 +200,6 @@ class DiscussionsController(
 
         comment <- secureContainer.discussionManager
           .createComment(req.message, secureContainer.user, discussion)
-          .orError()
-        _ <- req.mentions
-          .traverse(uids => {
-            secureContainer.userManager
-              .getByNodeIds(uids.toSet)
-              .map(
-                users =>
-                  sendMentionNotifications(
-                    users.toSet,
-                    comment,
-                    pkg,
-                    token.value
-                  )
-              )
-          })
           .orError()
 
         _ <- auditLogger
