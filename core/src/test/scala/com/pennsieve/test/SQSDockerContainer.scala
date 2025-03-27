@@ -54,8 +54,6 @@ final class SQSDockerContainerImpl
   def httpHost(): String = s"http://${containerHost}"
   def testQueueUrl(): String = s"http://${containerHost}/queue/test"
   def uploadsQueueUrl(): String = s"http://${containerHost}/queue/uploads"
-  def notificationsQueueUrl(): String =
-    s"http://${containerHost}/queue/notifications"
 
   def apply(): GenericContainer = this
 
@@ -64,10 +62,6 @@ final class SQSDockerContainerImpl
       .withValue("sqs.host", ConfigValueFactory.fromAnyRef(httpHost()))
       .withValue("sqs.queue", ConfigValueFactory.fromAnyRef(testQueueUrl()))
       .withValue("sqs.region", ConfigValueFactory.fromAnyRef(region))
-      .withValue(
-        "sqs.notifications_queue",
-        ConfigValueFactory.fromAnyRef(notificationsQueueUrl())
-      )
       .withValue(
         "pennsieve.uploads.queue",
         ConfigValueFactory.fromAnyRef(uploadsQueueUrl())

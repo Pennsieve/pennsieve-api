@@ -329,10 +329,6 @@ class DataSetsController(
       RequestEntityTooLarge("Upload is too large")
   }
 
-  private val NotificationsQueueUrl: String =
-    insecureContainer.config
-      .as[String]("sqs.notifications_queue")
-
   // private val NotificationsCenterQueueUrl: String =
   //   insecureContainer.config
   //     .as[String]("pennsieve.notifications_center.queue_url")
