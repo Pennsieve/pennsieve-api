@@ -49,10 +49,6 @@ import com.pennsieve.models.PackageType.{
   TimeSeries
 }
 import com.pennsieve.models._
-import com.pennsieve.notifications.{
-  DiscoverPublishNotification,
-  NotificationMessage
-}
 import com.pennsieve.traits.PostgresProfile.api._
 import com.typesafe.config.ConfigValueFactory
 import com.typesafe.scalalogging.Logger
@@ -88,19 +84,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   implicit val zonedDateTimeOrdering: Ordering[ZonedDateTime] =
     Ordering.by(_.toInstant)
-
-//  private val NotificationsQueueUrl: String =
-//    insecureContainer.config.getString("sqs.notifications_queue")
-
-  private def sendNotification(
-    notification: NotificationMessage
-  ): EitherT[Future, CoreError, Done] =
-    mockSqsClient
-      .send(
-        insecureContainer.config.getString("sqs.notifications_queue"),
-        notification.asJson.noSpaces
-      )
-      .map(_ => Done)
 
   override def afterStart(): Unit = {
     super.afterStart()
@@ -2075,8 +2058,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.body should equal("{}")
     }
 
-    mockSqsClient.sentMessages.size should equal(2)
-    //1 message to delete, 1 to unpublish
+    mockSqsClient.sentMessages.size should equal(1)
+    //1 message to delete
 
     get(
       s"/${ds.nodeId}",
@@ -2151,8 +2134,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.body should equal("{}")
     }
 
-    mockSqsClient.sentMessages.size should equal(2)
-    //1 message to delete, 1 to unpublish
+    mockSqsClient.sentMessages.size should equal(1)
+    //1 message to delete
 
     get(
       s"/${ds.nodeId}",
@@ -7371,10 +7354,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .get((loggedInOrganization.id, dataset.id))
       .get
       ._1 shouldBe Some(false)
-
-    decode[NotificationMessage](
-      mockSqsClient.sentMessages("http://localhost/queue/notifications").head
-    ).value shouldBe an[DiscoverPublishNotification]
   }
 
   test("notify the Discover service to embargo a dataset") {
@@ -7413,10 +7392,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     embargo shouldBe Some(true)
     sentEmbargoReleaseDate shouldBe Some(embargoReleaseDate)
-
-    decode[NotificationMessage](
-      mockSqsClient.sentMessages("http://localhost/queue/notifications").head
-    ).value shouldBe an[DiscoverPublishNotification]
   }
 
   test("notify the Discover service to release an embargoed dataset") {
@@ -7445,10 +7420,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       loggedInOrganization.id,
       dataset.id
     )
-
-    decode[NotificationMessage](
-      mockSqsClient.sentMessages("http://localhost/queue/notifications").head
-    ).value shouldBe an[DiscoverPublishNotification]
   }
 
   test(
@@ -8028,10 +7999,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
       .publicationStatus shouldBe false
-
-    decode[NotificationMessage](
-      mockSqsClient.sentMessages("http://localhost/queue/notifications").head
-    ).value shouldBe an[DiscoverPublishNotification]
   }
 
   test("set publication status when publish fails") {
@@ -8073,10 +8040,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
       .publicationStatus shouldBe PublicationStatus.Failed
-
-    decode[NotificationMessage](
-      mockSqsClient.sentMessages("http://localhost/queue/notifications").head
-    ).value shouldBe an[DiscoverPublishNotification]
   }
 
   test("deserialize publish-complete message correctly") {
@@ -8122,9 +8085,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       response.publicationType shouldBe PublicationType.Revision
     }
 
-    decode[NotificationMessage](
-      mockSqsClient.sentMessages("http://localhost/queue/notifications").head
-    ).value shouldBe an[DiscoverPublishNotification]
+    mockPublishClient.reviseRequests should contain(
+      (loggedInOrganization.id, dataset.id)
+    )
   }
 
   test("notify the Discover service to unpublish a dataset") {
@@ -8148,9 +8111,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    decode[NotificationMessage](
-      mockSqsClient.sentMessages("http://localhost/queue/notifications").head
-    ).value shouldBe an[DiscoverPublishNotification]
+    mockPublishClient.unpublishRequests should contain(
+      (loggedInOrganization.id, dataset.id)
+    )
+
   }
 
   test("get the publishing status of a dataset") {
@@ -10250,7 +10214,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         embargo = (validated.publicationType == PublicationType.Embargo),
         modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
-        sendNotification = sendNotification,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
         externalPublications = externalPublications,
@@ -10331,7 +10294,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         embargo = (validated.publicationType == PublicationType.Embargo),
         modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
-        sendNotification = sendNotification,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
         externalPublications = externalPublications,
@@ -10414,7 +10376,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         embargo = (validated.publicationType == PublicationType.Embargo),
         modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
-        sendNotification = sendNotification,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
         externalPublications = externalPublications,
@@ -10508,7 +10469,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         embargo = (validated.publicationType == PublicationType.Embargo),
         modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
-        sendNotification = sendNotification,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
         externalPublications = externalPublications,

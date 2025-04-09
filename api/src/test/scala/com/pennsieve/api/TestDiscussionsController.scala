@@ -18,7 +18,6 @@ package com.pennsieve.api
 
 import com.pennsieve.helpers.MockAuditLogger
 import com.pennsieve.models.{ Annotation, Comment, Discussion }
-import com.pennsieve.notifications.MockNotificationServiceClient
 import org.apache.http.impl.client.HttpClients
 import org.scalatest.EitherValues._
 import org.json4s._
@@ -38,7 +37,6 @@ class TestDiscussionsController extends BaseApiTest {
         insecureContainer,
         secureContainerBuilder,
         new MockAuditLogger(),
-        new MockNotificationServiceClient,
         system.dispatcher
       ),
       "/*"

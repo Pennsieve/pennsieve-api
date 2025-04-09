@@ -55,10 +55,6 @@ object Settings {
 
   val newUserTokenTTL: Int = config.as[Int]("new_user_token_ttl")
 
-  val notificationHost = config.as[String]("pennsieve.notifications.host")
-
-  val notificationPort = config.as[Int]("pennsieve.notifications.port")
-
   val modelServiceHost = config.as[String]("pennsieve.model_service.host")
 
   val modelServicePort = config.as[Int]("pennsieve.model_service.port")

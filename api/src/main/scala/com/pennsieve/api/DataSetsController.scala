@@ -71,11 +71,6 @@ import com.pennsieve.managers.{
   DatasetManager
 }
 import com.pennsieve.models._
-import com.pennsieve.notifications.{
-  DiscoverPublishNotification,
-  MessageType,
-  NotificationMessage
-}
 import com.pennsieve.web.Settings
 import io.circe.syntax._
 
@@ -334,10 +329,6 @@ class DataSetsController(
       RequestEntityTooLarge("Upload is too large")
   }
 
-  private val NotificationsQueueUrl: String =
-    insecureContainer.config
-      .as[String]("sqs.notifications_queue")
-
   // private val NotificationsCenterQueueUrl: String =
   //   insecureContainer.config
   //     .as[String]("pennsieve.notifications_center.queue_url")
@@ -379,18 +370,6 @@ class DataSetsController(
       (value \ childString) != JNothing
   }
 
-  /**
-    * Send a notification to the legacy (not "center") notification service.
-    *
-    * TODO: combine this with the `NotificationServiceClient`. It is probably
-    * better to use this SQS version instead of the REST client.
-    */
-  private def sendNotification(
-    notification: NotificationMessage
-  ): EitherT[Future, CoreError, Done] =
-    sqsClient
-      .send(NotificationsQueueUrl, notification.asJson.noSpaces)
-      .map(_ => Done)
   //FIRST INSTANCE OF SETETAGHEADER
   private def setETagHeader(
     etag: ETag
@@ -1304,8 +1283,7 @@ class DataSetsController(
             organization,
             dataset,
             secureContainer.user,
-            publishClient,
-            sendNotification
+            publishClient
           )(ec, system, jwtConfig)
           .coreErrorToActionResult()
 
@@ -3343,7 +3321,6 @@ class DataSetsController(
                     embargo = (validated.publicationType == PublicationType.Embargo),
                     modelServiceClient = modelServiceClient,
                     publishClient = publishClient,
-                    sendNotification = sendNotification,
                     embargoReleaseDate = validated.embargoReleaseDate,
                     collections = collections,
                     externalPublications = externalPublications,
@@ -3389,7 +3366,6 @@ class DataSetsController(
                     contributors.toList,
                     publishClient,
                     datasetAssetClient,
-                    sendNotification,
                     collections,
                     externalPublications
                   )(ec, system, jwtConfig)
@@ -3438,8 +3414,7 @@ class DataSetsController(
                     secureContainer.organization,
                     validated.dataset,
                     secureContainer.user,
-                    publishClient,
-                    sendNotification
+                    publishClient
                   )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
@@ -3501,8 +3476,7 @@ class DataSetsController(
                     secureContainer.organization,
                     validated.dataset,
                     secureContainer.user,
-                    publishClient,
-                    sendNotification
+                    publishClient
                   )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
@@ -3799,40 +3773,13 @@ class DataSetsController(
             .map(_.map(ContributorDTO(_)))
             .coreErrorToActionResult()
 
-          notification = if (body.success) {
+          _ = if (body.success) {
             logger.info(s"Publish complete for dataset ${dataset.nodeId}")
-
-            DiscoverPublishNotification(
-              List(owner.id),
-              MessageType.DatasetUpdate,
-              "Dataset published to Discover.",
-              dataset.id,
-              body.publishedDatasetId,
-              body.publishedVersionCount,
-              body.lastPublishedDate,
-              body.status,
-              success = true,
-              None
-            )
           } else {
             logger.error(
               s"Publish failed for dataset ${dataset.nodeId}: ${body.error}"
             )
-
-            DiscoverPublishNotification(
-              List(owner.id),
-              MessageType.DatasetUpdate,
-              "Dataset publish failed.",
-              dataset.id,
-              body.publishedDatasetId,
-              body.publishedVersionCount,
-              body.lastPublishedDate,
-              body.status,
-              success = false,
-              body.error
-            )
           }
-          _ <- sendNotification(notification).coreErrorToActionResult()
 
           _ <- if (body.success) for {
             publishedDatasetId <- body.publishedDatasetId
@@ -3958,8 +3905,7 @@ class DataSetsController(
               secureContainer.organization,
               dataset,
               secureContainer.user,
-              publishClient,
-              sendNotification
+              publishClient
             )(ec, system, jwtConfig)
             .coreErrorToActionResult()
 

@@ -137,10 +137,6 @@ trait ApiSuite
         ConfigValueFactory.fromAnyRef(s"http://localhost/queue/test_v2")
       )
       .withValue("sns.topic", ConfigValueFactory.fromAnyRef(s"events.sns"))
-      .withValue(
-        "sqs.notifications_queue",
-        ConfigValueFactory.fromAnyRef(s"http://localhost/queue/notifications")
-      )
       .withValue("sqs.region", ConfigValueFactory.fromAnyRef("us-east-1"))
       .withValue(
         "pennsieve.uploads.queue",

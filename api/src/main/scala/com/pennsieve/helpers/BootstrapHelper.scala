@@ -53,7 +53,6 @@ import com.pennsieve.aws.queue.{
 import com.pennsieve.web.Settings
 import com.pennsieve.models.{ Organization, User }
 import com.typesafe.config.Config
-import com.pennsieve.client.NotificationServiceClient
 import com.pennsieve.core.utilities._
 import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.discover.client.search.SearchClient
@@ -172,11 +171,6 @@ trait BaseBootstrapHelper {
       Settings.modelServicePort
     )
   }
-
-  lazy val notificationServiceClient = new NotificationServiceClient(
-    Settings.notificationHost,
-    Settings.notificationPort
-  )
 
   lazy val publishClient: PublishClient = {
     val host = config.as[String]("pennsieve.discover_service.host")

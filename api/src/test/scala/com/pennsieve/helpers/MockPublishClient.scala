@@ -53,6 +53,8 @@ class MockPublishClient(
     nextGetStatusValue = None
     publishRequests.clear()
     releaseRequests.clear()
+    reviseRequests.clear()
+    unpublishRequests.clear()
   }
 
   private var nextGetStatusValue: Option[PublishStatus] = None
@@ -109,6 +111,10 @@ class MockPublishClient(
     }
   }
 
+  // contains (orgId, datasetId)
+  var reviseRequests: mutable.ArrayBuffer[(Int, Int)] =
+    mutable.ArrayBuffer.empty[(Int, Int)]
+
   override def revise(
     organizationId: Int,
     datasetId: Int,
@@ -117,6 +123,7 @@ class MockPublishClient(
   ): EitherT[Future, Either[Throwable, HttpResponse], ReviseResponse] = {
 
     val error = body.name.contains("MOCK ERROR")
+    reviseRequests += ((organizationId, datasetId))
 
     if (error) {
       EitherT.rightT[Future, Either[Throwable, HttpResponse]](
@@ -169,12 +176,18 @@ class MockPublishClient(
     )
   }
 
+  // contains (orgId, datasetId)
+  var unpublishRequests: mutable.ArrayBuffer[(Int, Int)] =
+    mutable.ArrayBuffer.empty[(Int, Int)]
+
   override def unpublish(
     organizationId: Int,
     datasetId: Int,
     unpublishRequest: UnpublishRequest,
     headers: List[HttpHeader]
   ): EitherT[Future, Either[Throwable, HttpResponse], UnpublishResponse] = {
+    unpublishRequests += ((organizationId, datasetId))
+
     EitherT.rightT[Future, Either[Throwable, HttpResponse]](
       UnpublishResponse.OK(
         DatasetPublishStatus(
