@@ -74,6 +74,7 @@ object FileExtensions {
     ".mef" -> FileType.MEF,
     ".mefd.gz" -> FileType.MEF3,
     ".edf" -> FileType.EDF,
+    ".bdf" -> FileType.BDF,
     ".tdm" -> FileType.TDMS,
     ".tdms" -> FileType.TDMS,
     ".lay" -> FileType.Persyst,

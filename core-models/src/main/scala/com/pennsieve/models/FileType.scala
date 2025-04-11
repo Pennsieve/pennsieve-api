@@ -28,6 +28,7 @@ object FileType extends Enum[FileType] with CirceEnum[FileType] {
   case object PDF extends FileType
   case object MEF extends FileType
   case object EDF extends FileType
+  case object BDF extends FileType
   case object TDMS extends FileType
   case object OpenEphys extends FileType
   case object Persyst extends FileType

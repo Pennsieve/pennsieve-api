@@ -81,4 +81,12 @@ class FileExtensionsSpec extends AnyFlatSpec with Matchers {
 
   }
 
+  "FileTypeInfo.get" should "return correct data for BDF files" in {
+    val info = FileTypeInfo.get(FileType.BDF)
+    info.fileType shouldBe FileType.BDF
+    info.packageType shouldBe PackageType.TimeSeries
+    info.packageSubtype shouldBe "Timeseries"
+    info.icon shouldBe Icon.Timeseries
+  }
+
 }
