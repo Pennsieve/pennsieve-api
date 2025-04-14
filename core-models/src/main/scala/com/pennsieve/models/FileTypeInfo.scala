@@ -102,6 +102,17 @@ object FileTypeInfo {
         hasWorkflow = true,
         icon = Timeseries
       )
+    case BDF =>
+      FileTypeInfo(
+        fileType = BDF,
+        packageType = PackageType.TimeSeries,
+        packageSubtype = "Timeseries",
+        masterExtension = None,
+        grouping = Individual,
+        validate = false,
+        hasWorkflow = true,
+        icon = Timeseries
+      )
     case TDMS =>
       FileTypeInfo(
         fileType = TDMS,
