@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS model_templates (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX model_templates_dataset_id_name_key ON model_templates (LOWER(name));
+CREATE UNIQUE INDEX model_templates_name_key ON model_templates (LOWER(name));
 
 CREATE TRIGGER model_template_update_updated_at BEFORE UPDATE ON model_templates FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
