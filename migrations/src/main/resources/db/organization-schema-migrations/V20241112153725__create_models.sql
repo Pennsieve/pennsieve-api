@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS models (
   UNIQUE (id, dataset_id) -- for referential integrity with records
 );
 
-CREATE UNIQUE INDEX unique_model_name ON models (LOWER(name));
+CREATE UNIQUE INDEX models_dataset_id_name_key ON models (dataset_id, LOWER(name));
 
 CREATE TRIGGER model_update_updated_at BEFORE UPDATE ON models FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS model_templates (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX unique_model_template_name ON model_templates (LOWER(name));
+CREATE UNIQUE INDEX model_templates_dataset_id_name_key ON model_templates (LOWER(name));
 
 CREATE TRIGGER model_template_update_updated_at BEFORE UPDATE ON model_templates FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
