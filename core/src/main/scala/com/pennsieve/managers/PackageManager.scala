@@ -1158,6 +1158,7 @@ class PackageManager(datasetManager: DatasetManager) {
               from "#${organization.schemaId}".packages
               where dataset_id = ${dataset.id}
                 and parent_id is null
+                and state not in (${PackageState.DELETING.entryName},${PackageState.DELETED.entryName},${PackageState.RESTORING.entryName})
               union
               select children.dataset_id,
                      children.parent_id,
@@ -1170,6 +1171,7 @@ class PackageManager(datasetManager: DatasetManager) {
               from "#${organization.schemaId}".packages children
               INNER JOIN export_packages parents
               ON children.parent_id = parents.id
+              WHERE children.state not in (${PackageState.DELETING.entryName},${PackageState.DELETED.entryName},${PackageState.RESTORING.entryName})
             )
           select dataset_id,
                  parent_id,
