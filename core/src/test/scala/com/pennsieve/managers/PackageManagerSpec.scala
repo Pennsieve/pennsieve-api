@@ -21,15 +21,20 @@ import cats.implicits._
 import com.pennsieve.db.PackagesMapper
 import com.pennsieve.domain.{ NameCheckError, NotFound, PredicateError }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
-import com.pennsieve.models.{ CollectionUpload, Package, PackageType }
+import com.pennsieve.models.{
+  CollectionUpload,
+  Package,
+  PackageState,
+  PackageType
+}
 import com.pennsieve.models.PackageType._
 import com.pennsieve.traits.PostgresProfile.api._
 import org.postgresql.util.PSQLException
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.EitherValues._
 import org.scalatest.enablers.Messaging.messagingNatureOfThrowable
-import java.util.UUID
 
+import java.util.UUID
 import com.pennsieve.audit.middleware.TraceId
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -1160,6 +1165,77 @@ class PackageManagerSpec extends BaseManagerSpec {
     val dataset = createDataset(user = user)
     val result = pm.exportAll(dataset).await.value
     result.length shouldBe 0
+  }
+
+  it should "exclude packages under a deleted collection" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+
+    val dataset = createDataset(user = user)
+
+    // create the folder structure
+    val primaryFolderName = "primary"
+    val primaryFolderPackage =
+      createPackage(user = user, dataset = dataset, name = primaryFolderName)
+
+    val subject1FolderName = "sub-1"
+    val subject1FolderPackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = subject1FolderName,
+      parent = Some(primaryFolderPackage)
+    )
+
+    val subject2FolderName = "sub-2"
+    val subject2FolderPackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = subject2FolderName,
+      parent = Some(primaryFolderPackage)
+    )
+
+    // add a file into each subject's folder
+    val subject1FileName = "sub-1.dat"
+    val subject1FilePackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = subject1FileName,
+      `type` = PackageType.Unsupported,
+      parent = Some(subject1FolderPackage)
+    )
+    val _ =
+      createFile(container = subject1FilePackage, name = subject1FileName)
+
+    val subject2FileName = "sub-2.dat"
+    val subject2FilePackage = createPackage(
+      user = user,
+      dataset = dataset,
+      name = subject2FileName,
+      `type` = PackageType.Unsupported,
+      parent = Some(subject2FolderPackage)
+    )
+    val _ =
+      createFile(container = subject2FilePackage, name = subject2FileName)
+
+    // Export Packages
+    val beforeDelete = pm.exportAll(dataset).await.value
+    beforeDelete.length shouldEqual 5
+
+    // Delete the 'sub-2' Package (folder)
+    val _ = deletePackage(
+      organization = testOrganization,
+      user = user,
+      pkg = subject2FolderPackage
+    )
+
+    // Export Packages again: it should exclude 'sub-2' and 'sub-2.dat' packages
+    val afterDelete = pm.exportAll(dataset).await.value
+    afterDelete.length shouldEqual 3
+
+    val paths =
+      afterDelete.flatMap { case (pkg, paths) => Seq(paths) }.flatten.toList
+    val hasDeletedNameInPath = paths.exists(s => s.contains("__DELETED__"))
+    hasDeletedNameInPath shouldBe false
   }
 
 }
