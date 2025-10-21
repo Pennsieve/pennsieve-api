@@ -412,7 +412,6 @@ trait ManagerSpec
     val sm = storageManager(organization)
     val traceId = TraceId("n/a")
     val _ = pm.delete(traceId, pkg)(sm).await.value
-//    pm.get(pkg.id).await.value
   }
 
   def createDataset(
