@@ -16,6 +16,7 @@
 
 package com.pennsieve.managers
 
+import com.pennsieve.audit.middleware.TraceId
 import net.ceedubs.ficus.Ficus._
 import com.pennsieve.aws.sns.{ LocalSNSContainer, MockSNS, SNS, SNSClient }
 import com.pennsieve.models.{
@@ -400,6 +401,17 @@ trait ManagerSpec
       )
       .await
       .value
+  }
+
+  def deletePackage(
+    organization: Organization = testOrganization,
+    user: User = superAdmin,
+    pkg: Package
+  ): Unit = {
+    val pm = packageManager(organization, user)
+    val sm = storageManager(organization)
+    val traceId = TraceId("n/a")
+    val _ = pm.delete(traceId, pkg)(sm).await.value
   }
 
   def createDataset(
