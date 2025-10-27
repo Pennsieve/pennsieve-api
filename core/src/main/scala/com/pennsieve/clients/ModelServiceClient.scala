@@ -17,9 +17,8 @@
 package com.pennsieve.clients
 
 import cats.Monoid
-import com.pennsieve.concepts.types.CreateProxyInstancePayload
 import com.pennsieve.domain.CoreError
-import com.pennsieve.dtos.{ ConceptDTO, ConceptInstanceDTO }
+import com.pennsieve.dtos.ConceptDTO
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax._
 import io.circe.{ Decoder, Encoder }
@@ -68,30 +67,10 @@ object DatasetDeletionSummary {
 
 trait ModelServiceV1Client {
 
-  def concept[B: ToBearer](
-    token: B,
-    datasetId: String,
-    conceptId: String
-  ): Either[CoreError, ConceptDTO]
-
   def allConcepts[B: ToBearer](
     token: B,
     datasetId: String
   ): Either[CoreError, List[ConceptDTO]]
-
-  def instance[B: ToBearer](
-    token: B,
-    datasetId: String,
-    conceptId: String,
-    instanceId: String
-  ): Either[CoreError, ConceptInstanceDTO]
-
-  def link[B: ToBearer](
-    token: B,
-    datasetId: String,
-    proxyType: String,
-    payload: CreateProxyInstancePayload
-  ): Either[CoreError, Boolean]
 
   def getModelStats[B: ToBearer](
     token: B,
@@ -112,44 +91,11 @@ class ModelServiceClient(client: HttpClient, host: String, port: Int)
     with ModelServiceV1Client
     with ModelServiceV2Client {
 
-  override def concept[B: ToBearer](
-    token: B,
-    datasetId: String,
-    conceptId: String
-  ): Either[CoreError, ConceptDTO] =
-    get[B, ConceptDTO](
-      token,
-      s"$host:$port/datasets/$datasetId/concepts/$conceptId"
-    )
-
   override def allConcepts[B: ToBearer](
     token: B,
     datasetId: String
   ): Either[CoreError, List[ConceptDTO]] =
     get[B, List[ConceptDTO]](token, s"$host:$port/datasets/$datasetId/concepts")
-
-  override def instance[B: ToBearer](
-    token: B,
-    datasetId: String,
-    conceptId: String,
-    instanceId: String
-  ): Either[CoreError, ConceptInstanceDTO] =
-    get[B, ConceptInstanceDTO](
-      token,
-      s"$host:$port/datasets/$datasetId/concepts/$conceptId/instances/$instanceId"
-    )
-
-  override def link[B: ToBearer](
-    token: B,
-    datasetId: String,
-    proxyType: String,
-    payload: CreateProxyInstancePayload
-  ): Either[CoreError, Boolean] =
-    postUnit[B](
-      token,
-      s"$host:$port/datasets/$datasetId/proxy/$proxyType/instances",
-      payload.asJson
-    ).map(_ => true)
 
   override def getModelStats[B: ToBearer](
     token: B,

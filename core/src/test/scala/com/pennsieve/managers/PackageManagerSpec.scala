@@ -1238,7 +1238,9 @@ class PackageManagerSpec extends BaseManagerSpec {
     hasDeletedNameInPath shouldBe false
 
     // check that the `sub-2` and `sub-2.dat` packages are not present in the export
-    val afterDeletePackageNodeIds = afterDelete.flatMap{ case (pkg, _) => pkg.nodeId}
+    val afterDeletePackageNodeIds = afterDelete.flatMap {
+      case (pkg, _) => pkg.nodeId
+    }
     afterDeletePackageNodeIds.contains(subject2FolderPackage.nodeId) shouldBe false
     afterDeletePackageNodeIds.contains(subject2FilePackage.nodeId) shouldBe false
   }
