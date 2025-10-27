@@ -16,9 +16,7 @@
 
 package com.pennsieve.clients
 
-import cats.Monoid
 import com.pennsieve.domain.CoreError
-import com.pennsieve.dtos.ConceptDTO
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 import io.circe.syntax._
 import io.circe.{ Decoder, Encoder }
@@ -65,19 +63,6 @@ object DatasetDeletionSummary {
   def done: DatasetDeletionSummary = empty.copy(done = true)
 }
 
-trait ModelServiceV1Client {
-
-  def allConcepts[B: ToBearer](
-    token: B,
-    datasetId: String
-  ): Either[CoreError, List[ConceptDTO]]
-
-  def getModelStats[B: ToBearer](
-    token: B,
-    datasetId: String
-  ): Either[CoreError, Map[String, Int]]
-}
-
 trait ModelServiceV2Client {
   def deleteDataset[B: ToBearer](
     token: B,
@@ -88,24 +73,7 @@ trait ModelServiceV2Client {
 
 class ModelServiceClient(client: HttpClient, host: String, port: Int)
     extends BaseServiceClient(client)
-    with ModelServiceV1Client
     with ModelServiceV2Client {
-
-  override def allConcepts[B: ToBearer](
-    token: B,
-    datasetId: String
-  ): Either[CoreError, List[ConceptDTO]] =
-    get[B, List[ConceptDTO]](token, s"$host:$port/datasets/$datasetId/concepts")
-
-  override def getModelStats[B: ToBearer](
-    token: B,
-    datasetId: String
-  ): Either[CoreError, Map[String, Int]] =
-    allConcepts(token, datasetId).map { concepts =>
-      concepts.map { concept =>
-        concept.name -> concept.count
-      }.toMap
-    }
 
   override def deleteDataset[B: ToBearer](
     token: B,
