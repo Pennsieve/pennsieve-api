@@ -64,12 +64,6 @@ resource "aws_ssm_parameter" "catalina_opts" {
   value = "-Xms${var.initial_heap_size} -Xmx${var.max_heap_size} -XX:MaxPermSize=${var.max_perm_size}"
 }
 
-resource "aws_ssm_parameter" "model_service_host" {
-  name  = "/${var.environment_name}/${var.service_name}/model-service-host"
-  type  = "String"
-  value = "https://${data.terraform_remote_state.model_service.outputs.internal_fqdn}"
-}
-
 resource "aws_ssm_parameter" "data_postgres_database" {
   name  = "/${var.environment_name}/${var.service_name}/data-postgres-database"
   type  = "String"
