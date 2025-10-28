@@ -55,10 +55,6 @@ object Settings {
 
   val newUserTokenTTL: Int = config.as[Int]("new_user_token_ttl")
 
-  val modelServiceHost = config.as[String]("pennsieve.model_service.host")
-
-  val modelServicePort = config.as[Int]("pennsieve.model_service.port")
-
   val analyticsHost = config.as[String]("pennsieve.analytics.host")
   val analyticsQueueSize = config.as[Int]("pennsieve.analytics.queue_size")
   val analyticsRateLimit = config.as[Int]("pennsieve.analytics.rate_limit")

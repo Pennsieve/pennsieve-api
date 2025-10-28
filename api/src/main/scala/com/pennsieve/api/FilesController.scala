@@ -22,9 +22,6 @@ import cats.data.{ EitherT, _ }
 import cats.implicits._
 import com.pennsieve.audit.middleware.{ Auditor, TraceId }
 import com.pennsieve.auth.middleware.{ DatasetPermission, Jwt }
-import com.pennsieve.clients.ModelServiceClient
-import com.pennsieve.concepts._
-import com.pennsieve.concepts.types._
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.core.utilities.{
@@ -65,7 +62,6 @@ import com.pennsieve.models.{
   FileTypeInfo,
   JobId,
   Manifest,
-  ModelProperty,
   Organization,
   Package,
   PackageState,
@@ -91,22 +87,6 @@ import scala.util.Try
 case class PreviewPackageRequest(files: List[S3File])
 
 case class PreviewPackageResponse(packages: List[PackagePreview])
-
-case class CompleteProxyLinkRequest(
-  conceptId: String,
-  instanceId: String,
-  targets: List[ProxyTargetLinkRequest]
-)
-
-case class UploadCompleteResponse(
-  manifest: Manifest,
-  `package`: Option[PackageDTO]
-)
-
-case class UploadCompleteRequest(
-  preview: PackagePreview,
-  proxyLink: Option[CompleteProxyLinkRequest]
-)
 
 object FilesController {
   def manifestUploadKey(email: String, importId: JobId): String = {

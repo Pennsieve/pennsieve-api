@@ -151,27 +151,6 @@ trait BaseBootstrapHelper {
   lazy val cognitoConfig: CognitoConfig = CognitoConfig(config)
   lazy val cognitoClient: CognitoClient = Cognito(cognitoConfig)
 
-  lazy val modelServiceClient = {
-
-    /**
-      * By default, the akka-http server closes idle connections after 60
-      * seconds. This configures the client to preemptively close idle
-      * connections before then to mitigate "Connection reset" errors.
-      */
-    val client = HttpClients
-      .custom()
-      .setConnectionManager(new PoolingHttpClientConnectionManager())
-      .evictExpiredConnections()
-      .evictIdleConnections(30, TimeUnit.SECONDS)
-      .build()
-
-    new ModelServiceClient(
-      client,
-      Settings.modelServiceHost,
-      Settings.modelServicePort
-    )
-  }
-
   lazy val publishClient: PublishClient = {
     val host = config.as[String]("pennsieve.discover_service.host")
     val client = new SingleHttpResponder().responder

@@ -150,7 +150,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         system,
         bootstrapHelper.auditLogger,
         bootstrapHelper.sqsClient,
-        bootstrapHelper.modelServiceClient,
         bootstrapHelper.publishClient,
         bootstrapHelper.searchClient,
         bootstrapHelper.doiClient,

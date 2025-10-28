@@ -28,7 +28,7 @@ import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.aws.cognito.{ Cognito, CognitoClient }
 import com.pennsieve.aws.email.{ Email, SesMessageResult }
 import com.pennsieve.aws.queue.SQSClient
-import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
+import com.pennsieve.clients.DatasetAssetClient
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.core.utilities.{ checkOrErrorT, JwtAuthenticator }
@@ -301,7 +301,6 @@ class DataSetsController(
   val system: ActorSystem,
   auditLogger: Auditor,
   sqsClient: SQSClient,
-  modelServiceClient: ModelServiceClient,
   publishClient: PublishClient,
   searchClient: SearchClient,
   doiClient: DoiClient,
@@ -3319,7 +3318,6 @@ class DataSetsController(
                     license = publicationInfo.license,
                     contributors = contributors.toList,
                     embargo = (validated.publicationType == PublicationType.Embargo),
-                    modelServiceClient = modelServiceClient,
                     publishClient = publishClient,
                     embargoReleaseDate = validated.embargoReleaseDate,
                     collections = collections,

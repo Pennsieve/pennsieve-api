@@ -16,7 +16,6 @@
 
 package com.pennsieve.helpers
 
-import com.pennsieve.concepts.types.ProxyRelationshipDirection
 import com.pennsieve.doi.models.DoiState
 import com.pennsieve.models.PackageType._
 import com.pennsieve.models._
@@ -69,7 +68,6 @@ object ModelSerializers {
     Json4s.serializer(PublicationType),
     Json4s.serializer(SystemTeamType),
     Json4s.serializer(PayloadType),
-    Json4s.serializer(ProxyRelationshipDirection),
     Json4s.serializer(EmbargoAccess),
     Json4s.serializer(ChangelogEventName),
     Json4s.serializer(EventGroupPeriod),

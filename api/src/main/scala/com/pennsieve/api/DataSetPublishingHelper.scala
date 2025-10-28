@@ -25,7 +25,7 @@ import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.auth.middleware.{ DatasetPermission, Jwt }
 import com.pennsieve.aws.email.{ Email, SesMessageResult }
-import com.pennsieve.clients.{ DatasetAssetClient, ModelServiceClient }
+import com.pennsieve.clients.{ DatasetAssetClient }
 import com.pennsieve.core.utilities.{
   checkOrError,
   checkOrErrorT,
@@ -933,7 +933,6 @@ case object DataSetPublishingHelper extends LazyLogging {
     license: License,
     contributors: List[ContributorDTO],
     embargo: Boolean,
-    modelServiceClient: ModelServiceClient,
     publishClient: PublishClient,
     embargoReleaseDate: Option[LocalDate] = None,
     collections: Seq[CollectionDTO],
@@ -960,9 +959,14 @@ case object DataSetPublishingHelper extends LazyLogging {
       fileCount <- secureContainer.datasetManager
         .sourceFileCount(dataset)
 
-      modelCount <- modelServiceClient
-        .getModelStats(ownerBearerToken, dataset.nodeId)
-        .toEitherT[Future]
+      modelRecordCounts <- secureContainer.metadataManager
+        .getModelRecordCounts(dataset)
+
+      modelCount = modelRecordCounts.map { mrc =>
+        mrc.modelName -> mrc.count
+      }.toMap
+
+      recordCount = modelRecordCounts.map(_.count).sum
 
       newWorkflowEnabled <- secureContainer.organizationManager
         .hasFeatureFlagEnabled(organization.id, Feature.Publishing50Feature)
@@ -982,10 +986,10 @@ case object DataSetPublishingHelper extends LazyLogging {
         name = dataset.name,
         description = description,
         ownerId = owner.id,
-        modelCount = modelCount.map {
-          case (k, v) => ModelCount(k, v.toLong)
+        modelCount = modelRecordCounts.map { m =>
+          ModelCount(m.modelName, m.count.toLong)
         }.toVector,
-        recordCount = modelCount.values.sum.toLong,
+        recordCount = modelRecordCounts.map(_.count).sum.toLong,
         fileCount = fileCount,
         size = totalDatasetSize.getOrElse(0L),
         license = license,

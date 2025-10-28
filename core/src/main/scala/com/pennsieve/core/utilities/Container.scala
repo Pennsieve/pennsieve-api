@@ -186,6 +186,7 @@ trait SecureCoreContainer
     with DataDBContainer
     with TimeSeriesManagerContainer
     with FilesManagerContainer
+    with MetadataManagerContainer
     with OrganizationManagerContainer
     with TermsOfServiceManagerContainer
     with DimensionManagerContainer
@@ -485,6 +486,16 @@ trait TimeSeriesManagerContainer
   self: Container =>
   lazy val timeSeriesManager: TimeSeriesManager =
     new TimeSeriesManager(db, organization)
+}
+
+trait MetadataManagerContainer
+    extends OrganizationContainer
+    with DatabaseContainer
+    with RequestContextContainer {
+  self: Container =>
+
+  lazy val metadataManager: MetadataManager =
+    new MetadataManager(db, user, self.organization)
 }
 
 trait FilesManagerContainer

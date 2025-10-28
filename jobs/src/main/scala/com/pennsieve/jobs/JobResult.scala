@@ -73,14 +73,6 @@ case class PackageDeleteResult(
   override val deletedResourceIds: Set[String] = Set(packageNodeId)
 }
 
-case class GraphProxyDeleteResult(
-  success: Boolean,
-  message: String,
-  proxyVertexId: UUID
-) extends DeleteResult {
-  override val deletedResourceIds: Set[String] = Set(proxyVertexId.toString)
-}
-
 case class DatasetDeleteResult(
   success: Boolean,
   message: String,

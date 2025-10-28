@@ -27,7 +27,7 @@ import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.aws.email.LoggingEmailer
-import com.pennsieve.clients.{ MockDatasetAssetClient, MockModelServiceClient }
+import com.pennsieve.clients.MockDatasetAssetClient
 import com.pennsieve.core.utilities.InsecureContainer
 import com.pennsieve.db.TeamsMapper
 import com.pennsieve.db.OrganizationTeamMapper
@@ -135,7 +135,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         system,
         mockAuditLogger,
         mockSqsClient,
-        new MockModelServiceClient(),
         mockPublishClient,
         mockSearchClient,
         new MockDoiClient(),
@@ -10212,7 +10211,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         license = publicationInfo.license,
         contributors = contributors.toList,
         embargo = (validated.publicationType == PublicationType.Embargo),
-        modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
@@ -10292,7 +10290,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         license = publicationInfo.license,
         contributors = contributors.toList,
         embargo = (validated.publicationType == PublicationType.Embargo),
-        modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
@@ -10374,7 +10371,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         license = publicationInfo.license,
         contributors = contributors.toList,
         embargo = (validated.publicationType == PublicationType.Embargo),
-        modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
@@ -10467,7 +10463,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         license = publicationInfo.license,
         contributors = contributors.toList,
         embargo = (validated.publicationType == PublicationType.Embargo),
-        modelServiceClient = new MockModelServiceClient(),
         publishClient = mockPublishClient,
         embargoReleaseDate = validated.embargoReleaseDate,
         collections = collections,
