@@ -23,10 +23,20 @@ import akka.testkit.TestKitBase
 import cats.implicits._
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.S3ObjectSummary
+import com.github.tminglei.slickpg.Range
 import com.pennsieve.audit.middleware.{ Auditor, ToMessage, TraceId }
 import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.clients._
-import com.pennsieve.db.{ DatasetsMapper, PackagesMapper }
+import com.pennsieve.db.{
+  DatasetsMapper,
+  Model,
+  ModelVersion,
+  ModelVersionsMapper,
+  ModelsMapper,
+  PackagesMapper,
+  Record,
+  RecordsMapper
+}
 import com.pennsieve.domain.{ CoreError, ThrowableError }
 import com.pennsieve.jobs._
 import com.pennsieve.jobs.types.DeleteJob.Container
@@ -34,24 +44,28 @@ import com.pennsieve.managers.{ DatasetAssetsManager, ManagerSpec }
 import com.pennsieve.messages._
 import com.pennsieve.models.FileType.Aperio
 import com.pennsieve.models.PackageType.{ ExternalFile, Slide, TimeSeries }
+import com.pennsieve.models.{ Dataset, Organization }
 import com.pennsieve.models.{ DatasetState, NodeCodes, PackageState, User }
 import com.pennsieve.streaming.{ LookupResultRow, RangeLookUp }
 import com.pennsieve.test._
-import com.github.tminglei.slickpg.Range
 import com.pennsieve.test.helpers.EitherBePropertyMatchers
+import com.pennsieve.traits.PostgresProfile.api._
 import com.typesafe.config.{ Config, ConfigFactory }
+import io.circe.Json
+import io.circe.syntax._
+import java.time.ZonedDateTime
+import java.util.UUID
 import org.apache.commons.io.IOUtils
 import org.scalatest.EitherValues._
 import org.scalatest._
 import org.scalatest.flatspec.FixtureAnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scalikejdbc.ConnectionPool
-import scalikejdbc.scalatest.AutoRollback
-
-import scala.jdk.CollectionConverters._
 import scala.collection.SortedSet
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ ExecutionContextExecutor, Future }
+import scala.jdk.CollectionConverters._
+import scalikejdbc.ConnectionPool
+import scalikejdbc.scalatest.AutoRollback
 
 class MockAuditLogger extends Auditor {
   override def enhance[T](
@@ -174,6 +188,78 @@ class DeleteJobSpec
     diContainer.db.close()
     shutdown(system)
     super.afterAll()
+  }
+
+  def createModel(
+    dataset: Dataset,
+    name: String,
+    displayName: String = "Test Model",
+    organization: Organization = testOrganization
+  ): Model = {
+    val modelsMapper = new ModelsMapper(organization)
+    val model = Model(
+      id = UUID.randomUUID(),
+      datasetId = dataset.id,
+      name = name,
+      displayName = displayName,
+      description = "Test model description",
+      createdAt = ZonedDateTime.now(),
+      updatedAt = ZonedDateTime.now()
+    )
+    database.run((modelsMapper += model).andThen(DBIO.successful(model))).await
+  }
+
+  def createModelVersion(
+    model: Model,
+    version: Int = 1,
+    organization: Organization = testOrganization
+  ): ModelVersion = {
+    val modelVersionsMapper = new ModelVersionsMapper(organization)
+    val modelVersion = ModelVersion(
+      modelId = model.id,
+      version = version,
+      schema = Json.obj("type" -> "object".asJson),
+      schemaHash = "test-hash",
+      keyProperties = List("id"),
+      sensitiveProperties = List(),
+      createdAt = ZonedDateTime.now(),
+      modelTemplateId = None,
+      modelTemplateVersion = None
+    )
+    database
+      .run(
+        (modelVersionsMapper += modelVersion)
+          .andThen(DBIO.successful(modelVersion))
+      )
+      .await
+  }
+
+  def createRecord(
+    dataset: Dataset,
+    model: Model,
+    modelVersion: Int = 1,
+    isCurrent: Boolean = true,
+    organization: Organization = testOrganization
+  ): Record = {
+    val recordsMapper = new RecordsMapper(organization)
+    val record = Record(
+      sortKey = 0L,
+      id = UUID.randomUUID(),
+      datasetId = dataset.id,
+      modelId = model.id,
+      modelVersion = modelVersion,
+      value = Json.obj("test" -> "data".asJson),
+      valueEncrypted = None,
+      validFrom = ZonedDateTime.now(),
+      validTo = if (isCurrent) None else Some(ZonedDateTime.now()),
+      isCurrent = isCurrent,
+      provenanceId = UUID.randomUUID(),
+      createdAt = ZonedDateTime.now(),
+      keyHash = None
+    )
+    database
+      .run((recordsMapper += record).andThen(DBIO.successful(record)))
+      .await
   }
 
   /**
@@ -465,9 +551,7 @@ class DeleteJobSpec
     // upload file to s3
     s3.putObject(dataBucketName, objectKey, "Delete Me")
 
-    // create package
     val user = createUser(email = "deleter@test.com")
-
     val dm = datasetManager(user = user)
     val pm = packageManager(user = user)
 
@@ -480,7 +564,31 @@ class DeleteJobSpec
       `type` = Slide
     )
 
-    //create asset
+    val patientModel = createModel(dataset, "patient", "Patient")
+    val sampleModel = createModel(dataset, "sample", "Sample")
+
+    createModelVersion(patientModel, version = 1)
+    createModelVersion(sampleModel, version = 1)
+
+    val patientRecord1 =
+      createRecord(dataset, patientModel, modelVersion = 1, isCurrent = true)
+    val patientRecord2 =
+      createRecord(dataset, patientModel, modelVersion = 1, isCurrent = true)
+    val sampleRecord =
+      createRecord(dataset, sampleModel, modelVersion = 1, isCurrent = true)
+
+    val modelsMapper = new ModelsMapper(testOrganization)
+    val modelVersionsMapper = new ModelVersionsMapper(testOrganization)
+    val recordsMapper = new RecordsMapper(testOrganization)
+
+    database
+      .run(modelsMapper.filter(_.datasetId === dataset.id).result)
+      .await
+      .size should be(2)
+    database
+      .run(recordsMapper.filter(_.datasetId === dataset.id).result)
+      .await
+      .size should be(3)
 
     val content = "#Markdown content\nA paragraph!"
 
@@ -509,15 +617,12 @@ class DeleteJobSpec
       s3Key = objectKey
     )
 
-    // Update the dataset state to `DELETING`:
     dataset = dataset.copy(state = DatasetState.DELETING)
     dm.update(dataset)
 
-    // Update the package state to `DELETING`:
     slidePackage = slidePackage.copy(state = PackageState.DELETING)
     pm.update(slidePackage)
 
-    // send delete dataset job
     val job: DeleteDatasetJob =
       DeleteDatasetJob(
         datasetId = dataset.id,
@@ -528,11 +633,8 @@ class DeleteJobSpec
 
     val _ = deleteJob.deleteDatasetJobWithResult(job).await
 
-    // make sure item is removed from the database
-
     pm.get(slidePackage.id).await should be a (left)
     pm.get(parent.id).await should be a (left)
-
     dm.get(dataset.id).await should be a (left)
 
     val fm = fileManager(organization = testOrganization, user = user)
@@ -544,9 +646,19 @@ class DeleteJobSpec
 
     mockDatasetAssetClient.assets shouldBe empty
 
-    // make sure item is not in s3
+    database
+      .run(modelsMapper.filter(_.datasetId === dataset.id).result)
+      .await shouldBe empty
+    database
+      .run(recordsMapper.filter(_.datasetId === dataset.id).result)
+      .await shouldBe empty
+    database
+      .run(modelVersionsMapper.filter(_.modelId === patientModel.id).result)
+      .await shouldBe empty
+    database
+      .run(modelVersionsMapper.filter(_.modelId === sampleModel.id).result)
+      .await shouldBe empty
+
     s3.listObjects(dataBucketName).getObjectSummaries.asScala.size should be(0)
-
   }
-
 }

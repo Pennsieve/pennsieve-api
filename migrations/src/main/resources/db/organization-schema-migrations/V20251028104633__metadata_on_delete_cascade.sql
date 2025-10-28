@@ -42,7 +42,11 @@ ADD CONSTRAINT record_packages_package_id_fkey
 
 CREATE OR REPLACE FUNCTION cascade_delete_record_packages() RETURNS trigger AS $$
 BEGIN
-  DELETE FROM record_packages WHERE record_id = OLD.id;
+  EXECUTE format(
+    'DELETE FROM %I.record_packages WHERE record_id = $1',
+    TG_TABLE_SCHEMA)
+  USING OLD.id;
+
   RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
@@ -53,9 +57,11 @@ FOR EACH ROW EXECUTE FUNCTION cascade_delete_record_packages();
 
 CREATE OR REPLACE FUNCTION cascade_delete_relationships() RETURNS trigger AS $$
 BEGIN
-  DELETE FROM relationships
-  WHERE source_record_id = OLD.id
-     OR target_record_id = OLD.id;
+  EXECUTE format(
+    'DELETE FROM %I.relationships WHERE source_record_id = $1 OR target_record_id = $1',
+    TG_TABLE_SCHEMA)
+  USING OLD.id;
+
   RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
