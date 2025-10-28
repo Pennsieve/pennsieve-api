@@ -91,12 +91,6 @@ resource "aws_ssm_parameter" "gateway_internal_host" {
   value = "https://${data.terraform_remote_state.gateway.outputs.internal_fqdn}"
 }
 
-resource "aws_ssm_parameter" "model_service_host" {
-  name  = "/${var.environment_name}/${var.service_name}/model-service-host"
-  type  = "String"
-  value = "https://${data.terraform_remote_state.model_service.outputs.internal_fqdn}"
-}
-
 resource "aws_ssm_parameter" "s3_endpoint" {
   name  = "/${var.environment_name}/${var.service_name}/s3-endpoint"
   type  = "String"

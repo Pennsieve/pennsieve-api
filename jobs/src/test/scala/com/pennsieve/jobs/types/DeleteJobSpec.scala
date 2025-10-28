@@ -64,51 +64,6 @@ class MockAuditLogger extends Auditor {
   }
 }
 
-class MockModelServiceClient extends ModelServiceV2Client {
-
-  var responses: ListBuffer[Either[JobException, DatasetDeletionSummary]] =
-    ListBuffer.empty
-
-  def queueSuccessResponse(
-    done: Boolean = false,
-    models: Int = 0,
-    properties: Int = 0,
-    records: Int = 0,
-    packages: Int = 0,
-    relationshipStubs: Int = 0
-  ) =
-    responses += Right(
-      DatasetDeletionSummary(
-        done = done,
-        DatasetDeletionCounts(
-          models = models,
-          properties = properties,
-          records = records,
-          packages = packages,
-          relationshipStubs = relationshipStubs
-        )
-      )
-    )
-
-  def queueFailureResponse(error: JobException) = responses += Left(error)
-
-  def clearResponses() = responses.clear()
-
-  override def deleteDataset[B: ToBearer](
-    token: B,
-    organizationId: Int,
-    datasetId: Int
-  ): Either[CoreError, DatasetDeletionSummary] = {
-    responses.toList match {
-      case r :: _ => {
-        responses.remove(0)
-        r.leftMap(e => ThrowableError(e))
-      }
-      case Nil => Right(DatasetDeletionSummary.done)
-    }
-  }
-}
-
 class DeleteJobSpec
     extends FixtureAnyFlatSpec
     with SpecHelper
@@ -144,7 +99,6 @@ class DeleteJobSpec
   var packageTable: PackagesMapper = _
   var datasetTable: DatasetsMapper = _
   var mockDatasetAssetClient: MockDatasetAssetClient = _
-  var mockModelServiceClient: MockModelServiceClient = _
   var mockAuditLogger: Auditor = _
   var diContainer: Container = _
 
@@ -194,8 +148,6 @@ class DeleteJobSpec
 
     mockDatasetAssetClient = new MockDatasetAssetClient()
 
-    mockModelServiceClient = new MockModelServiceClient()
-
     deleteJob = new DeleteJob(
       db = database,
       amazonS3 = s3,
@@ -203,7 +155,6 @@ class DeleteJobSpec
       timeSeriesBucketName = timeSeriesBucketName,
       auditLogger = mockAuditLogger,
       datasetAssetClient = mockDatasetAssetClient,
-      modelServiceClient = mockModelServiceClient,
       container = diContainer
     )
   }
@@ -221,7 +172,6 @@ class DeleteJobSpec
   override def afterAll(): Unit = {
     diContainer.dataDB.close()
     diContainer.db.close()
-    mockModelServiceClient.clearResponses()
     shutdown(system)
     super.afterAll()
   }
@@ -329,8 +279,6 @@ class DeleteJobSpec
     // assert(result.isLeft)
   }
 
-  // TODO: update this test to delete from `model-service`
-
   ignore should "handle packages connected to the graph" in { _ =>
     // create package
     val user = createUser(email = "deleter@test.com")
@@ -352,8 +300,6 @@ class DeleteJobSpec
         userId = user.nodeId,
         traceId = traceId
       )
-
-    fail("Deleting from `model-service` is not implemented")
 
     assert(deleteJob.creditDeleteJob(msg).await.isRight)
 
@@ -534,32 +480,6 @@ class DeleteJobSpec
       `type` = Slide
     )
 
-    // Model service client responses:
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueSuccessResponse(
-      done = true,
-      records = 3000,
-      models = 10,
-      properties = 50
-    )
-
     //create asset
 
     val content = "#Markdown content\nA paragraph!"
@@ -606,12 +526,7 @@ class DeleteJobSpec
         traceId = traceId
       )
 
-    val deleteJobResult = deleteJob.deleteDatasetJobWithResult(job).await
-    val (deleteResult, deleteSummary) = deleteJobResult.value
-    assert(deleteSummary.done)
-    assert(deleteSummary.counts.models == 10)
-    assert(deleteSummary.counts.properties == 50)
-    assert(deleteSummary.counts.records == 18000)
+    val _ = deleteJob.deleteDatasetJobWithResult(job).await
 
     // make sure item is removed from the database
 
@@ -634,62 +549,4 @@ class DeleteJobSpec
 
   }
 
-  it should "handle model-service dataset deletion failure" in { _ =>
-    // create package
-    val user = createUser(email = "deleter@test.com")
-
-    val dm = datasetManager(user = user)
-    val pm = packageManager(user = user)
-
-    var dataset = createDataset(user = user)
-
-    // Model service client responses:
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueSuccessResponse(
-      done = true,
-      records = 3000,
-      models = 10,
-      properties = 50
-    )
-
-    // send delete dataset job
-    val job: DeleteDatasetJob =
-      DeleteDatasetJob(
-        datasetId = dataset.id,
-        organizationId = testOrganization.id,
-        userId = user.nodeId,
-        traceId = traceId
-      )
-
-    val deleteJobResult = deleteJob.deleteDatasetJobWithResult(job).await
-    assert(deleteJobResult.isLeft)
-    val err = deleteJobResult.left.value
-    err.getMessage should be("service not reachable")
-  }
 }

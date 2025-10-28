@@ -128,8 +128,6 @@ object DeleteJob {
     with DataDBContainer
     with TimeSeriesDBContainer
 
-  type ModelServiceClient = ModelServiceV2Client
-
   def apply(
   )(implicit
     system: ActorSystem,
@@ -177,27 +175,6 @@ object DeleteJob {
       new AuditLogger(GatewayHost(host))
     }
 
-    val modelServiceClient: ModelServiceClient = {
-
-      /**
-        * By default, the akka-http server closes idle connections after 60
-        * seconds. This configures the client to preemptively close idle
-        * connections before then to mitigate "Connection reset" errors.
-        */
-      val client = HttpClients
-        .custom()
-        .setConnectionManager(new PoolingHttpClientConnectionManager())
-        .evictExpiredConnections()
-        .evictIdleConnections(30, TimeUnit.SECONDS)
-        .build()
-
-      new clients.ModelServiceClient(
-        client,
-        Settings.modelServiceHost,
-        Settings.modelServicePort
-      )
-    }
-
     val rangeLookup = new RangeLookUp("", "")
 
     val timeSeriesBucket = config.as[String]("timeseries.bucket")
@@ -209,7 +186,6 @@ object DeleteJob {
       timeSeriesBucketName = timeSeriesBucket,
       auditLogger = auditLogger,
       datasetAssetClient = datasetAssetClient,
-      modelServiceClient = modelServiceClient,
       container
     )
   }
@@ -225,7 +201,6 @@ class DeleteJob(
   timeSeriesBucketName: String,
   auditLogger: Auditor,
   datasetAssetClient: DatasetAssetClient,
-  modelServiceClient: DeleteJob.ModelServiceClient,
   container: DeleteJob.Container
 )(implicit
   ec: ExecutionContext,
@@ -393,8 +368,6 @@ class DeleteJob(
         .via(deleteChannels(channelTable))
       val deletePackageFilesSource =
         Source.single(pkg).via(deletePackageFiles(filesTable))
-
-      // TODO: delete package from `model-service`
 
       Source.combine(
         deleteChildrenSource,
@@ -646,112 +619,6 @@ class DeleteJob(
           }
       }
 
-  def deleteDatasetFromModelService(
-    job: DeleteDatasetJob
-  ): Future[DatasetDeletionSummary] = {
-
-    def request(): Future[DatasetDeletionSummary] = {
-      val token: Jwt.Token =
-        JwtAuthenticator.generateServiceToken(
-          duration = 5.seconds,
-          organizationId = job.organizationId,
-          datasetId = Some(job.datasetId)
-        )
-      Future {
-        log.noContext.info(
-          s"REQUEST - Delete dataset model-service :: job=${job}"
-        )
-        modelServiceClient.deleteDataset(
-          token,
-          job.organizationId,
-          job.datasetId
-        )
-      }.flatMap(_.fold(Future.failed, Future.successful))
-    }
-
-    val maxSequentialFailures: Int = 5
-
-    val init: (Int, Int, DatasetDeletionSummary) =
-      (0, 0, DatasetDeletionSummary.empty)
-
-    FlatMap[Future]
-      .tailRecM[
-        (Int, Int, DatasetDeletionSummary),
-        (Int, Int, DatasetDeletionSummary)
-      ](init) {
-        case (
-            iteration: Int,
-            sequentialFailures: Int,
-            totalCountSummary: DatasetDeletionSummary
-            ) => {
-          request()
-            .flatMap { summary =>
-              {
-                val updatedCounts: DatasetDeletionCounts =
-                  totalCountSummary.counts + summary.counts
-                summary.done match {
-                  case true => {
-                    log.noContext.info(
-                      s"SUCCESS - Delete dataset (model-service) done :: job=${job}"
-                    )
-                    Future.successful(
-                      Right(
-                        (
-                          iteration + 1,
-                          0,
-                          DatasetDeletionSummary(
-                            done = true,
-                            counts = updatedCounts
-                          )
-                        )
-                      )
-                    )
-                  }
-                  case _ => {
-                    log.noContext.info(
-                      s"CONTINUE($iteration) - Delete dataset (model-service) :: job=${job}"
-                    )
-                    Future.successful(
-                      Left(
-                        (
-                          iteration + 1,
-                          0,
-                          DatasetDeletionSummary(
-                            done = false,
-                            counts = updatedCounts
-                          )
-                        )
-                      )
-                    )
-                  }
-                }
-              }
-            }
-            .recoverWith {
-              case e: Exception => {
-                if (sequentialFailures >= maxSequentialFailures) {
-                  log.noContext.error(
-                    s"FAILED - Delete dataset (model-service) :: job=${job}\n${e}"
-                  )
-                  Future.failed(e)
-                } else {
-                  log.noContext.error(
-                    s"FAILURE($sequentialFailures) - Delete dataset (model-service) :: job=${job}\n${e}"
-                  )
-
-                  Thread.sleep(2000) // chill for 2s before retrying
-
-                  Future.successful(
-                    Left(iteration, sequentialFailures + 1, totalCountSummary)
-                  )
-                }
-              }
-            }
-        }
-      }
-      .map(_._3)
-  }
-
   def deletePackageFromPostgres(
     job: CatalogDeleteJob,
     packageTable: PackagesMapper
@@ -878,7 +745,7 @@ class DeleteJob(
   )(implicit
     system: ActorSystem,
     ec: ExecutionContext
-  ): EitherT[Future, JobException, (DeleteResult, DatasetDeletionSummary)] = {
+  ): EitherT[Future, JobException, DeleteResult] = {
 
     implicit val context: LogContext =
       CatalogDeleteContext(job.organizationId, job.userId)
@@ -922,18 +789,6 @@ class DeleteJob(
 
       _ <- creditDeleteJob(job)
 
-      // Delete the dataset data in model-service:
-      summary <- deleteDatasetFromModelService(job)
-        .map(
-          summary =>
-            Right(summary): Either[JobException, DatasetDeletionSummary]
-        )
-        .toEitherT(ExceptionError)
-
-      _ = log.noContext.info(
-        s"Model service dataset deletion counts: ${summary}"
-      )
-
       // Delete the actual dataset data:
       result <- deleteDataset(job, datasetTable)
         .map(result => Right(result): Either[JobException, DeleteResult])
@@ -943,7 +798,7 @@ class DeleteJob(
         .map(x => Right(x): Either[JobException, Unit])
         .toEitherT(ExceptionError)
 
-    } yield (result, summary)
+    } yield result
   }
 
   def deleteDatasetJob(
