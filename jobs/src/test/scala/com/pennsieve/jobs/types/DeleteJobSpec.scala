@@ -365,34 +365,6 @@ class DeleteJobSpec
     // assert(result.isLeft)
   }
 
-  ignore should "handle packages connected to the graph" in { _ =>
-    // create package
-    val user = createUser(email = "deleter@test.com")
-    val dataset = createDataset(user = user)
-    val parent = createPackage(user = user, dataset = dataset)
-    val slidePackage = createPackage(
-      user = user,
-      state = PackageState.DELETING,
-      parent = Some(parent),
-      dataset = dataset,
-      `type` = Slide
-    )
-
-    // send delete msg
-    val msg: CatalogDeleteJob =
-      DeletePackageJob(
-        packageId = slidePackage.id,
-        organizationId = testOrganization.id,
-        userId = user.nodeId,
-        traceId = traceId
-      )
-
-    assert(deleteJob.creditDeleteJob(msg).await.isRight)
-
-    val pm = packageManager(user = user)
-    pm.get(slidePackage.id).await should be a (left)
-  }
-
   // test aperio file type
   it should "handle directories" in { _ =>
     // upload file to s3
