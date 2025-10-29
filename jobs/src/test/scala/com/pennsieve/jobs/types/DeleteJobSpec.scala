@@ -23,10 +23,20 @@ import akka.testkit.TestKitBase
 import cats.implicits._
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.S3ObjectSummary
+import com.github.tminglei.slickpg.Range
 import com.pennsieve.audit.middleware.{ Auditor, ToMessage, TraceId }
 import com.pennsieve.auth.middleware.Jwt
 import com.pennsieve.clients._
-import com.pennsieve.db.{ DatasetsMapper, PackagesMapper }
+import com.pennsieve.db.{
+  DatasetsMapper,
+  Model,
+  ModelVersion,
+  ModelVersionsMapper,
+  ModelsMapper,
+  PackagesMapper,
+  Record,
+  RecordsMapper
+}
 import com.pennsieve.domain.{ CoreError, ThrowableError }
 import com.pennsieve.jobs._
 import com.pennsieve.jobs.types.DeleteJob.Container
@@ -34,24 +44,28 @@ import com.pennsieve.managers.{ DatasetAssetsManager, ManagerSpec }
 import com.pennsieve.messages._
 import com.pennsieve.models.FileType.Aperio
 import com.pennsieve.models.PackageType.{ ExternalFile, Slide, TimeSeries }
+import com.pennsieve.models.{ Dataset, Organization }
 import com.pennsieve.models.{ DatasetState, NodeCodes, PackageState, User }
 import com.pennsieve.streaming.{ LookupResultRow, RangeLookUp }
 import com.pennsieve.test._
-import com.github.tminglei.slickpg.Range
 import com.pennsieve.test.helpers.EitherBePropertyMatchers
+import com.pennsieve.traits.PostgresProfile.api._
 import com.typesafe.config.{ Config, ConfigFactory }
+import io.circe.Json
+import io.circe.syntax._
+import java.time.ZonedDateTime
+import java.util.UUID
 import org.apache.commons.io.IOUtils
 import org.scalatest.EitherValues._
 import org.scalatest._
 import org.scalatest.flatspec.FixtureAnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scalikejdbc.ConnectionPool
-import scalikejdbc.scalatest.AutoRollback
-
-import scala.jdk.CollectionConverters._
 import scala.collection.SortedSet
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ ExecutionContextExecutor, Future }
+import scala.jdk.CollectionConverters._
+import scalikejdbc.ConnectionPool
+import scalikejdbc.scalatest.AutoRollback
 
 class MockAuditLogger extends Auditor {
   override def enhance[T](
@@ -61,51 +75,6 @@ class MockAuditLogger extends Auditor {
     converter: ToMessage[T]
   ): Future[Unit] = {
     Future.successful(())
-  }
-}
-
-class MockModelServiceClient extends ModelServiceV2Client {
-
-  var responses: ListBuffer[Either[JobException, DatasetDeletionSummary]] =
-    ListBuffer.empty
-
-  def queueSuccessResponse(
-    done: Boolean = false,
-    models: Int = 0,
-    properties: Int = 0,
-    records: Int = 0,
-    packages: Int = 0,
-    relationshipStubs: Int = 0
-  ) =
-    responses += Right(
-      DatasetDeletionSummary(
-        done = done,
-        DatasetDeletionCounts(
-          models = models,
-          properties = properties,
-          records = records,
-          packages = packages,
-          relationshipStubs = relationshipStubs
-        )
-      )
-    )
-
-  def queueFailureResponse(error: JobException) = responses += Left(error)
-
-  def clearResponses() = responses.clear()
-
-  override def deleteDataset[B: ToBearer](
-    token: B,
-    organizationId: Int,
-    datasetId: Int
-  ): Either[CoreError, DatasetDeletionSummary] = {
-    responses.toList match {
-      case r :: _ => {
-        responses.remove(0)
-        r.leftMap(e => ThrowableError(e))
-      }
-      case Nil => Right(DatasetDeletionSummary.done)
-    }
   }
 }
 
@@ -144,7 +113,6 @@ class DeleteJobSpec
   var packageTable: PackagesMapper = _
   var datasetTable: DatasetsMapper = _
   var mockDatasetAssetClient: MockDatasetAssetClient = _
-  var mockModelServiceClient: MockModelServiceClient = _
   var mockAuditLogger: Auditor = _
   var diContainer: Container = _
 
@@ -194,8 +162,6 @@ class DeleteJobSpec
 
     mockDatasetAssetClient = new MockDatasetAssetClient()
 
-    mockModelServiceClient = new MockModelServiceClient()
-
     deleteJob = new DeleteJob(
       db = database,
       amazonS3 = s3,
@@ -203,7 +169,6 @@ class DeleteJobSpec
       timeSeriesBucketName = timeSeriesBucketName,
       auditLogger = mockAuditLogger,
       datasetAssetClient = mockDatasetAssetClient,
-      modelServiceClient = mockModelServiceClient,
       container = diContainer
     )
   }
@@ -221,9 +186,80 @@ class DeleteJobSpec
   override def afterAll(): Unit = {
     diContainer.dataDB.close()
     diContainer.db.close()
-    mockModelServiceClient.clearResponses()
     shutdown(system)
     super.afterAll()
+  }
+
+  def createModel(
+    dataset: Dataset,
+    name: String,
+    displayName: String = "Test Model",
+    organization: Organization = testOrganization
+  ): Model = {
+    val modelsMapper = new ModelsMapper(organization)
+    val model = Model(
+      id = UUID.randomUUID(),
+      datasetId = dataset.id,
+      name = name,
+      displayName = displayName,
+      description = "Test model description",
+      createdAt = ZonedDateTime.now(),
+      updatedAt = ZonedDateTime.now()
+    )
+    database.run((modelsMapper += model).andThen(DBIO.successful(model))).await
+  }
+
+  def createModelVersion(
+    model: Model,
+    version: Int = 1,
+    organization: Organization = testOrganization
+  ): ModelVersion = {
+    val modelVersionsMapper = new ModelVersionsMapper(organization)
+    val modelVersion = ModelVersion(
+      modelId = model.id,
+      version = version,
+      schema = Json.obj("type" -> "object".asJson),
+      schemaHash = "test-hash",
+      keyProperties = List("id"),
+      sensitiveProperties = List(),
+      createdAt = ZonedDateTime.now(),
+      modelTemplateId = None,
+      modelTemplateVersion = None
+    )
+    database
+      .run(
+        (modelVersionsMapper += modelVersion)
+          .andThen(DBIO.successful(modelVersion))
+      )
+      .await
+  }
+
+  def createRecord(
+    dataset: Dataset,
+    model: Model,
+    modelVersion: Int = 1,
+    isCurrent: Boolean = true,
+    organization: Organization = testOrganization
+  ): Record = {
+    val recordsMapper = new RecordsMapper(organization)
+    val record = Record(
+      sortKey = 0L,
+      id = UUID.randomUUID(),
+      datasetId = dataset.id,
+      modelId = model.id,
+      modelVersion = modelVersion,
+      value = Json.obj("test" -> "data".asJson),
+      valueEncrypted = None,
+      validFrom = ZonedDateTime.now(),
+      validTo = if (isCurrent) None else Some(ZonedDateTime.now()),
+      isCurrent = isCurrent,
+      provenanceId = UUID.randomUUID(),
+      createdAt = ZonedDateTime.now(),
+      keyHash = None
+    )
+    database
+      .run((recordsMapper += record).andThen(DBIO.successful(record)))
+      .await
   }
 
   /**
@@ -327,38 +363,6 @@ class DeleteJobSpec
 
     // // Non-existent external file is an error
     // assert(result.isLeft)
-  }
-
-  // TODO: update this test to delete from `model-service`
-
-  ignore should "handle packages connected to the graph" in { _ =>
-    // create package
-    val user = createUser(email = "deleter@test.com")
-    val dataset = createDataset(user = user)
-    val parent = createPackage(user = user, dataset = dataset)
-    val slidePackage = createPackage(
-      user = user,
-      state = PackageState.DELETING,
-      parent = Some(parent),
-      dataset = dataset,
-      `type` = Slide
-    )
-
-    // send delete msg
-    val msg: CatalogDeleteJob =
-      DeletePackageJob(
-        packageId = slidePackage.id,
-        organizationId = testOrganization.id,
-        userId = user.nodeId,
-        traceId = traceId
-      )
-
-    fail("Deleting from `model-service` is not implemented")
-
-    assert(deleteJob.creditDeleteJob(msg).await.isRight)
-
-    val pm = packageManager(user = user)
-    pm.get(slidePackage.id).await should be a (left)
   }
 
   // test aperio file type
@@ -519,9 +523,7 @@ class DeleteJobSpec
     // upload file to s3
     s3.putObject(dataBucketName, objectKey, "Delete Me")
 
-    // create package
     val user = createUser(email = "deleter@test.com")
-
     val dm = datasetManager(user = user)
     val pm = packageManager(user = user)
 
@@ -534,33 +536,31 @@ class DeleteJobSpec
       `type` = Slide
     )
 
-    // Model service client responses:
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueSuccessResponse(
-      done = true,
-      records = 3000,
-      models = 10,
-      properties = 50
-    )
+    val patientModel = createModel(dataset, "patient", "Patient")
+    val sampleModel = createModel(dataset, "sample", "Sample")
 
-    //create asset
+    createModelVersion(patientModel, version = 1)
+    createModelVersion(sampleModel, version = 1)
+
+    val patientRecord1 =
+      createRecord(dataset, patientModel, modelVersion = 1, isCurrent = true)
+    val patientRecord2 =
+      createRecord(dataset, patientModel, modelVersion = 1, isCurrent = true)
+    val sampleRecord =
+      createRecord(dataset, sampleModel, modelVersion = 1, isCurrent = true)
+
+    val modelsMapper = new ModelsMapper(testOrganization)
+    val modelVersionsMapper = new ModelVersionsMapper(testOrganization)
+    val recordsMapper = new RecordsMapper(testOrganization)
+
+    database
+      .run(modelsMapper.filter(_.datasetId === dataset.id).result)
+      .await
+      .size should be(2)
+    database
+      .run(recordsMapper.filter(_.datasetId === dataset.id).result)
+      .await
+      .size should be(3)
 
     val content = "#Markdown content\nA paragraph!"
 
@@ -589,15 +589,12 @@ class DeleteJobSpec
       s3Key = objectKey
     )
 
-    // Update the dataset state to `DELETING`:
     dataset = dataset.copy(state = DatasetState.DELETING)
     dm.update(dataset)
 
-    // Update the package state to `DELETING`:
     slidePackage = slidePackage.copy(state = PackageState.DELETING)
     pm.update(slidePackage)
 
-    // send delete dataset job
     val job: DeleteDatasetJob =
       DeleteDatasetJob(
         datasetId = dataset.id,
@@ -606,18 +603,10 @@ class DeleteJobSpec
         traceId = traceId
       )
 
-    val deleteJobResult = deleteJob.deleteDatasetJobWithResult(job).await
-    val (deleteResult, deleteSummary) = deleteJobResult.value
-    assert(deleteSummary.done)
-    assert(deleteSummary.counts.models == 10)
-    assert(deleteSummary.counts.properties == 50)
-    assert(deleteSummary.counts.records == 18000)
-
-    // make sure item is removed from the database
+    val _ = deleteJob.deleteDatasetJobWithResult(job).await
 
     pm.get(slidePackage.id).await should be a (left)
     pm.get(parent.id).await should be a (left)
-
     dm.get(dataset.id).await should be a (left)
 
     val fm = fileManager(organization = testOrganization, user = user)
@@ -629,67 +618,19 @@ class DeleteJobSpec
 
     mockDatasetAssetClient.assets shouldBe empty
 
-    // make sure item is not in s3
+    database
+      .run(modelsMapper.filter(_.datasetId === dataset.id).result)
+      .await shouldBe empty
+    database
+      .run(recordsMapper.filter(_.datasetId === dataset.id).result)
+      .await shouldBe empty
+    database
+      .run(modelVersionsMapper.filter(_.modelId === patientModel.id).result)
+      .await shouldBe empty
+    database
+      .run(modelVersionsMapper.filter(_.modelId === sampleModel.id).result)
+      .await shouldBe empty
+
     s3.listObjects(dataBucketName).getObjectSummaries.asScala.size should be(0)
-
-  }
-
-  it should "handle model-service dataset deletion failure" in { _ =>
-    // create package
-    val user = createUser(email = "deleter@test.com")
-
-    val dm = datasetManager(user = user)
-    val pm = packageManager(user = user)
-
-    var dataset = createDataset(user = user)
-
-    // Model service client responses:
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueFailureResponse(
-      ExceptionError(new Throwable("service not reachable"))
-    )
-    mockModelServiceClient.queueSuccessResponse(records = 5000)
-    mockModelServiceClient.queueSuccessResponse(
-      done = true,
-      records = 3000,
-      models = 10,
-      properties = 50
-    )
-
-    // send delete dataset job
-    val job: DeleteDatasetJob =
-      DeleteDatasetJob(
-        datasetId = dataset.id,
-        organizationId = testOrganization.id,
-        userId = user.nodeId,
-        traceId = traceId
-      )
-
-    val deleteJobResult = deleteJob.deleteDatasetJobWithResult(job).await
-    assert(deleteJobResult.isLeft)
-    val err = deleteJobResult.left.value
-    err.getMessage should be("service not reachable")
   }
 }

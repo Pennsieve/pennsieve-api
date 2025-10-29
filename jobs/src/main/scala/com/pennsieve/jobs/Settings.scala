@@ -22,10 +22,6 @@ import net.ceedubs.ficus.Ficus._
 object Settings {
   val config = ConfigFactory.load()
 
-  val modelServiceHost: String = config.as[String]("model_service.host")
-
-  val modelServicePort: Int = config.as[Int]("model_service.port")
-
   val postgresHost: String = config.as[String]("postgres.host")
 
   val postgresUser: String = config.as[String]("postgres.user")
