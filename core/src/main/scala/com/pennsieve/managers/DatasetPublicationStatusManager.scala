@@ -100,4 +100,19 @@ class DatasetPublicationStatusManager(
       .toEitherT
   }
 
+  def getLatestByDataset(
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[DatasetPublicationStatus]] = {
+    db.run(
+        datasetPublicationStatusMapper
+          .getByDataset(datasetId, sortAscending = false)
+          .take(1)
+          .result
+          .headOption
+      )
+      .toEitherT
+  }
+
 }

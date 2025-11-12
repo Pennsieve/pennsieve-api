@@ -54,7 +54,6 @@ final class DatasetsTable(schema: String, tag: Tag)
   def etag = column[ETag]("etag")
 
   def statusId = column[Int]("status_id")
-  def publicationStatusId = column[Option[Int]]("publication_status_id")
   def license = column[Option[License]]("license")
   def tags = column[List[String]]("tags")
   def bannerId = column[Option[UUID]]("banner_id")
@@ -74,7 +73,6 @@ final class DatasetsTable(schema: String, tag: Tag)
       role,
       automaticallyProcessPackages,
       statusId,
-      publicationStatusId,
       `type`,
       license,
       tags,
@@ -118,9 +116,11 @@ class DatasetsMapper(val organization: Organization)
   def getPublicationStatus(
     dataset: Dataset
   ): DBIO[Option[DatasetPublicationStatus]] = {
-    dataset.publicationStatusId
-      .map(datasetPublicationStatusMapper.get(_).result.headOption)
-      .getOrElse(DBIO.successful(None))
+    datasetPublicationStatusMapper
+      .getByDataset(dataset.id, sortAscending = false)
+      .take(1)
+      .result
+      .headOption
   }
 
   /**
@@ -138,18 +138,36 @@ class DatasetsMapper(val organization: Organization)
     datasetTeam: DatasetTeamMapper,
     executionContext: ExecutionContext
   ): DBIO[Boolean] =
-    this
-      .get(dataset.id)
-      .joinLeft(datasetPublicationStatusMapper)
-      .on(_.publicationStatusId === _.id)
-      .map {
-        case (dataset, publicationStatus) =>
-          isLockedLifted(dataset, publicationStatus, user)
+    getPublicationStatus(dataset).flatMap { publicationStatus =>
+      val status = publicationStatus
+        .map(_.publicationStatus)
+        .getOrElse(PublicationStatus.Draft)
+
+      val isSharedWithUserOnPublisherTeam: DBIO[Boolean] = OrganizationsMapper
+        .getPublisherTeam(organization.id)
+        .map(_._2)
+        .join(datasetTeam.filter(_.datasetId === dataset.id))
+        .on {
+          case (organizationTeam, datasetTeam) =>
+            organizationTeam.teamId === datasetTeam.teamId
+        }
+        .join(teamUser.filter(_.userId === user.id))
+        .on {
+          case ((_, datasetTeam), teamUser) =>
+            datasetTeam.teamId === teamUser.teamId
+        }
+        .exists
+        .result
+
+      isSharedWithUserOnPublisherTeam.map { isPublisher =>
+        status match {
+          case PublicationStatus.Requested if isPublisher => false
+          case PublicationStatus.Failed if isPublisher => false
+          case s if PublicationStatus.lockedStatuses.contains(s) => true
+          case _ => false
+        }
       }
-      .take(1)
-      .result
-      .headOption
-      .map(_.getOrElse(false))
+    }
 
   /**
     * Lifted root of `isLocked`. Can be composed directly into Slick queries.
@@ -205,18 +223,26 @@ class DatasetsMapper(val organization: Organization)
     datasetTeam: DatasetTeamMapper,
     executionContext: ExecutionContext
   ): DBIO[Boolean] =
-    this
-      .get(dataset.id)
-      .joinLeft(datasetPublicationStatusMapper)
-      .on(_.publicationStatusId === _.id)
-      .map {
-        case (_, publicationStatus) =>
-          isPublisherEditable(publicationStatus, user)
+    getPublicationStatus(dataset).flatMap { publicationStatus =>
+      val status = publicationStatus
+        .map(_.publicationStatus)
+        .getOrElse(PublicationStatus.Draft)
+
+      val isPublisher = OrganizationsMapper
+        .getPublisherTeam(organization.id)
+        .map(_._2)
+        .join(teamUser.filter(_.userId === user.id))
+        .on {
+          case (organizationTeam, teamUser) =>
+            organizationTeam.teamId === teamUser.teamId
+        }
+        .exists
+        .result
+
+      isPublisher.map { isPub =>
+        status == PublicationStatus.Requested && isPub
       }
-      .take(1)
-      .result
-      .headOption
-      .map(_.getOrElse(false))
+    }
 
   def isPublisherEditable(
     publicationStatus: Rep[Option[DatasetPublicationStatusTable]],
@@ -299,8 +325,8 @@ class DatasetsMapper(val organization: Organization)
         .filterOpt(datasetIds)(_.id.inSet(_))
         .join(datasetStatusMapper)
         .on(_.statusId === _.id)
-        .joinLeft(datasetPublicationStatusMapper)
-        .on(_._1.publicationStatusId === _.id)
+        .joinLeft(datasetPublicationStatusMapper.latestByDataset)
+        .on(_._1.id === _.datasetId)
         .map {
           case ((dataset, datasetStatus), datasetPublicationStatus) =>
             (
@@ -346,8 +372,8 @@ class DatasetsMapper(val organization: Organization)
       // Dataset cannot already be locked for publication
       !this
         .filter(_.id === dataset.id)
-        .joinLeft(datasetPublicationStatusMapper)
-        .on(_.publicationStatusId === _.id)
+        .joinLeft(datasetPublicationStatusMapper.latestByDataset)
+        .on(_.id === _.datasetId)
         .filter(
           _._2
             .map(_.publicationStatus.inSet(PublicationStatus.lockedStatuses))
