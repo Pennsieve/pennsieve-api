@@ -37,23 +37,6 @@ class DatasetPublicationStatusManager(
   val changelogEventMapper: ChangelogEventMapper
 ) {
 
-  def get(
-    id: Int
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, DatasetPublicationStatus] = {
-    db.run(datasetPublicationStatusMapper.get(id).result.headOption)
-      .whenNone(NotFound(s"DatasetPublicationStatus ($id)"))
-  }
-
-  def getPublicationStatus(
-    id: Int
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Option[DatasetPublicationStatus]] = {
-    db.run(datasetPublicationStatusMapper.get(id).result.headOption).toEitherT
-  }
-
   def create(
     dataset: Dataset,
     publicationStatus: PublicationStatus,
