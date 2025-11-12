@@ -113,16 +113,6 @@ class DatasetsMapper(val organization: Organization)
   def get(id: Int): Query[DatasetsTable, Dataset, Seq] =
     this.filter(_.id === id)
 
-  def getPublicationStatus(
-    dataset: Dataset
-  ): DBIO[Option[DatasetPublicationStatus]] = {
-    datasetPublicationStatusMapper
-      .getByDataset(dataset.id, sortAscending = false)
-      .take(1)
-      .result
-      .headOption
-  }
-
   /**
     * Check if the dataset is locked during publication for the given user.
     *
