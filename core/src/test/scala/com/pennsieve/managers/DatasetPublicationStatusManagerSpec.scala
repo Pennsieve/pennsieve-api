@@ -36,7 +36,9 @@ class DatasetPublicationStatusManagerSpec extends BaseManagerSpec {
 
     val dataset1 = dm.create(name).await.value
 
-    assert(dataset1.publicationStatusId === None)
+    val publicationStatus = dpsm.getLatestByDataset(dataset1.id).await.value
+
+    assert(publicationStatus === None)
   }
 
   "Adding a valid Dataset Publication Status" should "update the corresponding  Dataset Publication Status" in {
@@ -59,9 +61,10 @@ class DatasetPublicationStatusManagerSpec extends BaseManagerSpec {
         .await
         .value
 
-    val dataset2 = dm.get(dataset1.id).await.value
+    val latestPublicationStatus =
+      dpsm.getLatestByDataset(dataset1.id).await.value
 
-    assert(dataset2.publicationStatusId === Some(datasetPublicationStatus1.id))
+    assert(latestPublicationStatus === Some(datasetPublicationStatus1))
   }
 
 }

@@ -82,4 +82,28 @@ class DatasetPublicationStatusMapper(organization: Organization)
       this
         .filter(_.datasetId === datasetId)
         .sortBy(_.createdAt.desc)
+
+  /**
+    * Returns a subquery that contains only the latest publication status
+    * for each dataset (the one with the most recent created_at timestamp).
+    * This can be used in joins to get the current publication status.
+    */
+  def latestByDataset
+    : Query[DatasetPublicationStatusTable, DatasetPublicationStatus, Seq] = {
+    // Get the max created_at for each dataset_id
+    val latestCreatedAt = this
+      .groupBy(_.datasetId)
+      .map {
+        case (datasetId, group) => (datasetId, group.map(_.createdAt).max)
+      }
+
+    // Join with the original table to get the full records
+    this
+      .join(latestCreatedAt)
+      .on {
+        case (status, (datasetId, maxCreatedAt)) =>
+          status.datasetId === datasetId && status.createdAt === maxCreatedAt
+      }
+      .map(_._1)
+  }
 }
