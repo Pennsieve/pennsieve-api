@@ -456,6 +456,8 @@ trait ApiSuite
     insecureContainer.db.run(clearOrganizationSchema(1)).await
     insecureContainer.db.run(clearOrganizationSchema(2)).await
     insecureContainer.db.run(clearOrganizationSchema(3)).await
+    insecureContainer.db.run(clearOrganizationSchema(4)).await
+    insecureContainer.db.run(clearOrganizationSchema(5)).await
   }
 
   override def beforeEach(): Unit = {
