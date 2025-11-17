@@ -1222,7 +1222,9 @@ class TimeSeriesControllerAnnotationSpecs
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(201)
-      (parsedBody \ "name").extract[String] should be("newCollectionChannel")
+      (parsedBody \ "content" \ "name").extract[String] should be(
+        "newCollectionChannel"
+      )
     }
   }
 
@@ -1232,7 +1234,7 @@ class TimeSeriesControllerAnnotationSpecs
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
-      val channelList = (parsedBody \ "channels").extract[List[Object]]
+      val channelList = parsedBody.extract[List[Object]]
       channelList should have size 2
     }
   }

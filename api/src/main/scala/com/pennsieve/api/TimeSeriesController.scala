@@ -285,9 +285,7 @@ class TimeSeriesController(
           .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
           .coreErrorToActionResult()
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
           BadRequest(
             "channels can only be added to time series packages or collections"
           )
@@ -352,9 +350,7 @@ class TimeSeriesController(
         _ <- secureContainer.datasetManager
           .assertNotLocked(dataset)
           .coreErrorToActionResult()
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
           BadRequest(
             "channels only exist on time series packages or collections"
           )
@@ -475,9 +471,7 @@ class TimeSeriesController(
           .assertNotLocked(dataset)
           .coreErrorToActionResult()
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
           BadRequest(
             "channels only exist on time series packages or collections"
           )
@@ -636,14 +630,8 @@ class TimeSeriesController(
           TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
         params <- extractOrErrorT[TimeSeriesAnnotationWriteRequest](parsedBody)
 
@@ -726,14 +714,8 @@ class TimeSeriesController(
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
           .coreErrorToActionResult()
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
         layerId <- paramT[Int]("layerId")
         layer <- insecureContainer.layerManager
@@ -845,14 +827,8 @@ class TimeSeriesController(
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
           .coreErrorToActionResult()
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
 
         packageStartTime <- if (startAtEpoch)
@@ -1007,14 +983,8 @@ class TimeSeriesController(
           .authorizeDataset(Set(DatasetPermission.ViewAnnotations))(dataset)
           .coreErrorToActionResult()
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
 
         packageStartTime <- if (startAtEpoch)
@@ -1170,14 +1140,8 @@ class TimeSeriesController(
           TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
 
         layerIds <- listParamT[Int]("layerIds").map(_.toSet)
@@ -1290,14 +1254,8 @@ class TimeSeriesController(
           TimeSeriesHelper.getPackageStartTime(pkg, secureContainer).orError()
         else EitherT.pure[Future, ActionResult](0L)
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
 
         layerId <- paramT[Int]("layerId")
@@ -1369,14 +1327,8 @@ class TimeSeriesController(
           .assertNotLocked(dataset)
           .coreErrorToActionResult()
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
 
         layerId <- paramT[Int]("layerId")
@@ -1426,14 +1378,8 @@ class TimeSeriesController(
           .assertNotLocked(dataset)
           .coreErrorToActionResult()
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
         layerId <- paramT[Int]("layerId")
         layer <- insecureContainer.layerManager
@@ -1483,14 +1429,8 @@ class TimeSeriesController(
           .assertNotLocked(dataset)
           .coreErrorToActionResult()
 
-        _ <- checkOrErrorT(
-          pkg.`type` == PackageType.TimeSeries || pkg.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
+        _ <- checkOrErrorT(PackageType.TimeSeriesAllowed.contains(pkg.`type`))(
+          BadRequest(Error("Invalid package type for timeseries operation"))
         )
         layerProps <- extractOrErrorT[LayerRequest](parsedBody)
         _ <- checkOrErrorT(layerProps.name.nonEmpty)(
@@ -1547,14 +1487,8 @@ class TimeSeriesController(
           .coreErrorToActionResult()
 
         _ <- checkOrErrorT(
-          timeSeries.`type` == PackageType.TimeSeries || timeSeries.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
-        )
+          PackageType.TimeSeriesAllowed.contains(timeSeries.`type`)
+        )(BadRequest(Error("Invalid package type for timeseries operation")))
         layers <- insecureContainer.layerManager
           .findBy(timeSeriesId = timeSeriesId, limit = limit, offset = offset)
           .toEitherT
@@ -1597,14 +1531,8 @@ class TimeSeriesController(
           .coreErrorToActionResult()
 
         _ <- checkOrErrorT(
-          timeSeries.`type` == PackageType.TimeSeries || timeSeries.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
-        )
+          PackageType.TimeSeriesAllowed.contains(timeSeries.`type`)
+        )(BadRequest(Error("Invalid package type for timeseries operation")))
         layer <- insecureContainer.layerManager
           .getBy(layerId)
           .whenNone[CoreError](NotFound("Layer not found"))
@@ -1647,14 +1575,8 @@ class TimeSeriesController(
           .coreErrorToActionResult()
 
         _ <- checkOrErrorT(
-          timeSeries.`type` == PackageType.TimeSeries || timeSeries.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
-        )
+          PackageType.TimeSeriesAllowed.contains(timeSeries.`type`)
+        )(BadRequest(Error("Invalid package type for timeseries operation")))
         existingLayer <- insecureContainer.layerManager
           .getBy(layerId)
           .whenNone[CoreError](NotFound("Layer not found"))
@@ -1706,14 +1628,8 @@ class TimeSeriesController(
           .coreErrorToActionResult()
 
         _ <- checkOrErrorT(
-          timeSeries.`type` == PackageType.TimeSeries || timeSeries.`type` == PackageType.Collection
-        )(
-          BadRequest(
-            Error(
-              "Id does not point to a valid TimeSeries package or Collection"
-            )
-          )
-        )
+          PackageType.TimeSeriesAllowed.contains(timeSeries.`type`)
+        )(BadRequest(Error("Invalid package type for timeseries operation")))
         deleteResult <- insecureContainer.layerManager
           .delete(layerId)
           .toEitherT
