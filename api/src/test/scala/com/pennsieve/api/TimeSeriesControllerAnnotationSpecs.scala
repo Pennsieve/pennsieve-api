@@ -68,10 +68,15 @@ class TimeSeriesControllerAnnotationSpecs
 
   var controller: TimeSeriesController = _
   var timeseriesPackage: Package = _
+  var collectionPackage: Package = _
   var layer: TimeSeriesLayer = _
+  var collectionLayer: TimeSeriesLayer = _
   var channels: List[Channel] = _
+  var collectionChannels: List[Channel] = _
   var channelOneNodeId: String = _
   var channelTwoNodeId: String = _
+  var collectionChannelOneNodeId: String = _
+  var collectionChannelTwoNodeId: String = _
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -117,6 +122,43 @@ class TimeSeriesControllerAnnotationSpecs
 
     layer = insecureContainer.layerManager
       .create(timeseriesPackage.nodeId, "testLayer", Some("desc"))
+      .await
+
+    // Create a Collection package for testing
+    collectionPackage = packageManager
+      .create(
+        name = "testCollection",
+        `type` = PackageType.Collection,
+        parent = None,
+        state = PackageState.READY,
+        dataset = dataset,
+        ownerId = Some(loggedInUser.id)
+      )
+      .await
+      .value
+
+    collectionChannels = (1 to 2).map { i =>
+      timeSeriesManager
+        .createChannel(
+          collectionPackage,
+          s"collectionChannel$i",
+          1000,
+          2000,
+          "unit",
+          1.0,
+          "type",
+          None,
+          1000
+        )
+        .await
+        .value
+    }.toList
+
+    collectionChannelOneNodeId = collectionChannels.head.nodeId
+    collectionChannelTwoNodeId = collectionChannels(1).nodeId
+
+    collectionLayer = insecureContainer.layerManager
+      .create(collectionPackage.nodeId, "collectionLayer", Some("desc"))
       .await
   }
 
@@ -1096,6 +1138,121 @@ class TimeSeriesControllerAnnotationSpecs
       status should equal(200)
       val response = parsedBody.extract[Int]
       response should be(badIds.size - 1)
+    }
+  }
+
+  it should "create an annotation on a Collection package" in {
+
+    val request =
+      s"""{
+        | "name": "testCollectionAnnotation",
+        | "channelIds": [
+        |   "$collectionChannelOneNodeId",
+        |   "$collectionChannelTwoNodeId"
+        | ],
+        | "label": "collectionLabel",
+        | "description": "this is a collection annotation",
+        | "start": 1100,
+        | "end": 1200
+        |}""".stripMargin
+
+    postJson(
+      s"/${collectionPackage.nodeId}/layers/${collectionLayer.id}/annotations",
+      request,
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(201)
+      compactRender(parsedBody \ "label") should include("collectionLabel")
+    }
+
+    get(
+      s"/${collectionPackage.nodeId}/hasAnnotations",
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(200)
+      assert(body.contains("true"))
+    }
+  }
+
+  it should "get annotations from a Collection package" in {
+    (0 to 5).foreach { index =>
+      insecureContainer.timeSeriesAnnotationManager
+        .create(
+          `package` = collectionPackage,
+          layerId = collectionLayer.id,
+          name = s"collectionAnnotation$index",
+          label = "a collection label",
+          description = Some("a collection description"),
+          userNodeId = loggedInUser.nodeId,
+          range = Range[Long](10L * index + 1000, 10 * index + 1009),
+          channelIds =
+            SortedSet(collectionChannelOneNodeId, collectionChannelTwoNodeId),
+          None
+        )(secureContainer.timeSeriesManager)
+        .await
+    }
+
+    get(
+      s"/${collectionPackage.nodeId}/layers/${collectionLayer.id}/annotations?start=1025&end=1050&layerName=collectionLayer&channelIds=$collectionChannelOneNodeId",
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(200)
+      (2 to 4).foreach { index =>
+        body should include(s"collectionAnnotation$index")
+      }
+    }
+  }
+
+  it should "create channels on a Collection package" in {
+    val request =
+      s"""{
+        | "name": "newCollectionChannel",
+        | "start": 1000,
+        | "end": 2000,
+        | "unit": "mV",
+        | "rate": 1.0,
+        | "channelType": "continuous",
+        | "lastAnnotation": 1000,
+        | "properties": []
+        |}""".stripMargin
+
+    postJson(
+      s"/${collectionPackage.nodeId}/channels",
+      request,
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(201)
+      (parsedBody \ "name").extract[String] should be("newCollectionChannel")
+    }
+  }
+
+  it should "get channels from a Collection package" in {
+    get(
+      s"/${collectionPackage.nodeId}/channels",
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(200)
+      val channelList = (parsedBody \ "channels").extract[List[Object]]
+      channelList should have size 2
+    }
+  }
+
+  it should "create a layer on a Collection package" in {
+    val request =
+      """{
+        |  "name": "new collection layer",
+        |  "description": "collection layer desc"
+        |}""".stripMargin
+
+    postJson(
+      s"/${collectionPackage.nodeId}/layers",
+      request,
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      val layer = parsedBody.extract[TimeSeriesLayer]
+      layer.name should equal("new collection layer")
+      layer.description should equal(Some("collection layer desc"))
+      layer.timeSeriesId should equal(collectionPackage.nodeId)
     }
   }
 
