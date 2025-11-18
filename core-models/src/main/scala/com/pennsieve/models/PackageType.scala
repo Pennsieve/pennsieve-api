@@ -24,6 +24,9 @@ sealed trait PackageType extends EnumEntry
 object PackageType extends Enum[PackageType] with CirceEnum[PackageType] {
   val values = findValues
 
+  val TimeSeriesAllowed: Set[PackageType] =
+    Set(TimeSeries, Collection)
+
   case object Image extends PackageType with Imaging
   case object MRI extends PackageType with Imaging
   case object Slide extends PackageType with Imaging
