@@ -1,0 +1,4 @@
+ALTER TABLE files
+    ADD COLUMN properties JSONB DEFAULT NULL,
+    ADD COLUMN asset_type VARCHAR DEFAULT NULL,
+    ADD COLUMN integration_id UUID DEFAULT NULL;

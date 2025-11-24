@@ -49,7 +49,10 @@ object FileDTO {
         file.updatedAt,
         file.id,
         md5,
-        file.checksum
+        file.checksum,
+        file.properties,
+        file.assetType,
+        file.integrationId
       )
     )
   }

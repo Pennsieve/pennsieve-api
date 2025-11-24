@@ -32,6 +32,7 @@ import com.pennsieve.traits.PostgresProfile.api._
 
 import java.time.ZonedDateTime
 import java.util.UUID
+import io.circe.Json
 import com.pennsieve.db.FilesTable.{ OrderByColumn, OrderByDirection }
 import enumeratum.{ Enum, EnumEntry }
 import slick.ast.Ordering
@@ -97,6 +98,9 @@ abstract class AbstractFilesTable[T](
   def checksum = column[Option[FileChecksum]]("checksum")
   def uuid = column[UUID]("uuid")
   def uploadedState = column[Option[FileState]]("uploaded_state")
+  def properties = column[Option[Json]]("properties")
+  def assetType = column[Option[String]]("asset_type")
+  def integrationId = column[Option[UUID]]("integration_id")
 
   val filesSelect = (
     packageId,
@@ -112,6 +116,9 @@ abstract class AbstractFilesTable[T](
     updatedAt,
     uuid,
     uploadedState,
+    properties,
+    assetType,
+    integrationId,
     id
   )
 }

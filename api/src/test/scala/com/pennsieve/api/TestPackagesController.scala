@@ -18,6 +18,7 @@ package com.pennsieve.api
 
 import java.net.URL
 import java.time.ZonedDateTime
+import java.util.UUID
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import com.pennsieve.clients.MockJobSchedulingServiceClient
 import com.pennsieve.domain.StorageAggregation.{
@@ -62,6 +63,8 @@ import com.pennsieve.models.{
   User
 }
 import io.circe.parser.decode
+import io.circe.Json
+import io.circe.syntax._
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization.write
@@ -2097,6 +2100,71 @@ class TestPackagesController
       status should equal(200)
       val sources = parsedBody.extract[PagedResponse[FileDTO]]
       sources.results.length should equal(PackagesController.FILES_LIMIT_MAX)
+    }
+  }
+
+  test(
+    "sources-paged returns new columns properties, assetType, and integrationId"
+  ) {
+    val testIntegrationId = UUID.randomUUID()
+    val testProperties = Json.obj("key" -> "value".asJson)
+    val testAssetType = "image"
+
+    val pdfPackage = packageManager
+      .create(
+        "foo",
+        PackageType.PDF,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "test.pdf",
+        FileType.PDF,
+        pdfPackage,
+        "s3bucketName",
+        "/path/to/test.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        size = 100,
+        properties = Some(testProperties),
+        assetType = Some(testAssetType),
+        integrationId = Some(testIntegrationId)
+      )
+      .await
+
+    get(
+      s"/${pdfPackage.nodeId}/sources-paged",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      // Parse the response using json4s instead of trying to extract to DTO
+      val json = parse(response.body)
+      val results = (json \ "results").extract[List[JValue]]
+      results.length should equal(1)
+
+      val fileContent = results.head \ "content"
+
+      // Check assetType
+      (fileContent \ "assetType").extract[Option[String]] should equal(
+        Some(testAssetType)
+      )
+
+      // Check integrationId
+      (fileContent \ "integrationId").extract[Option[String]] should equal(
+        Some(testIntegrationId.toString)
+      )
+
+      // Check properties exists and has the expected structure
+      val properties = fileContent \ "properties"
+      properties should not equal JNothing
+      (properties \ "key").extract[String] should equal("value")
     }
   }
 

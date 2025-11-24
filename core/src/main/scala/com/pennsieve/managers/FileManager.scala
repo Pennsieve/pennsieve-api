@@ -37,6 +37,8 @@ import com.pennsieve.models.{
   Package,
   User
 }
+import io.circe.Json
+import java.util.UUID
 import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -88,7 +90,10 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     processingState: FileProcessingState,
     size: Long = 0,
     fileChecksum: Option[FileChecksum] = None,
-    uploadedState: Option[FileState] = None
+    uploadedState: Option[FileState] = None,
+    properties: Option[Json] = None,
+    assetType: Option[String] = None,
+    integrationId: Option[UUID] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, File] = {
@@ -113,7 +118,10 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
         processingState,
         size,
         fileChecksum,
-        uploadedState = uploadedState
+        uploadedState = uploadedState,
+        properties = properties,
+        assetType = assetType,
+        integrationId = integrationId
       )
 
     if (!isNameValid(name)) {
