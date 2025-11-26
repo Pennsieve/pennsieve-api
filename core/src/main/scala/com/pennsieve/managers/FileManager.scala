@@ -53,6 +53,9 @@ object FileManager {
     size: Long,
     checksum: Option[FileChecksum] = None
   )
+
+  // Maximum size for properties JSON field (1MB)
+  val MAX_PROPERTIES_SIZE_BYTES: Int = 1024 * 1024
 }
 
 /** A file manager
@@ -107,6 +110,9 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
       case _ => false
     }
 
+    // Validate properties JSON size
+    val propertiesSize = properties.map(_.noSpaces.getBytes("UTF-8").length).getOrElse(0)
+
     val file =
       File(
         `package`.id,
@@ -129,6 +135,13 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
         .leftT[Future, File](
           PredicateError(
             s"Invalid file name, please follow the naming conventions"
+          )
+        )
+    } else if (propertiesSize > MAX_PROPERTIES_SIZE_BYTES) {
+      EitherT
+        .leftT[Future, File](
+          PredicateError(
+            s"Properties JSON exceeds maximum size of 1MB (actual: ${propertiesSize} bytes)"
           )
         )
     } else if (isValidProcessingState) {
