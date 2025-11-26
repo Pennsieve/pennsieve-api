@@ -37,6 +37,8 @@ import com.pennsieve.models.{
   Package,
   User
 }
+import io.circe.Json
+import java.util.UUID
 import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -51,6 +53,9 @@ object FileManager {
     size: Long,
     checksum: Option[FileChecksum] = None
   )
+
+  // Maximum size for properties JSON field (1MB)
+  val MAX_PROPERTIES_SIZE_BYTES: Int = 1024 * 1024
 }
 
 /** A file manager
@@ -88,7 +93,10 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     processingState: FileProcessingState,
     size: Long = 0,
     fileChecksum: Option[FileChecksum] = None,
-    uploadedState: Option[FileState] = None
+    uploadedState: Option[FileState] = None,
+    properties: Option[Json] = None,
+    assetType: Option[String] = None,
+    provenanceId: Option[UUID] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, File] = {
@@ -102,6 +110,9 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
       case _ => false
     }
 
+    // Validate properties JSON size
+    val propertiesSize = properties.map(_.noSpaces.getBytes("UTF-8").length).getOrElse(0)
+
     val file =
       File(
         `package`.id,
@@ -113,7 +124,10 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
         processingState,
         size,
         fileChecksum,
-        uploadedState = uploadedState
+        uploadedState = uploadedState,
+        properties = properties,
+        assetType = assetType,
+        provenanceId = provenanceId
       )
 
     if (!isNameValid(name)) {
@@ -121,6 +135,13 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
         .leftT[Future, File](
           PredicateError(
             s"Invalid file name, please follow the naming conventions"
+          )
+        )
+    } else if (propertiesSize > MAX_PROPERTIES_SIZE_BYTES) {
+      EitherT
+        .leftT[Future, File](
+          PredicateError(
+            s"Properties JSON exceeds maximum size of 1MB (actual: ${propertiesSize} bytes)"
           )
         )
     } else if (isValidProcessingState) {

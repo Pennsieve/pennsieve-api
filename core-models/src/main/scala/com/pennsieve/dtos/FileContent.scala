@@ -17,10 +17,11 @@
 package com.pennsieve.dtos
 
 import java.time.ZonedDateTime
+import java.util.UUID
 
 import com.pennsieve.models.{ FileChecksum, FileObjectType, FileType }
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.{ Decoder, Encoder }
+import io.circe.{ Decoder, Encoder, Json }
 
 case class FileContent(
   packageId: String,
@@ -35,7 +36,10 @@ case class FileContent(
   updatedAt: ZonedDateTime,
   id: Int,
   md5: Option[String] = None,
-  checksum: Option[FileChecksum] = None
+  checksum: Option[FileChecksum] = None,
+  properties: Option[Json] = None,
+  assetType: Option[String] = None,
+  provenanceId: Option[UUID] = None
 )
 
 final case class SimpleFileContent(

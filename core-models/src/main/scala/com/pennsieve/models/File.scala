@@ -21,7 +21,7 @@ import java.time.{ ZoneOffset, ZonedDateTime }
 import java.util.UUID
 
 import io.circe.derivation._
-import io.circe.{ derivation, Decoder }
+import io.circe.{ derivation, Decoder, Json }
 
 final case class File(
   packageId: Int,
@@ -37,6 +37,9 @@ final case class File(
   updatedAt: ZonedDateTime = ZonedDateTime.now(),
   uuid: UUID = UUID.randomUUID(),
   uploadedState: Option[FileState] = None,
+  properties: Option[Json] = None,
+  assetType: Option[String] = None,
+  provenanceId: Option[UUID] = None,
   id: Int = 0
 ) {
 
