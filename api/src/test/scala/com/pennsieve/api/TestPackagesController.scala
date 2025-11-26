@@ -2104,9 +2104,9 @@ class TestPackagesController
   }
 
   test(
-    "sources-paged returns new columns properties, assetType, and integrationId"
+    "sources-paged returns new columns properties, assetType, and provenanceId"
   ) {
-    val testIntegrationId = UUID.randomUUID()
+    val testProvenanceId = UUID.randomUUID()
     val testProperties = Json.obj("key" -> "value".asJson)
     val testAssetType = "image"
 
@@ -2134,7 +2134,7 @@ class TestPackagesController
         size = 100,
         properties = Some(testProperties),
         assetType = Some(testAssetType),
-        integrationId = Some(testIntegrationId)
+        provenanceId = Some(testProvenanceId)
       )
       .await
 
@@ -2156,9 +2156,9 @@ class TestPackagesController
         Some(testAssetType)
       )
 
-      // Check integrationId
-      (fileContent \ "integrationId").extract[Option[String]] should equal(
-        Some(testIntegrationId.toString)
+      // Check provenanceId
+      (fileContent \ "provenanceId").extract[Option[String]] should equal(
+        Some(testProvenanceId.toString)
       )
 
       // Check properties exists and has the expected structure

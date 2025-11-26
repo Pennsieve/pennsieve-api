@@ -100,7 +100,7 @@ abstract class AbstractFilesTable[T](
   def uploadedState = column[Option[FileState]]("uploaded_state")
   def properties = column[Option[Json]]("properties")
   def assetType = column[Option[String]]("asset_type")
-  def integrationId = column[Option[UUID]]("integration_id")
+  def provenanceId = column[Option[UUID]]("provenance_id")
 
   val filesSelect = (
     packageId,
@@ -118,7 +118,7 @@ abstract class AbstractFilesTable[T](
     uploadedState,
     properties,
     assetType,
-    integrationId,
+    provenanceId,
     id
   )
 }

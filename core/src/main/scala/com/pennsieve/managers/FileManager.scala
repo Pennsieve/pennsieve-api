@@ -93,7 +93,7 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     uploadedState: Option[FileState] = None,
     properties: Option[Json] = None,
     assetType: Option[String] = None,
-    integrationId: Option[UUID] = None
+    provenanceId: Option[UUID] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, File] = {
@@ -121,7 +121,7 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
         uploadedState = uploadedState,
         properties = properties,
         assetType = assetType,
-        integrationId = integrationId
+        provenanceId = provenanceId
       )
 
     if (!isNameValid(name)) {

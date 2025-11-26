@@ -39,7 +39,7 @@ case class FileContent(
   checksum: Option[FileChecksum] = None,
   properties: Option[Json] = None,
   assetType: Option[String] = None,
-  integrationId: Option[UUID] = None
+  provenanceId: Option[UUID] = None
 )
 
 final case class SimpleFileContent(

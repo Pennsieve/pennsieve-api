@@ -39,7 +39,7 @@ final case class File(
   uploadedState: Option[FileState] = None,
   properties: Option[Json] = None,
   assetType: Option[String] = None,
-  integrationId: Option[UUID] = None,
+  provenanceId: Option[UUID] = None,
   id: Int = 0
 ) {
 

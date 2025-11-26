@@ -52,7 +52,7 @@ object FileDTO {
         file.checksum,
         file.properties,
         file.assetType,
-        file.integrationId
+        file.provenanceId
       )
     )
   }
