@@ -1786,6 +1786,46 @@ class TestPackagesController
     }
   }
 
+  test("includes a collection package's channels") {
+    val collectionPackage = packageManager
+      .create(
+        "Foo13b",
+        PackageType.Collection,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+    val channel = timeSeriesManager
+      .createChannel(
+        collectionPackage,
+        "Collection Channel",
+        0,
+        1000,
+        "unit",
+        10.0,
+        "type",
+        None,
+        0
+      )
+      .await
+      .value
+
+    get(
+      s"/${collectionPackage.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val json = parse(response.body)
+      compact(render(json \ "channels" \\ "content" \\ "name")) should include(
+        "Collection Channel"
+      )
+    }
+  }
+
   // Get Package Objects
   //////////////////////////////////////////////////////////////////////////////
 
