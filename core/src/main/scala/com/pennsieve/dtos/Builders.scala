@@ -542,7 +542,7 @@ object Builders {
       fileDTOMap = objects.map(obs => buildFileDTOMap(obs, `package`))
 
       channelDTOs <- `package`.`type` match {
-        case TimeSeries =>
+        case TimeSeries | PackageType.Collection =>
           secureContainer.timeSeriesManager
             .getChannels(`package`)
             .map(channels => Some(ChannelDTO(channels, `package`)))
