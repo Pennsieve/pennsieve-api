@@ -889,6 +889,12 @@ class DataSetsController(
         secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
 
+        _ <- secureContainer.organizationManager
+          .hasPermission(secureContainer.organization, DBPermission.Delete)(
+            executor
+          )
+          .coreErrorToActionResult()
+
         user = secureContainer.user
 
         body <- extractOrErrorT[CreateDataSetRequest](parsedBody)
