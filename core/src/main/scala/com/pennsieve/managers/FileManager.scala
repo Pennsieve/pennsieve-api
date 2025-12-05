@@ -111,7 +111,8 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     }
 
     // Validate properties JSON size
-    val propertiesSize = properties.map(_.noSpaces.getBytes("UTF-8").length).getOrElse(0)
+    val propertiesSize =
+      properties.map(_.noSpaces.getBytes("UTF-8").length).getOrElse(0)
 
     val file =
       File(
