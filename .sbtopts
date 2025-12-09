@@ -2,4 +2,4 @@
 -J-Xss128m
 -J-Xms256m
 -J-Xmx2G
--J-XX:ReservedCodeCacheSize=128M
+-J-XX:ReservedCodeCacheSize=512M
