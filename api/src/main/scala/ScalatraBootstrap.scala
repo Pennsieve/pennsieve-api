@@ -20,6 +20,7 @@ import com.pennsieve.helpers.{
   BaseBootstrapHelper,
   LocalBootstrapHelper
 }
+import net.ceedubs.ficus.Ficus._
 import com.pennsieve.web.{ ResourcesApp, Settings, SwaggerApp }
 
 import akka.actor.ActorSystem
@@ -144,6 +145,15 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         )
       context mount (externalPublicationController, "/datasets/*", "externalPublications")
 
+      val deleteTaskConfig = DeleteTaskConfig(
+        enabled = bootstrapHelper.insecureContainer.config.as[Boolean]("ecs.delete_task.enabled"),
+        cluster = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.cluster"),
+        taskDefinition = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.task_definition"),
+        containerName = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.container_name"),
+        subnets = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.subnets").split(",").toList.filter(_.nonEmpty),
+        securityGroup = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.security_group")
+      )
+
       val dataSetsController = new DataSetsController(
         bootstrapHelper.insecureContainer,
         bootstrapHelper.secureContainerBuilder,
@@ -158,7 +168,9 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.orcidClient,
         bootstrapHelper.insecureContainer.config
           .getInt("pennsieve.max_file_upload_size"),
-        ec
+        ec,
+        bootstrapHelper.ecsClient,
+        deleteTaskConfig
       )
       context mount (dataSetsController, "/datasets/*", "datasets")
 
