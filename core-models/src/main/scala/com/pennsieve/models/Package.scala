@@ -31,5 +31,6 @@ final case class Package(
   createdAt: ZonedDateTime = ZonedDateTime.now(),
   updatedAt: ZonedDateTime = ZonedDateTime.now(),
   id: Int = 0,
-  attributes: List[ModelProperty] = Nil
+  attributes: List[ModelProperty] = Nil,
+  published: Boolean = false
 )
