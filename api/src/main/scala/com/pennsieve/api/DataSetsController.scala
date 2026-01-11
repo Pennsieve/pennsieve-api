@@ -492,13 +492,9 @@ class DataSetsController(
           default = false
         )
 
-        publicationStatus <- dataset.publicationStatusId
-          .map(
-            secureContainer.datasetPublicationStatusManager
-              .getPublicationStatus(_)
-              .coreErrorToActionResult()
-          )
-          .getOrElse(EitherT.rightT[Future, ActionResult](None))
+        publicationStatus <- secureContainer.datasetPublicationStatusManager
+          .getLatestByDataset(dataset.id)
+          .coreErrorToActionResult()
 
         contributors <- secureContainer.datasetManager
           .getContributors(dataset)
@@ -1135,13 +1131,9 @@ class DataSetsController(
         //   }
         // }.coreErrorToActionResult()
 
-        publicationStatus <- dataset.publicationStatusId
-          .map(
-            secureContainer.datasetPublicationStatusManager
-              .getPublicationStatus(_)
-              .coreErrorToActionResult()
-          )
-          .getOrElse(EitherT.rightT[Future, ActionResult](None))
+        publicationStatus <- secureContainer.datasetPublicationStatusManager
+          .getLatestByDataset(dataset.id)
+          .coreErrorToActionResult()
 
         contributors <- secureContainer.datasetManager
           .getContributors(dataset)
@@ -3714,19 +3706,22 @@ class DataSetsController(
 
           body <- extractOrErrorT[PublishCompleteRequest](parsedBody)
 
-          publicationStatus <- dataset.publicationStatusId
-            .map(secureContainer.datasetPublicationStatusManager.get(_))
-            .getOrElse({
+          publicationStatusOpt <- secureContainer.datasetPublicationStatusManager
+            .getLatestByDataset(dataset.id)
+            .coreErrorToActionResult()
+
+          publicationStatus <- publicationStatusOpt match {
+            case Some(status) => EitherT.rightT[Future, ActionResult](status)
+            case None =>
               logger.error(
                 s"Publish complete has been called on a dataset with a publication status of None"
               )
               EitherT.leftT[Future, DatasetPublicationStatus](
-                PredicateError(
+                org.scalatra.NotFound(
                   "Publish complete has been called on a dataset with a publication status of None"
-                ): CoreError
+                ): ActionResult
               )
-            })
-            .coreErrorToActionResult()
+          }
 
           _ = if (publicationStatus.publicationStatus != PublicationStatus.Accepted) {
             logger.error(
