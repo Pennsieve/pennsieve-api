@@ -590,10 +590,10 @@ class PackagesController(
     }
   }
 
-  case class IsPublishedResponse(kind: String = "package", published: Boolean)
+  case class IsPublishedResponse(kind: String, published: Boolean)
 
   case class CollectionPublishedInfo(
-    kind: String = "collection",
+    kind: String,
     published: Int,
     unpublished: Int,
     publishedIds: List[String],
@@ -652,6 +652,7 @@ class PackagesController(
 
             } yield
               CollectionPublishedInfo(
+                kind = "collection",
                 published = publishedPkgs.size,
                 unpublished = unpublishedPkgs.size,
                 publishedIds = publishedPkgs.map(_.nodeId),
@@ -662,7 +663,10 @@ class PackagesController(
           case _ =>
             secureContainer.fileManager
               .isPublished(pkg)
-              .map(published => IsPublishedResponse(published = published))
+              .map(
+                published =>
+                  IsPublishedResponse(kind = "package", published = published)
+              )
               .coreErrorToActionResult()
         }
       } yield response
