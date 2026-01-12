@@ -28,6 +28,7 @@ import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.aws.cognito.{ Cognito, CognitoClient }
 import com.pennsieve.aws.ecs.ECSTrait
 import com.pennsieve.aws.email.{ Email, SesMessageResult }
+import com.pennsieve.aws.ssm.SimpleSystemsManagementTrait
 import com.pennsieve.aws.queue.SQSClient
 import com.amazonaws.services.ecs.model.{
   AssignPublicIp,
@@ -295,7 +296,7 @@ case class ChangelogEventPage(
 )
 
 case class DeleteTaskConfig(
-  enabled: Boolean,
+  enabledParameterName: String,
   cluster: String,
   taskDefinition: String,
   containerName: String,
@@ -331,6 +332,7 @@ class DataSetsController(
   maxFileUploadSize: Int,
   asyncExecutor: ExecutionContext,
   ecsClient: ECSTrait,
+  ssmClient: SimpleSystemsManagementTrait,
   deleteTaskConfig: DeleteTaskConfig
 )(implicit
   val swagger: Swagger
@@ -352,6 +354,27 @@ class DataSetsController(
   }
 
   /**
+    * Check if the delete task is enabled by reading from SSM.
+    * Returns false if the parameter cannot be read or is not "true".
+    */
+  private def isDeleteTaskEnabled(): Future[Boolean] = {
+    if (deleteTaskConfig.enabledParameterName.isEmpty) {
+      Future.successful(false)
+    } else {
+      ssmClient
+        .getParameters(Set(deleteTaskConfig.enabledParameterName), withDecryption = false)
+        .map { params =>
+          params.get(deleteTaskConfig.enabledParameterName).exists(_.equalsIgnoreCase("true"))
+        }
+        .recover {
+          case e: Exception =>
+            logger.warn(s"Failed to read delete task enabled parameter: ${e.getMessage}")
+            false
+        }
+    }
+  }
+
+  /**
     * Invoke a Fargate task to perform delete/cleanup operations after publishing.
     * This is a fire-and-forget operation - failures are logged but don't affect the endpoint response.
     */
@@ -360,41 +383,43 @@ class DataSetsController(
     organizationId: Int,
     success: Boolean
   ): Future[Unit] = {
-    if (!deleteTaskConfig.enabled) {
-      logger.info(s"Delete task disabled, skipping invocation for dataset $datasetId")
-      Future.successful(())
-    } else {
-      val request = new RunTaskRequest()
-        .withCluster(deleteTaskConfig.cluster)
-        .withTaskDefinition(deleteTaskConfig.taskDefinition)
-        .withLaunchType(LaunchType.FARGATE)
-        .withNetworkConfiguration(
-          new NetworkConfiguration()
-            .withAwsvpcConfiguration(
-              new AwsVpcConfiguration()
-                .withSubnets(deleteTaskConfig.subnets.asJava)
-                .withSecurityGroups(List(deleteTaskConfig.securityGroup).asJava)
-                .withAssignPublicIp(AssignPublicIp.DISABLED)
-            )
-        )
-        .withOverrides(
-          new TaskOverride()
-            .withContainerOverrides(
-              new ContainerOverride()
-                .withName(deleteTaskConfig.containerName)
-                .withEnvironment(
-                  new KeyValuePair().withName("DATASET_ID").withValue(datasetId.toString),
-                  new KeyValuePair().withName("ORGANIZATION_ID").withValue(organizationId.toString),
-                  new KeyValuePair().withName("PUBLISH_SUCCESS").withValue(success.toString)
-                )
-            )
-        )
+    isDeleteTaskEnabled().flatMap { enabled =>
+      if (!enabled) {
+        logger.info(s"Delete task disabled, skipping invocation for dataset $datasetId")
+        Future.successful(())
+      } else {
+        val request = new RunTaskRequest()
+          .withCluster(deleteTaskConfig.cluster)
+          .withTaskDefinition(deleteTaskConfig.taskDefinition)
+          .withLaunchType(LaunchType.FARGATE)
+          .withNetworkConfiguration(
+            new NetworkConfiguration()
+              .withAwsvpcConfiguration(
+                new AwsVpcConfiguration()
+                  .withSubnets(deleteTaskConfig.subnets.asJava)
+                  .withSecurityGroups(List(deleteTaskConfig.securityGroup).asJava)
+                  .withAssignPublicIp(AssignPublicIp.DISABLED)
+              )
+          )
+          .withOverrides(
+            new TaskOverride()
+              .withContainerOverrides(
+                new ContainerOverride()
+                  .withName(deleteTaskConfig.containerName)
+                  .withEnvironment(
+                    new KeyValuePair().withName("DATASET_ID").withValue(datasetId.toString),
+                    new KeyValuePair().withName("ORGANIZATION_ID").withValue(organizationId.toString),
+                    new KeyValuePair().withName("PUBLISH_SUCCESS").withValue(success.toString)
+                  )
+              )
+          )
 
-      ecsClient.runTaskAsync(request).map { result =>
-        logger.info(s"Invoked delete task for dataset $datasetId: ${result.getTasks.size()} task(s) started")
-      }.recover {
-        case e: Exception =>
-          logger.error(s"Failed to invoke delete task for dataset $datasetId: ${e.getMessage}", e)
+        ecsClient.runTaskAsync(request).map { result =>
+          logger.info(s"Invoked delete task for dataset $datasetId: ${result.getTasks.size()} task(s) started")
+        }.recover {
+          case e: Exception =>
+            logger.error(s"Failed to invoke delete task for dataset $datasetId: ${e.getMessage}", e)
+        }
       }
     }
   }

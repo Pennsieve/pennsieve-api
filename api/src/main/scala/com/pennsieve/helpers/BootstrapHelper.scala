@@ -27,6 +27,8 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import com.pennsieve.aws.cognito.{ CognitoClient, CognitoConfig }
 import com.pennsieve.aws.ecs.{ AWSECS, ECSTrait }
+import com.pennsieve.aws.ssm.{ AWSSimpleSystemsManagement, SimpleSystemsManagementTrait }
+import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementAsyncClientBuilder
 import com.pennsieve.aws.s3.AWSS3Container
 import com.pennsieve.aws.s3.LocalS3Container
 import com.amazonaws.services.ecs.AmazonECSAsyncClientBuilder
@@ -152,6 +154,14 @@ trait BaseBootstrapHelper {
 
   lazy val ecsClient: ECSTrait = new AWSECS(
     AmazonECSAsyncClientBuilder
+      .standard()
+      .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
+      .withRegion(Settings.region)
+      .build()
+  )
+
+  lazy val ssmClient: SimpleSystemsManagementTrait = new AWSSimpleSystemsManagement(
+    AWSSimpleSystemsManagementAsyncClientBuilder
       .standard()
       .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
       .withRegion(Settings.region)

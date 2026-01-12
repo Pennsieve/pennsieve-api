@@ -146,7 +146,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       context mount (externalPublicationController, "/datasets/*", "externalPublications")
 
       val deleteTaskConfig = DeleteTaskConfig(
-        enabled = bootstrapHelper.insecureContainer.config.as[Boolean]("ecs.delete_task.enabled"),
+        enabledParameterName = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.enabled_parameter_name"),
         cluster = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.cluster"),
         taskDefinition = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.task_definition"),
         containerName = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.container_name"),
@@ -170,6 +170,7 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
           .getInt("pennsieve.max_file_upload_size"),
         ec,
         bootstrapHelper.ecsClient,
+        bootstrapHelper.ssmClient,
         deleteTaskConfig
       )
       context mount (dataSetsController, "/datasets/*", "datasets")

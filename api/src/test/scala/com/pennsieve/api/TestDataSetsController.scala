@@ -28,6 +28,8 @@ import cats.implicits._
 import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.aws.ecs.ECSTrait
 import com.pennsieve.aws.email.LoggingEmailer
+import com.pennsieve.aws.ssm.SimpleSystemsManagementTrait
+import com.typesafe.config.Config
 import com.amazonaws.services.ecs.model.{
   ListTasksRequest,
   ListTasksResult,
@@ -145,8 +147,26 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         Future.successful(new ListTasksResult())
     }
 
+    val mockSsmClient: SimpleSystemsManagementTrait = new SimpleSystemsManagementTrait {
+      override def getParameters(
+        parameters: Set[String],
+        withDecryption: Boolean
+      )(implicit
+        executionContext: ExecutionContext
+      ): Future[Map[String, String]] =
+        Future.successful(Map.empty)
+
+      override def getParametersAsConfig(
+        ssmConfigMap: Map[String, String],
+        withDecryption: Boolean
+      )(implicit
+        executionContext: ExecutionContext
+      ): Future[Config] =
+        Future.successful(com.typesafe.config.ConfigFactory.empty())
+    }
+
     val mockDeleteTaskConfig: DeleteTaskConfig = DeleteTaskConfig(
-      enabled = false,
+      enabledParameterName = "",
       cluster = "test-cluster",
       taskDefinition = "test-task-definition",
       containerName = "test-container",
@@ -170,6 +190,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         maxFileUploadSize,
         system.dispatcher,
         mockEcsClient,
+        mockSsmClient,
         mockDeleteTaskConfig
       ),
       "/*"
