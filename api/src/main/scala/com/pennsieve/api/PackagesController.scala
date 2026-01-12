@@ -116,6 +116,21 @@ case class SetStorageRequest(size: Long)
 
 case class SetStorageResponse(storageUse: Map[String, Long])
 
+case class IsPublishedResponse(kind: String, published: Boolean)
+
+case class CollectionPublishedInfo(
+  kind: String,
+  published: Int,
+  unpublished: Int,
+  publishedIds: List[String],
+  unpublishedIds: List[String],
+  collections: List[String]
+)
+
+case class SetPublishedRequest(published: Boolean)
+
+case class SetPublishedResponse(success: Boolean, filesUpdated: Int)
+
 object PackagesController {
   //Default values for retrieving Package children (i.e. other packages)
   val PackageChildrenDefaultLimit: Int = 100
@@ -589,21 +604,6 @@ class PackagesController(
       override val is = result.value.map(OkResult)
     }
   }
-
-  case class IsPublishedResponse(kind: String, published: Boolean)
-
-  case class CollectionPublishedInfo(
-    kind: String,
-    published: Int,
-    unpublished: Int,
-    publishedIds: List[String],
-    unpublishedIds: List[String],
-    collections: List[String]
-  )
-
-  case class SetPublishedRequest(published: Boolean)
-
-  case class SetPublishedResponse(success: Boolean, filesUpdated: Int)
 
   val isPublishedOperation = (apiOperation[IsPublishedResponse]("isPublished")
     summary "checks if a package has any published files"
