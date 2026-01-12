@@ -26,7 +26,14 @@ import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.aws.cognito.MockCognito
+import com.pennsieve.aws.ecs.ECSTrait
 import com.pennsieve.aws.email.LoggingEmailer
+import com.amazonaws.services.ecs.model.{
+  ListTasksRequest,
+  ListTasksResult,
+  RunTaskRequest,
+  RunTaskResult
+}
 import com.pennsieve.clients.MockDatasetAssetClient
 import com.pennsieve.core.utilities.InsecureContainer
 import com.pennsieve.db.TeamsMapper
@@ -128,6 +135,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         Future.successful(true)
     }
 
+    val mockEcsClient: ECSTrait = new ECSTrait {
+      override def runTaskAsync(task: RunTaskRequest): Future[RunTaskResult] =
+        Future.successful(new RunTaskResult())
+
+      override def listTasksAsync(
+        task: ListTasksRequest
+      ): Future[ListTasksResult] =
+        Future.successful(new ListTasksResult())
+    }
+
+    val mockDeleteTaskConfig: DeleteTaskConfig = DeleteTaskConfig(
+      enabled = false,
+      cluster = "test-cluster",
+      taskDefinition = "test-task-definition",
+      containerName = "test-container",
+      subnets = List("subnet-1"),
+      securityGroup = "sg-1"
+    )
+
     addServlet(
       new DataSetsController(
         insecureContainer,
@@ -142,7 +168,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         new MockCognito,
         mockOrcidClient,
         maxFileUploadSize,
-        system.dispatcher
+        system.dispatcher,
+        mockEcsClient,
+        mockDeleteTaskConfig
       ),
       "/*"
     )
