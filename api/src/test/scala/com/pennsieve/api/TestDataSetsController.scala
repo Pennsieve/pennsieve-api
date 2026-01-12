@@ -166,7 +166,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
 
     val mockDeleteTaskConfig: DeleteTaskConfig = DeleteTaskConfig(
-      enabledParameterName = "",
       cluster = "test-cluster",
       taskDefinition = "test-task-definition",
       containerName = "test-container",

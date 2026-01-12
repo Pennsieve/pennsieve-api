@@ -146,7 +146,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       context mount (externalPublicationController, "/datasets/*", "externalPublications")
 
       val deleteTaskConfig = DeleteTaskConfig(
-        enabledParameterName = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.enabled_parameter_name"),
         cluster = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.cluster"),
         taskDefinition = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.task_definition"),
         containerName = bootstrapHelper.insecureContainer.config.as[String]("ecs.delete_task.container_name"),

@@ -296,7 +296,6 @@ case class ChangelogEventPage(
 )
 
 case class DeleteTaskConfig(
-  enabledParameterName: String,
   cluster: String,
   taskDefinition: String,
   containerName: String,
@@ -354,24 +353,29 @@ class DataSetsController(
   }
 
   /**
+    * SSM parameter path for the delete task enabled flag.
+    * Constructed from the environment name: /${environment}/api/ecs-delete-task-enabled
+    */
+  private val deleteTaskEnabledParameterPath: String = {
+    val environment = insecureContainer.config.getString("environment")
+    s"/${environment}/api/ecs-delete-task-enabled"
+  }
+
+  /**
     * Check if the delete task is enabled by reading from SSM.
     * Returns false if the parameter cannot be read or is not "true".
     */
   private def isDeleteTaskEnabled(): Future[Boolean] = {
-    if (deleteTaskConfig.enabledParameterName.isEmpty) {
-      Future.successful(false)
-    } else {
-      ssmClient
-        .getParameters(Set(deleteTaskConfig.enabledParameterName), withDecryption = false)
-        .map { params =>
-          params.get(deleteTaskConfig.enabledParameterName).exists(_.equalsIgnoreCase("true"))
-        }
-        .recover {
-          case e: Exception =>
-            logger.warn(s"Failed to read delete task enabled parameter: ${e.getMessage}")
-            false
-        }
-    }
+    ssmClient
+      .getParameters(Set(deleteTaskEnabledParameterPath), withDecryption = false)
+      .map { params =>
+        params.get(deleteTaskEnabledParameterPath).exists(_.equalsIgnoreCase("true"))
+      }
+      .recover {
+        case e: Exception =>
+          logger.warn(s"Failed to read delete task enabled parameter from $deleteTaskEnabledParameterPath: ${e.getMessage}")
+          false
+      }
   }
 
   /**
