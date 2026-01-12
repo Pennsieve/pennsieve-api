@@ -372,3 +372,40 @@ resource "aws_ssm_parameter" "publishing_default_workflow" {
   type  = "String"
   value = var.publishing_default_workflow
 }
+
+# ECS Delete Task Configuration
+resource "aws_ssm_parameter" "ecs_delete_task_enabled" {
+  name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-enabled"
+  type  = "String"
+  value = var.ecs_delete_task_enabled
+}
+
+resource "aws_ssm_parameter" "ecs_delete_task_cluster" {
+  name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-cluster"
+  type  = "String"
+  value = data.terraform_remote_state.ecs_cluster.outputs.cluster_arn
+}
+
+resource "aws_ssm_parameter" "ecs_delete_task_definition" {
+  name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-definition"
+  type  = "String"
+  value = var.ecs_delete_task_definition
+}
+
+resource "aws_ssm_parameter" "ecs_delete_task_subnets" {
+  name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-subnets"
+  type  = "String"
+  value = join(",", data.terraform_remote_state.vpc.outputs.private_subnet_ids)
+}
+
+resource "aws_ssm_parameter" "ecs_delete_task_security_group" {
+  name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-security-group"
+  type  = "String"
+  value = var.ecs_delete_task_security_group
+}
+
+resource "aws_ssm_parameter" "ecs_delete_task_container_name" {
+  name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-container-name"
+  type  = "String"
+  value = var.ecs_delete_task_container_name
+}
