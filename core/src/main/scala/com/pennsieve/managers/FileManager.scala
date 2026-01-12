@@ -529,6 +529,30 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
   ): EitherT[Future, CoreError, Option[FileType]] =
     db.run(files.getPackageFileType(`package`)).toEitherT
 
+  def isPublished(
+    `package`: Package
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] =
+    db.run(files.isPublished(`package`.id)).toEitherT
+
+  def setPublished(
+    `package`: Package,
+    published: Boolean
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    db.run(files.setPublished(`package`.id, published)).toEitherT
+
+  def getPublishedStatusForPackages(
+    packages: Seq[Package]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Map[Int, Boolean]] =
+    db.run(files.getPublishedStatusByPackageIds(packages.map(_.id)))
+      .map(_.toMap)
+      .toEitherT
+
   def renameFile(
     `file`: File,
     newName: String

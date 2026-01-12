@@ -1,0 +1,2 @@
+ALTER TABLE files
+    ADD COLUMN published BOOLEAN NOT NULL DEFAULT false;

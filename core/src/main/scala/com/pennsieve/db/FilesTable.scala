@@ -101,6 +101,7 @@ abstract class AbstractFilesTable[T](
   def properties = column[Option[Json]]("properties")
   def assetType = column[Option[String]]("asset_type")
   def provenanceId = column[Option[UUID]]("provenance_id")
+  def published = column[Boolean]("published")
 
   val filesSelect = (
     packageId,
@@ -119,6 +120,7 @@ abstract class AbstractFilesTable[T](
     properties,
     assetType,
     provenanceId,
+    published,
     id
   )
 }
@@ -219,6 +221,42 @@ class FilesMapper(val organization: Organization)
         case None => DBIO.failed(NotFound(s"File s3://$s3bucket/$s3key"))
       }
   }
+
+  def isPublished(
+    packageId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Boolean, NoStream, Effect.Read] =
+    this
+      .filter(_.packageId === packageId)
+      .filter(_.published === true)
+      .exists
+      .result
+
+  def setPublished(
+    packageId: Int,
+    published: Boolean
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Int, NoStream, Effect.Write] =
+    this
+      .filter(_.packageId === packageId)
+      .map(_.published)
+      .update(published)
+
+  def getPublishedStatusByPackageIds(
+    packageIds: Seq[Int]
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Seq[(Int, Boolean)], NoStream, Effect.Read] =
+    this
+      .filter(_.packageId inSet packageIds)
+      .groupBy(_.packageId)
+      .map {
+        case (pkgId, files) =>
+          (pkgId, files.map(_.published).max.getOrElse(false))
+      }
+      .result
 
   def getFrom(
     `packages`: Seq[Package],

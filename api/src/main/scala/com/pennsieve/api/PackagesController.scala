@@ -590,6 +590,144 @@ class PackagesController(
     }
   }
 
+  case class IsPublishedResponse(kind: String = "package", published: Boolean)
+
+  case class CollectionPublishedInfo(
+    kind: String = "collection",
+    published: Int,
+    unpublished: Int,
+    publishedIds: List[String],
+    unpublishedIds: List[String],
+    collections: List[String]
+  )
+
+  case class SetPublishedRequest(published: Boolean)
+
+  case class SetPublishedResponse(success: Boolean, filesUpdated: Int)
+
+  val isPublishedOperation = (apiOperation[IsPublishedResponse]("isPublished")
+    summary "checks if a package has any published files"
+    parameters
+      pathParam[String]("id").description("package id"))
+
+  get("/:id/published", operation(isPublishedOperation)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, Any] = for {
+        packageId <- paramT[String]("id")
+        secureContainer <- getSecureContainer()
+        packageAndDataset <- secureContainer.packageManager
+          .getPackageAndDatasetByNodeId(packageId)
+          .coreErrorToActionResult()
+        (pkg, dataset) = packageAndDataset
+
+        _ <- secureContainer
+          .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
+          .coreErrorToActionResult()
+
+        response <- pkg.`type` match {
+          case PackageType.Collection =>
+            // For collections, return info about children
+            for {
+              children <- secureContainer.packageManager
+                .children(Some(pkg), dataset)
+                .coreErrorToActionResult()
+
+              // Separate collections from regular packages
+              (childCollections, childPackages) = children.partition(
+                _.`type` == PackageType.Collection
+              )
+
+              // Get published status for non-collection packages
+              publishedStatusMap <- secureContainer.fileManager
+                .getPublishedStatusForPackages(childPackages)
+                .coreErrorToActionResult()
+
+              // Build response
+              publishedPkgs = childPackages.filter(
+                p => publishedStatusMap.getOrElse(p.id, false)
+              )
+              unpublishedPkgs = childPackages.filter(
+                p => !publishedStatusMap.getOrElse(p.id, false)
+              )
+
+            } yield
+              CollectionPublishedInfo(
+                published = publishedPkgs.size,
+                unpublished = unpublishedPkgs.size,
+                publishedIds = publishedPkgs.map(_.nodeId),
+                unpublishedIds = unpublishedPkgs.map(_.nodeId),
+                collections = childCollections.map(_.nodeId)
+              )
+
+          case _ =>
+            secureContainer.fileManager
+              .isPublished(pkg)
+              .map(published => IsPublishedResponse(published = published))
+              .coreErrorToActionResult()
+        }
+      } yield response
+
+      override val is = result.value.map(OkResult)
+    }
+  }
+
+  val setPublishedOperation = (apiOperation[SetPublishedResponse](
+    "setPublished"
+  )
+    summary "sets the published status of all files in a package"
+    parameters (
+      pathParam[String]("id").description("package id"),
+      bodyParam[SetPublishedRequest]("body")
+        .description("published status to set")
+  ))
+
+  put("/:id/published", operation(setPublishedOperation)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, SetPublishedResponse] = for {
+        packageId <- paramT[String]("id")
+        traceId <- getTraceId(request)
+        secureContainer <- getSecureContainer()
+        body <- extractOrErrorT[SetPublishedRequest](parsedBody)
+        packageAndDataset <- secureContainer.packageManager
+          .getPackageAndDatasetByNodeId(packageId)
+          .coreErrorToActionResult()
+        (pkg, dataset) = packageAndDataset
+
+        _ <- secureContainer
+          .authorizeDataset(Set(DatasetPermission.EditFiles))(dataset)
+          .coreErrorToActionResult()
+
+        _ <- secureContainer.datasetManager
+          .assertNotLocked(dataset)
+          .coreErrorToActionResult()
+
+        filesUpdated <- pkg.`type` match {
+          case PackageType.Collection =>
+            // Collections (folders) have no files table entry
+            EitherT.rightT[Future, ActionResult](0)
+          case _ =>
+            secureContainer.fileManager
+              .setPublished(pkg, body.published)
+              .coreErrorToActionResult()
+        }
+
+        _ <- auditLogger
+          .message()
+          .append("dataset-id", dataset.id)
+          .append("dataset-node-id", dataset.nodeId)
+          .append("package-id", pkg.id)
+          .append("package-node-id", pkg.nodeId)
+          .append("published", body.published)
+          .log(traceId)
+          .toEitherT
+          .coreErrorToActionResult()
+
+      } yield SetPublishedResponse(success = true, filesUpdated = filesUpdated)
+
+      override val is = result.value.map(OkResult)
+    }
+  }
+
   val processPackageOperation = (apiOperation[Unit]("processPackage")
     summary "Kick off a process package operation if the package is in an uploaded state."
     parameters
