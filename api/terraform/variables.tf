@@ -89,7 +89,7 @@ variable "ecs_delete_task_container_name" {
 
 variable "ecs_delete_task_image" {
   description = "Docker image for the delete task"
-  default     = ""
+  default     = "pennsieve/storage-s3-cleanup"
 }
 
 variable "ecs_delete_task_cpu" {
