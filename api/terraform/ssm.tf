@@ -389,7 +389,7 @@ resource "aws_ssm_parameter" "ecs_delete_task_cluster" {
 resource "aws_ssm_parameter" "ecs_delete_task_definition" {
   name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-definition"
   type  = "String"
-  value = var.ecs_delete_task_definition
+  value = aws_ecs_task_definition.delete_task.arn
 }
 
 resource "aws_ssm_parameter" "ecs_delete_task_subnets" {

@@ -79,16 +79,27 @@ variable "ecs_delete_task_enabled" {
   default = "false"
 }
 
-variable "ecs_delete_task_definition" {
-  default = ""
-}
-
 variable "ecs_delete_task_security_group" {
   default = ""
 }
 
 variable "ecs_delete_task_container_name" {
   default = "delete-task"
+}
+
+variable "ecs_delete_task_image" {
+  description = "Docker image for the delete task"
+  default     = ""
+}
+
+variable "ecs_delete_task_cpu" {
+  description = "CPU units for the delete task (256, 512, 1024, 2048, 4096)"
+  default     = "256"
+}
+
+variable "ecs_delete_task_memory" {
+  description = "Memory (MB) for the delete task"
+  default     = "512"
 }
 
 locals {
