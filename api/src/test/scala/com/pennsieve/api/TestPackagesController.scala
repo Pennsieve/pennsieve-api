@@ -4537,10 +4537,7 @@ class TestPackagesController
       .value
 
     // Update the file to be published
-    import com.pennsieve.traits.PostgresProfile.api._
-    val updateAction =
-      sqlu"UPDATE files SET published = true WHERE id = ${file.id}"
-    secureContainer.db.run(updateAction).await
+    fileManager.setPublished(pdfPackage, published = true).await.value
 
     get(
       s"/${pdfPackage.nodeId}/published",
@@ -4703,10 +4700,7 @@ class TestPackagesController
       .value
 
     // Mark file as published
-    import com.pennsieve.traits.PostgresProfile.api._
-    val updateAction =
-      sqlu"UPDATE files SET published = true WHERE id = ${publishedFile.id}"
-    secureContainer.db.run(updateAction).await
+    fileManager.setPublished(publishedChild, published = true).await.value
 
     // Create unpublished child
     val unpublishedChild = packageManager
@@ -4822,7 +4816,7 @@ class TestPackagesController
     }
   }
 
-  test("isPublished returns 403 for unauthorized user") {
+  test("isPublished returns 404 for unauthorized user") {
     val pdfPackage = packageManager
       .create(
         "Private PDF",
@@ -4839,7 +4833,7 @@ class TestPackagesController
       s"/${pdfPackage.nodeId}/published",
       headers = authorizationHeader(externalJwt) ++ traceIdHeader()
     ) {
-      status should equal(403)
+      status should equal(404)
     }
   }
 
@@ -4935,10 +4929,7 @@ class TestPackagesController
       .value
 
     // Set the file to published first
-    import com.pennsieve.traits.PostgresProfile.api._
-    val updateAction =
-      sqlu"UPDATE files SET published = true WHERE id = ${file.id}"
-    secureContainer.db.run(updateAction).await
+    fileManager.setPublished(pdfPackage, published = true).await.value
 
     // Verify it's published
     get(
@@ -4998,7 +4989,7 @@ class TestPackagesController
     }
   }
 
-  test("setPublished returns 403 for unauthorized user") {
+  test("setPublished returns 404 for unauthorized user") {
     val pdfPackage = packageManager
       .create(
         "Private PDF for publish",
@@ -5016,7 +5007,7 @@ class TestPackagesController
       """{"published": true}""",
       headers = authorizationHeader(externalJwt) ++ traceIdHeader()
     ) {
-      status should equal(403)
+      status should equal(404)
     }
   }
 
