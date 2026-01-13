@@ -4567,6 +4567,11 @@ class TestPackagesController
       s"/${collectionPackage.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
+      if (status != 200) {
+        println(
+          s"[TEST DEBUG] Empty collection - status=$status, body=${response.body}"
+        )
+      }
       status should equal(200)
       val json = parse(response.body)
       compact(render(json \ "kind")) should equal("\"collection\"")
@@ -4647,6 +4652,11 @@ class TestPackagesController
       s"/${collectionPackage.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
+      if (status != 200) {
+        println(
+          s"[TEST DEBUG] Unpublished children - status=$status, body=${response.body}"
+        )
+      }
       status should equal(200)
       val json = parse(response.body)
       compact(render(json \ "kind")) should equal("\"collection\"")
@@ -4732,6 +4742,11 @@ class TestPackagesController
       s"/${collectionPackage.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
+      if (status != 200) {
+        println(
+          s"[TEST DEBUG] Mixed children - status=$status, body=${response.body}"
+        )
+      }
       status should equal(200)
       val json = parse(response.body)
       compact(render(json \ "kind")) should equal("\"collection\"")
@@ -4802,6 +4817,11 @@ class TestPackagesController
       s"/${parentCollection.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
+      if (status != 200) {
+        println(
+          s"[TEST DEBUG] Nested collections - status=$status, body=${response.body}"
+        )
+      }
       status should equal(200)
       val json = parse(response.body)
       compact(render(json \ "kind")) should equal("\"collection\"")
