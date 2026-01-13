@@ -248,15 +248,20 @@ class FilesMapper(val organization: Organization)
     packageIds: Seq[Int]
   )(implicit
     ec: ExecutionContext
-  ): DBIOAction[Seq[(Int, Boolean)], NoStream, Effect.Read] =
-    this
-      .filter(_.packageId inSet packageIds)
-      .groupBy(_.packageId)
-      .map {
-        case (pkgId, files) =>
-          (pkgId, files.map(_.published).max.getOrElse(false))
-      }
+  ): DBIOAction[Seq[(Int, Boolean)], NoStream, Effect.Read] = {
+    // PostgreSQL doesn't support max(boolean), so we query for packages
+    // that have at least one published file, then build the full result
+    val publishedPackageIds = this
+      .filter(f => (f.packageId inSet packageIds) && f.published)
+      .map(_.packageId)
+      .distinct
       .result
+
+    publishedPackageIds.map { publishedIds =>
+      val publishedSet = publishedIds.toSet
+      packageIds.map(pkgId => (pkgId, publishedSet.contains(pkgId)))
+    }
+  }
 
   def getFrom(
     `packages`: Seq[Package],
