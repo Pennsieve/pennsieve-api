@@ -74,7 +74,7 @@ import org.scalatra.test.{ BytesPart, FilePart }
 
 import java.time.ZonedDateTime
 import java.util.UUID
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
