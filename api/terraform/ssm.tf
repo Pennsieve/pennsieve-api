@@ -383,7 +383,7 @@ resource "aws_ssm_parameter" "ecs_delete_task_enabled" {
 resource "aws_ssm_parameter" "ecs_delete_task_cluster" {
   name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-cluster"
   type  = "String"
-  value = data.terraform_remote_state.ecs_cluster.outputs.cluster_arn
+  value = data.terraform_remote_state.fargate.outputs.ecs_cluster_arn
 }
 
 resource "aws_ssm_parameter" "ecs_delete_task_definition" {
@@ -401,7 +401,7 @@ resource "aws_ssm_parameter" "ecs_delete_task_subnets" {
 resource "aws_ssm_parameter" "ecs_delete_task_security_group" {
   name  = "/${var.environment_name}/${var.service_name}/ecs-delete-task-security-group"
   type  = "String"
-  value = var.ecs_delete_task_security_group
+  value = aws_security_group.delete_fargate_task_security_group.id
 }
 
 resource "aws_ssm_parameter" "ecs_delete_task_container_name" {

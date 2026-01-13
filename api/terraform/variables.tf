@@ -79,10 +79,6 @@ variable "ecs_delete_task_enabled" {
   default = "false"
 }
 
-variable "ecs_delete_task_security_group" {
-  default = ""
-}
-
 variable "ecs_delete_task_container_name" {
   default = "delete-task"
 }

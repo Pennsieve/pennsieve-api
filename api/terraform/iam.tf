@@ -356,3 +356,24 @@ data "aws_iam_policy_document" "uploader_iam_role_policy_document" {
     }
   }
 }
+
+# Security Group for Delete Fargate Task
+resource "aws_security_group" "delete_fargate_task_security_group" {
+  name        = "${var.environment_name}-delete-fargate-sg-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+  description = "Security Group for ${var.environment_name}-delete-fargate-task-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+  vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    "Name"         = "${var.environment_name}-delete-fargate-task-sg-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+    "name"         = "${var.environment_name}-delete-fargate-task-sg-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+    "service_name" = var.service_name
+    "Environment"  = var.environment_name
+  }
+}
