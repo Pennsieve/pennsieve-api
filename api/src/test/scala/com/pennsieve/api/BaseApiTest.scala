@@ -127,6 +127,7 @@ trait ApiSuite
     config = ConfigFactory
       .empty()
       .withFallback(postgresContainer.config)
+      .withValue("environment", ConfigValueFactory.fromAnyRef("test"))
       .withValue("sqs.host", ConfigValueFactory.fromAnyRef(s"http://localhost"))
       .withValue(
         "sqs.queue",
