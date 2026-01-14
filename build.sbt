@@ -90,7 +90,7 @@ lazy val slickPgVersion = "0.20.3"
 
 lazy val slickCatsVersion = "0.10.4"
 
-lazy val testContainersVersion = "0.40.1"
+lazy val testContainersVersion = "0.44.1"
 lazy val utilitiesVersion = "4-55953e4"
 lazy val jobSchedulingServiceClientVersion = "6-3251c91"
 lazy val serviceUtilitiesVersion = "9-b838dd9"
