@@ -20,7 +20,7 @@ import com.pennsieve.aws.s3.{ S3, S3Trait }
 import com.pennsieve.core.utilities.PostgresDatabase
 import com.pennsieve.test._
 import com.pennsieve.traits.PostgresProfile.api._
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{ RouteTestTimeout, ScalatestRouteTest }
 import akka.http.scaladsl.model.StatusCodes.{ InternalServerError, OK }
 import com.pennsieve.akka.http._
 import io.circe.syntax._
@@ -30,6 +30,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
 
 class HealthCheckSpec
     extends AnyWordSpec
@@ -39,6 +40,8 @@ class HealthCheckSpec
     with PersistantTestContainers
     with PostgresDockerContainer
     with S3DockerContainer {
+
+  implicit val timeout: RouteTestTimeout = RouteTestTimeout(5.seconds)
 
   var db: Database = _
   var s3: S3 = _
