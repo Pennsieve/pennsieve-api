@@ -544,6 +544,22 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
   ): EitherT[Future, CoreError, Int] =
     db.run(files.setPublished(`package`.id, published)).toEitherT
 
+  def setPublishedByS3Location(
+    s3Bucket: String,
+    s3Key: String,
+    published: Boolean
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    db.run(files.setPublishedByS3Location(s3Bucket, s3Key, published)).toEitherT
+
+  def getFilesWithPublishedStatus(
+    `package`: Package
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[File]] =
+    db.run(files.getFilesWithPublishedStatus(`package`.id)).toEitherT
+
   def getPublishedStatusForPackages(
     packages: Seq[Package]
   )(implicit

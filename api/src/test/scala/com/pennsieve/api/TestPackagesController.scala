@@ -4468,18 +4468,89 @@ class TestPackagesController
     }
   }
 
-  // isPublished endpoint tests
+  // GET /:id/published endpoint tests - returns list of files with published status
   //////////////////////////////////////////////////////////////////////////////
 
-  test("isPublished returns false for package with unpublished files") {
+  test("GET /:id/published returns list of files with their published status") {
     val pdfPackage = packageManager
       .create(
-        "Unpublished PDF",
+        "PDF Package",
         PackageType.PDF,
         READY,
         dataset,
         Some(loggedInUser.id),
         None
+      )
+      .await
+      .value
+
+    val file1 = fileManager
+      .create(
+        "file1.pdf",
+        FileType.PDF,
+        pdfPackage,
+        "s3bucketName",
+        "1/2/3/file1.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    val file2 = fileManager
+      .create(
+        "file2.pdf",
+        FileType.PDF,
+        pdfPackage,
+        "s3bucketName",
+        "1/2/3/file2.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    get(
+      s"/${pdfPackage.nodeId}/published",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val json = parse(response.body)
+      val files = (json \ "files").extract[List[Map[String, Any]]]
+      files.size should equal(2)
+
+      // All files should be unpublished by default
+      files.foreach { file =>
+        file("published") shouldBe false
+      }
+    }
+  }
+
+  test("GET /:id/published returns correct published status for mixed files") {
+    val pdfPackage = packageManager
+      .create(
+        "PDF Package",
+        PackageType.PDF,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "published.pdf",
+        FileType.PDF,
+        pdfPackage,
+        "s3bucketName",
+        "1/2/3/published.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
       )
       .await
       .value
@@ -4496,6 +4567,13 @@ class TestPackagesController
         0
       )
       .await
+      .value
+
+    // Mark one file as published using the helper function
+    fileManager
+      .setPublishedByS3Location("s3bucketName", "1/2/3/published.pdf", true)
+      .await
+      .value
 
     get(
       s"/${pdfPackage.nodeId}/published",
@@ -4503,58 +4581,24 @@ class TestPackagesController
     ) {
       status should equal(200)
       val json = parse(response.body)
-      compact(render(json \ "kind")) should equal("\"package\"")
-      compact(render(json \ "published")) should equal("false")
+      val files = (json \ "files").extract[List[Map[String, Any]]]
+      files.size should equal(2)
+
+      val publishedFile =
+        files.find(_("s3Key") == "1/2/3/published.pdf").get
+      val unpublishedFile =
+        files.find(_("s3Key") == "1/2/3/unpublished.pdf").get
+
+      publishedFile("published") shouldBe true
+      unpublishedFile("published") shouldBe false
     }
   }
 
-  test("isPublished returns true for package with published files") {
+  test("GET /:id/published returns empty list for package with no files") {
     val pdfPackage = packageManager
       .create(
-        "Published PDF",
+        "Empty PDF Package",
         PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    // Create a file and mark it as published using raw SQL since there's no manager method yet
-    val file = fileManager
-      .create(
-        "published.pdf",
-        FileType.PDF,
-        pdfPackage,
-        "s3bucketName",
-        "1/2/3/published.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    // Update the file to be published
-    fileManager.setPublished(pdfPackage, published = true).await.value
-
-    get(
-      s"/${pdfPackage.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "kind")) should equal("\"package\"")
-      compact(render(json \ "published")) should equal("true")
-    }
-  }
-
-  test("isPublished returns collection info for empty collection") {
-    val collectionPackage = packageManager
-      .create(
-        "Empty Collection",
-        PackageType.Collection,
         READY,
         dataset,
         Some(loggedInUser.id),
@@ -4564,279 +4608,17 @@ class TestPackagesController
       .value
 
     get(
-      s"/${collectionPackage.nodeId}/published",
+      s"/${pdfPackage.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      if (status != 200) {
-        println(
-          s"[TEST DEBUG] Empty collection - status=$status, body=${response.body}"
-        )
-      }
       status should equal(200)
       val json = parse(response.body)
-      compact(render(json \ "kind")) should equal("\"collection\"")
-      compact(render(json \ "published")) should equal("0")
-      compact(render(json \ "unpublished")) should equal("0")
-      compact(render(json \ "publishedIds")) should equal("[]")
-      compact(render(json \ "unpublishedIds")) should equal("[]")
-      compact(render(json \ "collections")) should equal("[]")
+      val files = (json \ "files").extract[List[Map[String, Any]]]
+      files.size should equal(0)
     }
   }
 
-  test("isPublished returns collection info with unpublished children") {
-    val collectionPackage = packageManager
-      .create(
-        "Collection with children",
-        PackageType.Collection,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    // Create child packages
-    val childPkg1 = packageManager
-      .create(
-        "Child 1",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        Some(collectionPackage)
-      )
-      .await
-      .value
-
-    val childPkg2 = packageManager
-      .create(
-        "Child 2",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        Some(collectionPackage)
-      )
-      .await
-      .value
-
-    // Add files to child packages (unpublished by default)
-    fileManager
-      .create(
-        "child1.pdf",
-        FileType.PDF,
-        childPkg1,
-        "s3bucketName",
-        "1/2/3/child1.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    fileManager
-      .create(
-        "child2.pdf",
-        FileType.PDF,
-        childPkg2,
-        "s3bucketName",
-        "1/2/3/child2.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    get(
-      s"/${collectionPackage.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      if (status != 200) {
-        println(
-          s"[TEST DEBUG] Unpublished children - status=$status, body=${response.body}"
-        )
-      }
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "kind")) should equal("\"collection\"")
-      compact(render(json \ "published")) should equal("0")
-      compact(render(json \ "unpublished")) should equal("2")
-      response.body should include(childPkg1.nodeId)
-      response.body should include(childPkg2.nodeId)
-    }
-  }
-
-  test(
-    "isPublished returns collection info with mixed published/unpublished children"
-  ) {
-    val collectionPackage = packageManager
-      .create(
-        "Mixed Collection",
-        PackageType.Collection,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    // Create published child
-    val publishedChild = packageManager
-      .create(
-        "Published Child",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        Some(collectionPackage)
-      )
-      .await
-      .value
-
-    val publishedFile = fileManager
-      .create(
-        "published.pdf",
-        FileType.PDF,
-        publishedChild,
-        "s3bucketName",
-        "1/2/3/published.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    // Mark file as published
-    fileManager.setPublished(publishedChild, published = true).await.value
-
-    // Create unpublished child
-    val unpublishedChild = packageManager
-      .create(
-        "Unpublished Child",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        Some(collectionPackage)
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "unpublished.pdf",
-        FileType.PDF,
-        unpublishedChild,
-        "s3bucketName",
-        "1/2/3/unpublished.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    get(
-      s"/${collectionPackage.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      if (status != 200) {
-        println(
-          s"[TEST DEBUG] Mixed children - status=$status, body=${response.body}"
-        )
-      }
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "kind")) should equal("\"collection\"")
-      compact(render(json \ "published")) should equal("1")
-      compact(render(json \ "unpublished")) should equal("1")
-      (json \ "publishedIds").extract[List[String]] should contain(
-        publishedChild.nodeId
-      )
-      (json \ "unpublishedIds").extract[List[String]] should contain(
-        unpublishedChild.nodeId
-      )
-    }
-  }
-
-  test("isPublished returns nested collections in collections list") {
-    val parentCollection = packageManager
-      .create(
-        "Parent Collection",
-        PackageType.Collection,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    // Create nested collection
-    val nestedCollection = packageManager
-      .create(
-        "Nested Collection",
-        PackageType.Collection,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        Some(parentCollection)
-      )
-      .await
-      .value
-
-    // Create regular package sibling
-    val siblingPkg = packageManager
-      .create(
-        "Sibling Package",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        Some(parentCollection)
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "sibling.pdf",
-        FileType.PDF,
-        siblingPkg,
-        "s3bucketName",
-        "1/2/3/sibling.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    get(
-      s"/${parentCollection.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      if (status != 200) {
-        println(
-          s"[TEST DEBUG] Nested collections - status=$status, body=${response.body}"
-        )
-      }
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "kind")) should equal("\"collection\"")
-      compact(render(json \ "published")) should equal("0")
-      compact(render(json \ "unpublished")) should equal("1")
-      (json \ "collections").extract[List[String]] should contain(
-        nestedCollection.nodeId
-      )
-      (json \ "unpublishedIds").extract[List[String]] should contain(
-        siblingPkg.nodeId
-      )
-    }
-  }
-
-  test("isPublished returns 404 for unauthorized user") {
+  test("GET /:id/published returns 404 for unauthorized user") {
     val pdfPackage = packageManager
       .create(
         "Private PDF",
@@ -4857,7 +4639,7 @@ class TestPackagesController
     }
   }
 
-  test("isPublished returns 404 for non-existent package") {
+  test("GET /:id/published returns 404 for non-existent package") {
     get(
       s"/N:package:nonexistent-id/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -4866,128 +4648,10 @@ class TestPackagesController
     }
   }
 
-  // setPublished endpoint tests
-  //////////////////////////////////////////////////////////////////////////////
-
-  test("setPublished sets files to published") {
-    val pdfPackage = packageManager
-      .create(
-        "PDF to publish",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    val file = fileManager
-      .create(
-        "to-publish.pdf",
-        FileType.PDF,
-        pdfPackage,
-        "s3bucketName",
-        "1/2/3/to-publish.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    // Verify file is not published initially
-    file.published shouldBe false
-
-    putJson(
-      s"/${pdfPackage.nodeId}/published",
-      """{"published": true}""",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "success")) should equal("true")
-      compact(render(json \ "filesUpdated")) should equal("1")
-    }
-
-    // Verify file is now published via isPublished endpoint
-    get(
-      s"/${pdfPackage.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "published")) should equal("true")
-    }
-  }
-
-  test("setPublished sets files to unpublished") {
-    val pdfPackage = packageManager
-      .create(
-        "PDF to unpublish",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    val file = fileManager
-      .create(
-        "to-unpublish.pdf",
-        FileType.PDF,
-        pdfPackage,
-        "s3bucketName",
-        "1/2/3/to-unpublish.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    // Set the file to published first
-    fileManager.setPublished(pdfPackage, published = true).await.value
-
-    // Verify it's published
-    get(
-      s"/${pdfPackage.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "published")) should equal("true")
-    }
-
-    // Now unpublish it
-    putJson(
-      s"/${pdfPackage.nodeId}/published",
-      """{"published": false}""",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "success")) should equal("true")
-      compact(render(json \ "filesUpdated")) should equal("1")
-    }
-
-    // Verify file is now unpublished
-    get(
-      s"/${pdfPackage.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "published")) should equal("false")
-    }
-  }
-
-  test("setPublished returns 0 files updated for collections") {
+  test("GET /:id/published returns empty list for collection (no files)") {
     val collectionPackage = packageManager
       .create(
-        "Collection to publish",
+        "Collection",
         PackageType.Collection,
         READY,
         dataset,
@@ -4997,115 +4661,14 @@ class TestPackagesController
       .await
       .value
 
-    putJson(
+    get(
       s"/${collectionPackage.nodeId}/published",
-      """{"published": true}""",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
       val json = parse(response.body)
-      compact(render(json \ "success")) should equal("true")
-      compact(render(json \ "filesUpdated")) should equal("0")
-    }
-  }
-
-  test("setPublished returns 404 for unauthorized user") {
-    val pdfPackage = packageManager
-      .create(
-        "Private PDF for publish",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    putJson(
-      s"/${pdfPackage.nodeId}/published",
-      """{"published": true}""",
-      headers = authorizationHeader(externalJwt) ++ traceIdHeader()
-    ) {
-      status should equal(404)
-    }
-  }
-
-  test("setPublished returns 404 for non-existent package") {
-    putJson(
-      s"/N:package:nonexistent-id/published",
-      """{"published": true}""",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(404)
-    }
-  }
-
-  test("setPublished updates multiple files in a package") {
-    val pdfPackage = packageManager
-      .create(
-        "Multi-file PDF",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    // Create multiple files
-    fileManager
-      .create(
-        "file1.pdf",
-        FileType.PDF,
-        pdfPackage,
-        "s3bucketName",
-        "1/2/3/file1.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file2.pdf",
-        FileType.PDF,
-        pdfPackage,
-        "s3bucketName",
-        "1/2/3/file2.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file3.pdf",
-        FileType.PDF,
-        pdfPackage,
-        "s3bucketName",
-        "1/2/3/file3.pdf",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    putJson(
-      s"/${pdfPackage.nodeId}/published",
-      """{"published": true}""",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      compact(render(json \ "success")) should equal("true")
-      compact(render(json \ "filesUpdated")) should equal("3")
+      val files = (json \ "files").extract[List[Map[String, Any]]]
+      files.size should equal(0)
     }
   }
 }

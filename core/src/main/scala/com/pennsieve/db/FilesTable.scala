@@ -244,6 +244,25 @@ class FilesMapper(val organization: Organization)
       .map(_.published)
       .update(published)
 
+  def setPublishedByS3Location(
+    s3Bucket: String,
+    s3Key: String,
+    published: Boolean
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Int, NoStream, Effect.Write] =
+    this
+      .filter(f => f.s3bucket === s3Bucket && f.s3key === s3Key)
+      .map(_.published)
+      .update(published)
+
+  def getFilesWithPublishedStatus(
+    packageId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Seq[File], NoStream, Effect.Read] =
+    this.filter(_.packageId === packageId).result
+
   def getPublishedStatusByPackageIds(
     packageIds: Seq[Int]
   )(implicit
