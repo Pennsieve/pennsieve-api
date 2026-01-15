@@ -4468,14 +4468,12 @@ class TestPackagesController
     }
   }
 
-  // GET /:id/published endpoint tests - returns list of files with published status
-  //////////////////////////////////////////////////////////////////////////////
-
   test("GET /:id/published returns list of files with their published status") {
-    val pdfPackage = packageManager
+    // Collections (folders) are the realistic case for multiple files under one package
+    val collection = packageManager
       .create(
-        "PDF Package",
-        PackageType.PDF,
+        "Test Folder",
+        PackageType.Collection,
         READY,
         dataset,
         Some(loggedInUser.id),
@@ -4486,11 +4484,11 @@ class TestPackagesController
 
     val file1 = fileManager
       .create(
-        "file1.pdf",
+        "document1.pdf",
         FileType.PDF,
-        pdfPackage,
+        collection,
         "s3bucketName",
-        "1/2/3/file1.pdf",
+        "folder/document1.pdf",
         objectType = FileObjectType.Source,
         processingState = FileProcessingState.Unprocessed,
         0
@@ -4500,11 +4498,11 @@ class TestPackagesController
 
     val file2 = fileManager
       .create(
-        "file2.pdf",
+        "document2.pdf",
         FileType.PDF,
-        pdfPackage,
+        collection,
         "s3bucketName",
-        "1/2/3/file2.pdf",
+        "folder/document2.pdf",
         objectType = FileObjectType.Source,
         processingState = FileProcessingState.Unprocessed,
         0
@@ -4513,7 +4511,7 @@ class TestPackagesController
       .value
 
     get(
-      s"/${pdfPackage.nodeId}/published",
+      s"/${collection.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
@@ -4529,10 +4527,11 @@ class TestPackagesController
   }
 
   test("GET /:id/published returns correct published status for mixed files") {
-    val pdfPackage = packageManager
+    // Legacy case: Persyst EEG data has .dat and .lay files under one TimeSeries package
+    val persystPackage = packageManager
       .create(
-        "PDF Package",
-        PackageType.PDF,
+        "EEG Recording",
+        PackageType.TimeSeries,
         READY,
         dataset,
         Some(loggedInUser.id),
@@ -4543,11 +4542,11 @@ class TestPackagesController
 
     fileManager
       .create(
-        "published.pdf",
-        FileType.PDF,
-        pdfPackage,
+        "eeg.dat",
+        FileType.Persyst,
+        persystPackage,
         "s3bucketName",
-        "1/2/3/published.pdf",
+        "data/eeg.dat",
         objectType = FileObjectType.Source,
         processingState = FileProcessingState.Unprocessed,
         0
@@ -4557,11 +4556,11 @@ class TestPackagesController
 
     fileManager
       .create(
-        "unpublished.pdf",
-        FileType.PDF,
-        pdfPackage,
+        "eeg.lay",
+        FileType.Persyst,
+        persystPackage,
         "s3bucketName",
-        "1/2/3/unpublished.pdf",
+        "data/eeg.lay",
         objectType = FileObjectType.Source,
         processingState = FileProcessingState.Unprocessed,
         0
@@ -4569,14 +4568,18 @@ class TestPackagesController
       .await
       .value
 
-    // Mark one file as published using the helper function
+    // Mark only the .dat file as published
     fileManager
-      .setPublishedByS3Location("s3bucketName", "1/2/3/published.pdf", true)
+      .setPublished(
+        persystPackage,
+        published = true,
+        s3Key = Some("data/eeg.dat")
+      )
       .await
       .value
 
     get(
-      s"/${pdfPackage.nodeId}/published",
+      s"/${persystPackage.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
@@ -4584,21 +4587,22 @@ class TestPackagesController
       val files = (json \ "files").extract[List[Map[String, Any]]]
       files.size should equal(2)
 
-      val publishedFile =
-        files.find(_("s3Key") == "1/2/3/published.pdf").get
-      val unpublishedFile =
-        files.find(_("s3Key") == "1/2/3/unpublished.pdf").get
+      val datFile =
+        files.find(_("s3Key") == "data/eeg.dat").get
+      val layFile =
+        files.find(_("s3Key") == "data/eeg.lay").get
 
-      publishedFile("published") shouldBe true
-      unpublishedFile("published") shouldBe false
+      datFile("published") shouldBe true
+      layFile("published") shouldBe false
     }
   }
 
-  test("GET /:id/published returns empty list for package with no files") {
-    val pdfPackage = packageManager
+  test("GET /:id/published returns empty list for collection with no files") {
+    // Collections (folders) are the realistic case for a package with no files
+    val emptyFolder = packageManager
       .create(
-        "Empty PDF Package",
-        PackageType.PDF,
+        "Empty Folder",
+        PackageType.Collection,
         READY,
         dataset,
         Some(loggedInUser.id),
@@ -4608,7 +4612,7 @@ class TestPackagesController
       .value
 
     get(
-      s"/${pdfPackage.nodeId}/published",
+      s"/${emptyFolder.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
@@ -4645,30 +4649,6 @@ class TestPackagesController
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
-    }
-  }
-
-  test("GET /:id/published returns empty list for collection (no files)") {
-    val collectionPackage = packageManager
-      .create(
-        "Collection",
-        PackageType.Collection,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    get(
-      s"/${collectionPackage.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      val files = (json \ "files").extract[List[Map[String, Any]]]
-      files.size should equal(0)
     }
   }
 }

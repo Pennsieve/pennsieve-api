@@ -529,29 +529,14 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
   ): EitherT[Future, CoreError, Option[FileType]] =
     db.run(files.getPackageFileType(`package`)).toEitherT
 
-  def isPublished(
-    `package`: Package
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Boolean] =
-    db.run(files.isPublished(`package`.id)).toEitherT
-
   def setPublished(
     `package`: Package,
-    published: Boolean
+    published: Boolean,
+    s3Key: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Int] =
-    db.run(files.setPublished(`package`.id, published)).toEitherT
-
-  def setPublishedByS3Location(
-    s3Bucket: String,
-    s3Key: String,
-    published: Boolean
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] =
-    db.run(files.setPublishedByS3Location(s3Bucket, s3Key, published)).toEitherT
+    db.run(files.setPublished(`package`.id, published, s3Key)).toEitherT
 
   def getFilesWithPublishedStatus(
     `package`: Package
@@ -559,15 +544,6 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Seq[File]] =
     db.run(files.getFilesWithPublishedStatus(`package`.id)).toEitherT
-
-  def getPublishedStatusForPackages(
-    packages: Seq[Package]
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Map[Int, Boolean]] =
-    db.run(files.getPublishedStatusByPackageIds(packages.map(_.id)))
-      .map(_.toMap)
-      .toEitherT
 
   def renameFile(
     `file`: File,

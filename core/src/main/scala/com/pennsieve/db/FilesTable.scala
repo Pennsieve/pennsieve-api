@@ -222,39 +222,20 @@ class FilesMapper(val organization: Organization)
       }
   }
 
-  def isPublished(
-    packageId: Int
-  )(implicit
-    ec: ExecutionContext
-  ): DBIOAction[Boolean, NoStream, Effect.Read] =
-    this
-      .filter(_.packageId === packageId)
-      .filter(_.published === true)
-      .exists
-      .result
-
   def setPublished(
     packageId: Int,
-    published: Boolean
+    published: Boolean,
+    s3Key: Option[String] = None
   )(implicit
     ec: ExecutionContext
-  ): DBIOAction[Int, NoStream, Effect.Write] =
-    this
-      .filter(_.packageId === packageId)
-      .map(_.published)
-      .update(published)
-
-  def setPublishedByS3Location(
-    s3Bucket: String,
-    s3Key: String,
-    published: Boolean
-  )(implicit
-    ec: ExecutionContext
-  ): DBIOAction[Int, NoStream, Effect.Write] =
-    this
-      .filter(f => f.s3bucket === s3Bucket && f.s3key === s3Key)
-      .map(_.published)
-      .update(published)
+  ): DBIOAction[Int, NoStream, Effect.Write] = {
+    val baseQuery = this.filter(_.packageId === packageId)
+    val filteredQuery = s3Key match {
+      case Some(key) => baseQuery.filter(_.s3key === key)
+      case None => baseQuery
+    }
+    filteredQuery.map(_.published).update(published)
+  }
 
   def getFilesWithPublishedStatus(
     packageId: Int
