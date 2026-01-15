@@ -4527,10 +4527,81 @@ class TestPackagesController
   }
 
   test("GET /:id/published returns correct published status for mixed files") {
-    // Legacy case: Persyst EEG data has .dat and .lay files under one TimeSeries package
-    val persystPackage = packageManager
+    val stedding_collection = packageManager
       .create(
-        "EEG Recording",
+        "Stedding Chanti",
+        PackageType.Collection,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "the-stump-report.pdf",
+        FileType.PDF,
+        stedding_collection,
+        "s3bucketName",
+        "data/the-stump-report.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "the-stump-image.jpeg",
+        FileType.JPEG,
+        stedding_collection,
+        "s3bucketName",
+        "data/the-stump-image.jpeg",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    // Mark one as published
+    fileManager
+      .setPublished(
+        stedding_collection,
+        published = true,
+        s3Key = Some("data/the-stump-image.jpeg")
+      )
+      .await
+      .value
+
+    get(
+      s"/${stedding_collection.nodeId}/published",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val json = parse(response.body)
+      val files = (json \ "files").extract[List[Map[String, Any]]]
+      files.size should equal(2)
+
+      val pdf_file =
+        files.find(_("s3Key") == "data/the-stump-report.pdf").get
+      val jpeg_file =
+        files.find(_("s3Key") == "data/the-stump-image.jpeg").get
+
+      pdf_file("published") shouldBe false
+      jpeg_file("published") shouldBe true
+    }
+  }
+
+  test(
+    "setPublished should mark all files as published if no s3Key is provided"
+  ) {
+    val persyst_file = packageManager
+      .create(
+        "eeg_scan",
         PackageType.TimeSeries,
         READY,
         dataset,
@@ -4542,11 +4613,11 @@ class TestPackagesController
 
     fileManager
       .create(
-        "eeg.dat",
+        "eeg_scan.dat",
         FileType.Persyst,
-        persystPackage,
+        persyst_file,
         "s3bucketName",
-        "data/eeg.dat",
+        "data/eeg_scan.dat",
         objectType = FileObjectType.Source,
         processingState = FileProcessingState.Unprocessed,
         0
@@ -4556,11 +4627,11 @@ class TestPackagesController
 
     fileManager
       .create(
-        "eeg.lay",
+        "eeg_scan.lay",
         FileType.Persyst,
-        persystPackage,
+        persyst_file,
         "s3bucketName",
-        "data/eeg.lay",
+        "data/eeg_scan.lay",
         objectType = FileObjectType.Source,
         processingState = FileProcessingState.Unprocessed,
         0
@@ -4568,18 +4639,14 @@ class TestPackagesController
       .await
       .value
 
-    // Mark only the .dat file as published
     fileManager
-      .setPublished(
-        persystPackage,
-        published = true,
-        s3Key = Some("data/eeg.dat")
-      )
+      .setPublished(persyst_file, published = true)
       .await
       .value
 
+    // Verify all files are marked as published
     get(
-      s"/${persystPackage.nodeId}/published",
+      s"/${persyst_file.nodeId}/published",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
@@ -4587,13 +4654,73 @@ class TestPackagesController
       val files = (json \ "files").extract[List[Map[String, Any]]]
       files.size should equal(2)
 
-      val datFile =
-        files.find(_("s3Key") == "data/eeg.dat").get
-      val layFile =
-        files.find(_("s3Key") == "data/eeg.lay").get
+      files.foreach { file =>
+        file("published") shouldBe true
+      }
+    }
+  }
 
-      datFile("published") shouldBe true
-      layFile("published") shouldBe false
+  test("setPublished can toggle files back to unpublished") {
+    val collection = packageManager
+      .create(
+        "Toggle Test Folder",
+        PackageType.Collection,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "toggle-test.pdf",
+        FileType.PDF,
+        collection,
+        "s3bucketName",
+        "data/toggle-test.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    // Mark as published
+    fileManager
+      .setPublished(collection, published = true)
+      .await
+      .value
+
+    // Verify it's published
+    get(
+      s"/${collection.nodeId}/published",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val json = parse(response.body)
+      val files = (json \ "files").extract[List[Map[String, Any]]]
+      files.size should equal(1)
+      files.head("published") shouldBe true
+    }
+
+    // Mark as unpublished
+    fileManager
+      .setPublished(collection, published = false)
+      .await
+      .value
+
+    // Verify it's unpublished
+    get(
+      s"/${collection.nodeId}/published",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val json = parse(response.body)
+      val files = (json \ "files").extract[List[Map[String, Any]]]
+      files.size should equal(1)
+      files.head("published") shouldBe false
     }
   }
 
