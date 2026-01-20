@@ -4467,4 +4467,252 @@ class TestPackagesController
       dto.content.name shouldBe "Timeseries Package (NeuroDataWithoutBorders) (1)"
     }
   }
+
+  test("files default to unpublished") {
+    val collection = packageManager
+      .create(
+        "Test Folder",
+        PackageType.Collection,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "document1.pdf",
+        FileType.PDF,
+        collection,
+        "s3bucketName",
+        "folder/document1.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "document2.pdf",
+        FileType.PDF,
+        collection,
+        "s3bucketName",
+        "folder/document2.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    get(
+      s"/${collection.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(2)
+
+      // All files should be unpublished by default
+      files.foreach { file =>
+        file.content.published shouldBe false
+      }
+    }
+  }
+
+  test("setPublished marks specific file as published by s3Key") {
+    val stedding_collection = packageManager
+      .create(
+        "Stedding Chanti",
+        PackageType.Collection,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "the-stump-report.pdf",
+        FileType.PDF,
+        stedding_collection,
+        "s3bucketName",
+        "data/the-stump-report.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "the-stump-image.jpeg",
+        FileType.JPEG,
+        stedding_collection,
+        "s3bucketName",
+        "data/the-stump-image.jpeg",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    // Mark one as published
+    fileManager
+      .setPublished(
+        stedding_collection,
+        published = true,
+        s3Key = Some("data/the-stump-image.jpeg")
+      )
+      .await
+      .value
+
+    get(
+      s"/${stedding_collection.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(2)
+
+      val pdf_file = files.find(_.content.s3key == "data/the-stump-report.pdf").get
+      val jpeg_file = files.find(_.content.s3key == "data/the-stump-image.jpeg").get
+
+      pdf_file.content.published shouldBe false
+      jpeg_file.content.published shouldBe true
+    }
+  }
+
+  test(
+    "setPublished marks all files as published when no s3Key is provided"
+  ) {
+    val persyst_file = packageManager
+      .create(
+        "eeg_scan",
+        PackageType.TimeSeries,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "eeg_scan.dat",
+        FileType.Persyst,
+        persyst_file,
+        "s3bucketName",
+        "data/eeg_scan.dat",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "eeg_scan.lay",
+        FileType.Persyst,
+        persyst_file,
+        "s3bucketName",
+        "data/eeg_scan.lay",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    fileManager
+      .setPublished(persyst_file, published = true)
+      .await
+      .value
+
+    // Verify all files are marked as published
+    get(
+      s"/${persyst_file.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(2)
+
+      files.foreach { file =>
+        file.content.published shouldBe true
+      }
+    }
+  }
+
+  test("setPublished can toggle files back to unpublished") {
+    val collection = packageManager
+      .create(
+        "Toggle Test Folder",
+        PackageType.Collection,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    fileManager
+      .create(
+        "toggle-test.pdf",
+        FileType.PDF,
+        collection,
+        "s3bucketName",
+        "data/toggle-test.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    // Mark as published
+    fileManager
+      .setPublished(collection, published = true)
+      .await
+      .value
+
+    // Verify it's published
+    get(
+      s"/${collection.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(1)
+      files.head.content.published shouldBe true
+    }
+
+    // Mark as unpublished
+    fileManager
+      .setPublished(collection, published = false)
+      .await
+      .value
+
+    // Verify it's unpublished
+    get(
+      s"/${collection.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(1)
+      files.head.content.published shouldBe false
+    }
+  }
 }

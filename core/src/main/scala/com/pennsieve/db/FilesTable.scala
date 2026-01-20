@@ -101,6 +101,7 @@ abstract class AbstractFilesTable[T](
   def properties = column[Option[Json]]("properties")
   def assetType = column[Option[String]]("asset_type")
   def provenanceId = column[Option[UUID]]("provenance_id")
+  def published = column[Boolean]("published")
 
   val filesSelect = (
     packageId,
@@ -119,6 +120,7 @@ abstract class AbstractFilesTable[T](
     properties,
     assetType,
     provenanceId,
+    published,
     id
   )
 }
@@ -218,6 +220,21 @@ class FilesMapper(val organization: Organization)
         case Some(file) => DBIO.successful(file)
         case None => DBIO.failed(NotFound(s"File s3://$s3bucket/$s3key"))
       }
+  }
+
+  def setPublished(
+    packageId: Int,
+    published: Boolean,
+    s3Key: Option[String] = None
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Int, NoStream, Effect.Write] = {
+    val baseQuery = this.filter(_.packageId === packageId)
+    val filteredQuery = s3Key match {
+      case Some(key) => baseQuery.filter(_.s3key === key)
+      case None => baseQuery
+    }
+    filteredQuery.map(_.published).update(published)
   }
 
   def getFrom(

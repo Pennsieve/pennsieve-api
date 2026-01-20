@@ -529,6 +529,15 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
   ): EitherT[Future, CoreError, Option[FileType]] =
     db.run(files.getPackageFileType(`package`)).toEitherT
 
+  def setPublished(
+    `package`: Package,
+    published: Boolean,
+    s3Key: Option[String] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    db.run(files.setPublished(`package`.id, published, s3Key)).toEitherT
+
   def renameFile(
     `file`: File,
     newName: String

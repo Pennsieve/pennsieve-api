@@ -40,6 +40,7 @@ final case class File(
   properties: Option[Json] = None,
   assetType: Option[String] = None,
   provenanceId: Option[UUID] = None,
+  published: Boolean = false,
   id: Int = 0
 ) {
 
