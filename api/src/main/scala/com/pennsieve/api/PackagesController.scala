@@ -116,15 +116,6 @@ case class SetStorageRequest(size: Long)
 
 case class SetStorageResponse(storageUse: Map[String, Long])
 
-case class FilePublishedStatus(
-  fileName: String,
-  s3Bucket: String,
-  s3Key: String,
-  published: Boolean
-)
-
-case class PackageFilesPublishedResponse(files: List[FilePublishedStatus])
-
 object PackagesController {
   //Default values for retrieving Package children (i.e. other packages)
   val PackageChildrenDefaultLimit: Int = 100
@@ -594,46 +585,6 @@ class PackagesController(
           case _ => dto
         }
       }
-
-      override val is = result.value.map(OkResult)
-    }
-  }
-
-  val getFilesPublishedOperation =
-    (apiOperation[PackageFilesPublishedResponse]("getFilesPublished")
-      summary "gets the published status of all files in a package"
-      parameters
-        pathParam[String]("id").description("package id"))
-
-  get("/:id/published", operation(getFilesPublishedOperation)) {
-    new AsyncResult {
-      val result: EitherT[Future, ActionResult, PackageFilesPublishedResponse] =
-        for {
-          packageId <- paramT[String]("id")
-          secureContainer <- getSecureContainer()
-          packageAndDataset <- secureContainer.packageManager
-            .getPackageAndDatasetByNodeId(packageId)
-            .coreErrorToActionResult()
-          (pkg, dataset) = packageAndDataset
-
-          _ <- secureContainer
-            .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
-            .coreErrorToActionResult()
-
-          files <- secureContainer.fileManager
-            .getFilesWithPublishedStatus(pkg)
-            .coreErrorToActionResult()
-
-          fileStatuses = files.map { file =>
-            FilePublishedStatus(
-              fileName = file.name,
-              s3Bucket = file.s3Bucket,
-              s3Key = file.s3Key,
-              published = file.published
-            )
-          }.toList
-
-        } yield PackageFilesPublishedResponse(files = fileStatuses)
 
       override val is = result.value.map(OkResult)
     }

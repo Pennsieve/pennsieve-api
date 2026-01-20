@@ -4468,8 +4468,7 @@ class TestPackagesController
     }
   }
 
-  test("GET /:id/published returns list of files with their published status") {
-    // Collections (folders) are the realistic case for multiple files under one package
+  test("files default to unpublished") {
     val collection = packageManager
       .create(
         "Test Folder",
@@ -4482,7 +4481,7 @@ class TestPackagesController
       .await
       .value
 
-    val file1 = fileManager
+    fileManager
       .create(
         "document1.pdf",
         FileType.PDF,
@@ -4496,7 +4495,7 @@ class TestPackagesController
       .await
       .value
 
-    val file2 = fileManager
+    fileManager
       .create(
         "document2.pdf",
         FileType.PDF,
@@ -4511,22 +4510,21 @@ class TestPackagesController
       .value
 
     get(
-      s"/${collection.nodeId}/published",
+      s"/${collection.nodeId}/files",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-      val json = parse(response.body)
-      val files = (json \ "files").extract[List[Map[String, Any]]]
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
       files.size should equal(2)
 
       // All files should be unpublished by default
       files.foreach { file =>
-        file("published") shouldBe false
+        file.content.published shouldBe false
       }
     }
   }
 
-  test("GET /:id/published returns correct published status for mixed files") {
+  test("setPublished marks specific file as published by s3Key") {
     val stedding_collection = packageManager
       .create(
         "Stedding Chanti",
@@ -4578,26 +4576,23 @@ class TestPackagesController
       .value
 
     get(
-      s"/${stedding_collection.nodeId}/published",
+      s"/${stedding_collection.nodeId}/files",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-      val json = parse(response.body)
-      val files = (json \ "files").extract[List[Map[String, Any]]]
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
       files.size should equal(2)
 
-      val pdf_file =
-        files.find(_("s3Key") == "data/the-stump-report.pdf").get
-      val jpeg_file =
-        files.find(_("s3Key") == "data/the-stump-image.jpeg").get
+      val pdf_file = files.find(_.content.s3key == "data/the-stump-report.pdf").get
+      val jpeg_file = files.find(_.content.s3key == "data/the-stump-image.jpeg").get
 
-      pdf_file("published") shouldBe false
-      jpeg_file("published") shouldBe true
+      pdf_file.content.published shouldBe false
+      jpeg_file.content.published shouldBe true
     }
   }
 
   test(
-    "setPublished should mark all files as published if no s3Key is provided"
+    "setPublished marks all files as published when no s3Key is provided"
   ) {
     val persyst_file = packageManager
       .create(
@@ -4646,16 +4641,15 @@ class TestPackagesController
 
     // Verify all files are marked as published
     get(
-      s"/${persyst_file.nodeId}/published",
+      s"/${persyst_file.nodeId}/files",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-      val json = parse(response.body)
-      val files = (json \ "files").extract[List[Map[String, Any]]]
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
       files.size should equal(2)
 
       files.foreach { file =>
-        file("published") shouldBe true
+        file.content.published shouldBe true
       }
     }
   }
@@ -4695,14 +4689,13 @@ class TestPackagesController
 
     // Verify it's published
     get(
-      s"/${collection.nodeId}/published",
+      s"/${collection.nodeId}/files",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-      val json = parse(response.body)
-      val files = (json \ "files").extract[List[Map[String, Any]]]
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
       files.size should equal(1)
-      files.head("published") shouldBe true
+      files.head.content.published shouldBe true
     }
 
     // Mark as unpublished
@@ -4713,69 +4706,13 @@ class TestPackagesController
 
     // Verify it's unpublished
     get(
-      s"/${collection.nodeId}/published",
+      s"/${collection.nodeId}/files",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-      val json = parse(response.body)
-      val files = (json \ "files").extract[List[Map[String, Any]]]
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
       files.size should equal(1)
-      files.head("published") shouldBe false
-    }
-  }
-
-  test("GET /:id/published returns empty list for collection with no files") {
-    // Collections (folders) are the realistic case for a package with no files
-    val emptyFolder = packageManager
-      .create(
-        "Empty Folder",
-        PackageType.Collection,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    get(
-      s"/${emptyFolder.nodeId}/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val json = parse(response.body)
-      val files = (json \ "files").extract[List[Map[String, Any]]]
-      files.size should equal(0)
-    }
-  }
-
-  test("GET /:id/published returns 404 for unauthorized user") {
-    val pdfPackage = packageManager
-      .create(
-        "Private PDF",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    get(
-      s"/${pdfPackage.nodeId}/published",
-      headers = authorizationHeader(externalJwt) ++ traceIdHeader()
-    ) {
-      status should equal(404)
-    }
-  }
-
-  test("GET /:id/published returns 404 for non-existent package") {
-    get(
-      s"/N:package:nonexistent-id/published",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(404)
+      files.head.content.published shouldBe false
     }
   }
 }

@@ -538,13 +538,6 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
   ): EitherT[Future, CoreError, Int] =
     db.run(files.setPublished(`package`.id, published, s3Key)).toEitherT
 
-  def getFilesWithPublishedStatus(
-    `package`: Package
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Seq[File]] =
-    db.run(files.getFilesWithPublishedStatus(`package`.id)).toEitherT
-
   def renameFile(
     `file`: File,
     newName: String

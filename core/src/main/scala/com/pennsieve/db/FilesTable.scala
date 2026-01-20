@@ -237,13 +237,6 @@ class FilesMapper(val organization: Organization)
     filteredQuery.map(_.published).update(published)
   }
 
-  def getFilesWithPublishedStatus(
-    packageId: Int
-  )(implicit
-    ec: ExecutionContext
-  ): DBIOAction[Seq[File], NoStream, Effect.Read] =
-    this.filter(_.packageId === packageId).result
-
   def getPublishedStatusByPackageIds(
     packageIds: Seq[Int]
   )(implicit
