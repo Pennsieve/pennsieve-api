@@ -1,0 +1,2 @@
+ALTER TABLE packages
+    ADD COLUMN published BOOLEAN NOT NULL DEFAULT false;

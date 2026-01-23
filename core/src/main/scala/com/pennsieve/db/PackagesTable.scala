@@ -65,6 +65,7 @@ final class PackagesTable(schema: String, tag: Tag)
   def attributes = column[List[ModelProperty]]("attributes")
   def ownerId = column[Option[Int]]("owner_id")
   def importId = column[Option[UUID]]("import_id")
+  def published = column[Boolean]("published")
 
   def * =
     (
@@ -79,7 +80,8 @@ final class PackagesTable(schema: String, tag: Tag)
       createdAt,
       updatedAt,
       id,
-      attributes
+      attributes,
+      published
     ).mapTo[Package]
 }
 
