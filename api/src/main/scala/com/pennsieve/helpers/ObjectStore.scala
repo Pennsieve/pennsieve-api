@@ -23,6 +23,7 @@ import com.pennsieve.aws.s3.{ S3, S3ClientFactory }
 import com.amazonaws.services.s3.model._
 import cats.syntax.either._
 import com.amazonaws.services.s3.AmazonS3
+import com.typesafe.scalalogging.LazyLogging
 
 import java.net.URL
 import org.scalatra.{ ActionResult, InternalServerError, NotFound }
@@ -53,7 +54,11 @@ trait ObjectStore {
 
 }
 
-class S3ObjectStore() extends ObjectStore {
+class S3ObjectStore() extends ObjectStore with LazyLogging {
+
+  // Force Settings initialization to ensure S3ClientFactory is configured
+  // with external bucket mappings before any S3 operations
+  Settings.externalPublishBuckets
 
   def getMD5(bucket: String, key: String): Either[ActionResult, String] = {
     S3ClientFactory
@@ -79,7 +84,13 @@ class S3ObjectStore() extends ObjectStore {
               .withContentDisposition(s"""attachment; filename="$fileName"""")
           )
       )
-      .leftMap(t => InternalServerError(t.getMessage))
+      .leftMap { t =>
+        logger.error(
+          s"Failed to generate presigned URL for bucket=$bucket, key=$key: ${t.getMessage}",
+          t
+        )
+        InternalServerError(t.getMessage)
+      }
   }
 
   def getListing(

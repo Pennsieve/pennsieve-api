@@ -24,10 +24,11 @@ import com.amazonaws.auth.{
 }
 import com.amazonaws.services.s3.{ AmazonS3, AmazonS3ClientBuilder }
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.collection.concurrent.TrieMap
 
-object S3ClientFactory {
+object S3ClientFactory extends StrictLogging {
 
   private val s3ClientsMap: TrieMap[String, S3] = new TrieMap[String, S3]()
   private val externalBucketClientsMap: TrieMap[String, S3] =
@@ -44,6 +45,9 @@ object S3ClientFactory {
     * @param bucketToRole Map of bucket name to IAM role ARN
     */
   def configureExternalBuckets(bucketToRole: Map[String, String]): Unit = {
+    logger.info(
+      s"Configuring external buckets: ${bucketToRole.keys.mkString(", ")}"
+    )
     externalBucketToRole = bucketToRole
   }
 
@@ -75,8 +79,14 @@ object S3ClientFactory {
     */
   def getClientForBucket(bucket: String): S3 = {
     externalBucketToRole.get(bucket) match {
-      case Some(roleArn) => getClientForExternalBucket(bucket, roleArn)
-      case None => getDefaultClientForBucket(bucket)
+      case Some(roleArn) =>
+        logger.debug(
+          s"Using external bucket client for bucket=$bucket with role=$roleArn"
+        )
+        getClientForExternalBucket(bucket, roleArn)
+      case None =>
+        logger.debug(s"Using default client for bucket=$bucket")
+        getDefaultClientForBucket(bucket)
     }
   }
 
@@ -88,11 +98,16 @@ object S3ClientFactory {
     roleArn: String
   ): S3 = {
     val cacheKey = s"$bucket:$roleArn"
-    externalBucketClientsMap.getOrElseUpdate(cacheKey, {
-      val region = getRegionForBucket(bucket)
-      val awsS3Client = createS3ClientWithAssumedRole(region, roleArn)
-      new S3(awsS3Client)
-    })
+    externalBucketClientsMap.getOrElseUpdate(
+      cacheKey, {
+        val region = getRegionForBucket(bucket)
+        logger.info(
+          s"Creating S3 client with assumed role for bucket=$bucket, region=$region, role=$roleArn"
+        )
+        val awsS3Client = createS3ClientWithAssumedRole(region, roleArn)
+        new S3(awsS3Client)
+      }
+    )
   }
 
   /**
