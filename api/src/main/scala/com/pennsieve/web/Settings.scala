@@ -18,6 +18,7 @@ package com.pennsieve.web
 import com.amazonaws.regions.Regions
 import software.amazon.awssdk.regions.Region
 import com.pennsieve.aws.email.Email
+import com.pennsieve.aws.s3.S3ClientFactory
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
 
@@ -71,4 +72,29 @@ object Settings {
     config.as[String]("pennsieve.userColors").split(",").toSet
 
   val jwtKey = config.as[String]("pennsieve.jwt.key")
+
+  // External publish buckets configuration: bucket name -> IAM role ARN
+  // Parsed from an array of {bucket, role-arn} objects, filtering out entries
+  // where either value is not set (environment variable not defined)
+  val externalPublishBuckets: Map[String, String] = {
+    if (config.hasPath("pennsieve.s3.external_publish_buckets")) {
+      config
+        .getConfigList("pennsieve.s3.external_publish_buckets")
+        .asScala
+        .flatMap { entry =>
+          val hasBucket = entry.hasPath("bucket")
+          val hasRoleArn = entry.hasPath("role-arn")
+          if (hasBucket && hasRoleArn) {
+            Some(entry.getString("bucket") -> entry.getString("role-arn"))
+          } else {
+            None
+          }
+        }
+        .toMap
+    } else {
+      Map.empty
+    }
+  }
+
+  S3ClientFactory.configureExternalBuckets(externalPublishBuckets)
 }
