@@ -295,6 +295,7 @@ lazy val coreSettings = Seq(
     "com.amazonaws" % "aws-java-sdk-s3" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-ses" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-ssm" % awsVersion,
+    "com.amazonaws" % "aws-java-sdk-sts" % awsVersion,
     "software.amazon.awssdk" % "sns" % awsV2Version,
     "software.amazon.awssdk" % "sqs" % awsV2Version,
     "software.amazon.awssdk" % "cognitoidentityprovider" % awsV2Version,

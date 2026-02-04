@@ -3077,6 +3077,112 @@ class TestPackagesController
     }
   }
 
+  test("download-manifest produces a manifest for files in an external bucket") {
+    // This tests that files stored in external/cross-account buckets (like discover buckets)
+    // are handled correctly by the download-manifest endpoint.
+    // The external bucket would typically require role assumption for presigned URLs,
+    // but the MockObjectStore handles this transparently in tests.
+
+    val externalBucketName = "sparc-dev-discover50-use1"
+
+    val rootPackage =
+      createTestDownloadPackage("external-pkg", packageType = PackageType.Image)
+    createTestDownloadFileInBucket(
+      "external-file.tif",
+      rootPackage,
+      externalBucketName
+    )
+
+    val request = s"""{"nodeIds": ["${rootPackage.nodeId}"]}"""
+
+    postJson(
+      s"/download-manifest",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val json = parse(response.body)
+      val payload = json.extract[DownloadManifestDTO]
+
+      payload.header.count shouldBe 1
+      payload.data.length shouldBe 1
+
+      val entry = payload.data.head
+      entry.fileName shouldBe "external-file.tif"
+      entry.packageName shouldBe "external-pkg"
+
+      // The MockObjectStore returns URLs in the format file://$bucket/$key
+      // Verify that the external bucket name is correctly passed through
+      entry.url.toString should include(externalBucketName)
+    }
+  }
+
+  test(
+    "download-manifest produces a manifest for files across multiple buckets"
+  ) {
+    // Test that a manifest can contain files from both regular and external buckets
+
+    val regularBucketName = "pennsieve-storage-use1"
+    val externalBucketName = "sparc-dev-discover50-use1"
+
+    val rootCollection =
+      createTestDownloadPackage(
+        "mixed-bucket-collection",
+        packageType = PackageType.Collection
+      )
+
+    val regularPackage =
+      createTestDownloadPackage(
+        "regular-pkg",
+        parent = Some(rootCollection),
+        packageType = PackageType.Image
+      )
+    createTestDownloadFileInBucket(
+      "regular-file.pdf",
+      regularPackage,
+      regularBucketName
+    )
+
+    val externalPackage =
+      createTestDownloadPackage(
+        "external-pkg",
+        parent = Some(rootCollection),
+        packageType = PackageType.Image
+      )
+    createTestDownloadFileInBucket(
+      "external-file.tif",
+      externalPackage,
+      externalBucketName
+    )
+
+    val request = s"""{"nodeIds": ["${rootCollection.nodeId}"]}"""
+
+    postJson(
+      s"/download-manifest",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val json = parse(response.body)
+      val payload = json.extract[DownloadManifestDTO]
+
+      payload.header.count shouldBe 2
+      payload.data.length shouldBe 2
+
+      val regularEntry = payload.data.find(_.fileName == "regular-file.pdf")
+      val externalEntry = payload.data.find(_.fileName == "external-file.tif")
+
+      regularEntry shouldBe defined
+      externalEntry shouldBe defined
+
+      // Verify the correct bucket names are in the URLs
+      regularEntry.get.url.toString should include(regularBucketName)
+      externalEntry.get.url.toString should include(externalBucketName)
+    }
+  }
+
   test("gets a package's sources if it has no files") {
     val pdfPackage = packageManager
       .create(
@@ -4583,17 +4689,17 @@ class TestPackagesController
       val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
       files.size should equal(2)
 
-      val pdf_file = files.find(_.content.s3key == "data/the-stump-report.pdf").get
-      val jpeg_file = files.find(_.content.s3key == "data/the-stump-image.jpeg").get
+      val pdf_file =
+        files.find(_.content.s3key == "data/the-stump-report.pdf").get
+      val jpeg_file =
+        files.find(_.content.s3key == "data/the-stump-image.jpeg").get
 
       pdf_file.content.published shouldBe false
       jpeg_file.content.published shouldBe true
     }
   }
 
-  test(
-    "setPublished marks all files as published when no s3Key is provided"
-  ) {
+  test("setPublished marks all files as published when no s3Key is provided") {
     val persyst_file = packageManager
       .create(
         "eeg_scan",
