@@ -307,6 +307,21 @@ data "aws_iam_policy_document" "sts_iam_policy_document" {
     actions   = ["sts:GetFederationToken"]
     resources = ["*"]
   }
+
+  # Allow assuming cross-account roles for external publish buckets
+  # - sparc_bucket_role_arn: SPARC account buckets
+  # - rejoin_bucket_role_arn: RE-JOIN and PRECISION account buckets (same account)
+  # - awsod_sparc_bucket_role_arn: AWS Open Data account buckets (SPARC AOD and Epilepsy.science)
+  statement {
+    sid       = "AssumeExternalPublishBucketRoles"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [
+      data.terraform_remote_state.platform_infrastructure.outputs.sparc_bucket_role_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.rejoin_bucket_role_arn,
+      data.terraform_remote_state.platform_infrastructure.outputs.awsod_sparc_bucket_role_arn,
+    ]
+  }
 }
 
 # Create uploader role / policy for doling out STS tokens to clients uploading files.
