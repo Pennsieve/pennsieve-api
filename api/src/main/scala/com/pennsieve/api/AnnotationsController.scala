@@ -454,18 +454,14 @@ class AnnotationsController(
           .assertNotLocked(dataset)
           .coreErrorToActionResult()
 
-        deleted <- if (withDiscussions) {
-          secureContainer.annotationManager
-            .deleteAnnotationAndRelatedDiscussions(annotation)
-            .orError()
-        } else {
-          secureContainer.annotationManager.delete(annotation).leftMap { ge =>
+        deleted <- secureContainer.annotationManager
+          .delete(annotation)
+          .leftMap { ge =>
             ge match {
               case ie: IntegrityError => BadRequest(ie.message)
               case other => InternalServerError(other.getMessage)
             }
           }
-        }
 
         _ <- auditLogger
           .message()

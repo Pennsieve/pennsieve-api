@@ -90,17 +90,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
 
       context mount (annotationsController, "/annotations/*", "annotations")
 
-      // discussions endpoints
-      ///////////////////////////////
-      val discussionsController = new DiscussionsController(
-        bootstrapHelper.insecureContainer,
-        bootstrapHelper.secureContainerBuilder,
-        bootstrapHelper.auditLogger,
-        ec
-      )
-
-      context mount (discussionsController, "/discussions/*", "discussions")
-
       // api token endpoints
       ///////////////////////////////
       val apiTokenController = new APITokenController(
