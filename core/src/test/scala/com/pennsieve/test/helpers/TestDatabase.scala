@@ -99,7 +99,6 @@ trait TestDatabase extends AwaitableImplicits {
       sqlu"""TRUNCATE TABLE "#$schema"."packages" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."annotations" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."annotation_layers" RESTART IDENTITY CASCADE""",
-      sqlu"""TRUNCATE TABLE "#$schema"."comments" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."dataset_status" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."contributors" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."dataset_contributor" RESTART IDENTITY CASCADE""",

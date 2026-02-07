@@ -424,8 +424,7 @@ class AnnotationsController(
 
   val deleteAnnotationOperation = (apiOperation[Int]("deleteAnnotation")
     summary "delete an annotation"
-    parameter pathParam[String]("id").description("the id of the annotation")
-    )
+    parameter pathParam[String]("id").description("the id of the annotation"))
 
   delete("/:id", operation(deleteAnnotationOperation)) {
     new AsyncResult {
