@@ -47,7 +47,6 @@ object Main extends App with LazyLogging {
   |  create-asset
   |  get-channel
   |  set-channel
-  |  set-dimension
   |  update-package-type
   |  set-package-properties
   |
@@ -100,19 +99,6 @@ object Main extends App with LazyLogging {
         Await.result(
           GetChannels.run(parameters.toArray, getContainer),
           Duration(baseConfig.as[Int]("timeouts.GetChannels"), MINUTES)
-        )
-
-        System.exit(0)
-      }
-
-      case "set-dimension" :: parameters => {
-        logger.info(
-          s"creating dimension with inputs: ${parameters.mkString(" ")}"
-        )
-
-        Await.result(
-          SetDimension.run(parameters.toArray, getContainer),
-          Duration(baseConfig.as[Int]("timeouts.SetDimension"), MINUTES)
         )
 
         System.exit(0)
