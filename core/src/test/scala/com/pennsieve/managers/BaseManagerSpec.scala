@@ -248,9 +248,6 @@ trait ManagerSpec
   def annotationManager(organization: Organization): AnnotationManager =
     new AnnotationManager(organization, database)
 
-  def discussionManager(organization: Organization): DiscussionManager =
-    new DiscussionManager(organization, database)
-
   def teamManager(user: User = superAdmin): TeamManager =
     TeamManager(organizationManager(user))
 

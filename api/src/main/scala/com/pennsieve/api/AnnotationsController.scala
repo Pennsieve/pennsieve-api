@@ -425,9 +425,7 @@ class AnnotationsController(
   val deleteAnnotationOperation = (apiOperation[Int]("deleteAnnotation")
     summary "delete an annotation"
     parameter pathParam[String]("id").description("the id of the annotation")
-    parameter queryParam[Boolean]("withDiscussions")
-      .description("true if we want to delete related discussions too")
-      .optional)
+    )
 
   delete("/:id", operation(deleteAnnotationOperation)) {
     new AsyncResult {
@@ -435,7 +433,6 @@ class AnnotationsController(
         traceId <- getTraceId(request)
         secureContainer <- getSecureContainer()
         annotationId <- paramT[Int]("id")
-        withDiscussions <- paramT[Boolean]("withDiscussions", default = false)
         annotation <- secureContainer.annotationManager
           .get(annotationId)
           .orNotFound()

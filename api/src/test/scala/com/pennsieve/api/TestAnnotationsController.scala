@@ -266,37 +266,4 @@ class TestAnnotationsController extends BaseApiTest {
     }
   }
 
-  test("delete annotation with discussion should fail") {
-
-    val layer = annotationManager
-      .createLayer(home, "home folder", "red")
-      .await
-      .value
-    val _annotation = annotationManager
-      .create(loggedInUser, layer, "this is the thing", Nil, Nil)
-      .await
-      .value
-    val discussion =
-      discussionManager.create(home, Some(_annotation)).await.value
-    discussionManager.createComment("hey there", loggedInUser, discussion).await
-
-    delete(
-      s"/${_annotation.id}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(400)
-    }
-
-    delete(
-      s"/${_annotation.id}?withDiscussions=true",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
-
-    assert(annotationManager.get(_annotation.id).await.isLeft)
-    assert(discussionManager.get(discussion.id).await.isLeft)
-
-  }
-
 }

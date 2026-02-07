@@ -476,7 +476,6 @@ class DataSetsController(
               DatasetPermission.ViewFiles,
               DatasetPermission.ViewRecords,
               DatasetPermission.ViewAnnotations,
-              DatasetPermission.ViewDiscussionComments
             )
           )(dataset)
           .coreErrorToActionResult()
@@ -1425,7 +1424,6 @@ class DataSetsController(
               DatasetPermission.ViewFiles,
               DatasetPermission.ViewRecords,
               DatasetPermission.ViewAnnotations,
-              DatasetPermission.ViewDiscussionComments
             )
           )(dataset)
           .coreErrorToActionResult()
