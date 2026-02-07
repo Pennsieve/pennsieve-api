@@ -424,10 +424,7 @@ class AnnotationsController(
 
   val deleteAnnotationOperation = (apiOperation[Int]("deleteAnnotation")
     summary "delete an annotation"
-    parameter pathParam[String]("id").description("the id of the annotation")
-    parameter queryParam[Boolean]("withDiscussions")
-      .description("true if we want to delete related discussions too")
-      .optional)
+    parameter pathParam[String]("id").description("the id of the annotation"))
 
   delete("/:id", operation(deleteAnnotationOperation)) {
     new AsyncResult {
@@ -435,7 +432,6 @@ class AnnotationsController(
         traceId <- getTraceId(request)
         secureContainer <- getSecureContainer()
         annotationId <- paramT[Int]("id")
-        withDiscussions <- paramT[Boolean]("withDiscussions", default = false)
         annotation <- secureContainer.annotationManager
           .get(annotationId)
           .orNotFound()
@@ -454,18 +450,14 @@ class AnnotationsController(
           .assertNotLocked(dataset)
           .coreErrorToActionResult()
 
-        deleted <- if (withDiscussions) {
-          secureContainer.annotationManager
-            .deleteAnnotationAndRelatedDiscussions(annotation)
-            .orError()
-        } else {
-          secureContainer.annotationManager.delete(annotation).leftMap { ge =>
+        deleted <- secureContainer.annotationManager
+          .delete(annotation)
+          .leftMap { ge =>
             ge match {
               case ie: IntegrityError => BadRequest(ie.message)
               case other => InternalServerError(other.getMessage)
             }
           }
-        }
 
         _ <- auditLogger
           .message()
