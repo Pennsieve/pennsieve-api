@@ -21,7 +21,6 @@ import akka.testkit.TestKitBase
 import com.pennsieve.admin.api.{ AdminContainer, Router }
 import com.pennsieve.admin.api.Router.{
   AdminETLServiceContainer,
-  AdminETLServiceContainerImpl,
   InsecureResourceContainer,
   SecureResourceContainer
 }
