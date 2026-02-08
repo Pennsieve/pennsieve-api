@@ -22,7 +22,7 @@ import akka.http.scaladsl.server.RouteConcatenation._
 import akka.http.scaladsl.server.directives.ExecutionDirectives.handleRejections
 import akka.http.scaladsl.model.headers.{ HttpOrigin, HttpOriginRange }
 import com.pennsieve.admin.api.Router.{
-  AdminETLServiceContainerImpl,
+  AdminETLServiceContainer,
   InsecureResourceContainer,
   SecureResourceContainer
 }
@@ -62,14 +62,12 @@ object AdminWebServer extends App with WebServer with LazyLogging {
       new InsecureContainer(config) with InsecureCoreContainer
       with LocalEmailContainer with MessageTemplatesContainer
       with LocalSQSContainer with AdminContainer with LocalS3Container
-      with S3CustomTermsOfServiceClientContainer
-      with AdminETLServiceContainerImpl with LocalCognitoContainer
+      with S3CustomTermsOfServiceClientContainer with LocalCognitoContainer
     } else {
       new InsecureContainer(config) with InsecureCoreContainer
       with AWSEmailContainer with MessageTemplatesContainer with AWSSQSContainer
       with AdminContainer with AWSS3Container
-      with S3CustomTermsOfServiceClientContainer
-      with AdminETLServiceContainerImpl with AWSCognitoContainer
+      with S3CustomTermsOfServiceClientContainer with AWSCognitoContainer
     }
 
   def secureContainerBuilder(
@@ -83,7 +81,7 @@ object AdminWebServer extends App with WebServer with LazyLogging {
         user = user,
         organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
-      with MessageTemplatesContainer with Router.AdminETLServiceContainerImpl
+      with MessageTemplatesContainer with AdminETLServiceContainer
     } else {
       new SecureContainer(
         config = insecureContainer.config,
@@ -92,8 +90,7 @@ object AdminWebServer extends App with WebServer with LazyLogging {
         organization = organization
       ) with SecureCoreContainer with AWSEmailContainer
       with MessageTemplatesContainer with LocalS3Container
-      with S3CustomTermsOfServiceClientContainer
-      with Router.AdminETLServiceContainerImpl
+      with S3CustomTermsOfServiceClientContainer with AdminETLServiceContainer
     }
   }
 

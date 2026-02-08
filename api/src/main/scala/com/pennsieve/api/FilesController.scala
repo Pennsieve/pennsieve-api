@@ -49,7 +49,6 @@ import com.pennsieve.helpers.APIContainers.{
 import com.pennsieve.helpers.ObjectStore
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
 import com.pennsieve.managers.FileManager
 import com.pennsieve.managers.FileManager.UploadSourceFile
 import com.pennsieve.models.{

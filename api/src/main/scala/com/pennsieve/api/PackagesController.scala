@@ -17,15 +17,13 @@
 package com.pennsieve.api
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import cats.data.{ EitherT, NonEmptyList }
+import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.clients.UrlShortenerClient
-import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.core.utilities.{ checkOrErrorT, JwtAuthenticator }
+import com.pennsieve.core.utilities.checkOrErrorT
 import com.pennsieve.db.FilesTable.{ OrderByColumn, OrderByDirection }
 import com.pennsieve.domain.StorageAggregation.spackages
 import com.pennsieve.domain.{ CoreError, PredicateError, ServiceError }
@@ -39,19 +37,9 @@ import com.pennsieve.helpers.APIContainers.{
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.helpers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
-import com.pennsieve.jobscheduling.clients.generated.jobs.{
-  GetPackageStateResponse,
-  JobsClient
-}
 import com.pennsieve.managers.PackageManager
-import com.pennsieve.models.PackageState.{
-  PROCESSING,
-  READY,
-  UNAVAILABLE,
-  UPLOADED
-}
+import com.pennsieve.models.PackageState.{ READY, UNAVAILABLE, UPLOADED }
 import com.pennsieve.models._
-import com.pennsieve.uploads.{ FileUpload, PackagePreview }
 import com.pennsieve.web.Settings
 import io.circe.syntax._
 import org.apache.commons.io.FilenameUtils
@@ -60,9 +48,7 @@ import org.scalatra._
 import org.scalatra.swagger.Swagger
 
 import java.net.URL
-import java.util.UUID
 import scala.collection.immutable
-import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
@@ -87,8 +73,6 @@ case class UpdatePackageRequest(
   uploader: Option[String],
   properties: List[ModelPropertyRO]
 )
-
-case class ExportPackageRequest(fileType: FileType)
 
 case class PackageObjectRequest(
   objectType: String,
@@ -132,7 +116,6 @@ class PackagesController(
   val secureContainerBuilder: SecureContainerBuilderType,
   auditLogger: Auditor,
   objectStore: ObjectStore,
-  jobSchedulingServiceClient: JobsClient,
   urlShortenerClient: UrlShortenerClient,
   system: ActorSystem,
   asyncExecutor: ExecutionContext
@@ -442,56 +425,6 @@ class PackagesController(
       }
     }
 
-    // TODO: this should depend on the *current* state of the package!
-    def getJSSPackageState(
-      organizationId: Int,
-      datasetId: Int,
-      packageId: Int
-    ): EitherT[Future, ActionResult, PackageState] = {
-
-      val token = JwtAuthenticator.generateServiceToken(
-        4.minute,
-        organizationId,
-        Some(datasetId)
-      )
-
-      val tokenHeader = Authorization(OAuth2BearerToken(token.value))
-
-      jobSchedulingServiceClient
-        .getPackageState(
-          organizationId,
-          datasetId,
-          packageId,
-          List(tokenHeader)
-        )
-        .leftMap[CoreError](x => ServiceError(x.toString()))
-        .coreErrorToActionResult()
-        .subflatMap {
-          case GetPackageStateResponse.OK(json) =>
-            json
-              .as[PackageState]
-              .fold(
-                //The error half of this shouldn't happen since we got an OK and can be removed if
-                // getPackageState is fixed to return OK(PackageState) instead of OK(Json)
-                err => {
-                  logger
-                    .info(s"Error decoding ${json} as a PackageState: ${err}")
-                  UNAVAILABLE
-                },
-                identity
-              )
-              .asRight[ActionResult]
-
-          case _ => {
-            logger.info(
-              s"No State were found in JSS for package ${packageId} of dataset ${datasetId} for organization ${organizationId}"
-            )
-            UNAVAILABLE.asRight[ActionResult]
-          }
-        }
-
-    }
-
     new AsyncResult {
       val result: EitherT[Future, ActionResult, PackageDTO] = for {
         secureContainer <- getSecureContainer()
@@ -510,20 +443,7 @@ class PackagesController(
           .coreErrorToActionResult()
         (pkg, dataset) = result
 
-        updatedPackage <- pkg.state match {
-          case UNAVAILABLE => {
-            getJSSPackageState(
-              secureContainer.organization.id,
-              dataset.id,
-              pkg.id
-            ).flatMap { foundPackageState =>
-              secureContainer.packageManager
-                .update(pkg.copy(state = foundPackageState))
-                .coreErrorToActionResult()
-            }
-          }
-          case _ => EitherT.pure[Future, ActionResult](pkg)
-        }
+        updatedPackage = pkg
 
         _ <- secureContainer
           .authorizeDataset(Set(DatasetPermission.ViewFiles))(dataset)
@@ -587,340 +507,6 @@ class PackagesController(
       }
 
       override val is = result.value.map(OkResult)
-    }
-  }
-
-  val processPackageOperation = (apiOperation[Unit]("processPackage")
-    summary "Kick off a process package operation if the package is in an uploaded state."
-    parameters
-      pathParam[String]("id").description("package id"))
-
-  put("/:id/process", operation(processPackageOperation)) {
-    new AsyncResult {
-      val result: EitherT[Future, ActionResult, Unit] = for {
-        packageId <- paramT[String]("id")
-        traceId <- getTraceId(request)
-        secureContainer <- getSecureContainer()
-        entities <- getPackageAndDatasetFromIdOrNodeId(
-          secureContainer.packageManager,
-          getIdOrNodeId(packageId)
-        )
-        (pkg, dataset) = entities
-
-        _ <- secureContainer
-          .authorizePackage(Set(DatasetPermission.CreateDeleteFiles))(pkg)
-          .coreErrorToActionResult()
-        _ <- secureContainer.datasetManager
-          .assertNotLocked(dataset)
-          .coreErrorToActionResult()
-
-        _ <- checkOrErrorT(pkg.state == UPLOADED) {
-          BadRequest(Error("Can only process a package in the UPLOADED state."))
-        }
-
-        sources <- secureContainer.fileManager
-          .getUnprocessedSources(pkg)
-          .map(_.toList)
-          .map(NonEmptyList.fromList)
-          .coreErrorToActionResult()
-          .flatMap(
-            _.toRight(
-              BadRequest("Package contains no source files to process.")
-            ).toEitherT[Future]
-          )
-
-        hasWorkflow = sources
-          .map(_.name)
-          .map(FileUpload.apply)
-          .exists(_.info.hasWorkflow)
-
-        _ <- if (hasWorkflow) {
-          processPackage(pkg, secureContainer.user, sources)(secureContainer)
-        } else {
-          EitherT.leftT[Future, Package](
-            BadRequest("package cannot be processed")
-          )
-        }
-        _ <- auditLogger
-          .message()
-          .append("dataset-id", dataset.id)
-          .append("dataset-node-id", dataset.nodeId)
-          .append("package-id", pkg.id)
-          .append("package-node-id", pkg.nodeId)
-          .log(traceId)
-          .toEitherT
-          .coreErrorToActionResult()
-
-      } yield ()
-
-      override val is = result.value.map(OkResult)
-    }
-  }
-
-  val exportPackageOperation = (apiOperation[ExtendedPackageDTO](
-    "exportPackage"
-  )
-    summary "exports a package"
-    parameters (
-      pathParam[String]("id")
-        .description("package id (can be either a node id or an int id)"),
-      bodyParam[ExportPackageRequest]("body")
-        .description("The export request"),
-  ))
-
-  put("/:id/export", operation(exportPackageOperation)) {
-    new AsyncResult {
-
-      val result: EitherT[Future, ActionResult, ExtendedPackageDTO] = for {
-        traceId <- getTraceId(request)
-        // Get the originating (source) package ID parameter:
-        packageId <- paramT[String]("id")
-        secureContainer <- getSecureContainer()
-        // Resolve the package and dataset objects from the package ID:
-        entities <- getPackageAndDatasetFromIdOrNodeId(
-          secureContainer.packageManager,
-          getIdOrNodeId(packageId)
-        )
-
-        (originatingPackage, dataset) = entities
-        _ <- secureContainer.datasetManager
-          .assertNotLocked(dataset)
-          .coreErrorToActionResult()
-
-        // Check that the package was fully and successfully processed:
-        _ <- checkOrErrorT(originatingPackage.state == PackageState.READY)(
-          Forbidden("Only successfully processed packages can be exported")
-        )
-
-        // Get the requested target file type:
-        body <- extractOrErrorT[ExportPackageRequest](parsedBody)
-        targetFileType = body.fileType
-
-        // Check that the files comprising the originating package are exportable to the requested file type:
-        canExport = PackageTypeInfo.canExportTo(
-          originatingPackage.`type`,
-          targetFileType
-        )
-
-        targetFileInfo = FileTypeInfo.get(targetFileType)
-
-        _ <- checkOrErrorT(canExport)(
-          BadRequest(
-            s"package cannot be exported to ${targetFileInfo.fileType.entryName}"
-          )
-        )
-
-        // Get the parent package of the source package. This will be used as the parent for the newly
-        // created package that will hold the exported data:
-        parent <- secureContainer.packageManager
-          .getParent(originatingPackage)
-          .coreErrorToActionResult()
-
-        newPackageName: String = s"${originatingPackage.name} (${targetFileInfo.fileType.entryName})"
-
-        // Create a new package to hold the exported data:
-        targetPackage <- secureContainer.packageManager
-          .create(
-            name = newPackageName,
-            `type` = targetFileInfo.packageType,
-            state = PackageState.UNAVAILABLE,
-            dataset = dataset,
-            ownerId = originatingPackage.ownerId,
-            parent = parent,
-            importId = None,
-            attributes = ModelProperty.fromFileTypeInfo(targetFileInfo)
-          )
-          .coreErrorToActionResult()
-
-        singleSource <- secureContainer.fileManager
-          .getSingleSource(targetPackage)
-          .coreErrorToActionResult()
-
-        _ <- secureContainer.changelogManager
-          .logEvent(
-            dataset,
-            ChangelogEventDetail.CreatePackage(targetPackage, parent)
-          )
-          .coreErrorToActionResult()
-
-        _ <- secureContainer.datasetManager
-          .touchUpdatedAtTimestamp(dataset)
-          .coreErrorToActionResult()
-
-        // Schedule the export:
-        _ <- exportPackage(
-          secureContainer.user,
-          originatingPackage,
-          targetFileType,
-          targetPackage
-        )(secureContainer)
-
-        _ <- auditLogger
-          .message()
-          .append("dataset-id", dataset.id)
-          .append("dataset-node-id", dataset.nodeId)
-          .append("package-id", originatingPackage.id)
-          .append("package-node-id", originatingPackage.nodeId)
-          .log(traceId)
-          .toEitherT
-          .coreErrorToActionResult()
-
-      } yield
-        ExtendedPackageDTO.simple(
-          `package` = targetPackage,
-          dataset = dataset,
-          withExtension = singleSource.flatMap(_.fileExtension)
-        )
-
-      override val is = result.value.map(OkResult)
-    }
-  }
-
-  val uploadCompleteOperation = (apiOperation[Unit]("uploadComplete")
-    summary "Update package state, set package storage, optionally send for processing"
-    parameters (
-      pathParam[String]("id").description("package id"),
-      queryParam[Int]("user_id").description("user who initiated the upload")
-  ))
-
-  put("/:id/upload-complete", operation(uploadCompleteOperation)) {
-    new AsyncResult {
-      val result: EitherT[Future, ActionResult, Unit] = for {
-        packageId <- paramT[String]("id")
-        userId <- paramT[Int]("user_id")
-        secureContainer <- getSecureContainer()
-        _ <- checkOrErrorT(isServiceClaim(request))(Forbidden())
-        uploadUser <- secureContainer.userManager
-          .get(userId)
-          .coreErrorToActionResult()
-        entities <- getPackageAndDatasetFromIdOrNodeId(
-          secureContainer.packageManager,
-          getIdOrNodeId(packageId)
-        )
-        (initialPackage, dataset) = entities
-
-        isValidState = initialPackage.state match {
-          case UNAVAILABLE => true
-          case UPLOADED => true
-          case PROCESSING => true
-          case READY => true
-          case _ => false
-        }
-
-        _ <- checkOrErrorT(isValidState)(
-          BadRequest(
-            s"Cannot complete an upload for a package in the ${initialPackage.state} state."
-          )
-        )
-
-        _ <- secureContainer
-          .authorizePackage(Set(DatasetPermission.EditFiles))(initialPackage)
-          .coreErrorToActionResult()
-
-        updatedPackage <- if (initialPackage.state == UNAVAILABLE) {
-          secureContainer.packageManager
-            .update(initialPackage.copy(state = UPLOADED))
-            .coreErrorToActionResult()
-        } else EitherT.rightT[Future, ActionResult](initialPackage)
-
-        storage <- secureContainer.storageManager
-          .setPackageStorage(updatedPackage)
-          .orError()
-
-        sources <- secureContainer.fileManager
-          .getUnprocessedSources(updatedPackage)
-          .map(_.toList)
-          .map(NonEmptyList.fromList)
-          .coreErrorToActionResult()
-
-        hasWorkflow = sources
-          .map(
-            _.map(_.s3Key)
-              .map(FileUpload.apply)
-              .exists(_.info.hasWorkflow)
-          )
-          .getOrElse(false)
-
-        _ <- (
-          updatedPackage.state,
-          updatedPackage.`type`,
-          dataset.automaticallyProcessPackages,
-          hasWorkflow,
-          sources
-        ) match {
-
-          // package has no workflow so regardless of whether automatic
-          // processing is turned on for this dataset we should set this
-          // package to the READY state
-          case (UPLOADED, _, _, false, Some(_)) =>
-            secureContainer.packageManager
-              .update(updatedPackage.copy(state = READY))
-              .coreErrorToActionResult()
-
-          // automatically process packages turned on and package has a workflow
-          // means we should send the package for processing
-          case (UPLOADED, _, true, true, Some(sources)) =>
-            processPackage(updatedPackage, uploadUser, sources)(secureContainer)
-              .map(_._1)
-
-          // package has a workflow but automatic processing is turned off so
-          // we should leave this package in the UPLOADED state to allow for
-          // future (manually triggered) processing
-          case (UPLOADED, _, false, true, Some(_)) =>
-            EitherT.rightT[Future, ActionResult](updatedPackage)
-
-          // package has no unprocessed files which may be a retry/duplicate
-          // call from JSS, so leave package in UPLOADED state
-          case (UPLOADED, _, _, _, None) =>
-            EitherT.rightT[Future, ActionResult](updatedPackage)
-
-          // a timeseries package in the READY state means this is an append
-          // upload, which we should always send for processing regardless of
-          // whether automatic processing is turned on
-          case (READY, PackageType.TimeSeries, _, true, Some(sources)) =>
-            appendToTimeSeriesPackage(updatedPackage, uploadUser, sources)(
-              secureContainer
-            ).map(_ => updatedPackage)
-
-          // any other package in a READY state should be left READY since
-          // this may be a retry/duplicate call from JSS
-          case (READY, _, _, _, _) =>
-            EitherT.rightT[Future, ActionResult](updatedPackage)
-
-          // a PROCESSING package with all processed files should be left alone
-          // since this may be a retry/duplicate call from JSS and the workflow
-          // is still running
-          case (PROCESSING, _, _, _, None) =>
-            EitherT.rightT[Future, ActionResult](updatedPackage)
-
-          // any other combination of state, type, automatic processing, has
-          // workflow and unprocessed source files is invalid and our system
-          // should not have been able to reach such a state
-          case (state, packageType, auto, hasWorkflow, sources) =>
-            EitherT.leftT[Future, Package](
-              InternalServerError(
-                s"""encountered an invalid state during package upload:
-                  | state=$state,
-                  | type=$packageType,
-                  | automaticProcessing=$auto,
-                  | hasWorkflow=$hasWorkflow,
-                  | numSources=${sources
-                     .map(_.length)
-                     .getOrElse(0)}""".stripMargin.replaceAll("\n", "")
-              )
-            )
-        }
-
-      } yield ()
-
-      override val is = result
-        .leftMap {
-          case e =>
-            logger.error(s"Could not complete upload: ${e.status} ${e.body}")
-            e
-        }
-        .value
-        .map(OkResult)
     }
   }
 
@@ -1040,208 +626,6 @@ class PackagesController(
       override val is = result.value.map(OkResult)
     }
 
-  }
-
-  /**
-    * Initiate import processing of a package.
-    *
-    * @param pkg
-    * @param user
-    * @param sources
-    * @param fileType
-    * @param secureContainer
-    * @return
-    */
-  private def processPackage(
-    pkg: Package,
-    user: User,
-    sources: NonEmptyList[File]
-  )(implicit
-    secureContainer: SecureAPIContainer
-  ): EitherT[Future, ActionResult, (Package, ETLWorkflow)] = {
-    val organization: Organization = secureContainer.organization
-    val jobId: UUID = UUID.randomUUID
-
-    val fileType =
-      PackagePreview.getFileType(sources.map(_.name).map(FileUpload.apply))
-
-    for {
-      encryptionKey <- utilities
-        .encryptionKey(organization)
-        .toEitherT[Future]
-        .coreErrorToActionResult()
-
-      payload = ETLWorkflow(
-        packageId = pkg.id,
-        datasetId = pkg.datasetId,
-        userId = user.id,
-        encryptionKey = encryptionKey,
-        files =
-          sources.map(file => s"s3://${file.s3Bucket}/${file.s3Key}").toList,
-        assetDirectory = FilesController
-          .storageDirectory(user, jobId.toString),
-        fileType = fileType,
-        packageType = pkg.`type`
-      )
-
-      token = JwtAuthenticator.generateServiceToken(
-        1.minute,
-        organization.id,
-        Some(pkg.datasetId)
-      )
-
-      tokenHeader = Authorization(OAuth2BearerToken(token.value))
-
-      _ <- jobSchedulingServiceClient
-        .create(organization.id, jobId.toString, payload, List(tokenHeader))
-        .leftMap {
-          case Left(e) => InternalServerError(e.getMessage)
-          case Right(resp) => InternalServerError(resp.toString)
-        }
-
-      _ <- secureContainer.fileManager
-        .setSourcesToProcessed(sources.toList)
-        .coreErrorToActionResult()
-
-      result <- secureContainer.packageManager
-        .update(pkg.copy(state = PROCESSING))
-        .coreErrorToActionResult()
-    } yield (result, payload)
-  }
-
-  /**
-    * Initiate export processing of a package.
-    *
-    * @param user
-    * @param originatingPackage
-    * @param targetFileType
-    * @param targetPackage
-    * @param secureContainer
-    * @return
-    */
-  private def exportPackage(
-    user: User,
-    originatingPackage: Package,
-    targetFileType: FileType,
-    targetPackage: Package
-  )(implicit
-    secureContainer: SecureAPIContainer
-  ): EitherT[Future, ActionResult, (Package, ETLExportWorkflow)] = {
-
-    val organization: Organization = secureContainer.organization
-    val jobId: UUID = UUID.randomUUID
-
-    for {
-      encryptionKey <- utilities
-        .encryptionKey(organization)
-        .toEitherT[Future]
-        .coreErrorToActionResult()
-
-      payload = ETLExportWorkflow(
-        packageId = targetPackage.id,
-        datasetId = targetPackage.datasetId,
-        userId = user.id,
-        encryptionKey = encryptionKey,
-        fileType = targetFileType,
-        packageType = targetPackage.`type`,
-        sourcePackageId = originatingPackage.id,
-        sourcePackageType = originatingPackage.`type`
-      )
-
-      token = JwtAuthenticator.generateServiceToken(
-        1.minute,
-        organization.id,
-        Some(targetPackage.datasetId)
-      )
-
-      tokenHeader = Authorization(OAuth2BearerToken(token.value))
-
-      _ <- jobSchedulingServiceClient
-        .create(organization.id, jobId.toString, payload, List(tokenHeader))
-        .leftMap {
-          case Left(e) => InternalServerError(e.getMessage)
-          case Right(resp) => InternalServerError(resp.toString)
-        }
-
-      result <- secureContainer.packageManager
-        .update(targetPackage.copy(state = PROCESSING))
-        .coreErrorToActionResult()
-
-    } yield (result, payload)
-  }
-
-  /**
-    * Process an append operation to a timeseries package.
-    *
-    * @param pkg
-    * @param user
-    * @param sources
-    * @param fileType
-    * @param secureContainer
-    * @return
-    */
-  private def appendToTimeSeriesPackage(
-    pkg: Package,
-    user: User,
-    sources: NonEmptyList[File]
-  )(implicit
-    secureContainer: SecureAPIContainer
-  ): EitherT[Future, ActionResult, ETLAppendWorkflow] = {
-    lazy val organization: Organization = secureContainer.organization
-    lazy val jobId: UUID = UUID.randomUUID
-
-    val fileType =
-      PackagePreview.getFileType(sources.map(_.s3Key).map(FileUpload.apply))
-
-    for {
-      _ <- checkOrErrorT(
-        pkg.`type` == PackageType.TimeSeries && pkg.state == READY
-      )(
-        BadRequest("can only append to a timeseries package in the ready state")
-      )
-
-      channels <- secureContainer.timeSeriesManager
-        .getChannels(pkg)
-        .coreErrorToActionResult()
-
-      encryptionKey <- utilities
-        .encryptionKey(organization)
-        .toEitherT[Future]
-        .coreErrorToActionResult()
-
-      payload = ETLAppendWorkflow(
-        packageId = pkg.id,
-        datasetId = pkg.datasetId,
-        userId = user.id,
-        encryptionKey = encryptionKey,
-        files =
-          sources.map(file => s"s3://${file.s3Bucket}/${file.s3Key}").toList,
-        assetDirectory = FilesController
-          .storageDirectory(user, jobId.toString),
-        fileType = fileType,
-        packageType = pkg.`type`,
-        channels = channels
-      )
-
-      token = JwtAuthenticator.generateServiceToken(
-        1.minute,
-        organization.id,
-        Some(pkg.datasetId)
-      )
-
-      tokenHeader = Authorization(OAuth2BearerToken(token.value))
-
-      _ <- jobSchedulingServiceClient
-        .create(organization.id, jobId.toString, payload, List(tokenHeader))
-        .leftMap {
-          case Left(e) => InternalServerError(e.getMessage)
-          case Right(resp) => InternalServerError(resp.toString)
-        }
-
-      _ <- secureContainer.fileManager
-        .setSourcesToProcessed(sources.toList)
-        .coreErrorToActionResult()
-    } yield payload
   }
 
   def getMD5(f: File): Either[ActionResult, String] = {

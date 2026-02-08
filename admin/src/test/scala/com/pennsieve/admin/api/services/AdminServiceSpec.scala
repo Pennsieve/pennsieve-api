@@ -129,7 +129,7 @@ trait AdminServiceSpec
       new InsecureContainer(adminConfig) with InsecureCoreContainer
       with LocalEmailContainer with LocalSQSContainer with AdminContainer
       with LocalS3Container with MockCustomTermsOfServiceClientContainer
-      with MockJobSchedulingServiceContainer with LocalCognitoContainer {
+      with LocalCognitoContainer {
         override val postgresUseSSL = false
         override lazy val cognitoClient = new MockCognito()
         override lazy val cognitoConfig = adminServiceSpec.cognitoConfig
@@ -142,10 +142,7 @@ trait AdminServiceSpec
         user = user,
         organization = organization
       ) with SecureCoreContainer with LocalEmailContainer
-      with MessageTemplatesContainer with MockJobSchedulingServiceContainer
-      with AdminETLServiceContainer {
-        override val jobSchedulingServiceClient: JobSchedulingServiceClient =
-          diContainer.jobSchedulingServiceClient
+      with MessageTemplatesContainer with AdminETLServiceContainer {
         override val postgresUseSSL = false
       }
 
