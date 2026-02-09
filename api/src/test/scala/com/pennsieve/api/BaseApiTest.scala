@@ -697,6 +697,8 @@ trait ApiSuite
     sandboxUserContainer =
       secureContainerBuilder(sandboxUser, sandboxOrganization)
 
+    sandboxUserContainer.datasetStatusManager.resetDefaultStatusOptions.await.value
+
     loggedInSandboxUserJwt = Authenticator.createUserToken(
       loggedInUser,
       sandboxOrganization
