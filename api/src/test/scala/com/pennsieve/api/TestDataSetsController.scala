@@ -7839,11 +7839,11 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status shouldBe 201
-      publicationStatusId = secureDataSetManager
-        .get(dataset.id)
+      publicationStatusId = secureContainer.datasetPublicationStatusManager
+        .getLatestByDataset(dataset.id)
         .await
         .value
-        .publicationStatusId
+        .map(_.id)
     }
 
     postJson(
@@ -7853,11 +7853,11 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 500
       // publicationStatusId should not change in case of failure
-      secureDataSetManager
-        .get(dataset.id)
+      secureContainer.datasetPublicationStatusManager
+        .getLatestByDataset(dataset.id)
         .await
         .value
-        .publicationStatusId shouldBe publicationStatusId
+        .map(_.id) shouldBe publicationStatusId
     }
   }
 
@@ -7986,18 +7986,14 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 200
     }
 
-    val publicationStatusId = secureDataSetManager
-      .get(dataset.id)
-      .await
-      .value
-      .publicationStatusId
-      .get
+    val latestPublicationStatus =
+      secureContainer.datasetPublicationStatusManager
+        .getLatestByDataset(dataset.id)
+        .await
+        .value
+        .get
 
-    PublicationStatus.lockedStatuses contains secureContainer.datasetPublicationStatusManager
-      .get(publicationStatusId)
-      .await
-      .value
-      .publicationStatus shouldBe false
+    PublicationStatus.lockedStatuses contains latestPublicationStatus.publicationStatus shouldBe false
   }
 
   test("set publication status when publish fails") {
@@ -8027,18 +8023,14 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 200
     }
 
-    val publicationStatusId = secureDataSetManager
-      .get(dataset.id)
-      .await
-      .value
-      .publicationStatusId
-      .get
+    val latestPublicationStatus =
+      secureContainer.datasetPublicationStatusManager
+        .getLatestByDataset(dataset.id)
+        .await
+        .value
+        .get
 
-    secureContainer.datasetPublicationStatusManager
-      .get(publicationStatusId)
-      .await
-      .value
-      .publicationStatus shouldBe PublicationStatus.Failed
+    latestPublicationStatus.publicationStatus shouldBe PublicationStatus.Failed
   }
 
   test("deserialize publish-complete message correctly") {
