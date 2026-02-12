@@ -42,10 +42,7 @@ import com.pennsieve.models.{
   TokenSecret,
   User
 }
-import com.pennsieve.clients.{
-  MockCustomTermsOfServiceClientContainer,
-  MockJobSchedulingServiceContainer
-}
+import com.pennsieve.clients.{ MockCustomTermsOfServiceClientContainer }
 import com.pennsieve.core.utilities._
 import com.pennsieve.models.DBPermission.{ Administer, Delete, Guest }
 import com.pennsieve.managers._
@@ -192,10 +189,7 @@ trait ApiSuite
     insecureContainer = new InsecureContainer(config) with TestCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with LocalSQSContainer with MockSNSContainer
-    with ApiSNSContainer with ApiSQSContainer
-    with MockJobSchedulingServiceContainer {
-      override lazy val jobSchedulingServiceConfigPath: String =
-        "pennsieve.job_scheduling_service"
+    with ApiSNSContainer with ApiSQSContainer {
       override val postgresUseSSL = false
       override val dataPostgresUseSSL = false
     }
