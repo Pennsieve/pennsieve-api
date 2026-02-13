@@ -1245,4 +1245,208 @@ class PackageManagerSpec extends BaseManagerSpec {
     afterDeletePackageNodeIds.contains(subject2FilePackage.nodeId) shouldBe false
   }
 
+  "deleting a collection" should "set all descendants to DELETING with __DELETED__ prefix" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val packagesMapper = new PackagesMapper(testOrganization)
+
+    /**
+      * Folder structure:
+      *
+      * ├── rootFolder/
+      * │   ├── childFolder/
+      * │   │   ├── grandChildFile
+      * │   │   └── grandChildFile2
+      * │   └── childFile
+      */
+    val rootFolder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "rootFolder",
+      `type` = PackageType.Collection
+    )
+    val childFolder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFolder",
+      `type` = PackageType.Collection,
+      parent = Some(rootFolder)
+    )
+    val grandChildFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "grandChildFile",
+      `type` = PackageType.CSV,
+      parent = Some(childFolder)
+    )
+    val grandChildFile2 = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "grandChildFile2",
+      `type` = PackageType.CSV,
+      parent = Some(childFolder)
+    )
+    val childFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile",
+      `type` = PackageType.CSV,
+      parent = Some(rootFolder)
+    )
+
+    deletePackage(user = user, pkg = rootFolder)
+
+    // Fetch all packages directly (bypassing the DELETING filter)
+    val allPackages = database
+      .run(
+        packagesMapper
+          .filter(
+            _.id inSet Set(
+              rootFolder.id,
+              childFolder.id,
+              grandChildFile.id,
+              grandChildFile2.id,
+              childFile.id
+            )
+          )
+          .result
+      )
+      .await
+
+    allPackages.foreach { pkg =>
+      pkg.state shouldBe PackageState.DELETING
+      pkg.name should startWith("__DELETED__")
+    }
+  }
+
+  "deleting a collection" should "not affect packages outside the collection" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val packagesMapper = new PackagesMapper(testOrganization)
+
+    val folder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "folder",
+      `type` = PackageType.Collection
+    )
+    val childFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile",
+      `type` = PackageType.CSV,
+      parent = Some(folder)
+    )
+    val siblingFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "siblingFile",
+      `type` = PackageType.CSV
+    )
+
+    deletePackage(user = user, pkg = folder)
+
+    val sibling = database
+      .run(packagesMapper.filter(_.id === siblingFile.id).result.head)
+      .await
+
+    sibling.state shouldBe PackageState.READY
+    sibling.name shouldBe "siblingFile"
+  }
+
+  "deleting a collection" should "skip already-deleted descendants" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val packagesMapper = new PackagesMapper(testOrganization)
+
+    val folder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "folder",
+      `type` = PackageType.Collection
+    )
+    val childFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile",
+      `type` = PackageType.CSV,
+      parent = Some(folder)
+    )
+    val childFile2 = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile2",
+      `type` = PackageType.CSV,
+      parent = Some(folder)
+    )
+
+    // Delete one child independently first
+    deletePackage(user = user, pkg = childFile)
+
+    val childAfterFirstDelete = database
+      .run(packagesMapper.filter(_.id === childFile.id).result.head)
+      .await
+    val childFirstDeletedName = childAfterFirstDelete.name
+
+    // Now delete the parent folder
+    deletePackage(user = user, pkg = folder)
+
+    // The independently-deleted child should NOT be double-renamed
+    val childAfterParentDelete = database
+      .run(packagesMapper.filter(_.id === childFile.id).result.head)
+      .await
+    childAfterParentDelete.name shouldBe childFirstDeletedName
+
+    // The other child should be marked DELETING
+    val child2 = database
+      .run(packagesMapper.filter(_.id === childFile2.id).result.head)
+      .await
+    child2.state shouldBe PackageState.DELETING
+    child2.name should startWith("__DELETED__")
+  }
+
+  "deleting an empty collection" should "succeed without errors" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val emptyFolder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "emptyFolder",
+      `type` = PackageType.Collection
+    )
+
+    deletePackage(user = user, pkg = emptyFolder)
+
+    val packagesMapper = new PackagesMapper(testOrganization)
+    val deleted = database
+      .run(packagesMapper.filter(_.id === emptyFolder.id).result.head)
+      .await
+
+    deleted.state shouldBe PackageState.DELETING
+    deleted.name should startWith("__DELETED__")
+  }
+
+  "deleting a non-collection package" should "not attempt to soft-delete descendants" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val file = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "singleFile",
+      `type` = PackageType.CSV
+    )
+
+    deletePackage(user = user, pkg = file)
+
+    val packagesMapper = new PackagesMapper(testOrganization)
+    val deleted = database
+      .run(packagesMapper.filter(_.id === file.id).result.head)
+      .await
+
+    deleted.state shouldBe PackageState.DELETING
+    deleted.name should startWith("__DELETED__")
+  }
+
 }

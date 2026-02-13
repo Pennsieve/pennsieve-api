@@ -621,22 +621,21 @@ class PackageManager(datasetManager: DatasetManager) {
       // is deleted, and the delete job removes one of the source assets before
       // it is copied to the publish bucket.
       _ <- datasetManager.assertNotLocked(pkg.datasetId)
-      _ <- db
-        .run(
-          packagesMapper
-            .get(pkg.id)
-            .map(_.state)
-            .update(PackageState.DELETING)
-        )
-        .toEitherT
-      _ <- db
-        .run(
-          packagesMapper
-            .get(pkg.id)
-            .map(_.name)
-            .update("__DELETED__" + pkg.nodeId + "_" + pkg.name)
-        )
-        .toEitherT
+      softDeleteAction = for {
+        _ <- packagesMapper
+          .get(pkg.id)
+          .map(_.state)
+          .update(PackageState.DELETING)
+        _ <- packagesMapper
+          .get(pkg.id)
+          .map(_.name)
+          .update("__DELETED__" + pkg.nodeId + "_" + pkg.name)
+        _ <- if (pkg.`type` == Collection)
+          packagesMapper.softDeleteDescendants(pkg)
+        else DBIO.successful(0)
+      } yield ()
+
+      _ <- db.run(softDeleteAction.transactionally).toEitherT
 
       amount <- storageManager
         .getStorage(PackageStorageAggregationKey, List(pkg.id))
