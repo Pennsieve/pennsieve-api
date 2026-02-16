@@ -310,6 +310,29 @@ class PackagesMapper(val organization: Organization)
       .map(_.to(Set))
   }
 
+  // Set all descendants of a collection to DELETING
+  // Excludes descendats in DELETING or DELETED state
+  def softDeleteDescendants(p: Package) = {
+    sqlu"""
+      WITH RECURSIVE descendants AS (
+        SELECT id
+        FROM "#${organization.schemaId}".packages
+        WHERE parent_id = ${p.id}
+          AND state NOT IN (${PackageState.DELETING.entryName}, ${PackageState.DELETED.entryName})
+        UNION ALL
+        SELECT child.id
+        FROM "#${organization.schemaId}".packages child
+        INNER JOIN descendants ON descendants.id = child.parent_id
+        WHERE child.state NOT IN (${PackageState.DELETING.entryName}, ${PackageState.DELETED.entryName})
+      )
+      UPDATE "#${organization.schemaId}".packages target
+      SET state = ${PackageState.DELETING.entryName},
+          name = '__DELETED__' || target.node_id || '_' || target.name
+      FROM descendants
+      WHERE target.id = descendants.id
+    """
+  }
+
   type PackagesSeen = Set[Int]
   type AncestorsResult = Either[CoreError, List[Package]]
   type AncestorsAccumulator = (Package, AncestorsResult, PackagesSeen)
