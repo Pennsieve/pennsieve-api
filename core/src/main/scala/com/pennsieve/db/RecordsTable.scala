@@ -33,7 +33,6 @@ case class Record(
   valueEncrypted: Option[Array[Byte]],
   validFrom: ZonedDateTime,
   validTo: Option[ZonedDateTime],
-  isCurrent: Boolean,
   provenanceId: UUID,
   createdAt: ZonedDateTime,
   keyHash: Option[String]
@@ -51,7 +50,6 @@ final class RecordsTable(schema: String, tag: Tag)
   def valueEncrypted = column[Option[Array[Byte]]]("value_encrypted")
   def validFrom = column[ZonedDateTime]("valid_from")
   def validTo = column[Option[ZonedDateTime]]("valid_to")
-  def isCurrent = column[Boolean]("is_current")
   def provenanceId = column[UUID]("provenance_id")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
   def keyHash = column[Option[String]]("key_hash")
@@ -67,7 +65,6 @@ final class RecordsTable(schema: String, tag: Tag)
       valueEncrypted,
       validFrom,
       validTo,
-      isCurrent,
       provenanceId,
       createdAt,
       keyHash
