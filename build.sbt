@@ -92,7 +92,6 @@ lazy val slickCatsVersion = "0.10.4"
 
 lazy val testContainersVersion = "0.40.1"
 lazy val utilitiesVersion = "4-55953e4"
-lazy val jobSchedulingServiceClientVersion = "6-3251c91"
 lazy val serviceUtilitiesVersion = "9-b838dd9"
 lazy val discoverServiceClientVersion = "155-899ad5e"
 lazy val doiServiceClientVersion = "12-756107b"
@@ -273,7 +272,6 @@ lazy val coreSettings = Seq(
   scalacOptions ++= Seq("-language:higherKinds"),
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
-    "com.pennsieve" %% "job-scheduling-service-client" % jobSchedulingServiceClientVersion,
     "com.pennsieve" %% "service-utilities" % serviceUtilitiesVersion,
     "com.pennsieve" %% "utilities" % utilitiesVersion,
     "commons-codec" % "commons-codec" % "1.10",

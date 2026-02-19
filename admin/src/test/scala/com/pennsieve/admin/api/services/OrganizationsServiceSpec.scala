@@ -276,12 +276,6 @@ class OrganizationsServiceSpec extends AdminServiceSpec {
         status shouldEqual OK
         val newOrganization = responseAs[Organization]
 
-        testDIContainer.jobSchedulingServiceClient
-          .asInstanceOf[LocalJobSchedulingServiceClient]
-          .organizationQuotas
-          .headOption
-          .value should be(newOrganization.id -> Quota(10))
-
         testRequest(
           GET,
           s"/organizations/${newOrganization.nodeId}",
