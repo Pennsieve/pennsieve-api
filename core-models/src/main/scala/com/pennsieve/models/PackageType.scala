@@ -18,7 +18,6 @@ package com.pennsieve.models
 
 import enumeratum._
 
-sealed trait Imaging
 sealed trait PackageType extends EnumEntry
 
 object PackageType extends Enum[PackageType] with CirceEnum[PackageType] {
@@ -27,9 +26,9 @@ object PackageType extends Enum[PackageType] with CirceEnum[PackageType] {
   val TimeSeriesAllowed: Set[PackageType] =
     Set(TimeSeries, Collection)
 
-  case object Image extends PackageType with Imaging
-  case object MRI extends PackageType with Imaging
-  case object Slide extends PackageType with Imaging
+  case object Image extends PackageType
+  case object MRI extends PackageType
+  case object Slide extends PackageType
 
   // For tracking metadata associated external files that we don't manage or process the contents of:
   case object ExternalFile extends PackageType

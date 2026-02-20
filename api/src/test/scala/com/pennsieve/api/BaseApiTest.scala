@@ -244,7 +244,6 @@ trait ApiSuite
   var storageManager: StorageServiceClientTrait = _
   var annotationManager: AnnotationManager = _
   var discussionManager: DiscussionManager = _
-  var dimensionManager: DimensionManager = _
 
   var loggedInUser: User = _
   var colleagueUser: User = _
@@ -496,7 +495,6 @@ trait ApiSuite
     externalFileManager = secureContainer.externalFileManager
     annotationManager = secureContainer.annotationManager
     discussionManager = secureContainer.discussionManager
-    dimensionManager = secureContainer.dimensionManager
     timeSeriesManager = secureContainer.timeSeriesManager
     teamManager = secureContainer.teamManager
     storageManager = secureContainer.storageManager
