@@ -473,6 +473,37 @@ trait ManagerSpec
     }
   }
 
+  def publishFile(
+    organization: Organization = testOrganization,
+    user: User = superAdmin,
+    file: File,
+    publishS3Bucket: String,
+    publishS3Key: String,
+    publishS3VersionId: String
+  ): Int = {
+    fileManager(organization = organization, user = user)
+      .setFilePublished(file, publishS3Bucket, publishS3Key, publishS3VersionId)
+      .await match {
+      case Right(x) => x
+      case Left(e) => throw e
+    }
+  }
+
+  def unpublishFile(
+    organization: Organization = testOrganization,
+    user: User = superAdmin,
+    file: File,
+    storageS3Bucket: String,
+    storageS3Key: String
+  ): Int = {
+    fileManager(organization = organization, user = user)
+      .setFileUnpublished(file, storageS3Bucket, storageS3Key)
+      .await match {
+      case Right(x) => x
+      case Left(e) => throw e
+    }
+  }
+
   def createTeam(
     name: String,
     organization: Organization,

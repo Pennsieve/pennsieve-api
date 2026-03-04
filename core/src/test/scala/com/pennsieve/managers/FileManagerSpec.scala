@@ -22,7 +22,9 @@ import com.pennsieve.models.PackageType.CSV
 import com.pennsieve.models._
 import com.pennsieve.models.FileObjectType.Source
 import org.scalatest.EitherValues._
+import org.scalatest.OptionValues._
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class FileManagerSpec extends BaseManagerSpec {
@@ -328,7 +330,39 @@ class FileManagerSpec extends BaseManagerSpec {
     assert(fetched.value.map(_.uploadedState) == List(Some(FileState.PENDING)))
   }
 
-//  "files" should "not be created if it does not follow naming conventions" in {
+  "published source files" should "include S3 versionId" in {
+
+    val user = createUser()
+    val pkg = createPackage(testOrganization, user)
+    val source = createFile(
+      container = pkg,
+      user = user,
+      objectType = FileObjectType.Source,
+      processingState = FileProcessingState.Processed,
+      uploadedState = Some(FileState.UPLOADED)
+    )
+
+    val publishBucket = generateRandomString().toLowerCase
+    val publishKey = s"5/files/${pkg.name}"
+    val s3VersionId = UUID.randomUUID().toString
+
+    val fm = fileManager(organization = testOrganization, user = user)
+    val updates = fm
+      .setFilePublished(source, publishBucket, publishKey, s3VersionId)
+      .await
+      .value
+
+    assert(updates == 1)
+
+    val fetched = fm.getSources(pkg, None, None).await.value
+
+    assert(fetched.length == 1)
+    assert(fetched.head.s3Bucket == publishBucket)
+    assert(fetched.head.s3Key == publishKey)
+    assert(fetched.head.publishedS3VersionId.value == s3VersionId)
+
+  }
+  //  "files" should "not be created if it does not follow naming conventions" in {
 //
 //    val user = createUser()
 //    val pkg = createPackage(testOrganization, user)
