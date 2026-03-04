@@ -538,6 +538,39 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
   ): EitherT[Future, CoreError, Int] =
     db.run(files.setPublished(`package`.id, published, s3Key)).toEitherT
 
+  def setFilePublished(
+    file: File,
+    s3Bucket: String,
+    s3Key: String,
+    s3VersionId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    db.run(
+        files
+          .setFilePublished(
+            file.packageId,
+            file.id,
+            s3Bucket,
+            s3Key,
+            s3VersionId
+          )
+      )
+      .toEitherT
+
+  def setFileUnpublished(
+    file: File,
+    s3Bucket: String,
+    s3Key: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    db.run(
+        files
+          .setFileUnpublished(file.packageId, file.id, s3Bucket, s3Key)
+      )
+      .toEitherT
+
   def renameFile(
     `file`: File,
     newName: String

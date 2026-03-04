@@ -53,7 +53,8 @@ object FileDTO {
         file.properties,
         file.assetType,
         file.provenanceId,
-        file.published
+        file.published,
+        file.publishedS3VersionId
       )
     )
   }

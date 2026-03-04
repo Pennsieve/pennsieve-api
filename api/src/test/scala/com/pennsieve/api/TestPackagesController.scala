@@ -4699,6 +4699,82 @@ class TestPackagesController
     }
   }
 
+  test("setFilePublished marks specific file as published by id") {
+    val stedding = packageManager
+      .create(
+        "Stedding Chanti",
+        PackageType.TimeSeries,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    val storageBucket = "storage-bucket"
+
+    val file1 = fileManager
+      .create(
+        "the-stump-report.lay",
+        FileType.Data,
+        stedding,
+        storageBucket,
+        s"${UUID.randomUUID().toString}/${UUID.randomUUID().toString}",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    val file2 = fileManager
+      .create(
+        "the-stump-image.dat",
+        FileType.Data,
+        stedding,
+        storageBucket,
+        s"${UUID.randomUUID().toString}/${UUID.randomUUID().toString}",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    // Mark one as published
+    val publishBucket = "publish-bucket"
+    val publishKey = "70/files/data/the-stump-image.dat"
+    val s3VersionId = UUID.randomUUID().toString
+    fileManager
+      .setFilePublished(file2, publishBucket, publishKey, s3VersionId)
+      .await
+      .value shouldBe 1
+
+    get(
+      s"/${stedding.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(2)
+
+      val actualFile1 =
+        files.find(_.content.id == file1.id).get
+      val actualFile2 =
+        files.find(_.content.id == file2.id).get
+
+      actualFile1.content.publishedS3VersionId shouldBe None
+      actualFile1.content.s3bucket shouldBe file1.s3Bucket
+      actualFile1.content.s3key shouldBe file1.s3Key
+
+      actualFile2.content.publishedS3VersionId.value shouldBe s3VersionId
+      actualFile2.content.s3bucket shouldBe publishBucket
+      actualFile2.content.s3key shouldBe publishKey
+
+    }
+  }
+
   test("setPublished marks all files as published when no s3Key is provided") {
     val persyst_file = packageManager
       .create(
@@ -4821,4 +4897,82 @@ class TestPackagesController
       files.head.content.published shouldBe false
     }
   }
+
+  test("setFileUnpublished can toggle files back to unpublished") {
+    val mefPackage = packageManager
+      .create(
+        "Toggle Test TimeSeries",
+        PackageType.TimeSeries,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    val storageBucket = "storage-bucket"
+    val storageKey =
+      s"${UUID.randomUUID().toString}/${UUID.randomUUID().toString}"
+
+    val file = fileManager
+      .create(
+        "toggle-test.mef",
+        FileType.MEF,
+        mefPackage,
+        storageBucket,
+        storageKey,
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    // Mark as published
+    val s3VersionId = UUID.randomUUID().toString
+    val publishBucket = "publish-bucket"
+    val publishKey = s"9/files/toggle-test.mef"
+    fileManager
+      .setFilePublished(file = file, publishBucket, publishKey, s3VersionId)
+      .await
+      .value
+
+    // Verify it's published
+    get(
+      s"/${mefPackage.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(1)
+      files.head.content.publishedS3VersionId.value shouldBe s3VersionId
+      files.head.content.s3bucket shouldBe publishBucket
+      files.head.content.s3key shouldBe publishKey
+    }
+
+    // Mark as unpublished
+    fileManager
+      .setFileUnpublished(
+        file = file,
+        s3Bucket = storageBucket,
+        s3Key = storageKey
+      )
+      .await
+      .value
+
+    // Verify it's unpublished
+    get(
+      s"/${mefPackage.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(1)
+      files.head.content.publishedS3VersionId shouldBe None
+      files.head.content.s3bucket shouldBe storageBucket
+      files.head.content.s3key shouldBe storageKey
+    }
+  }
+
 }
