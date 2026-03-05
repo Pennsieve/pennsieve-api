@@ -96,7 +96,8 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     uploadedState: Option[FileState] = None,
     properties: Option[Json] = None,
     assetType: Option[String] = None,
-    provenanceId: Option[UUID] = None
+    provenanceId: Option[UUID] = None,
+    publishedS3VersionId: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, File] = {
@@ -128,7 +129,8 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
         uploadedState = uploadedState,
         properties = properties,
         assetType = assetType,
-        provenanceId = provenanceId
+        provenanceId = provenanceId,
+        publishedS3VersionId = publishedS3VersionId
       )
 
     if (!isNameValid(name)) {
@@ -144,6 +146,11 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
           PredicateError(
             s"Properties JSON exceeds maximum size of 1MB (actual: ${propertiesSize} bytes)"
           )
+        )
+    } else if (publishedS3VersionId.nonEmpty && publishedS3VersionId.get.isEmpty) {
+      EitherT
+        .leftT[Future, File](
+          PredicateError(s"Published S3 versionId cannot be empty string")
         )
     } else if (isValidProcessingState) {
       db.run(files.returning(files) += file).toEitherT

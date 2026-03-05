@@ -453,7 +453,8 @@ trait ManagerSpec
     objectType: FileObjectType = Source,
     processingState: FileProcessingState = FileProcessingState.Unprocessed,
     size: Long = 0,
-    uploadedState: Option[FileState] = None
+    uploadedState: Option[FileState] = None,
+    publishedS3VersionId: Option[String] = None
   ): File = {
     val fm = fileManager(organization, user)
     fm.create(
@@ -465,7 +466,8 @@ trait ManagerSpec
         objectType,
         processingState,
         size,
-        uploadedState = uploadedState
+        uploadedState = uploadedState,
+        publishedS3VersionId = publishedS3VersionId
       )
       .await match {
       case Right(x) => x

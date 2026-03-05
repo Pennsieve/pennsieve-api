@@ -23,6 +23,7 @@ import com.pennsieve.domain.{ NameCheckError, NotFound, PredicateError }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
 import com.pennsieve.models.{
   CollectionUpload,
+  FileType,
   Package,
   PackageState,
   PackageType
@@ -37,6 +38,7 @@ import org.scalatest.enablers.Messaging.messagingNatureOfThrowable
 import java.util.UUID
 import com.pennsieve.audit.middleware.TraceId
 
+import scala.collection.compat.immutable.ArraySeq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
@@ -1447,6 +1449,118 @@ class PackageManagerSpec extends BaseManagerSpec {
 
     deleted.state shouldBe PackageState.DELETING
     deleted.name should startWith("__DELETED__")
+  }
+
+  "getPackageHierarchy" should "return publishedS3VersionId when present" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val rootPkg = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "singleFile",
+      `type` = PackageType.CSV
+    )
+
+    val rootFile = createFile(rootPkg, user = user, size = 15)
+
+    val folderPkg = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "folder",
+      `type` = PackageType.Collection
+    )
+
+    val unpublishedChildPkg = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile1",
+      `type` = PackageType.Text,
+      parent = Some(folderPkg)
+    )
+
+    val unpublishedChildFile =
+      createFile(container = unpublishedChildPkg, user = user, size = 115)
+
+    val publishedChildPkg = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile2",
+      `type` = PackageType.TimeSeries,
+      parent = Some(folderPkg)
+    )
+
+    val publishedChildFile =
+      createFile(
+        container = publishedChildPkg,
+        user = user,
+        size = 1115,
+        publishedS3VersionId = Some(UUID.randomUUID().toString)
+      )
+
+    val pm = packageManager(user = user)
+    val hierarchies =
+      pm.getPackageHierarchy(List(rootPkg.nodeId, folderPkg.nodeId)).await.value
+
+    hierarchies.length shouldBe 3
+
+    hierarchies should contain theSameElementsAs List(
+      pm.PackageHierarchy(
+        datasetId = dataset.id,
+        nodeIdPath = ArraySeq(),
+        packageId = rootPkg.id,
+        nodeId = rootPkg.nodeId,
+        packageType = rootPkg.`type`,
+        packageState = rootPkg.state,
+        packageNamePath = ArraySeq(),
+        packageName = rootPkg.name,
+        packageFileCount = 1,
+        fileId = rootFile.id,
+        fileName = rootFile.name,
+        size = rootFile.size,
+        fileType = rootFile.fileType,
+        s3Bucket = rootFile.s3Bucket,
+        s3Key = rootFile.s3Key,
+        publishedS3VersionId = rootFile.publishedS3VersionId
+      ),
+      pm.PackageHierarchy(
+        datasetId = dataset.id,
+        nodeIdPath = ArraySeq(folderPkg.nodeId),
+        packageId = unpublishedChildPkg.id,
+        nodeId = unpublishedChildPkg.nodeId,
+        packageType = unpublishedChildPkg.`type`,
+        packageState = unpublishedChildPkg.state,
+        packageNamePath = ArraySeq(folderPkg.name),
+        packageName = unpublishedChildPkg.name,
+        packageFileCount = 1,
+        fileId = unpublishedChildFile.id,
+        fileName = unpublishedChildFile.name,
+        size = unpublishedChildFile.size,
+        fileType = unpublishedChildFile.fileType,
+        s3Bucket = unpublishedChildFile.s3Bucket,
+        s3Key = unpublishedChildFile.s3Key,
+        publishedS3VersionId = unpublishedChildFile.publishedS3VersionId
+      ),
+      pm.PackageHierarchy(
+        datasetId = dataset.id,
+        nodeIdPath = ArraySeq(folderPkg.nodeId),
+        packageId = publishedChildPkg.id,
+        nodeId = publishedChildPkg.nodeId,
+        packageType = publishedChildPkg.`type`,
+        packageState = publishedChildPkg.state,
+        packageNamePath = ArraySeq(folderPkg.name),
+        packageName = publishedChildPkg.name,
+        packageFileCount = 1,
+        fileId = publishedChildFile.id,
+        fileName = publishedChildFile.name,
+        size = publishedChildFile.size,
+        fileType = publishedChildFile.fileType,
+        s3Bucket = publishedChildFile.s3Bucket,
+        s3Key = publishedChildFile.s3Key,
+        publishedS3VersionId = publishedChildFile.publishedS3VersionId
+      )
+    )
+
   }
 
 }
