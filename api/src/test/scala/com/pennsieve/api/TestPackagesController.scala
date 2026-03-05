@@ -114,6 +114,9 @@ class TestPackagesController
   override def beforeEach(): Unit = {
 
     super.beforeEach()
+
+    mockUrlShortenerClient.shortenedUrls.clear()
+
     dataPackage = packageManager
       .create(
         "Foo",
@@ -3112,9 +3115,10 @@ class TestPackagesController
       entry.fileName shouldBe "external-file.tif"
       entry.packageName shouldBe "external-pkg"
 
-      // The MockObjectStore returns URLs in the format file://$bucket/$key
+      // The MockObjectStore returns URLs in the format file://$bucket/$key[?versionId=$s3VersionId]
       // Verify that the external bucket name is correctly passed through
       entry.url.toString should include(externalBucketName)
+      entry.url.getQuery shouldBe null
     }
   }
 
@@ -3180,6 +3184,75 @@ class TestPackagesController
       // Verify the correct bucket names are in the URLs
       regularEntry.get.url.toString should include(regularBucketName)
       externalEntry.get.url.toString should include(externalBucketName)
+    }
+  }
+
+  test(
+    "download-manifest produces a manifest with presigned URLs taking S3 versionId if file is published"
+  ) {
+
+    val storageBucket = "storage-bucket"
+    val publishBucket = "publish-bucket"
+
+    val publishedPackage =
+      createTestDownloadPackage(
+        "published-pkg",
+        packageType = PackageType.Image
+      )
+
+    val publishedS3VersionId = UUID.randomUUID().toString
+    val publishedFile = createTestDownloadFileInBucket(
+      "published-file.tif",
+      publishedPackage,
+      publishBucket,
+      publishedS3VersionId = Some(publishedS3VersionId)
+    )
+
+    val unpublishedPackage =
+      createTestDownloadPackage(
+        "unpublished-pkg",
+        packageType = PackageType.Image
+      )
+    val unpublishedFile = createTestDownloadFileInBucket(
+      "unpublished-file.tif",
+      unpublishedPackage,
+      storageBucket
+    )
+
+    val request =
+      s"""{"nodeIds": ["${publishedPackage.nodeId}", "${unpublishedPackage.nodeId}"]}"""
+
+    postJson(
+      s"/download-manifest",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val json = parse(response.body)
+      val payload = json.extract[DownloadManifestDTO]
+
+      payload.header.count shouldBe 2
+      payload.data.length shouldBe 2
+
+      val publishedEntry =
+        payload.data.find(_.nodeId == publishedPackage.nodeId).value
+      publishedEntry.fileName shouldBe publishedFile.name
+      publishedEntry.packageName shouldBe publishedPackage.name
+
+      val unpublishedEntry =
+        payload.data.find(_.nodeId == unpublishedPackage.nodeId).value
+      unpublishedEntry.fileName shouldBe unpublishedFile.name
+      unpublishedEntry.packageName shouldBe unpublishedPackage.name
+
+      // The MockObjectStore returns URLs in the format file://$bucket/$key[?versionId=$s3VersionId]
+      // Verify that the publish bucket and versionId are correctly passed through
+      publishedEntry.url.toString should include(publishBucket)
+      publishedEntry.url.getQuery shouldBe s"versionId=$publishedS3VersionId"
+
+      unpublishedEntry.url.toString should include(storageBucket)
+      unpublishedEntry.url.getQuery shouldBe null
+
     }
   }
 
@@ -3650,6 +3723,143 @@ class TestPackagesController
 
       mockUrlShortenerClient.shortenedUrls.head shouldBe
         new URL("file://s3bucketName/s3Path")
+    }
+  }
+
+  test("get presigned url includes versionId for published file") {
+    val publishBucket = "publish-bucket"
+    val publishKey = "70/files/source.pdf"
+    val s3VersionId = UUID.randomUUID().toString
+
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        publishBucket,
+        publishKey,
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0,
+        publishedS3VersionId = Some(s3VersionId)
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val url = parsedBody.extract[DownloadItemResponse].url
+      url should include(publishBucket)
+      url should include(s"versionId=$s3VersionId")
+    }
+  }
+
+  test("get presigned url does not include versionId for unpublished file") {
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        "s3bucketName",
+        "s3Path",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val url = parsedBody.extract[DownloadItemResponse].url
+      url should not include "versionId"
+    }
+  }
+
+  test("get shortened presigned url passes versionId to shortener") {
+    val s3VersionId = UUID.randomUUID().toString
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        "publish-bucket",
+        "70/files/source.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0,
+        publishedS3VersionId = Some(s3VersionId)
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}?short=true",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      mockUrlShortenerClient.shortenedUrls.head.toString should include(
+        s"versionId=$s3VersionId"
+      )
+    }
+  }
+
+  test("presign redirect includes versionId for published file") {
+    val publishBucket = "publish-bucket"
+    val publishKey = "70/files/source.pdf"
+    val s3VersionId = UUID.randomUUID().toString
+
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        publishBucket,
+        publishKey,
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0,
+        publishedS3VersionId = Some(s3VersionId)
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}/presign/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(302)
+      response.getHeader("Location") should include(s"versionId=$s3VersionId")
+    }
+  }
+
+  test("presign redirect does not include versionId for unpublished file") {
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        "s3bucketName",
+        "s3Path",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}/presign/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(302)
+      response.getHeader("Location") should not include "versionId"
     }
   }
 
