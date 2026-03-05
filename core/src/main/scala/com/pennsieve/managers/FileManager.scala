@@ -553,17 +553,21 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Int] =
-    db.run(
-        files
-          .setFilePublished(
+    if (s3VersionId.isEmpty)
+      EitherT.leftT[Future, Int](
+        PredicateError("Published S3 versionId cannot be empty string")
+      )
+    else
+      db.run(
+          files.setFilePublished(
             file.packageId,
             file.id,
             s3Bucket,
             s3Key,
             s3VersionId
           )
-      )
-      .toEitherT
+        )
+        .toEitherT
 
   def setFileUnpublished(
     file: File,

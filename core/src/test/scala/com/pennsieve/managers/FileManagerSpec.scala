@@ -362,6 +362,46 @@ class FileManagerSpec extends BaseManagerSpec {
     assert(fetched.head.publishedS3VersionId.value == s3VersionId)
 
   }
+
+  "setFilePublished" should "reject empty string versionId" in {
+    val user = createUser()
+    val pkg = createPackage(testOrganization, user)
+    val file = createFile(container = pkg, user = user)
+    val fm = fileManager(organization = testOrganization, user = user)
+
+    val result = fm.setFilePublished(file, "bucket", "key", "").await
+    assert(
+      result == Left(
+        PredicateError("Published S3 versionId cannot be empty string")
+      )
+    )
+  }
+
+  "create" should "reject empty string publishedS3VersionId" in {
+    val user = createUser()
+    val pkg = createPackage(testOrganization, user)
+    val fm = fileManager(organization = testOrganization, user = user)
+
+    val result = fm
+      .create(
+        name = "test.pdf",
+        `type` = FileType.PDF,
+        `package` = pkg,
+        s3Bucket = "bucket",
+        s3Key = "key",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        size = 0,
+        publishedS3VersionId = Some("")
+      )
+      .await
+
+    assert(
+      result == Left(
+        PredicateError("Published S3 versionId cannot be empty string")
+      )
+    )
+  }
   //  "files" should "not be created if it does not follow naming conventions" in {
 //
 //    val user = createUser()
