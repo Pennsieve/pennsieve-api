@@ -3188,7 +3188,7 @@ class TestPackagesController
   }
 
   test(
-    "download-manifest produces a manifest with presigned URLs taking S3 versionId if file is published"
+    "download-manifest produces a manifest with presigned URLs taking S3 versionId into account if file is published"
   ) {
 
     val storageBucket = "storage-bucket"
