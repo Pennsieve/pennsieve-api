@@ -256,8 +256,8 @@ class FilesMapper(val organization: Organization)
     this
       .filter(_.packageId === packageId)
       .filter(_.id === fileId)
-      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId))
-      .update(s3Bucket, s3Key, Some(s3VersionID))
+      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId, f.published))
+      .update(s3Bucket, s3Key, Some(s3VersionID), true)
       .flatMap {
         case 0 =>
           DBIO.failed(NotFound(s"File for package $packageId with id $fileId"))
@@ -276,8 +276,8 @@ class FilesMapper(val organization: Organization)
     this
       .filter(_.packageId === packageId)
       .filter(_.id === fileId)
-      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId))
-      .update(s3Bucket, s3Key, None)
+      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId, f.published))
+      .update(s3Bucket, s3Key, None, false)
       .flatMap {
         case 0 =>
           DBIO.failed(NotFound(s"File for package $packageId with id $fileId"))
