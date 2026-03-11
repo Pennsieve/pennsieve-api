@@ -24,7 +24,7 @@ import java.time.Duration
 
 final class PostgresDockerContainerImpl
     extends PostgresContainerImpl(
-      dockerImage = "pennsieve/pennsievedb:V20251123185618"
+      dockerImage = "pennsieve/pennsievedb:V20260304122946"
     )
 
 trait PostgresDockerContainer extends StackedDockerContainer {
@@ -35,7 +35,7 @@ trait PostgresDockerContainer extends StackedDockerContainer {
 
 final class PostgresSeedDockerContainerImpl
     extends PostgresContainerImpl(
-      dockerImage = "pennsieve/pennsievedb:V20251123185618-seed"
+      dockerImage = "pennsieve/pennsievedb:V20260304122946-seed"
     )
 
 trait PostgresSeedDockerContainer extends StackedDockerContainer {

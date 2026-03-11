@@ -40,7 +40,8 @@ case class FileContent(
   properties: Option[Json] = None,
   assetType: Option[String] = None,
   provenanceId: Option[UUID] = None,
-  published: Boolean = false
+  published: Boolean = false,
+  publishedS3VersionId: Option[String] = None
 )
 
 final case class SimpleFileContent(
