@@ -223,6 +223,24 @@ data "aws_iam_policy_document" "s3_iam_policy_document" {
       "*",
     ]
   }
+
+  statement {
+    sid = "CrossAccountReadPermissions"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion"
+    ]
+
+    resources = [
+      data.terraform_remote_state.platform_infrastructure.outputs.awsod_sparc_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.awsod_sparc_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.awsod_edots_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.awsod_edots_publish50_bucket_arn}/*",
+    ]
+  }
+
 }
 
 data "aws_iam_policy_document" "ses_iam_policy_document" {
