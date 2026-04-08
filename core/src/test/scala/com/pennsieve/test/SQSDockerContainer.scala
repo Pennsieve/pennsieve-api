@@ -50,8 +50,9 @@ final class SQSDockerContainerImpl
   def containerHost: String = s"${containerIpAddress}:${mappedPort()}"
   def mappedPort(): Int = mappedPort(SQSDockerContainer.port)
   def httpHost(): String = s"http://${containerHost}"
-  def testQueueUrl(): String = s"http://${containerHost}/queue/test"
-  def uploadsQueueUrl(): String = s"http://${containerHost}/queue/uploads"
+  def testQueueUrl(): String = s"http://${containerHost}/000000000000/test"
+  def uploadsQueueUrl(): String =
+    s"http://${containerHost}/000000000000/uploads"
 
   def apply(): GenericContainer = this
 
