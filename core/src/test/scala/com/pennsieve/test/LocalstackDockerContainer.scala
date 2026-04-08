@@ -130,7 +130,7 @@ final class LocalstackDockerContainerImpl
       )
       .withValue(
         "alert.sqsQueue",
-        ConfigValueFactory.fromAnyRef(s"queue/$deadLetterQueueName")
+        ConfigValueFactory.fromAnyRef(s"000000000000/$deadLetterQueueName")
       )
       .withValue(
         "alert.snsTopic",
