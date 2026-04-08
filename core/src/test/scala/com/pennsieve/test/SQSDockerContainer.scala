@@ -26,13 +26,11 @@ import org.testcontainers.containers.wait.strategy.{
 }
 
 object SQSDockerContainer {
-  val port: Int = 4576
+  val port: Int = 4566
   val region: String = "us-east-1"
   val waitStrategy: WaitStrategy =
     new HttpWaitStrategy()
-      .forPort(port)
-      .forPath("/")
-      .forStatusCode(404)
+      .forPath("/_localstack/health")
       .withStartupTimeout(Duration.ofMinutes(5))
 }
 
@@ -44,7 +42,7 @@ final class SQSDockerContainerImpl
         "AWS_ACCESS_KEY_ID" -> "test",
         "AWS_SECRET_ACCESS_KEY" -> "test",
         "SERVICES" -> "sqs",
-        "DEFAULT_REGION" -> "us_east_1"
+        "PERSISTENCE" -> "0"
       ),
       waitStrategy = Some(SQSDockerContainer.waitStrategy)
     ) {

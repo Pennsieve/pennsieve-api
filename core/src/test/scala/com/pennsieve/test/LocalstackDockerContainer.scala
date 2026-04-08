@@ -53,9 +53,12 @@ object VerifiesAllHostNames extends HostnameVerifier {
 }
 
 object LocalstackDockerContainer {
-  val s3ContainerPort: Int = 4572
-  val sqsContainerPort: Int = 4576
-  val snsContainerPort: Int = 4575
+  val localstackPort: Int = 4566
+
+  // newer version of LocalStack uses one port for all services.
+  val s3ContainerPort: Int = localstackPort
+  val sqsContainerPort: Int = localstackPort
+  val snsContainerPort: Int = localstackPort
 
   val region: String = "us-east-1"
 }
@@ -63,25 +66,18 @@ object LocalstackDockerContainer {
 final class LocalstackDockerContainerImpl
     extends DockerContainer(
       dockerImage = "localstack/localstack:community-archive", // keep at community-archive until we have LocalStack license
-      exposedPorts = Seq(
-        LocalstackDockerContainer.s3ContainerPort,
-        LocalstackDockerContainer.sqsContainerPort,
-        LocalstackDockerContainer.snsContainerPort
-      ),
+      exposedPorts = Seq(LocalstackDockerContainer.localstackPort),
       env = Map(
         "AWS_ACCESS_KEY_ID" -> "test",
         "AWS_SECRET_ACCESS_KEY" -> "test",
         "SERVICES" -> "s3,sqs,sns",
-        "DEFAULT_REGION" -> LocalstackDockerContainer.region,
         "USE_SSL" -> "true",
+        "PERSISTENCE" -> "0",
         "DEBUG" -> "1"
       ),
       waitStrategy = Some(
         new HttpWaitStrategy()
-          .forPort(LocalstackDockerContainer.sqsContainerPort)
-          .forPath("/")
-          .usingTls()
-          .forStatusCode(404)
+          .forPath("/_localstack/health")
           .withStartupTimeout(Duration.ofMinutes(5))
       )
     ) {
