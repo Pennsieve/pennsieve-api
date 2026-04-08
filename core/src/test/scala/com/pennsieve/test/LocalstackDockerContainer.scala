@@ -62,7 +62,7 @@ object LocalstackDockerContainer {
 
 final class LocalstackDockerContainerImpl
     extends DockerContainer(
-      dockerImage = "localstack/localstack:0.8.7",
+      dockerImage = "localstack/localstack:community-archive", // keep at community-archive until we have LocalStack license
       exposedPorts = Seq(
         LocalstackDockerContainer.s3ContainerPort,
         LocalstackDockerContainer.sqsContainerPort,

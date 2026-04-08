@@ -38,7 +38,7 @@ object SQSDockerContainer {
 
 final class SQSDockerContainerImpl
     extends DockerContainer(
-      dockerImage = "localstack/localstack:0.8.7",
+      dockerImage = "localstack/localstack:community-archive", // keep at community-archive until we have LocalStack license
       exposedPorts = Seq(SQSDockerContainer.port),
       env = Map(
         "AWS_ACCESS_KEY_ID" -> "test",
