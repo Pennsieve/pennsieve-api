@@ -53,12 +53,21 @@ object VerifiesAllHostNames extends HostnameVerifier {
 }
 
 object LocalstackDockerContainer {
-  val localstackPort: Int = 4566
+  val port: Int = 4566
 
   // newer version of LocalStack uses one port for all services.
-  val s3ContainerPort: Int = localstackPort
-  val sqsContainerPort: Int = localstackPort
-  val snsContainerPort: Int = localstackPort
+  @deprecated(
+    "use port; modern versions of LocalStack do not have separate ports per AWS service"
+  )
+  val s3ContainerPort: Int = port
+  @deprecated(
+    "use port; modern versions of LocalStack do not have separate ports per AWS service"
+  )
+  val sqsContainerPort: Int = port
+  @deprecated(
+    "use port; modern versions of LocalStack do not have separate ports per AWS service"
+  )
+  val snsContainerPort: Int = port
 
   val region: String = "us-east-1"
 }
@@ -66,7 +75,7 @@ object LocalstackDockerContainer {
 final class LocalstackDockerContainerImpl
     extends DockerContainer(
       dockerImage = "localstack/localstack:community-archive", // keep at community-archive until we have LocalStack license
-      exposedPorts = Seq(LocalstackDockerContainer.localstackPort),
+      exposedPorts = Seq(LocalstackDockerContainer.port),
       env = Map(
         "AWS_ACCESS_KEY_ID" -> "test",
         "AWS_SECRET_ACCESS_KEY" -> "test",
@@ -98,9 +107,7 @@ final class LocalstackDockerContainerImpl
   override def config: Config = {
     val localstackHost: String = "https://" + containerIpAddress
 
-    val s3Port: Int = mappedPort(LocalstackDockerContainer.s3ContainerPort)
-    val sqsPort: Int = mappedPort(LocalstackDockerContainer.sqsContainerPort)
-    val snsPort: Int = mappedPort(LocalstackDockerContainer.snsContainerPort)
+    val port: Int = mappedPort(LocalstackDockerContainer.port)
 
     ConfigFactory
       .empty()
@@ -118,15 +125,15 @@ final class LocalstackDockerContainerImpl
       )
       .withValue(
         "s3.host",
-        ConfigValueFactory.fromAnyRef(s"$localstackHost:$s3Port")
+        ConfigValueFactory.fromAnyRef(s"$localstackHost:$port")
       )
       .withValue(
         "sqs.host",
-        ConfigValueFactory.fromAnyRef(s"$localstackHost:$sqsPort")
+        ConfigValueFactory.fromAnyRef(s"$localstackHost:$port")
       )
       .withValue(
         "sns.host",
-        ConfigValueFactory.fromAnyRef(s"$localstackHost:$snsPort")
+        ConfigValueFactory.fromAnyRef(s"$localstackHost:$port")
       )
       .withValue(
         "alert.sqsQueue",
