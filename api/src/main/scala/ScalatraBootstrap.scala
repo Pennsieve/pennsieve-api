@@ -242,7 +242,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.secureContainerBuilder,
         bootstrapHelper.auditLogger,
         bootstrapHelper.objectStore,
-        bootstrapHelper.jobSchedulingServiceClient,
         bootstrapHelper.urlShortenerClient,
         system,
         ec
