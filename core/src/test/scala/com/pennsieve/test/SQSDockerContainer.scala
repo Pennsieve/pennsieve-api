@@ -26,25 +26,23 @@ import org.testcontainers.containers.wait.strategy.{
 }
 
 object SQSDockerContainer {
-  val port: Int = 4576
+  val port: Int = 4566
   val region: String = "us-east-1"
   val waitStrategy: WaitStrategy =
     new HttpWaitStrategy()
-      .forPort(port)
-      .forPath("/")
-      .forStatusCode(404)
+      .forPath("/_localstack/health")
       .withStartupTimeout(Duration.ofMinutes(5))
 }
 
 final class SQSDockerContainerImpl
     extends DockerContainer(
-      dockerImage = "localstack/localstack:0.8.7",
+      dockerImage = "localstack/localstack:community-archive", // keep at community-archive until we have LocalStack license
       exposedPorts = Seq(SQSDockerContainer.port),
       env = Map(
         "AWS_ACCESS_KEY_ID" -> "test",
         "AWS_SECRET_ACCESS_KEY" -> "test",
         "SERVICES" -> "sqs",
-        "DEFAULT_REGION" -> "us_east_1"
+        "PERSISTENCE" -> "0"
       ),
       waitStrategy = Some(SQSDockerContainer.waitStrategy)
     ) {
@@ -52,8 +50,9 @@ final class SQSDockerContainerImpl
   def containerHost: String = s"${containerIpAddress}:${mappedPort()}"
   def mappedPort(): Int = mappedPort(SQSDockerContainer.port)
   def httpHost(): String = s"http://${containerHost}"
-  def testQueueUrl(): String = s"http://${containerHost}/queue/test"
-  def uploadsQueueUrl(): String = s"http://${containerHost}/queue/uploads"
+  def testQueueUrl(): String = s"http://${containerHost}/000000000000/test"
+  def uploadsQueueUrl(): String =
+    s"http://${containerHost}/000000000000/uploads"
 
   def apply(): GenericContainer = this
 
