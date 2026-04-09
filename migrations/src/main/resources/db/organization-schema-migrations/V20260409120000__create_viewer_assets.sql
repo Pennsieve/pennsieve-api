@@ -30,8 +30,14 @@ CREATE INDEX viewer_asset_packages_viewer_asset_id_idx ON viewer_asset_packages(
 
 CREATE OR REPLACE FUNCTION viewer_asset_cleanup_trigger() RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO pennsieve.viewer_asset_cleanup_queue (org_id, dataset_id, asset_id, s3_bucket)
-  VALUES (current_schema::INTEGER, OLD.dataset_id, OLD.id, OLD.s3_bucket);
+  INSERT INTO pennsieve.viewer_asset_cleanup_queue (org_id, dataset_id, asset_id, s3_bucket, s3_prefix)
+  VALUES (
+    current_schema::INTEGER,
+    OLD.dataset_id,
+    OLD.id,
+    OLD.s3_bucket,
+    'viewer-assets/O' || current_schema || '/D' || OLD.dataset_id || '/' || OLD.id || '/'
+  );
 
   RETURN OLD;
 END;
