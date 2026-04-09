@@ -32,11 +32,11 @@ CREATE OR REPLACE FUNCTION viewer_asset_cleanup_trigger() RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO pennsieve.viewer_asset_cleanup_queue (org_id, dataset_id, asset_id, s3_bucket, s3_prefix)
   VALUES (
-    current_schema::INTEGER,
+    TG_TABLE_SCHEMA::INTEGER,
     OLD.dataset_id,
     OLD.id,
     OLD.s3_bucket,
-    'viewer-assets/O' || current_schema || '/D' || OLD.dataset_id || '/' || OLD.id || '/'
+    'viewer-assets/O' || TG_TABLE_SCHEMA || '/D' || OLD.dataset_id || '/' || OLD.id || '/'
   );
 
   RETURN OLD;
