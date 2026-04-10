@@ -189,7 +189,6 @@ trait SecureCoreContainer
     with MetadataManagerContainer
     with OrganizationManagerContainer
     with TermsOfServiceManagerContainer
-    with DimensionManagerContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
     with WebhookManagerContainer
@@ -525,15 +524,6 @@ trait ExternalPublicationContainer
 
   lazy val externalPublicationManager =
     new ExternalPublicationManager(db, organization)
-}
-
-trait DimensionManagerContainer
-    extends DatabaseContainer
-    with OrganizationContainer {
-  self: Container =>
-
-  lazy val dimensionManager: DimensionManager =
-    new DimensionManager(db, organization)
 }
 
 trait UserPermissionContainer {

@@ -57,7 +57,6 @@ object ModelSerializers {
     Json4s.serializer(DBPermission),
     Json4s.serializer(Role),
     Json4s.serializer(Feature),
-    Json4s.serializer(DimensionAssignment),
     Json4s.serializer(DatasetType),
     Json4s.serializer(DatasetState),
     Json4s.serializer(PublishStatus),

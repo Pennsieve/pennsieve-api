@@ -240,11 +240,6 @@ trait ManagerSpec
   ): TimeSeriesManager =
     new TimeSeriesManager(database, organization)
 
-  def dimensionManager(
-    organization: Organization = testOrganization
-  ): DimensionManager =
-    new DimensionManager(database, organization)
-
   def annotationManager(organization: Organization): AnnotationManager =
     new AnnotationManager(organization, database)
 
