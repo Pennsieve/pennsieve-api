@@ -200,8 +200,6 @@ trait SecureCoreContainer
   lazy val annotationManager: AnnotationManager =
     new AnnotationManager(self.organization, db)
 
-  lazy val discussionManager: DiscussionManager =
-    new DiscussionManager(self.organization, db)
   override lazy val organizationManager: SecureOrganizationManager =
     new SecureOrganizationManager(db, user)
   lazy val tokenManager: SecureTokenManager =

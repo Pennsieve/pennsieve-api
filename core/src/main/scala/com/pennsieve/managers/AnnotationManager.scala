@@ -41,7 +41,6 @@ import scala.concurrent.{ ExecutionContext, Future }
 class AnnotationManager(organization: Organization, db: Database) {
 
   val packages = new PackagesMapper(organization)
-  val discussions = new DiscussionsMapper(organization)
   val annotations = new AnnotationsMapper(organization)
   val annotation_layers = new AnnotationLayersMapper(organization)
 
@@ -117,7 +116,6 @@ class AnnotationManager(organization: Organization, db: Database) {
       }
     }
 
-  //because of integrity constraints, this will fail when there are related discussions
   def delete(
     annotation: Annotation
   )(implicit
@@ -134,20 +132,6 @@ class AnnotationManager(organization: Organization, db: Database) {
           IntegrityError(ex.getMessage): CoreError
         case err => Error(err.getMessage): CoreError
       }
-
-  def deleteAnnotationAndRelatedDiscussions(
-    annotation: Annotation
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, Int] =
-    run {
-      for {
-        deletedDiscussionCount <- discussions
-          .filter(_.annotationId === annotation.id)
-          .delete
-        deleteAnnotation <- annotations.filter(_.id === annotation.id).delete
-      } yield deleteAnnotation
-    }
 
   def find(
     layer: AnnotationLayer
