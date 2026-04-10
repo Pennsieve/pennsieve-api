@@ -240,11 +240,6 @@ trait ManagerSpec
   ): TimeSeriesManager =
     new TimeSeriesManager(database, organization)
 
-  def dimensionManager(
-    organization: Organization = testOrganization
-  ): DimensionManager =
-    new DimensionManager(database, organization)
-
   def annotationManager(organization: Organization): AnnotationManager =
     new AnnotationManager(organization, database)
 
@@ -450,7 +445,8 @@ trait ManagerSpec
     objectType: FileObjectType = Source,
     processingState: FileProcessingState = FileProcessingState.Unprocessed,
     size: Long = 0,
-    uploadedState: Option[FileState] = None
+    uploadedState: Option[FileState] = None,
+    publishedS3VersionId: Option[String] = None
   ): File = {
     val fm = fileManager(organization, user)
     fm.create(
@@ -462,8 +458,40 @@ trait ManagerSpec
         objectType,
         processingState,
         size,
-        uploadedState = uploadedState
+        uploadedState = uploadedState,
+        publishedS3VersionId = publishedS3VersionId
       )
+      .await match {
+      case Right(x) => x
+      case Left(e) => throw e
+    }
+  }
+
+  def publishFile(
+    organization: Organization = testOrganization,
+    user: User = superAdmin,
+    file: File,
+    publishS3Bucket: String,
+    publishS3Key: String,
+    publishS3VersionId: String
+  ): Int = {
+    fileManager(organization = organization, user = user)
+      .setFilePublished(file, publishS3Bucket, publishS3Key, publishS3VersionId)
+      .await match {
+      case Right(x) => x
+      case Left(e) => throw e
+    }
+  }
+
+  def unpublishFile(
+    organization: Organization = testOrganization,
+    user: User = superAdmin,
+    file: File,
+    storageS3Bucket: String,
+    storageS3Key: String
+  ): Int = {
+    fileManager(organization = organization, user = user)
+      .setFileUnpublished(file, storageS3Bucket, storageS3Key)
       .await match {
       case Right(x) => x
       case Left(e) => throw e

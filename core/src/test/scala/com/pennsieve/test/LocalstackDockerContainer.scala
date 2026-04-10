@@ -53,35 +53,40 @@ object VerifiesAllHostNames extends HostnameVerifier {
 }
 
 object LocalstackDockerContainer {
-  val s3ContainerPort: Int = 4572
-  val sqsContainerPort: Int = 4576
-  val snsContainerPort: Int = 4575
+  val port: Int = 4566
+
+  // newer version of LocalStack uses one port for all services.
+  @deprecated(
+    "use port; modern versions of LocalStack do not have separate ports per AWS service"
+  )
+  val s3ContainerPort: Int = port
+  @deprecated(
+    "use port; modern versions of LocalStack do not have separate ports per AWS service"
+  )
+  val sqsContainerPort: Int = port
+  @deprecated(
+    "use port; modern versions of LocalStack do not have separate ports per AWS service"
+  )
+  val snsContainerPort: Int = port
 
   val region: String = "us-east-1"
 }
 
 final class LocalstackDockerContainerImpl
     extends DockerContainer(
-      dockerImage = "localstack/localstack:0.8.7",
-      exposedPorts = Seq(
-        LocalstackDockerContainer.s3ContainerPort,
-        LocalstackDockerContainer.sqsContainerPort,
-        LocalstackDockerContainer.snsContainerPort
-      ),
+      dockerImage = "localstack/localstack:community-archive", // keep at community-archive until we have LocalStack license
+      exposedPorts = Seq(LocalstackDockerContainer.port),
       env = Map(
         "AWS_ACCESS_KEY_ID" -> "test",
         "AWS_SECRET_ACCESS_KEY" -> "test",
         "SERVICES" -> "s3,sqs,sns",
-        "DEFAULT_REGION" -> LocalstackDockerContainer.region,
         "USE_SSL" -> "true",
+        "PERSISTENCE" -> "0",
         "DEBUG" -> "1"
       ),
       waitStrategy = Some(
         new HttpWaitStrategy()
-          .forPort(LocalstackDockerContainer.sqsContainerPort)
-          .forPath("/")
-          .usingTls()
-          .forStatusCode(404)
+          .forPath("/_localstack/health")
           .withStartupTimeout(Duration.ofMinutes(5))
       )
     ) {
@@ -102,9 +107,7 @@ final class LocalstackDockerContainerImpl
   override def config: Config = {
     val localstackHost: String = "https://" + containerIpAddress
 
-    val s3Port: Int = mappedPort(LocalstackDockerContainer.s3ContainerPort)
-    val sqsPort: Int = mappedPort(LocalstackDockerContainer.sqsContainerPort)
-    val snsPort: Int = mappedPort(LocalstackDockerContainer.snsContainerPort)
+    val port: Int = mappedPort(LocalstackDockerContainer.port)
 
     ConfigFactory
       .empty()
@@ -122,19 +125,19 @@ final class LocalstackDockerContainerImpl
       )
       .withValue(
         "s3.host",
-        ConfigValueFactory.fromAnyRef(s"$localstackHost:$s3Port")
+        ConfigValueFactory.fromAnyRef(s"$localstackHost:$port")
       )
       .withValue(
         "sqs.host",
-        ConfigValueFactory.fromAnyRef(s"$localstackHost:$sqsPort")
+        ConfigValueFactory.fromAnyRef(s"$localstackHost:$port")
       )
       .withValue(
         "sns.host",
-        ConfigValueFactory.fromAnyRef(s"$localstackHost:$snsPort")
+        ConfigValueFactory.fromAnyRef(s"$localstackHost:$port")
       )
       .withValue(
         "alert.sqsQueue",
-        ConfigValueFactory.fromAnyRef(s"queue/$deadLetterQueueName")
+        ConfigValueFactory.fromAnyRef(s"000000000000/$deadLetterQueueName")
       )
       .withValue(
         "alert.snsTopic",

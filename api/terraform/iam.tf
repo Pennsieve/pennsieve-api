@@ -1,104 +1,64 @@
-# Create policies
+# Create role policies for ECS task role
 
-resource "aws_iam_policy" "batch_iam_policy" {
+resource "aws_iam_role_policy" "batch_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
   name   = "${var.environment_name}-${var.service_name}-batch-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.batch_iam_policy_document.json
 }
 
-resource "aws_iam_policy" "cognito_iam_policy" {
+resource "aws_iam_role_policy" "cognito_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
   name   = "${var.environment_name}-${var.service_name}-cognito-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.cognito_iam_policy_document.json
 }
 
-resource "aws_iam_policy" "kms_iam_policy" {
+resource "aws_iam_role_policy" "kms_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
   name   = "${var.environment_name}-${var.service_name}-kms-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.kms_iam_policy_document.json
 }
 
-resource "aws_iam_policy" "s3_iam_policy" {
+resource "aws_iam_role_policy" "s3_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
   name   = "${var.environment_name}-${var.service_name}-s3-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.s3_iam_policy_document.json
 }
 
-resource "aws_iam_policy" "ses_iam_policy" {
+resource "aws_iam_role_policy" "ses_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
   name   = "${var.environment_name}-${var.service_name}-ses-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.ses_iam_policy_document.json
 }
 
-resource "aws_iam_policy" "sqs_iam_policy" {
+resource "aws_iam_role_policy" "sqs_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
   name   = "${var.environment_name}-${var.service_name}-sqs-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.sqs_iam_policy_document.json
 }
 
-resource "aws_iam_policy" "sns_iam_policy" {
+resource "aws_iam_role_policy" "sns_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
   name   = "${var.environment_name}-${var.service_name}-sns-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.sns_iam_policy_document.json
 }
 
-resource "aws_iam_policy" "ssm_iam_policy" {
+resource "aws_iam_role_policy" "ssm_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
   name   = "${var.environment_name}-${var.service_name}-ssm-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.ssm_iam_policy_document.json
 }
 
-resource "aws_iam_policy" "sts_iam_policy" {
+resource "aws_iam_role_policy" "sts_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
   name   = "${var.environment_name}-${var.service_name}-sts-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
-  path   = "/service/"
   policy = data.aws_iam_policy_document.sts_iam_policy_document.json
-}
-
-# Policy Attachments to ECS Task Role
-
-resource "aws_iam_role_policy_attachment" "batch_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.batch_iam_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "cognito_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.cognito_iam_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "kms_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.kms_iam_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "s3_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.s3_iam_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "ses_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.ses_iam_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "sqs_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.sqs_iam_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.ssm_iam_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "sts_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.sts_iam_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "sns_iam_role_policy_attachment" {
-  role       = var.ecs_task_iam_role_id
-  policy_arn = aws_iam_policy.sns_iam_policy.arn
 }
 
 # Policy Documents
@@ -223,6 +183,24 @@ data "aws_iam_policy_document" "s3_iam_policy_document" {
       "*",
     ]
   }
+
+  statement {
+    sid = "CrossAccountReadPermissions"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion"
+    ]
+
+    resources = [
+      data.terraform_remote_state.platform_infrastructure.outputs.awsod_sparc_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.awsod_sparc_publish50_bucket_arn}/*",
+      data.terraform_remote_state.platform_infrastructure.outputs.awsod_edots_publish50_bucket_arn,
+      "${data.terraform_remote_state.platform_infrastructure.outputs.awsod_edots_publish50_bucket_arn}/*",
+    ]
+  }
+
 }
 
 data "aws_iam_policy_document" "ses_iam_policy_document" {
@@ -311,7 +289,6 @@ data "aws_iam_policy_document" "sts_iam_policy_document" {
   # Allow assuming cross-account roles for external publish buckets
   # - sparc_bucket_role_arn: SPARC account buckets
   # - rejoin_bucket_role_arn: RE-JOIN and PRECISION account buckets (same account)
-  # - awsod_sparc_bucket_role_arn: AWS Open Data account buckets (SPARC AOD and Epilepsy.science)
   statement {
     sid       = "AssumeExternalPublishBucketRoles"
     effect    = "Allow"
@@ -319,7 +296,6 @@ data "aws_iam_policy_document" "sts_iam_policy_document" {
     resources = [
       data.terraform_remote_state.platform_infrastructure.outputs.sparc_bucket_role_arn,
       data.terraform_remote_state.platform_infrastructure.outputs.rejoin_bucket_role_arn,
-      data.terraform_remote_state.platform_infrastructure.outputs.awsod_sparc_bucket_role_arn,
     ]
   }
 }
@@ -370,4 +346,14 @@ data "aws_iam_policy_document" "uploader_iam_role_policy_document" {
       identifiers = [var.ecs_task_iam_role_arn]
     }
   }
+}
+
+resource "aws_iam_role_policy_attachment" "storage_bucket_read" {
+  role       = var.ecs_task_iam_role_id
+  policy_arn = data.terraform_remote_state.account_service.outputs.storage_read_policy_arn
+}
+
+resource "aws_iam_role_policy_attachment" "storage_bucket_write" {
+  role       = var.ecs_task_iam_role_id
+  policy_arn = data.terraform_remote_state.account_service.outputs.storage_write_policy_arn
 }

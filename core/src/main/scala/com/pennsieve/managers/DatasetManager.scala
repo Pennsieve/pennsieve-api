@@ -1535,8 +1535,8 @@ class DatasetManager(
               }
 
               // (7) Join to publication status
-              .joinLeft(datasetPublicationStatusMapper)
-              .on(_._1.publicationStatusId === _.id)
+              .joinLeft(datasetPublicationStatusMapper.latestByDataset)
+              .on(_._1.id === _.datasetId)
 
               // (8) Compute whether the dataset is in a publishable state or is locked
               .map {

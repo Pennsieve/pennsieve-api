@@ -42,7 +42,8 @@ trait ObjectStore {
     bucket: String,
     key: String,
     duration: Date,
-    fileName: String
+    fileName: String,
+    s3VersionId: Option[String] = None
   ): Either[ActionResult, URL]
 
   def getListing(
@@ -71,22 +72,25 @@ class S3ObjectStore() extends ObjectStore with LazyLogging {
     bucket: String,
     key: String,
     duration: Date,
-    fileName: String
+    fileName: String,
+    s3VersionId: Option[String] = None
   ): Either[ActionResult, URL] = {
     // Create region appropriate client
+    var request = new GeneratePresignedUrlRequest(bucket, key)
+      .withExpiration(duration)
+      .withResponseHeaders(
+        new ResponseHeaderOverrides()
+          .withContentDisposition(s"""attachment; filename="$fileName"""")
+      )
+
+    request = s3VersionId.fold(request)(request.withVersionId(_))
+
     S3ClientFactory
       .getClientForBucket(bucket)
-      .generatePresignedUrl(
-        new GeneratePresignedUrlRequest(bucket, key)
-          .withExpiration(duration)
-          .withResponseHeaders(
-            new ResponseHeaderOverrides()
-              .withContentDisposition(s"""attachment; filename="$fileName"""")
-          )
-      )
+      .generatePresignedUrl(request)
       .leftMap { t =>
         logger.error(
-          s"Failed to generate presigned URL for bucket=$bucket, key=$key: ${t.getMessage}",
+          s"Failed to generate presigned URL for bucket=$bucket, key=$key, versionId=$s3VersionId: ${t.getMessage}",
           t
         )
         InternalServerError(t.getMessage)

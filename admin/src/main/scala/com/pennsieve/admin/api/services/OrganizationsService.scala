@@ -30,10 +30,7 @@ import com.pennsieve.admin.api.Router.{
 }
 import com.pennsieve.admin.api.dtos.UserDTO
 import com.pennsieve.akka.http.RouteService
-import com.pennsieve.auth.middleware.Jwt
-import com.pennsieve.clients.Quota
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.core.utilities.JwtAuthenticator
 import com.pennsieve.db.OrganizationsMapper
 import com.pennsieve.domain.{
   CoreError,
@@ -268,16 +265,6 @@ class OrganizationsService(
           name = body.name,
           slug = body.slug,
           subscriptionType = body.subscriptionType
-        )
-        _ = logger.info(s"Setting quota with JSS")
-        jwtToken = JwtAuthenticator.generateServiceToken(
-          10.minutes,
-          createdOrganization.id
-        )(new Jwt.Config { val key: String = container.jwtKey })
-        _ <- container.jobSchedulingServiceClient.setOrganizationQuota(
-          createdOrganization.id,
-          Quota(container.quota),
-          jwtToken
         )
       } yield createdOrganization
 

@@ -20,7 +20,6 @@ import java.net.URL
 import java.time.ZonedDateTime
 import java.util.UUID
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import com.pennsieve.clients.MockJobSchedulingServiceClient
 import com.pennsieve.domain.StorageAggregation.{
   sdatasets,
   sorganizations,
@@ -87,9 +86,6 @@ class TestPackagesController
 
   val mockAuditLogger = new MockAuditLogger()
 
-  val mockJobSchedulingServiceClient: MockJobSchedulingServiceClient =
-    new MockJobSchedulingServiceClient()
-
   val mockUrlShortenerClient: MockUrlShortenerClient =
     new MockUrlShortenerClient()
 
@@ -102,7 +98,6 @@ class TestPackagesController
         secureContainerBuilder,
         mockAuditLogger,
         new MockObjectStore("test.avi"),
-        mockJobSchedulingServiceClient,
         mockUrlShortenerClient,
         system,
         system.dispatcher
@@ -114,6 +109,9 @@ class TestPackagesController
   override def beforeEach(): Unit = {
 
     super.beforeEach()
+
+    mockUrlShortenerClient.shortenedUrls.clear()
+
     dataPackage = packageManager
       .create(
         "Foo",
@@ -1408,90 +1406,6 @@ class TestPackagesController
 
       val json = parse(response.body)
       compact(render(json)) should not include ("extension")
-    }
-  }
-
-  test(
-    "updates a package state when the package is unavailable with state in Job Scheduling Service"
-  ) {
-    val props = List(
-      ModelProperty("meta", "data", "string", "user-defined"),
-      ModelProperty("other", "unchanged", "string", "user-defined")
-    )
-
-    val pdfPackage = packageManager
-      .create(
-        "Foo10",
-        PackageType.PDF,
-        UNAVAILABLE,
-        dataset,
-        Some(loggedInUser.id),
-        None,
-        attributes = props
-      )
-      .await
-      .value
-
-    get(
-      s"/${pdfPackage.nodeId}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val json = parse(response.body)
-      compact(render(json \ "content" \\ "state")) should include("PROCESSING")
-      compact(render(json \ "content" \ "id")) should include("N:package:")
-      compact(render(json \ "content" \\ "name")) should include("Foo10")
-      compact(render(json \ "content" \\ "packageType")) should include("PDF")
-      compact(render(json \ "properties" \\ "key")) should include("meta")
-      compact(render(json \ "properties" \\ "value")) should include("data")
-      compact(render(json)) should not include ("objects")
-    }
-  }
-
-  test(
-    "does not update a package state when the package is unavailable but state is not returned by the Job Scheduling Service"
-  ) {
-    val props = List(
-      ModelProperty("meta", "data", "string", "user-defined"),
-      ModelProperty("other", "unchanged", "string", "user-defined")
-    )
-
-    val dataset2 = secureDataSetManager
-      .create("Home Again", Some("Home Again Dataset"))
-      .await
-      .value
-    //the mock JSS client will returned a not found answer to a getPackageState call
-    // on a package belonging to a dataset with id = 2
-    //the state of the package should remain UNAVAILABLE
-
-    val pdfPackage = packageManager
-      .create(
-        "Foo10",
-        PackageType.PDF,
-        UNAVAILABLE,
-        dataset2,
-        Some(loggedInUser.id),
-        None,
-        attributes = props
-      )
-      .await
-      .value
-
-    get(
-      s"/${pdfPackage.nodeId}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val json = parse(response.body)
-      compact(render(json \ "content" \\ "state")) should include("UNAVAILABLE")
-      compact(render(json \ "content" \ "id")) should include("N:package:")
-      compact(render(json \ "content" \\ "name")) should include("Foo10")
-      compact(render(json \ "content" \\ "packageType")) should include("PDF")
-      compact(render(json \ "properties" \\ "key")) should include("meta")
-      compact(render(json \ "properties" \\ "value")) should include("data")
-      compact(render(json)) should not include ("objects")
     }
   }
 
@@ -3112,9 +3026,10 @@ class TestPackagesController
       entry.fileName shouldBe "external-file.tif"
       entry.packageName shouldBe "external-pkg"
 
-      // The MockObjectStore returns URLs in the format file://$bucket/$key
+      // The MockObjectStore returns URLs in the format file://$bucket/$key[?versionId=$s3VersionId]
       // Verify that the external bucket name is correctly passed through
       entry.url.toString should include(externalBucketName)
+      entry.url.getQuery shouldBe null
     }
   }
 
@@ -3180,6 +3095,75 @@ class TestPackagesController
       // Verify the correct bucket names are in the URLs
       regularEntry.get.url.toString should include(regularBucketName)
       externalEntry.get.url.toString should include(externalBucketName)
+    }
+  }
+
+  test(
+    "download-manifest produces a manifest with presigned URLs taking S3 versionId into account if file is published"
+  ) {
+
+    val storageBucket = "storage-bucket"
+    val publishBucket = "publish-bucket"
+
+    val publishedPackage =
+      createTestDownloadPackage(
+        "published-pkg",
+        packageType = PackageType.Image
+      )
+
+    val publishedS3VersionId = UUID.randomUUID().toString
+    val publishedFile = createTestDownloadFileInBucket(
+      "published-file.tif",
+      publishedPackage,
+      publishBucket,
+      publishedS3VersionId = Some(publishedS3VersionId)
+    )
+
+    val unpublishedPackage =
+      createTestDownloadPackage(
+        "unpublished-pkg",
+        packageType = PackageType.Image
+      )
+    val unpublishedFile = createTestDownloadFileInBucket(
+      "unpublished-file.tif",
+      unpublishedPackage,
+      storageBucket
+    )
+
+    val request =
+      s"""{"nodeIds": ["${publishedPackage.nodeId}", "${unpublishedPackage.nodeId}"]}"""
+
+    postJson(
+      s"/download-manifest",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val json = parse(response.body)
+      val payload = json.extract[DownloadManifestDTO]
+
+      payload.header.count shouldBe 2
+      payload.data.length shouldBe 2
+
+      val publishedEntry =
+        payload.data.find(_.nodeId == publishedPackage.nodeId).value
+      publishedEntry.fileName shouldBe publishedFile.name
+      publishedEntry.packageName shouldBe publishedPackage.name
+
+      val unpublishedEntry =
+        payload.data.find(_.nodeId == unpublishedPackage.nodeId).value
+      unpublishedEntry.fileName shouldBe unpublishedFile.name
+      unpublishedEntry.packageName shouldBe unpublishedPackage.name
+
+      // The MockObjectStore returns URLs in the format file://$bucket/$key[?versionId=$s3VersionId]
+      // Verify that the publish bucket and versionId are correctly passed through
+      publishedEntry.url.toString should include(publishBucket)
+      publishedEntry.url.getQuery shouldBe s"versionId=$publishedS3VersionId"
+
+      unpublishedEntry.url.toString should include(storageBucket)
+      unpublishedEntry.url.getQuery shouldBe null
+
     }
   }
 
@@ -3653,6 +3637,143 @@ class TestPackagesController
     }
   }
 
+  test("get presigned url includes versionId for published file") {
+    val publishBucket = "publish-bucket"
+    val publishKey = "70/files/source.pdf"
+    val s3VersionId = UUID.randomUUID().toString
+
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        publishBucket,
+        publishKey,
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0,
+        publishedS3VersionId = Some(s3VersionId)
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val url = parsedBody.extract[DownloadItemResponse].url
+      url should include(publishBucket)
+      url should include(s"versionId=$s3VersionId")
+    }
+  }
+
+  test("get presigned url does not include versionId for unpublished file") {
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        "s3bucketName",
+        "s3Path",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val url = parsedBody.extract[DownloadItemResponse].url
+      url should not include "versionId"
+    }
+  }
+
+  test("get shortened presigned url passes versionId to shortener") {
+    val s3VersionId = UUID.randomUUID().toString
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        "publish-bucket",
+        "70/files/source.pdf",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0,
+        publishedS3VersionId = Some(s3VersionId)
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}?short=true",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      mockUrlShortenerClient.shortenedUrls.head.toString should include(
+        s"versionId=$s3VersionId"
+      )
+    }
+  }
+
+  test("presign redirect includes versionId for published file") {
+    val publishBucket = "publish-bucket"
+    val publishKey = "70/files/source.pdf"
+    val s3VersionId = UUID.randomUUID().toString
+
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        publishBucket,
+        publishKey,
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0,
+        publishedS3VersionId = Some(s3VersionId)
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}/presign/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(302)
+      response.getHeader("Location") should include(s"versionId=$s3VersionId")
+    }
+  }
+
+  test("presign redirect does not include versionId for unpublished file") {
+    val file = fileManager
+      .create(
+        "Source File",
+        FileType.PDF,
+        dataPackage,
+        "s3bucketName",
+        "s3Path",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    get(
+      s"/${dataPackage.nodeId}/files/${file.id}/presign/",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(302)
+      response.getHeader("Location") should not include "versionId"
+    }
+  }
+
   test("unshared users cannot get presigned urls") {
     val pdfPackage = packageManager
       .create(
@@ -3838,741 +3959,11 @@ class TestPackagesController
     }
   }
 
-  // upload-complete
-
-  test("set package state to UPLOADED") {
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.TimeSeries,
-        UNAVAILABLE,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe UPLOADED
-  }
-
-  test("set package state to UPLOADED and be idempotent") {
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.TimeSeries,
-        UNAVAILABLE,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe UPLOADED
-  }
-
-  test("set package with no workflow to READY and be idempotent") {
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.MSWord,
-        UNAVAILABLE,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file",
-        FileType.MSWord,
-        pkg,
-        "bucket",
-        "path/to/file.word",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe READY
-  }
-
-  test("set package state to PROCESSING") {
-    val datasetUpdated = secureContainer.datasetManager
-      .create("automaticallyprocessing1", automaticallyProcessPackages = true)
-      .await
-      .value
-
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.TimeSeries,
-        UNAVAILABLE,
-        datasetUpdated,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe PROCESSING
-  }
-
-  test(
-    "fail when PROCESSING package has unprocessed source files and leave state as PROCESSING"
-  ) {
-    val datasetUpdated = secureContainer.datasetManager
-      .create("automaticallyprocessing1", automaticallyProcessPackages = true)
-      .await
-      .value
-
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.TimeSeries,
-        PROCESSING,
-        datasetUpdated,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(500)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe PROCESSING
-  }
-
-  test("do nothing to PROCESSING package with processed source files") {
-    val datasetUpdated = secureContainer.datasetManager
-      .create("automaticallyprocessing1", automaticallyProcessPackages = true)
-      .await
-      .value
-
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.TimeSeries,
-        PROCESSING,
-        datasetUpdated,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Processed,
-        0
-      )
-      .await
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe PROCESSING
-  }
-
-  test("keep timeseries package state as READY") {
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.TimeSeries,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe READY
-  }
-
-  test("only use unprocessed source files in timeseries append") {
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.TimeSeries,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    val unprocessedSource = fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    val processedSource = fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Processed,
-        0
-      )
-      .await
-      .value
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedSource =
-      fileManager.get(unprocessedSource.id, pkg).await.value
-
-    updatedSource.processingState should equal(FileProcessingState.Processed)
-
-    val notUpdatedSource =
-      fileManager.get(processedSource.id, pkg).await.value
-
-    notUpdatedSource.updatedAt.toInstant should be < (updatedSource.updatedAt.toInstant)
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe READY
-  }
-
-  test("set package with no source files to UPLOADED") {
-    val pkg = packageManager
-      .create(
-        "Foo53394",
-        PackageType.TimeSeries,
-        UNAVAILABLE,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe UPLOADED
-  }
-
-  test("do nothing to a non-timeseries READY package with no unprocessed files") {
-    val pkg = packageManager
-      .create(
-        "Foo557",
-        PackageType.PDF,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    put(
-      s"/${pkg.nodeId}/upload-complete?user_id=${loggedInUser.id}",
-      headers = jwtServiceAuthorizationHeader(loggedInOrganization)
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage: Package =
-      packageManager.get(pkg.id).await.value
-
-    updatedPackage.state shouldBe READY
-  }
-
   // Process Packages
 
-  test("kick off ETL job to process package in UPLOADED state") {
-    val pkg = packageManager
-      .create(
-        "Foo1",
-        PackageType.TimeSeries,
-        UPLOADED,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
+  // Process Package tests removed - manual process endpoint has been removed
 
-    fileManager
-      .create(
-        "file.bfts",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    putJson(
-      s"/${pkg.nodeId}/process",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-
-      val updatedPackage = packageManager.get(pkg.id).await.value
-      updatedPackage.state should equal(PackageState.PROCESSING)
-
-    }
-  }
-
-  test("only use unprocessed source files") {
-    val pkg = packageManager
-      .create(
-        "Foo1",
-        PackageType.TimeSeries,
-        UPLOADED,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    val unprocessedSource = fileManager
-      .create(
-        "file.bfts",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-      .value
-
-    val processedSource = fileManager
-      .create(
-        "file.bfts",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Processed,
-        0
-      )
-      .await
-      .value
-
-    putJson(
-      s"/${pkg.nodeId}/process",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-    }
-
-    val updatedPackage = packageManager.get(pkg.id).await.value
-
-    updatedPackage.state should equal(PackageState.PROCESSING)
-
-    val updatedSource =
-      fileManager.get(unprocessedSource.id, pkg).await.value
-
-    updatedSource.processingState should equal(FileProcessingState.Processed)
-
-    val notUpdatedSource =
-      fileManager.get(processedSource.id, pkg).await.value
-
-    notUpdatedSource.updatedAt.toInstant should be < (updatedSource.updatedAt.toInstant)
-  }
-
-  test("fail to kick off ETL job to process package in a non-UPLOADED state") {
-    val pkg = packageManager
-      .create(
-        "Foo1",
-        PackageType.TimeSeries,
-        UNAVAILABLE,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "file",
-        FileType.BFTS,
-        pkg,
-        "bucket",
-        "path/to/file.bfts",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Unprocessed,
-        0
-      )
-      .await
-
-    putJson(
-      s"/${pkg.nodeId}/process",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(400)
-    }
-  }
-
-  test("fail to kick off ETL job to process package with no source files") {
-    val pkg = packageManager
-      .create(
-        "Foo1",
-        PackageType.TimeSeries,
-        UNAVAILABLE,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    putJson(
-      s"/${pkg.nodeId}/process",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(400)
-    }
-  }
-
-  test("exports between unsupported file types should fail") {
-    val imagePackage = packageManager
-      .create(
-        "Image Package",
-        PackageType.Image,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    val payload: String = """{ "fileType": "NeuroDataWithoutBorders" }"""
-
-    putJson(
-      s"/${imagePackage.nodeId}/export",
-      payload,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(400)
-      response.body.toLowerCase should be(
-        "package cannot be exported to neurodatawithoutborders"
-      )
-    }
-  }
-
-  test("exports against a processing package should fail") {
-    val timeseriesPackage = packageManager
-      .create(
-        "Timeseries Package",
-        PackageType.TimeSeries,
-        PROCESSING,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    // Timeseries -> NeuroDataWithoutBorders is OK
-    val payload: String = """{ "fileType": "NeuroDataWithoutBorders" }"""
-
-    putJson(
-      s"/${timeseriesPackage.nodeId}/export",
-      payload,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(403)
-      response.body.toLowerCase should be(
-        "only successfully processed packages can be exported"
-      )
-    }
-  }
-
-  test("exports for supported file types should succeed") {
-    val timeseriesPackage = packageManager
-      .create(
-        "Timeseries Package",
-        PackageType.TimeSeries,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "MEF Timeseries File",
-        FileType.MEF,
-        timeseriesPackage,
-        "s3bucketName",
-        "s3Path",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Processed,
-        0
-      )
-      .await
-
-    // Timeseries -> NeuroDataWithoutBorders is OK
-    val payload: String = """{ "fileType": "NeuroDataWithoutBorders" }"""
-
-    putJson(
-      s"/${timeseriesPackage.nodeId}/export",
-      payload,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val dto = parsedBody.extract[ExtendedPackageDTO]
-
-      val createdPackage = packageManager.get(dto.content.id).await.value
-      createdPackage.attributes shouldBe List(
-        ModelProperty(
-          "subtype",
-          "Data Container",
-          "string",
-          "Pennsieve",
-          false,
-          true
-        ),
-        ModelProperty("icon", "NWB", "string", "Pennsieve", false, true)
-      )
-    }
-  }
-
-  test("package can be exported multiple times with unique names") {
-    val timeseriesPackage = packageManager
-      .create(
-        "Timeseries Package",
-        PackageType.TimeSeries,
-        READY,
-        dataset,
-        Some(loggedInUser.id),
-        None
-      )
-      .await
-      .value
-
-    fileManager
-      .create(
-        "MEF Timeseries File",
-        FileType.MEF,
-        timeseriesPackage,
-        "s3bucketName",
-        "s3Path",
-        objectType = FileObjectType.Source,
-        processingState = FileProcessingState.Processed,
-        0
-      )
-      .await
-
-    val payload: String = """{ "fileType": "NeuroDataWithoutBorders" }"""
-
-    putJson(
-      s"/${timeseriesPackage.nodeId}/export",
-      payload,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val dto = parsedBody.extract[ExtendedPackageDTO]
-      dto.content.name shouldBe "Timeseries Package (NeuroDataWithoutBorders)"
-    }
-
-    putJson(
-      s"/${timeseriesPackage.nodeId}/export",
-      payload,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(200)
-      val dto = parsedBody.extract[ExtendedPackageDTO]
-      dto.content.name shouldBe "Timeseries Package (NeuroDataWithoutBorders) (1)"
-    }
-  }
+  // Export Package tests removed - export endpoint has been removed
 
   test("files default to unpublished") {
     val collection = packageManager
@@ -4699,6 +4090,82 @@ class TestPackagesController
     }
   }
 
+  test("setFilePublished marks specific file as published by id") {
+    val stedding = packageManager
+      .create(
+        "Stedding Chanti",
+        PackageType.TimeSeries,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    val storageBucket = "storage-bucket"
+
+    val file1 = fileManager
+      .create(
+        "the-stump-report.lay",
+        FileType.Data,
+        stedding,
+        storageBucket,
+        s"${UUID.randomUUID().toString}/${UUID.randomUUID().toString}",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    val file2 = fileManager
+      .create(
+        "the-stump-image.dat",
+        FileType.Data,
+        stedding,
+        storageBucket,
+        s"${UUID.randomUUID().toString}/${UUID.randomUUID().toString}",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    // Mark one as published
+    val publishBucket = "publish-bucket"
+    val publishKey = "70/files/data/the-stump-image.dat"
+    val s3VersionId = UUID.randomUUID().toString
+    fileManager
+      .setFilePublished(file2, publishBucket, publishKey, s3VersionId)
+      .await
+      .value shouldBe 1
+
+    get(
+      s"/${stedding.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(2)
+
+      val actualFile1 =
+        files.find(_.content.id == file1.id).get
+      val actualFile2 =
+        files.find(_.content.id == file2.id).get
+
+      actualFile1.content.publishedS3VersionId shouldBe None
+      actualFile1.content.s3bucket shouldBe file1.s3Bucket
+      actualFile1.content.s3key shouldBe file1.s3Key
+
+      actualFile2.content.publishedS3VersionId.value shouldBe s3VersionId
+      actualFile2.content.s3bucket shouldBe publishBucket
+      actualFile2.content.s3key shouldBe publishKey
+
+    }
+  }
+
   test("setPublished marks all files as published when no s3Key is provided") {
     val persyst_file = packageManager
       .create(
@@ -4821,4 +4288,82 @@ class TestPackagesController
       files.head.content.published shouldBe false
     }
   }
+
+  test("setFileUnpublished can toggle files back to unpublished") {
+    val mefPackage = packageManager
+      .create(
+        "Toggle Test TimeSeries",
+        PackageType.TimeSeries,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    val storageBucket = "storage-bucket"
+    val storageKey =
+      s"${UUID.randomUUID().toString}/${UUID.randomUUID().toString}"
+
+    val file = fileManager
+      .create(
+        "toggle-test.mef",
+        FileType.MEF,
+        mefPackage,
+        storageBucket,
+        storageKey,
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        0
+      )
+      .await
+      .value
+
+    // Mark as published
+    val s3VersionId = UUID.randomUUID().toString
+    val publishBucket = "publish-bucket"
+    val publishKey = s"9/files/toggle-test.mef"
+    fileManager
+      .setFilePublished(file = file, publishBucket, publishKey, s3VersionId)
+      .await
+      .value
+
+    // Verify it's published
+    get(
+      s"/${mefPackage.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(1)
+      files.head.content.publishedS3VersionId.value shouldBe s3VersionId
+      files.head.content.s3bucket shouldBe publishBucket
+      files.head.content.s3key shouldBe publishKey
+    }
+
+    // Mark as unpublished
+    fileManager
+      .setFileUnpublished(
+        file = file,
+        s3Bucket = storageBucket,
+        s3Key = storageKey
+      )
+      .await
+      .value
+
+    // Verify it's unpublished
+    get(
+      s"/${mefPackage.nodeId}/files",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val files: List[FileDTO] = parsedBody.extract[List[FileDTO]]
+      files.size should equal(1)
+      files.head.content.publishedS3VersionId shouldBe None
+      files.head.content.s3bucket shouldBe storageBucket
+      files.head.content.s3key shouldBe storageKey
+    }
+  }
+
 }

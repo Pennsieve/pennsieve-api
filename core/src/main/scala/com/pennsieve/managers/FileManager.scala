@@ -96,7 +96,8 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     uploadedState: Option[FileState] = None,
     properties: Option[Json] = None,
     assetType: Option[String] = None,
-    provenanceId: Option[UUID] = None
+    provenanceId: Option[UUID] = None,
+    publishedS3VersionId: Option[String] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, File] = {
@@ -128,7 +129,8 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
         uploadedState = uploadedState,
         properties = properties,
         assetType = assetType,
-        provenanceId = provenanceId
+        provenanceId = provenanceId,
+        publishedS3VersionId = publishedS3VersionId
       )
 
     if (!isNameValid(name)) {
@@ -144,6 +146,11 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
           PredicateError(
             s"Properties JSON exceeds maximum size of 1MB (actual: ${propertiesSize} bytes)"
           )
+        )
+    } else if (publishedS3VersionId.nonEmpty && publishedS3VersionId.get.isEmpty) {
+      EitherT
+        .leftT[Future, File](
+          PredicateError(s"Published S3 versionId cannot be empty string")
         )
     } else if (isValidProcessingState) {
       db.run(files.returning(files) += file).toEitherT
@@ -537,6 +544,43 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Int] =
     db.run(files.setPublished(`package`.id, published, s3Key)).toEitherT
+
+  def setFilePublished(
+    file: File,
+    s3Bucket: String,
+    s3Key: String,
+    s3VersionId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    if (s3VersionId.isEmpty)
+      EitherT.leftT[Future, Int](
+        PredicateError("Published S3 versionId cannot be empty string")
+      )
+    else
+      db.run(
+          files.setFilePublished(
+            file.packageId,
+            file.id,
+            s3Bucket,
+            s3Key,
+            s3VersionId
+          )
+        )
+        .toEitherT
+
+  def setFileUnpublished(
+    file: File,
+    s3Bucket: String,
+    s3Key: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    db.run(
+        files
+          .setFileUnpublished(file.packageId, file.id, s3Bucket, s3Key)
+      )
+      .toEitherT
 
   def renameFile(
     `file`: File,

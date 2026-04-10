@@ -74,7 +74,8 @@ trait PackagesTestMixin extends DataSetTestMixin {
     bucketName: String,
     objectType: FileObjectType = FileObjectType.Source,
     processingState: FileProcessingState = FileProcessingState.Unprocessed,
-    fileManager: FileManager = fileManager
+    fileManager: FileManager = fileManager,
+    publishedS3VersionId: Option[String] = None
   ): File = {
     fileManager
       .create(
@@ -85,7 +86,8 @@ trait PackagesTestMixin extends DataSetTestMixin {
         fileName,
         objectType = objectType,
         processingState = processingState,
-        size = 10
+        size = 10,
+        publishedS3VersionId = publishedS3VersionId
       )
       .await match {
       case Left(error) => throw error

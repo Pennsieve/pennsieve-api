@@ -23,6 +23,7 @@ import com.pennsieve.domain.{ NameCheckError, NotFound, PredicateError }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
 import com.pennsieve.models.{
   CollectionUpload,
+  FileType,
   Package,
   PackageState,
   PackageType
@@ -37,6 +38,7 @@ import org.scalatest.enablers.Messaging.messagingNatureOfThrowable
 import java.util.UUID
 import com.pennsieve.audit.middleware.TraceId
 
+import scala.collection.compat.immutable.ArraySeq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
@@ -1243,6 +1245,322 @@ class PackageManagerSpec extends BaseManagerSpec {
     }
     afterDeletePackageNodeIds.contains(subject2FolderPackage.nodeId) shouldBe false
     afterDeletePackageNodeIds.contains(subject2FilePackage.nodeId) shouldBe false
+  }
+
+  "deleting a collection" should "set all descendants to DELETING with __DELETED__ prefix" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val packagesMapper = new PackagesMapper(testOrganization)
+
+    /**
+      * Folder structure:
+      *
+      * ├── rootFolder/
+      * │   ├── childFolder/
+      * │   │   ├── grandChildFile
+      * │   │   └── grandChildFile2
+      * │   └── childFile
+      */
+    val rootFolder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "rootFolder",
+      `type` = PackageType.Collection
+    )
+    val childFolder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFolder",
+      `type` = PackageType.Collection,
+      parent = Some(rootFolder)
+    )
+    val grandChildFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "grandChildFile",
+      `type` = PackageType.CSV,
+      parent = Some(childFolder)
+    )
+    val grandChildFile2 = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "grandChildFile2",
+      `type` = PackageType.CSV,
+      parent = Some(childFolder)
+    )
+    val childFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile",
+      `type` = PackageType.CSV,
+      parent = Some(rootFolder)
+    )
+
+    deletePackage(user = user, pkg = rootFolder)
+
+    // Fetch all packages directly (bypassing the DELETING filter)
+    val allPackages = database
+      .run(
+        packagesMapper
+          .filter(
+            _.id inSet Set(
+              rootFolder.id,
+              childFolder.id,
+              grandChildFile.id,
+              grandChildFile2.id,
+              childFile.id
+            )
+          )
+          .result
+      )
+      .await
+
+    allPackages.foreach { pkg =>
+      pkg.state shouldBe PackageState.DELETING
+      pkg.name should startWith("__DELETED__")
+    }
+  }
+
+  "deleting a collection" should "not affect packages outside the collection" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val packagesMapper = new PackagesMapper(testOrganization)
+
+    val folder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "folder",
+      `type` = PackageType.Collection
+    )
+    val childFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile",
+      `type` = PackageType.CSV,
+      parent = Some(folder)
+    )
+    val siblingFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "siblingFile",
+      `type` = PackageType.CSV
+    )
+
+    deletePackage(user = user, pkg = folder)
+
+    val sibling = database
+      .run(packagesMapper.filter(_.id === siblingFile.id).result.head)
+      .await
+
+    sibling.state shouldBe PackageState.READY
+    sibling.name shouldBe "siblingFile"
+  }
+
+  "deleting a collection" should "skip already-deleted descendants" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+    val packagesMapper = new PackagesMapper(testOrganization)
+
+    val folder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "folder",
+      `type` = PackageType.Collection
+    )
+    val childFile = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile",
+      `type` = PackageType.CSV,
+      parent = Some(folder)
+    )
+    val childFile2 = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile2",
+      `type` = PackageType.CSV,
+      parent = Some(folder)
+    )
+
+    // Delete one child independently first
+    deletePackage(user = user, pkg = childFile)
+
+    val childAfterFirstDelete = database
+      .run(packagesMapper.filter(_.id === childFile.id).result.head)
+      .await
+    val childFirstDeletedName = childAfterFirstDelete.name
+
+    // Now delete the parent folder
+    deletePackage(user = user, pkg = folder)
+
+    // The independently-deleted child should NOT be double-renamed
+    val childAfterParentDelete = database
+      .run(packagesMapper.filter(_.id === childFile.id).result.head)
+      .await
+    childAfterParentDelete.name shouldBe childFirstDeletedName
+
+    // The other child should be marked DELETING
+    val child2 = database
+      .run(packagesMapper.filter(_.id === childFile2.id).result.head)
+      .await
+    child2.state shouldBe PackageState.DELETING
+    child2.name should startWith("__DELETED__")
+  }
+
+  "deleting an empty collection" should "succeed without errors" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val emptyFolder = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "emptyFolder",
+      `type` = PackageType.Collection
+    )
+
+    deletePackage(user = user, pkg = emptyFolder)
+
+    val packagesMapper = new PackagesMapper(testOrganization)
+    val deleted = database
+      .run(packagesMapper.filter(_.id === emptyFolder.id).result.head)
+      .await
+
+    deleted.state shouldBe PackageState.DELETING
+    deleted.name should startWith("__DELETED__")
+  }
+
+  "deleting a non-collection package" should "not attempt to soft-delete descendants" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val file = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "singleFile",
+      `type` = PackageType.CSV
+    )
+
+    deletePackage(user = user, pkg = file)
+
+    val packagesMapper = new PackagesMapper(testOrganization)
+    val deleted = database
+      .run(packagesMapper.filter(_.id === file.id).result.head)
+      .await
+
+    deleted.state shouldBe PackageState.DELETING
+    deleted.name should startWith("__DELETED__")
+  }
+
+  "getPackageHierarchy" should "return publishedS3VersionId when present" in {
+    val user = createUser()
+    val dataset = createDataset(user = user)
+
+    val rootPkg = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "singleFile",
+      `type` = PackageType.CSV
+    )
+
+    val rootFile = createFile(rootPkg, user = user, size = 15)
+
+    val folderPkg = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "folder",
+      `type` = PackageType.Collection
+    )
+
+    val unpublishedChildPkg = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile1",
+      `type` = PackageType.Text,
+      parent = Some(folderPkg)
+    )
+
+    val unpublishedChildFile =
+      createFile(container = unpublishedChildPkg, user = user, size = 115)
+
+    val publishedChildPkg = createPackage(
+      user = user,
+      dataset = dataset,
+      name = "childFile2",
+      `type` = PackageType.TimeSeries,
+      parent = Some(folderPkg)
+    )
+
+    val publishedChildFile =
+      createFile(
+        container = publishedChildPkg,
+        user = user,
+        size = 1115,
+        publishedS3VersionId = Some(UUID.randomUUID().toString)
+      )
+
+    val pm = packageManager(user = user)
+    val hierarchies =
+      pm.getPackageHierarchy(List(rootPkg.nodeId, folderPkg.nodeId)).await.value
+
+    hierarchies.length shouldBe 3
+
+    hierarchies should contain theSameElementsAs List(
+      pm.PackageHierarchy(
+        datasetId = dataset.id,
+        nodeIdPath = ArraySeq(),
+        packageId = rootPkg.id,
+        nodeId = rootPkg.nodeId,
+        packageType = rootPkg.`type`,
+        packageState = rootPkg.state,
+        packageNamePath = ArraySeq(),
+        packageName = rootPkg.name,
+        packageFileCount = 1,
+        fileId = rootFile.id,
+        fileName = rootFile.name,
+        size = rootFile.size,
+        fileType = rootFile.fileType,
+        s3Bucket = rootFile.s3Bucket,
+        s3Key = rootFile.s3Key,
+        publishedS3VersionId = rootFile.publishedS3VersionId
+      ),
+      pm.PackageHierarchy(
+        datasetId = dataset.id,
+        nodeIdPath = ArraySeq(folderPkg.nodeId),
+        packageId = unpublishedChildPkg.id,
+        nodeId = unpublishedChildPkg.nodeId,
+        packageType = unpublishedChildPkg.`type`,
+        packageState = unpublishedChildPkg.state,
+        packageNamePath = ArraySeq(folderPkg.name),
+        packageName = unpublishedChildPkg.name,
+        packageFileCount = 1,
+        fileId = unpublishedChildFile.id,
+        fileName = unpublishedChildFile.name,
+        size = unpublishedChildFile.size,
+        fileType = unpublishedChildFile.fileType,
+        s3Bucket = unpublishedChildFile.s3Bucket,
+        s3Key = unpublishedChildFile.s3Key,
+        publishedS3VersionId = unpublishedChildFile.publishedS3VersionId
+      ),
+      pm.PackageHierarchy(
+        datasetId = dataset.id,
+        nodeIdPath = ArraySeq(folderPkg.nodeId),
+        packageId = publishedChildPkg.id,
+        nodeId = publishedChildPkg.nodeId,
+        packageType = publishedChildPkg.`type`,
+        packageState = publishedChildPkg.state,
+        packageNamePath = ArraySeq(folderPkg.name),
+        packageName = publishedChildPkg.name,
+        packageFileCount = 1,
+        fileId = publishedChildFile.id,
+        fileName = publishedChildFile.name,
+        size = publishedChildFile.size,
+        fileType = publishedChildFile.fileType,
+        s3Bucket = publishedChildFile.s3Bucket,
+        s3Key = publishedChildFile.s3Key,
+        publishedS3VersionId = publishedChildFile.publishedS3VersionId
+      )
+    )
+
   }
 
 }

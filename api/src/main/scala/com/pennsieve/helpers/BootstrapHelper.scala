@@ -62,7 +62,6 @@ import com.pennsieve.traits.TimeSeriesDBContainer
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
 import org.joda.time.DateTime
-import com.pennsieve.jobscheduling.clients.generated.jobs.JobsClient
 import com.pennsieve.service.utilities.{
   QueueHttpResponder,
   SingleHttpResponder
@@ -101,7 +100,6 @@ object APIContainers {
     with SNSContainer
     with ApiSQSContainer
     with ApiSNSContainer
-    with JobSchedulingServiceContainer
   type SecureAPIContainer = APIContainer
     with SecureContainer
     with SecureCoreContainer
@@ -175,8 +173,6 @@ trait BaseBootstrapHelper {
   lazy val orcidClient: OrcidClient =
     new OrcidClientImpl(Http(), orcidClientConfig)
 
-  lazy val jobSchedulingServiceClient: JobsClient = insecureContainer.jobsClient
-
   lazy val urlShortenerClient: UrlShortenerClient =
     new BitlyUrlShortenerClient(Http(), config.as[String]("bitly.access_token"))
 
@@ -200,14 +196,6 @@ class LocalBootstrapHelper(
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with LocalSQSContainer with LocalS3Container
     with ApiSQSContainer with LocalSNSContainer with ApiSNSContainer
-    with JobSchedulingServiceContainerImpl {
-      override val jobSchedulingServiceHost: String =
-        config.as[String]("pennsieve.job_scheduling_service.host")
-      override val jobSchedulingServiceQueueSize: Int =
-        config.as[Int]("pennsieve.job_scheduling_service.queue_size")
-      override val jobSchedulingServiceRateLimit: Int =
-        config.as[Int]("pennsieve.job_scheduling_service.rate_limit")
-    }
 
   lazy val customTermsOfServiceClient: CustomTermsOfServiceClient =
     new S3CustomTermsOfServiceClient(
@@ -253,14 +241,6 @@ class AWSBootstrapHelper(
     with AWSEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with AWSSQSContainer with AWSSNSContainer
     with AWSS3Container with ApiSQSContainer with ApiSNSContainer
-    with JobSchedulingServiceContainerImpl {
-      override val jobSchedulingServiceHost: String =
-        config.as[String]("pennsieve.job_scheduling_service.host")
-      override val jobSchedulingServiceQueueSize: Int =
-        config.as[Int]("pennsieve.job_scheduling_service.queue_size")
-      override val jobSchedulingServiceRateLimit: Int =
-        config.as[Int]("pennsieve.job_scheduling_service.rate_limit")
-    }
 
   lazy val customTermsOfServiceClient: CustomTermsOfServiceClient =
     new S3CustomTermsOfServiceClient(

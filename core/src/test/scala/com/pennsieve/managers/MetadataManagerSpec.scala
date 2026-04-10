@@ -98,7 +98,6 @@ class MetadataManagerSpec extends BaseManagerSpec {
       valueEncrypted = None,
       validFrom = ZonedDateTime.now(),
       validTo = if (isCurrent) None else Some(ZonedDateTime.now()),
-      isCurrent = isCurrent,
       provenanceId = UUID.randomUUID(),
       createdAt = ZonedDateTime.now(),
       keyHash = None
