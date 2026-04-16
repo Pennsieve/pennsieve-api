@@ -17,9 +17,10 @@
 package com.pennsieve.models
 
 import java.time.ZonedDateTime
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 
-import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.{ Decoder, Encoder }
+import java.util.UUID
 
 final case class Channel(
   nodeId: String,
@@ -35,7 +36,8 @@ final case class Channel(
   spikeDuration: Option[Long] = None,
   properties: List[ModelProperty] = Nil,
   createdAt: ZonedDateTime = ZonedDateTime.now(),
-  id: Int = 0
+  id: Int = 0,
+  viewerAssetId: Option[UUID] = None
 )
 
 object Channel {

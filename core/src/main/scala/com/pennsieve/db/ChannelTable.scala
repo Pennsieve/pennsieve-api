@@ -17,12 +17,13 @@
 package com.pennsieve.db
 
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.models.{ ModelProperty, Organization }
-import java.time.ZonedDateTime
+import com.pennsieve.models.{ModelProperty, Organization}
 
+import java.time.ZonedDateTime
 import com.pennsieve.domain.SqlError
 import com.pennsieve.models.Channel
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 final class ChannelTable(schema: String, tag: Tag)
@@ -44,6 +45,7 @@ final class ChannelTable(schema: String, tag: Tag)
   def lastAnnotation = column[Long]("last_annotation")
   def spikeDuration = column[Option[Long]]("spike_duration")
   def properties = column[List[ModelProperty]]("properties")
+  def viewerAssetId = column[Option[UUID]]("viewer_asset_id")
 
   def * =
     (
@@ -60,7 +62,8 @@ final class ChannelTable(schema: String, tag: Tag)
       spikeDuration,
       properties,
       createdAt,
-      id
+      id,
+      viewerAssetId
     ).mapTo[Channel]
 }
 
@@ -69,6 +72,8 @@ class ChannelsMapper(val organization: Organization)
   def get(id: Int) = this.filter(_.id === id)
   def getByNodeId(nodeId: String) = this.filter(_.nodeId === nodeId)
   def getByPackageId(packageId: Int) = this.filter(_.packageId === packageId)
+  def getByViewerAssetId(viewerAssetId: UUID) =
+    this.filter(_.viewerAssetId === viewerAssetId)
   def getByPackageIdAndName(packageId: Int, name: String) =
     this.filter(_.packageId === packageId).filter(_.name === name)
 
