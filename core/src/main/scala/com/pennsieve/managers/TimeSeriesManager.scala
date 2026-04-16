@@ -32,7 +32,6 @@ import com.pennsieve.models.{
 }
 import com.pennsieve.traits.PostgresProfile.api._
 
-import java.util.UUID
 import scala.collection.SortedSet
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -134,20 +133,6 @@ class TimeSeriesManager(db: Database, organization: Organization) {
         table
           .filter(_.packageId === `package`.id)
           .sortBy(_.id)
-          .result
-      )
-      .map(_.toList)
-      .toEitherT
-
-  def getChannelsByViewerAssetId(
-    viewerAssetId: UUID
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, List[Channel]] =
-    db.run(
-        table
-          .filter(_.viewerAssetId === viewerAssetId)
-          .sortBy(c => (c.packageId, c.id))
           .result
       )
       .map(_.toList)
