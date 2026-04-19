@@ -25,7 +25,7 @@ import cats.syntax.either._
 import com.amazonaws.services.s3.AmazonS3
 import com.typesafe.scalalogging.LazyLogging
 
-import java.net.URL
+import java.net.{ URL, URLEncoder }
 import org.scalatra.{ ActionResult, InternalServerError, NotFound }
 
 import scala.util.Try
@@ -80,7 +80,7 @@ class S3ObjectStore() extends ObjectStore with LazyLogging {
       .withExpiration(duration)
       .withResponseHeaders(
         new ResponseHeaderOverrides()
-          .withContentDisposition(s"""attachment; filename="$fileName"""")
+          .withContentDisposition(contentDispositionFor(fileName))
       )
 
     request = s3VersionId.fold(request)(request.withVersionId(_))
@@ -107,5 +107,23 @@ class S3ObjectStore() extends ObjectStore with LazyLogging {
       .map(_.map(obj => (obj.getKey, obj.getSize)).toMap)
       .leftMap(t => InternalServerError(t.getMessage))
 
+  }
+
+  // HTTP response headers are ISO-8859-1 (RFC 7230), but uploaded filenames
+  // routinely contain non-Latin-1 characters — macOS screenshots embed U+202F
+  // (narrow no-break space) between the time and AM/PM, and any CJK/emoji
+  // filename also fails. S3 rejects a non-Latin-1 response-content-disposition
+  // override with `InvalidArgument: Header value cannot be represented using
+  // ISO-8859-1`, which surfaces as a 400 on the presigned GET.
+  //
+  // RFC 5987 / RFC 6266 lets us send both: a Latin-1 `filename` fallback and a
+  // UTF-8 `filename*` that modern browsers prefer.
+  private def contentDispositionFor(fileName: String): String = {
+    val asciiFallback = fileName.map { c =>
+      if (c >= 0x20 && c < 0x7F && c != '"' && c != '\\') c else '_'
+    }
+    val utf8Encoded =
+      URLEncoder.encode(fileName, "UTF-8").replace("+", "%20")
+    s"""attachment; filename="$asciiFallback"; filename*=UTF-8''$utf8Encoded"""
   }
 }
