@@ -748,8 +748,14 @@ class PackageManager(datasetManager: DatasetManager) {
           """)
       else None
 
+    // Explicit column list (not p.*) so that adding columns to the packages
+    // table in future migrations does not shift the positional reads in the
+    // GetResult[(Package, Seq[File])] extractor below. Column order must
+    // match the extractor.
     sql"""
-       SELECT p.*#${selectFiles}
+       SELECT p.id, p.name, p.type, p.state, p.dataset_id, p.parent_id,
+              p.updated_at, p.created_at, p.attributes, p.node_id,
+              p.size, p.owner_id, p.import_id#${selectFiles}
        FROM "#${organization.schemaId}".packages p
        INNER JOIN (
          SELECT p.id FROM "#${organization.schemaId}".packages p
