@@ -42,6 +42,11 @@ final case class File(
   provenanceId: Option[UUID] = None,
   published: Boolean = false,
   publishedS3VersionId: Option[String] = None,
+  // scan_status TEXT NOT NULL DEFAULT 'pending' at the DB level;
+  // Option here because older read paths / older DB images may still
+  // surface NULL. Vocabulary: pending / scanning / clean /
+  // format_validated / unscanned / infected / failed / not_required.
+  scanStatus: Option[String] = None,
   id: Int = 0
 ) {
 

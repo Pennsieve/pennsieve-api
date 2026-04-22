@@ -903,7 +903,8 @@ class PackageManager(datasetManager: DatasetManager) {
     fileType: FileType,
     s3Bucket: String,
     s3Key: String,
-    publishedS3VersionId: Option[String]
+    publishedS3VersionId: Option[String],
+    scanStatus: Option[String]
   )
 
   implicit val packageHierarchy: GetResult[PackageHierarchy] =
@@ -924,6 +925,7 @@ class PackageManager(datasetManager: DatasetManager) {
       val s3Bucket = p.<<[String]
       val s3Key = p.<<[String]
       val publishedS3VersionId = p.<<?[String]
+      val scanStatus = p.<<?[String]
 
       PackageHierarchy(
         datasetId,
@@ -941,7 +943,8 @@ class PackageManager(datasetManager: DatasetManager) {
         FileType.withName(fileType),
         s3Bucket,
         s3Key,
-        publishedS3VersionId
+        publishedS3VersionId,
+        scanStatus
       )
     }
 
@@ -1004,7 +1007,8 @@ class PackageManager(datasetManager: DatasetManager) {
                 f.file_type,
                 f.s3_bucket,
                 f.s3_key,
-                f.published_s3_version_id
+                f.published_s3_version_id,
+                f.scan_status
               FROM
                 parents
               JOIN "#${organization.schemaId}".files f ON
@@ -1091,7 +1095,8 @@ class PackageManager(datasetManager: DatasetManager) {
                 f.file_type,
                 f.s3_bucket,
                 f.s3_key,
-                f.published_s3_version_id
+                f.published_s3_version_id,
+                f.scan_status
               FROM
                 parents
               JOIN "#${orgId}".files f ON
