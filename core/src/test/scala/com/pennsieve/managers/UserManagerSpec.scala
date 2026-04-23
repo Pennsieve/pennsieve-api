@@ -117,13 +117,10 @@ class UserManagerSpec extends BaseManagerSpec {
     val firstName = "Fynn"
     val lastName = "Blackwell"
 
-    // Create invites across the three organization schemas pre-seeded in
-    // pennsievedb-seed (1, 2, 3). The base harness already made orgs 1 and 2;
-    // we create one more to cover schema 3.
-    val orgs: Seq[Organization] =
-      Seq(testOrganization, testOrganization2, createOrganization())
+    //create 5 org, 5 users 5 invites
     val orgsInvites: Seq[(Organization, UserInvite)] =
-      orgs.map { newOrg =>
+      (1 to 5).map { i =>
+        val newOrg = createOrganization()
         val newDataset = createDataset(newOrg)
         val userInvite = userInviteManager
           .createOrRefreshUserInvite(
@@ -176,7 +173,7 @@ class UserManagerSpec extends BaseManagerSpec {
     val allOrgIds = userManager.getOrganizations(user).await.value.map(_.nodeId)
     val createdOrgIds = orgsInvites.map(_._1.nodeId).toSet
 
-    createdOrgIds.size should equal(orgs.size)
+    createdOrgIds.size should equal(5)
 
     allOrgIds should contain theSameElementsAs createdOrgIds
   }

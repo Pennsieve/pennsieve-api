@@ -22,7 +22,7 @@ timestamps {
                 // pennsieve-db-migrations repo) so Testcontainers doesn't race
                 // the pull during test startup.
                 timeout(10) {
-                    sh 'docker pull pennsieve/pennsievedb:V20260304122946-seed'
+                    sh 'docker pull pennsieve/pennsievedb:latest-seed'
                 }
             }
 

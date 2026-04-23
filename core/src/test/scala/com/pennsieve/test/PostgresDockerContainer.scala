@@ -24,7 +24,11 @@ import java.time.Duration
 
 final class PostgresDockerContainerImpl
     extends PostgresContainerImpl(
-      dockerImage = "pennsieve/pennsievedb:V20260304122946-seed"
+      // Floating tag — pennsieve-db-migrations republishes :latest-seed on
+      // every main merge. Testcontainers only repulls if the image is absent
+      // locally, so if you start seeing stale-schema errors run
+      // `docker pull pennsieve/pennsievedb:latest-seed` before tests.
+      dockerImage = "pennsieve/pennsievedb:latest-seed"
     )
 
 trait PostgresDockerContainer extends StackedDockerContainer {
