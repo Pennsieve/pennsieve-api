@@ -1,2 +1,0 @@
-ALTER TABLE tokens
-ADD COLUMN cognito_id UUID NOT NULL;

@@ -1,1 +1,0 @@
-ALTER TABLE "packages" ADD COLUMN "owner_id" INTEGER;

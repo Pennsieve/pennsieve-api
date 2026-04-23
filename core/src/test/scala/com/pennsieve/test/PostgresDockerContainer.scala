@@ -24,22 +24,11 @@ import java.time.Duration
 
 final class PostgresDockerContainerImpl
     extends PostgresContainerImpl(
-      dockerImage = "pennsieve/pennsievedb:V20260304122946"
+      dockerImage = "pennsieve/pennsievedb:V20260304122946-seed"
     )
 
 trait PostgresDockerContainer extends StackedDockerContainer {
   val postgresContainer = DockerContainers.postgresContainer
-
-  override def stackedContainers = postgresContainer :: super.stackedContainers
-}
-
-final class PostgresSeedDockerContainerImpl
-    extends PostgresContainerImpl(
-      dockerImage = "pennsieve/pennsievedb:V20260304122946-seed"
-    )
-
-trait PostgresSeedDockerContainer extends StackedDockerContainer {
-  val postgresContainer = DockerContainers.postgresSeedContainer
 
   override def stackedContainers = postgresContainer :: super.stackedContainers
 }

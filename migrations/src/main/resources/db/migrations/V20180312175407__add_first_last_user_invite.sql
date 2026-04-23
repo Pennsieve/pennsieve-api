@@ -1,2 +1,0 @@
-ALTER TABLE user_invite ADD COLUMN first_name VARCHAR(255) DEFAULT '';
-ALTER TABLE user_invite ADD COLUMN last_name VARCHAR(255) DEFAULT '';

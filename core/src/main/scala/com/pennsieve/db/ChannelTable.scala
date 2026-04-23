@@ -17,7 +17,7 @@
 package com.pennsieve.db
 
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.models.{ModelProperty, Organization}
+import com.pennsieve.models.{ ModelProperty, Organization }
 
 import java.time.ZonedDateTime
 import com.pennsieve.domain.SqlError

@@ -211,15 +211,11 @@ trait ApiSuite
     userInviteManager = insecureContainer.userInviteManager
     tokenManager = insecureContainer.tokenManager
 
-    migrateCoreSchema(insecureContainer.postgresDatabase)
-
-    // Interestingly this must be "5" as the sandbox organization in some
-    // pass throughs gets created twice; once on the migration and once again
-    // within the beforeEach of this loop. TODO on figuring out a better approach.
-    1 to 5 foreach { orgId =>
-      insecureContainer.db.run(createSchema(orgId.toString)).await
-      migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
-    }
+    // The seeded pennsievedb image ships with local-seed.sql fixtures
+    // (users, organizations, datasets, etc). Clear them once on container
+    // startup so the first test's beforeEach sees an empty schema; afterEach
+    // handles cleanup for subsequent tests.
+    insecureContainer.db.run(clearDB).await
   }
 
   var config: Config = _
@@ -444,12 +440,11 @@ trait ApiSuite
   override def afterEach(): Unit = {
     super.afterEach()
 
+    // clearDB now truncates pennsieve.* plus the seeded org schemas
+    // (1, 2, 3). The pre-change code also truncated schemas 4 and 5, but the
+    // new seeded image only pre-creates 1..3 — any additional schemas would
+    // need to be created dynamically.
     insecureContainer.db.run(clearDB).await
-    insecureContainer.db.run(clearOrganizationSchema(1)).await
-    insecureContainer.db.run(clearOrganizationSchema(2)).await
-    insecureContainer.db.run(clearOrganizationSchema(3)).await
-    insecureContainer.db.run(clearOrganizationSchema(4)).await
-    insecureContainer.db.run(clearOrganizationSchema(5)).await
   }
 
   override def beforeEach(): Unit = {

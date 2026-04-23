@@ -1,1 +1,0 @@
-ALTER TABLE "packages" ADD COLUMN "size" BIGINT DEFAULT 0;

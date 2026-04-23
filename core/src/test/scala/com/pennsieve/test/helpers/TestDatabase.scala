@@ -17,13 +17,11 @@
 package com.pennsieve.test.helpers
 
 import cats.data.EitherT
-import com.pennsieve.core.utilities.PostgresDatabase
 
 import scala.concurrent.Future
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.migrations.DatabaseMigrationRunner
 import slick.jdbc.GetResult
 
 case class Awaitable[A](f: Future[A]) {
@@ -51,43 +49,27 @@ trait TestDatabase extends AwaitableImplicits {
 
   implicit val getUnitResult: GetResult[Unit] = GetResult(_ => ())
 
-  def migrateCoreSchema(postgresDB: PostgresDatabase): Unit = {
+  // Used to clear the tables in the test postgres database.
+  //
+  // Also truncates the pre-seeded organization schemas (1..10) baked into
+  // the pennsievedb-seed image. Tests manage their own fixtures, so any seed
+  // rows must be cleared before each test regardless of which harness is
+  // running. Keep this list in sync with ORGANIZATION_SCHEMA_COUNT in
+  // pennsieve-db-migrations/scripts/build-postgres.sh.
+  val seededOrganizationIds: Seq[Int] = 1 to 10
 
-    val runner = new DatabaseMigrationRunner(
-      postgresDB.jdbcURL,
-      postgresDB.user,
-      postgresDB.password
-    )
-
-    runner.migrateCoreSchema()
-  }
-
-  def migrateOrganizationSchema(
-    organizationId: Int,
-    postgresDB: PostgresDatabase
-  ): Unit = {
-
-    val runner = new DatabaseMigrationRunner(
-      postgresDB.jdbcURL,
-      postgresDB.user,
-      postgresDB.password
-    )
-
-    runner.migrateOrganizationSchema(organizationId)
-    runner.refreshUnionViews
-  }
-
-  // Used to clear the tables in the test postgres database
   def clearDB: DBIO[Unit] = DBIO.seq(
-    // clears organizations, subscriptions, and feature flags due to their foreign key relationships
-    sqlu"""TRUNCATE TABLE "pennsieve"."users" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."organizations" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."teams" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."organization_team" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."organization_user" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."team_user" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."user_invite" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."tokens" RESTART IDENTITY CASCADE"""
+    Seq(
+      // clears organizations, subscriptions, and feature flags due to their foreign key relationships
+      sqlu"""TRUNCATE TABLE "pennsieve"."users" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."organizations" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."teams" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."organization_team" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."organization_user" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."team_user" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."user_invite" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."tokens" RESTART IDENTITY CASCADE"""
+    ) ++ seededOrganizationIds.map(clearOrganizationSchema): _*
   )
 
   // Used to clear the tables in the test postgres database in an organization's schema

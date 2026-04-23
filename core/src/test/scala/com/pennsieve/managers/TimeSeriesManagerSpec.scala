@@ -222,9 +222,15 @@ class TimeSeriesManagerSpec extends BaseManagerSpec {
     val unassigned = createChannel(packageA, "unassigned")(tm)
     val otherAssetChannel = createChannel(packageB, "other")(tm)
 
-    tm.updateChannel(a1.copy(viewerAssetId = Some(assetId)), packageA).await.value
-    tm.updateChannel(a2.copy(viewerAssetId = Some(assetId)), packageA).await.value
-    tm.updateChannel(b1.copy(viewerAssetId = Some(assetId)), packageB).await.value
+    tm.updateChannel(a1.copy(viewerAssetId = Some(assetId)), packageA)
+      .await
+      .value
+    tm.updateChannel(a2.copy(viewerAssetId = Some(assetId)), packageA)
+      .await
+      .value
+    tm.updateChannel(b1.copy(viewerAssetId = Some(assetId)), packageB)
+      .await
+      .value
     tm.updateChannel(
         otherAssetChannel.copy(viewerAssetId = Some(otherAssetId)),
         packageB

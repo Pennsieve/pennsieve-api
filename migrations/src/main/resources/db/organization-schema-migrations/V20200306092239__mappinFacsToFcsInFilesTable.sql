@@ -1,1 +1,0 @@
-UPDATE "files" SET file_type = 'FCS' WHERE file_type = 'FACS';

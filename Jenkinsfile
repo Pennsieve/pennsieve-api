@@ -17,13 +17,13 @@ timestamps {
 
         try {
 
-            stage('Build DB Image') {
-                timeout(20) {
-                    withCredentials([pennsieveNexusCreds]) {
-                        sh "ENVIRONMENT=jenkins ./build-postgres.sh"
-                    }
+            stage('Pre-pull DB Image') {
+                // Pre-pull the seeded pennsievedb image (produced by the
+                // pennsieve-db-migrations repo) so Testcontainers doesn't race
+                // the pull during test startup.
+                timeout(10) {
+                    sh 'docker pull pennsieve/pennsievedb:V20260304122946-seed'
                 }
-                sh 'docker-compose down'
             }
 
             stage('Build') {
@@ -52,8 +52,7 @@ timestamps {
                         'core',
                         'core-clients',
                         'core-models',
-                        'message-templates',
-                        'migrations'
+                        'message-templates'
                     ]
                     def publishJarSteps = jars.collectEntries {
                         ["${it}" : generatePublishJarStep(it, sbt, pennsieveNexusCreds, remoteCache)]
@@ -71,7 +70,6 @@ timestamps {
                 ]
 
                 def containers = services + [
-                    'migrations',
                     'organization-storage-migration',
                     'unused-organization-migration'
                 ]
@@ -82,13 +80,6 @@ timestamps {
                     }
                     publishContainerSteps.failFast = true
                     parallel publishContainerSteps
-                }
-
-                stage('Run Migrations') {
-                    build job: "Migrations/dev-migrations/dev-postgres-migrations",
-                    parameters: [
-                        string(name: 'IMAGE_TAG', value: imageTag)
-                    ]
                 }
 
                 stage('Deploy') {

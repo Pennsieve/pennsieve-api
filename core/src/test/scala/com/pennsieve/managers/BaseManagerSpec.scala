@@ -113,7 +113,7 @@ trait ManagerSpec
   override def afterEach(): Unit = {
     database.run(clearOrganizationSchema(testOrganizationId)).await
     extraOrganizationIds.foreach { organizationId =>
-      database.run(dropOrganizationSchema(organizationId.toString)).await
+      database.run(clearOrganizationSchema(organizationId)).await
     }
     extraOrganizationIds = Nil
     super.afterEach()
@@ -125,12 +125,6 @@ trait ManagerSpec
     postgresDB = postgresContainer.database
 
     database = postgresDB.forURL
-
-    // Migrate core schema
-    migrateCoreSchema(postgresDB)
-    // Migrate the schema for our universal Test Organizations (1 & 2)
-    migrateOrganizationSchema(testOrganizationId, postgresDB)
-    migrateOrganizationSchema(testOrganizationId2, postgresDB)
 
     userManager = new UserManager(database)
     userInviteManager = new UserInviteManager(database)
@@ -359,7 +353,6 @@ trait ManagerSpec
     om.addUser(organization, superAdmin, DBPermission.Owner).await.value
 
     if (createSchema) {
-      migrateOrganizationSchema(organization.id, postgresDB)
       extraOrganizationIds = extraOrganizationIds :+ organization.id
     }
 
