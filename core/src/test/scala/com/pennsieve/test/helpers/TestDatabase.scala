@@ -76,16 +76,23 @@ trait TestDatabase extends AwaitableImplicits {
   def clearOrganizationSchema(organizationId: Int): DBIO[Unit] = {
     val schema: String = organizationId.toString
 
+    // NB: do NOT truncate dataset_status — the seed image ships with the 4
+    // default statuses (NO_STATUS, WORK_IN_PROGRESS, IN_REVIEW, COMPLETED)
+    // that DatasetManager.create relies on via getDefaultStatus. Tests that
+    // need to reset it explicitly call DatasetStatusManager.resetDefaultStatusOptions.
+    // Because of that, datacanvases must be truncated explicitly: previously
+    // it was cleaned via CASCADE from dataset_status, and leaving rows behind
+    // blocks resetDefaultStatusOptions (datacanvases.status_id FK).
     DBIO.seq(
       sqlu"""TRUNCATE TABLE "#$schema"."datasets" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."packages" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."annotations" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."annotation_layers" RESTART IDENTITY CASCADE""",
-      sqlu"""TRUNCATE TABLE "#$schema"."dataset_status" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."contributors" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."dataset_contributor" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."collections" RESTART IDENTITY CASCADE""",
-      sqlu"""TRUNCATE TABLE "#$schema"."data_use_agreements" RESTART IDENTITY CASCADE"""
+      sqlu"""TRUNCATE TABLE "#$schema"."data_use_agreements" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "#$schema"."datacanvases" RESTART IDENTITY CASCADE"""
     )
   }
 
@@ -96,5 +103,15 @@ trait TestDatabase extends AwaitableImplicits {
     sqlu"""TRUNCATE TABLE "timeseries"."layers" RESTART IDENTITY CASCADE""",
     sqlu"""TRUNCATE TABLE "timeseries"."layers" RESTART IDENTITY CASCADE"""
   )
+
+  // The seed image pre-creates pennsieve.all_files but not the corresponding
+  // union views for other per-organization tables (e.g. datacanvases). Rebuild
+  // them once against the pre-seeded schemas 1..10 so cross-org queries work.
+  // refresh_union_view is a SELECT against a plpgsql function; sqlu would
+  // fail with "a result was returned when none was expected".
+  def refreshUnionViews: DBIO[Unit] =
+    DBIO.seq(
+      sql"""SELECT pennsieve.refresh_union_view('datacanvases')""".as[Unit]
+    )
 
 }

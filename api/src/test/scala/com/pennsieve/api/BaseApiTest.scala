@@ -216,6 +216,11 @@ trait ApiSuite
     // startup so the first test's beforeEach sees an empty schema; afterEach
     // handles cleanup for subsequent tests.
     insecureContainer.db.run(clearDB).await
+
+    // pennsieve.all_datacanvases is not pre-created by the seed image; build
+    // it here against the seeded org schemas so controllers that query the
+    // cross-org view succeed.
+    insecureContainer.db.run(refreshUnionViews).await
   }
 
   var config: Config = _
