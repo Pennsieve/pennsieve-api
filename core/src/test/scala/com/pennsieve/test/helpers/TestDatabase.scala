@@ -17,6 +17,7 @@
 package com.pennsieve.test.helpers
 
 import cats.data.EitherT
+import com.pennsieve.models.DefaultDatasetStatus
 
 import scala.concurrent.Future
 import scala.concurrent.Await
@@ -49,6 +50,11 @@ trait TestDatabase extends AwaitableImplicits {
 
   implicit val getUnitResult: GetResult[Unit] = GetResult(_ => ())
 
+  // Rendered SQL list literal, e.g. 'NO_STATUS','WORK_IN_PROGRESS',... —
+  // values are the EnumEntry names (uppercase + snake case).
+  private def defaultDatasetStatusNamesSql: String =
+    DefaultDatasetStatus.values.map(s => s"'${s.entryName}'").mkString(",")
+
   // Used to clear the tables in the test postgres database.
   //
   // Also truncates the pre-seeded organization schemas (1..10) baked into
@@ -76,13 +82,12 @@ trait TestDatabase extends AwaitableImplicits {
   def clearOrganizationSchema(organizationId: Int): DBIO[Unit] = {
     val schema: String = organizationId.toString
 
-    // NB: do NOT truncate dataset_status — the seed image ships with the 4
-    // default statuses (NO_STATUS, WORK_IN_PROGRESS, IN_REVIEW, COMPLETED)
-    // that DatasetManager.create relies on via getDefaultStatus. Tests that
-    // need to reset it explicitly call DatasetStatusManager.resetDefaultStatusOptions.
-    // Because of that, datacanvases must be truncated explicitly: previously
-    // it was cleaned via CASCADE from dataset_status, and leaving rows behind
-    // blocks resetDefaultStatusOptions (datacanvases.status_id FK).
+    // Preserve the seed image's 4 default dataset_status rows (NO_STATUS,
+    // WORK_IN_PROGRESS, IN_REVIEW, COMPLETED) so DatasetManager.getDefaultStatus
+    // works in harnesses that don't call resetDefaultStatusOptions (admin,
+    // authorization-service). Delete only test-added rows. datasets and
+    // datacanvases must be truncated first — both FK into dataset_status, and
+    // the DELETE would otherwise hit ON DELETE RESTRICT.
     DBIO.seq(
       sqlu"""TRUNCATE TABLE "#$schema"."datasets" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."packages" RESTART IDENTITY CASCADE""",
@@ -92,7 +97,8 @@ trait TestDatabase extends AwaitableImplicits {
       sqlu"""TRUNCATE TABLE "#$schema"."dataset_contributor" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."collections" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."data_use_agreements" RESTART IDENTITY CASCADE""",
-      sqlu"""TRUNCATE TABLE "#$schema"."datacanvases" RESTART IDENTITY CASCADE"""
+      sqlu"""TRUNCATE TABLE "#$schema"."datacanvases" RESTART IDENTITY CASCADE""",
+      sqlu"""DELETE FROM "#$schema"."dataset_status" WHERE name NOT IN (#$defaultDatasetStatusNamesSql)"""
     )
   }
 
