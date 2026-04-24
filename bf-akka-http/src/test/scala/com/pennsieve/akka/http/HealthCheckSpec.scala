@@ -20,7 +20,7 @@ import com.pennsieve.aws.s3.{ S3, S3Trait }
 import com.pennsieve.core.utilities.PostgresDatabase
 import com.pennsieve.test._
 import com.pennsieve.traits.PostgresProfile.api._
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{ RouteTestTimeout, ScalatestRouteTest }
 import akka.http.scaladsl.model.StatusCodes.{ InternalServerError, OK }
 import com.pennsieve.akka.http._
 import io.circe.syntax._
@@ -30,6 +30,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 class HealthCheckSpec
     extends AnyWordSpec
@@ -39,6 +40,11 @@ class HealthCheckSpec
     with PersistantTestContainers
     with PostgresDockerContainer
     with S3DockerContainer {
+
+  // The default RouteTestTimeout is 1 second, which is too tight for the
+  // cold first GET /health: HikariCP opens its first connection lazily and
+  // Jenkins agents have intermittently blown past 1s under load.
+  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.seconds)
 
   var db: Database = _
   var s3: S3 = _
