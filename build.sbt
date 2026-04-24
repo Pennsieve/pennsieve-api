@@ -72,8 +72,6 @@ lazy val circeDerivationVersion = "0.13.0-M5"
 
 lazy val ficusVersion = "1.5.2"
 
-lazy val flywayVersion = "4.2.0"
-
 lazy val json4sVersion = "3.5.5"
 
 lazy val jettyVersion = "9.1.3.v20140225"
@@ -442,29 +440,6 @@ lazy val bfAkkaHttpSettings = Seq(
   )
 )
 
-lazy val migrationsSettings = Seq(
-  name := "migrations",
-  publishTo := publishToNexus.value,
-  resolvers ++= Seq("Flyway" at "https://flywaydb.org/repo"),
-  libraryDependencies ++= Seq(
-    "com.iheart" %% "ficus" % ficusVersion,
-    "org.flywaydb" % "flyway-core" % flywayVersion,
-    "org.postgresql" % "postgresql" % postgresVersion
-  ),
-  docker / dockerfile := {
-    val artifact: File = assembly.value
-    val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
-      copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      // build-postgres.sh script needs a stable JAR name to run without Cloudwrap
-      run("ln", "-s", artifactTargetPath, "/app/migrations.jar")
-      cmd("--service", "migrations", "exec", "java", "-jar", artifactTargetPath)
-    }
-  },
-  docker / imageNames := Seq(ImageName("pennsieve/migrations:latest")),
-  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
-)
-
 lazy val unusedOrganizationMigrationSettings = Seq(
   name := "unused-organization-migration",
   libraryDependencies ++= Seq(),
@@ -622,8 +597,7 @@ lazy val core = project
   .dependsOn(
     `core-models`,
     `bf-aws`,
-    `message-templates`,
-    migrations % "test->compile"
+    `message-templates`
   )
   .enablePlugins(AutomateHeaderPlugin)
 
@@ -671,11 +645,6 @@ lazy val jobs = project
   .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(jobsSettings: _*)
-
-lazy val migrations = project
-  .enablePlugins(sbtdocker.DockerPlugin)
-  .enablePlugins(AutomateHeaderPlugin)
-  .settings(migrationsSettings: _*)
 
 lazy val `etl-data-cli` = project
   .dependsOn(core % "test->test;compile->compile")

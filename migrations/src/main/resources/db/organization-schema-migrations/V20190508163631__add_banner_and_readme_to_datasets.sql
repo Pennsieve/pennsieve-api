@@ -1,3 +1,0 @@
-ALTER TABLE datasets
-    ADD COLUMN banner VARCHAR(255),
-    ADD COLUMN readme VARCHAR(255);

@@ -75,19 +75,14 @@ sbt core/test
 
 ## Migrations
 
-SQL migration files live in the `migrations` subproject. There are two types of migrations:
+SQL migrations live in the separate [pennsieve-db-migrations](https://github.com/Pennsieve/pennsieve-db-migrations) repo, which publishes the `pennsieve/pennsievedb:*-seed` Docker image consumed by the test harness here. There is no in-process migration step in this repo — tests start against the already-migrated seed image. To add or modify migrations, open a PR in `pennsieve-db-migrations`.
 
-* Core migrations on the `pennsieve` schema
-* Organization migrations on the numeric organization schemas (`1`, `2`, etc)
-
-Jenkins runs the migrations against Postgres.
-
-Use the `generate-migration-file.sh` script to create an empty migration file in the appropriate place.
+When a new seed image is published, bump the pinned tag in `core/src/test/scala/com/pennsieve/test/PostgresDockerContainer.scala`.
 
 
 ## Deployment
 
-Merging to `main` deploys all services in this repo to the dev environment and runs the Postgres migrations.
+Merging to `main` deploys all services in this repo to the dev environment. Postgres migrations run from the `pennsieve-db-migrations` pipeline, not this one.
 
 Individual services are deployed to production via Jenkins service-deploy jobs. Use the
 [pennsieve-api-release](https://jenkins.pennsieve.cc/job/service-deploy/job/pennsieve-prod/job/us-east-1/job/prod-vpc-use1/job/prod/job/pennsieve-api-release/)

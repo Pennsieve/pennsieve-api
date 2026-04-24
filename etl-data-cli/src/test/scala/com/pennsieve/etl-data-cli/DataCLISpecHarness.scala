@@ -56,11 +56,6 @@ trait DataCLISpecHarness
     dataCLIContainer.db.run(clearDB).await
 
     dataCLIContainer.db.run(OrganizationsMapper += organization).await
-    dataCLIContainer.db.run(createSchema(organization.schemaId)).await
-    migrateOrganizationSchema(
-      organization.id,
-      dataCLIContainer.postgresDatabase
-    )
   }
 
   override def afterEach(): Unit = {

@@ -26,9 +26,6 @@ object DockerContainers {
   val postgresContainer: PostgresContainerImpl =
     new PostgresDockerContainerImpl
 
-  val postgresSeedContainer: PostgresContainerImpl =
-    new PostgresSeedDockerContainerImpl
-
   val sqsContainer: SQSDockerContainerImpl = new SQSDockerContainerImpl
 
   val s3Container: S3DockerContainerImpl = new S3DockerContainerImpl

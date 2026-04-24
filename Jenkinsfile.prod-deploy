@@ -9,15 +9,8 @@ timestamps {
 
     node('prod-executor') {
         try {
-            stage('Run migrations') {
-                if (params.RUN_MIGRATIONS) {
-                    echo "Running PROD Postgres Schema Migrations"
-                    build job: "Migrations/prod-migrations/prod-postgres-migrations",
-                    parameters: [
-                        string(name: 'IMAGE_TAG', value: params.IMAGE_TAG)
-                    ]
-                }
-            }
+            // Postgres migrations now run from the pennsieve-db-migrations
+            // repo's own prod-deploy pipeline; this job only deploys services.
 
             def services = [
                 'admin',

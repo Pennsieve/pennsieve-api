@@ -1,2 +1,0 @@
-ALTER TABLE organization_user ADD COLUMN is_publisher BOOLEAN NOT NULL DEFAULT FALSE;
-

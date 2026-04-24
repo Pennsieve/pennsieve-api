@@ -17,13 +17,12 @@
 package com.pennsieve.test.helpers
 
 import cats.data.EitherT
-import com.pennsieve.core.utilities.PostgresDatabase
+import com.pennsieve.models.DefaultDatasetStatus
 
 import scala.concurrent.Future
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import com.pennsieve.traits.PostgresProfile.api._
-import com.pennsieve.migrations.DatabaseMigrationRunner
 import slick.jdbc.GetResult
 
 case class Awaitable[A](f: Future[A]) {
@@ -51,59 +50,55 @@ trait TestDatabase extends AwaitableImplicits {
 
   implicit val getUnitResult: GetResult[Unit] = GetResult(_ => ())
 
-  def migrateCoreSchema(postgresDB: PostgresDatabase): Unit = {
+  // Rendered SQL list literal, e.g. 'NO_STATUS','WORK_IN_PROGRESS',... —
+  // values are the EnumEntry names (uppercase + snake case).
+  private def defaultDatasetStatusNamesSql: String =
+    DefaultDatasetStatus.values.map(s => s"'${s.entryName}'").mkString(",")
 
-    val runner = new DatabaseMigrationRunner(
-      postgresDB.jdbcURL,
-      postgresDB.user,
-      postgresDB.password
-    )
+  // Used to clear the tables in the test postgres database.
+  //
+  // Also truncates the pre-seeded organization schemas (1..10) baked into
+  // the pennsievedb-seed image. Tests manage their own fixtures, so any seed
+  // rows must be cleared before each test regardless of which harness is
+  // running. Keep this list in sync with ORGANIZATION_SCHEMA_COUNT in
+  // pennsieve-db-migrations/scripts/build-postgres.sh.
+  val seededOrganizationIds: Seq[Int] = 1 to 10
 
-    runner.migrateCoreSchema()
-  }
-
-  def migrateOrganizationSchema(
-    organizationId: Int,
-    postgresDB: PostgresDatabase
-  ): Unit = {
-
-    val runner = new DatabaseMigrationRunner(
-      postgresDB.jdbcURL,
-      postgresDB.user,
-      postgresDB.password
-    )
-
-    runner.migrateOrganizationSchema(organizationId)
-    runner.refreshUnionViews
-  }
-
-  // Used to clear the tables in the test postgres database
   def clearDB: DBIO[Unit] = DBIO.seq(
-    // clears organizations, subscriptions, and feature flags due to their foreign key relationships
-    sqlu"""TRUNCATE TABLE "pennsieve"."users" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."organizations" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."teams" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."organization_team" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."organization_user" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."team_user" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."user_invite" RESTART IDENTITY CASCADE""",
-    sqlu"""TRUNCATE TABLE "pennsieve"."tokens" RESTART IDENTITY CASCADE"""
+    Seq(
+      // clears organizations, subscriptions, and feature flags due to their foreign key relationships
+      sqlu"""TRUNCATE TABLE "pennsieve"."users" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."organizations" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."teams" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."organization_team" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."organization_user" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."team_user" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."user_invite" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "pennsieve"."tokens" RESTART IDENTITY CASCADE"""
+    ) ++ seededOrganizationIds.map(clearOrganizationSchema): _*
   )
 
   // Used to clear the tables in the test postgres database in an organization's schema
   def clearOrganizationSchema(organizationId: Int): DBIO[Unit] = {
     val schema: String = organizationId.toString
 
+    // Preserve the seed image's 4 default dataset_status rows (NO_STATUS,
+    // WORK_IN_PROGRESS, IN_REVIEW, COMPLETED) so DatasetManager.getDefaultStatus
+    // works in harnesses that don't call resetDefaultStatusOptions (admin,
+    // authorization-service). Delete only test-added rows. datasets and
+    // datacanvases must be truncated first — both FK into dataset_status, and
+    // the DELETE would otherwise hit ON DELETE RESTRICT.
     DBIO.seq(
       sqlu"""TRUNCATE TABLE "#$schema"."datasets" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."packages" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."annotations" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."annotation_layers" RESTART IDENTITY CASCADE""",
-      sqlu"""TRUNCATE TABLE "#$schema"."dataset_status" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."contributors" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."dataset_contributor" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."collections" RESTART IDENTITY CASCADE""",
-      sqlu"""TRUNCATE TABLE "#$schema"."data_use_agreements" RESTART IDENTITY CASCADE"""
+      sqlu"""TRUNCATE TABLE "#$schema"."data_use_agreements" RESTART IDENTITY CASCADE""",
+      sqlu"""TRUNCATE TABLE "#$schema"."datacanvases" RESTART IDENTITY CASCADE""",
+      sqlu"""DELETE FROM "#$schema"."dataset_status" WHERE name NOT IN (#$defaultDatasetStatusNamesSql)"""
     )
   }
 
@@ -114,5 +109,15 @@ trait TestDatabase extends AwaitableImplicits {
     sqlu"""TRUNCATE TABLE "timeseries"."layers" RESTART IDENTITY CASCADE""",
     sqlu"""TRUNCATE TABLE "timeseries"."layers" RESTART IDENTITY CASCADE"""
   )
+
+  // The seed image pre-creates pennsieve.all_files but not the corresponding
+  // union views for other per-organization tables (e.g. datacanvases). Rebuild
+  // them once against the pre-seeded schemas 1..10 so cross-org queries work.
+  // refresh_union_view is a SELECT against a plpgsql function; sqlu would
+  // fail with "a result was returned when none was expected".
+  def refreshUnionViews: DBIO[Unit] =
+    DBIO.seq(
+      sql"""SELECT pennsieve.refresh_union_view('datacanvases')""".as[Unit]
+    )
 
 }

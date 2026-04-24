@@ -45,24 +45,25 @@ trait CoreSeed[
   var organizationOne: Organization = _
   var organizationTwo: Organization = _
 
-  var schemas: Set[String] = Set()
+  // Tracks organization ids whose pre-seeded schemas contained test data this
+  // run; used to truncate (not drop) in afterEach so the next test starts clean
+  // without destroying the seeded schema structure.
+  var schemas: Set[Int] = Set()
 
-  def createAndMigrateSchema(organizationId: Integer): Unit = {
-    schemas = schemas + organizationId.toString
-    db.run(createSchema(organizationId.toString)).await
-    migrateOrganizationSchema(organizationId, _db)
+  def trackOrganizationSchema(organizationId: Integer): Unit = {
+    schemas = schemas + organizationId.toInt
   }
 
   def createOrganization(name: String, slug: String): Organization = {
     val organization: Organization =
       organizationManager.create(name, slug).await.value
 
-    createAndMigrateSchema(organization.id)
+    trackOrganizationSchema(organization.id)
     organization
   }
 
   def clearSchemas: DBIO[Unit] = {
-    val queries = schemas.toList.map(dropOrganizationSchema)
+    val queries = schemas.toList.map(clearOrganizationSchema)
     schemas = Set()
     DBIO.seq(queries: _*)
   }
