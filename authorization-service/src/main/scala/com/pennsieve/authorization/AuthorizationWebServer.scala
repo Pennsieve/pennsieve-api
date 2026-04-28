@@ -45,9 +45,9 @@ object AuthorizationWebServer extends App with WebServer with LazyLogging {
 
   val container: ResourceContainer =
     new InsecureContainer(config) with DatabaseContainer
-    with UserManagerContainer with OrganizationManagerContainer
+    with DefaultUserManagerContainer with DefaultOrganizationManagerContainer
     with JwtContainer with TermsOfServiceManagerContainer
-    with TokenManagerContainer
+    with DefaultTokenManagerContainer
 
   val healthCheck = new HealthCheckService(
     Map("postgres" -> HealthCheck.postgresHealthCheck(container.db))

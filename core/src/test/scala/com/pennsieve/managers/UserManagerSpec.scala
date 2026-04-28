@@ -163,7 +163,7 @@ class UserManagerSpec extends BaseManagerSpec {
     assert(user.preferredOrganizationId == Some(orgsInvites.last._1.id))
 
     val secureOrganizationManager =
-      new SecureOrganizationManager(database, user)
+      new SecureOrganizationManagerImpl(database, user)
     orgsInvites.foreach {
       case (org, _) =>
         secureOrganizationManager.get(org.id).await.value
