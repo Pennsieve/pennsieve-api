@@ -27,6 +27,7 @@ import com.pennsieve.models.{
   OrganizationUser,
   User
 }
+import com.pennsieve.domain.PredicateError
 import com.pennsieve.traits.PostgresProfile.api.Database
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -96,4 +97,27 @@ class FakeSecureOrganizationManager(state: InMemoryState, val actor: User)
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Boolean] =
     EitherT.rightT(false)
+
+  override def getBySlug(
+    slug: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Organization] =
+    state.organizations.values.find(_.slug.equalsIgnoreCase(slug)) match {
+      case Some(o) => EitherT.rightT(o)
+      case None => EitherT.leftT(NotFound(s"Organization with slug ($slug)"))
+    }
+
+  override def addUser(
+    organization: Organization,
+    user: User,
+    permission: DBPermission
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, OrganizationUser] = {
+    val ou = OrganizationUser(organization.id, user.id, permission)
+    state.orgUsers.put((organization.id, user.id), ou)
+    state.orgUserPermissions.put((organization.id, user.id), permission)
+    EitherT.rightT(ou)
+  }
 }
