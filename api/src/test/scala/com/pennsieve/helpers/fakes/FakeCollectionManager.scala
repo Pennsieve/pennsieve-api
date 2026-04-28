@@ -58,6 +58,9 @@ class FakeCollectionManager(
     else Right(trimmed)
   }
 
+  // The real DB uses a UNIQUE constraint on a `text` column — case-sensitive.
+  // Don't use equalsIgnoreCase here; we want fake and real to reject the same
+  // inputs and accept the same inputs.
   private def existsInOrg(
     name: String,
     excludeId: Option[Int] = None
@@ -66,7 +69,7 @@ class FakeCollectionManager(
       case ((orgId, id), c) =>
         orgId == organization.id &&
           excludeId.forall(_ != id) &&
-          c.name.equalsIgnoreCase(name)
+          c.name == name
     }
 
   override def create(

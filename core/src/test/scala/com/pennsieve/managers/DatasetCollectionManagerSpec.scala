@@ -165,6 +165,17 @@ class DatasetCollectionManagerSpec extends BaseManagerSpec {
     )
   }
 
+  "a collectionManager" should "treat names differing only in case as distinct (case-sensitive uniqueness)" in {
+    val cm = datasetCollectionManager(testOrganization)
+    val lower = cm.create("CaseSensitive").await.value
+    val upper = cm.create("CASESENSITIVE").await.value
+    lower.id should not be upper.id
+    cm.getCollections()
+      .await
+      .value
+      .map(_.name) should contain allOf ("CaseSensitive", "CASESENSITIVE")
+  }
+
   "a collectionManager" should "delete an existing collection" in {
     val cm = datasetCollectionManager(testOrganization)
 
