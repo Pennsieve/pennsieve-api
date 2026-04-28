@@ -137,6 +137,48 @@ class TokenManagerSpec extends BaseManagerSpec {
     assert(tokens.contains(tokenTwo))
   }
 
+  "get(user, organization)" should "exclude tokens belonging to other users" in {
+    val user = createUser()
+    val otherUser = createUser(email = "other@test.com")
+
+    val (userToken, _) = secureTokenManager(user)
+      .create("user's token", user, testOrganization, mockCognitoClient)
+      .await
+      .value
+    val (otherToken, _) = secureTokenManager(otherUser)
+      .create(
+        "other user's token",
+        otherUser,
+        testOrganization,
+        mockCognitoClient
+      )
+      .await
+      .value
+
+    val tokens =
+      secureTokenManager(user).get(user, testOrganization).await.value
+    assert(tokens.map(_.id).contains(userToken.id))
+    assert(!tokens.map(_.id).contains(otherToken.id))
+  }
+
+  "get(user, organization)" should "exclude tokens from other organizations" in {
+    val user = createUser()
+    val _secureTokenManager = secureTokenManager(user)
+
+    val (orgOneToken, _) = _secureTokenManager
+      .create("org one token", user, testOrganization, mockCognitoClient)
+      .await
+      .value
+    val (orgTwoToken, _) = _secureTokenManager
+      .create("org two token", user, testOrganization2, mockCognitoClient)
+      .await
+      .value
+
+    val tokens = _secureTokenManager.get(user, testOrganization).await.value
+    assert(tokens.map(_.id).contains(orgOneToken.id))
+    assert(!tokens.map(_.id).contains(orgTwoToken.id))
+  }
+
   "update" should "change the name of an api token" in {
     val user = createUser()
     val _secureTokenManager = secureTokenManager(user)
