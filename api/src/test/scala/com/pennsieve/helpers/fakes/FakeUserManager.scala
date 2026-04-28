@@ -90,10 +90,32 @@ class FakeUserManager(state: InMemoryState) extends UserManager {
   ): EitherT[Future, CoreError, User] =
     state.users.get(user.id) match {
       case Some(_) =>
-        state.users.put(user.id, user)
-        EitherT.rightT(user)
+        // Mirror the Postgres `lowercase_email_on_insert_trigger` (also fires
+        // on UPDATE) so the fake matches real-DB behavior.
+        val normalized = user.copy(email = user.email.toLowerCase)
+        state.users.put(user.id, normalized)
+        EitherT.rightT(normalized)
       case None => EitherT.leftT(NotFound(s"User (${user.id})"))
     }
+
+  override def updateEmail(
+    user: User,
+    newEmail: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] = {
+    val trimmed = newEmail.trim.toLowerCase
+    if (state.users.values.exists(u => u.id != user.id && u.email == trimmed))
+      EitherT.leftT(PredicateError("email must be unique"))
+    else
+      state.users.get(user.id) match {
+        case Some(existing) =>
+          val updated = existing.copy(email = trimmed)
+          state.users.put(user.id, updated)
+          EitherT.rightT(updated)
+        case None => EitherT.leftT(NotFound(s"User (${user.id})"))
+      }
+  }
 
   override def getByCognitoId(
     cognitoId: CognitoId.UserPoolId
