@@ -17,6 +17,7 @@
 package com.pennsieve.helpers.fakes
 
 import com.pennsieve.models.{
+  Collection,
   DBPermission,
   Organization,
   OrganizationUser,
@@ -40,6 +41,9 @@ class InMemoryState {
   val orgUsers: TrieMap[(Int, Int), OrganizationUser] = new TrieMap()
   val orgUserPermissions: TrieMap[(Int, Int), DBPermission] = new TrieMap()
   val tokens: TrieMap[String, Token] = new TrieMap()
+
+  // Collections are scoped to an organization; keyed by (orgId, collectionId).
+  val collections: TrieMap[(Int, Int), Collection] = new TrieMap()
 
   private val ids = new AtomicInteger(1)
   def newId(): Int = ids.getAndIncrement()

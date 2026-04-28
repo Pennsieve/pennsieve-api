@@ -17,18 +17,42 @@
 package com.pennsieve.api
 
 import com.pennsieve.dtos.CollectionDTO
-import com.pennsieve.helpers._
-import io.circe.{ Decoder, Encoder }
-import org.json4s._
+import com.pennsieve.models.{ Collection, Organization, User }
 import org.json4s.jackson.JsonMethods._
-import cats.implicits._
-
 import org.json4s.jackson.Serialization.write
 
-class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
-  override def afterStart(): Unit = {
-    super.afterStart()
+class TestCollectionsController extends BaseApiUnitTest {
 
+  private val loggedInUser: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000001",
+    email = "user@test.com",
+    firstName = "Test",
+    middleInitial = None,
+    lastName = "User",
+    degree = None,
+    credential = "",
+    color = "",
+    url = "",
+    isSuperAdmin = false,
+    id = 1
+  )
+
+  private val loggedInOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-000000000001",
+    name = "Test Organization",
+    slug = "test-organization",
+    encryptionKeyId = Some("test-key"),
+    id = 1
+  )
+
+  private var loggedInJwt: String = _
+
+  private val myCollectionName = "My Collection"
+  private val myOtherCollectionName = "My Other Collection"
+  private val myNewOtherCollectionName = "My New Other Collection"
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new CollectionsController(
         insecureContainer,
@@ -41,10 +65,22 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
 
   override def beforeEach(): Unit = {
     super.beforeEach()
+    state.users.clear()
+    state.organizations.clear()
+    state.collections.clear()
+
+    state.users.put(loggedInUser.id, loggedInUser)
+    state.organizations.put(loggedInOrganization.id, loggedInOrganization)
+
+    loggedInJwt = mintUserJwt(loggedInUser, loggedInOrganization)
   }
 
-  override def afterEach(): Unit = {
-    super.afterEach()
+  /** Seed a collection directly into the in-memory store, mirroring what
+    * `DataSetTestMixin.createCollection` did via the real manager. */
+  private def createCollection(name: String): Collection = {
+    val collection = Collection(id = state.newId(), name = name)
+    state.collections.put((loggedInOrganization.id, collection.id), collection)
+    collection
   }
 
   test("swagger") {
@@ -53,16 +89,10 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
 
     get("/api-docs/swagger.json") {
       status should equal(200)
-      println(body)
     }
   }
 
-  val myCollectionName = "My Collection"
-  val myOtherCollectionName = "My Other Collection"
-  val myNewOtherCollectionName = "My New Other Collection"
-
   test("can create a collection") {
-
     val collectionRequest =
       write(CreateCollectionRequest(name = myCollectionName))
 
@@ -72,14 +102,11 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
-      parsedBody
-        .extract[CollectionDTO]
-        .name shouldBe myCollectionName
+      parsedBody.extract[CollectionDTO].name shouldBe myCollectionName
     }
   }
 
   test("can't create a collection with an empty name") {
-
     val collectionRequest = write(CreateCollectionRequest(name = ""))
 
     postJson(
@@ -95,12 +122,7 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't create a collection with name with more than 255 characters") {
-
-    val collectionRequest = write(
-      CreateCollectionRequest(
-        name = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456"
-      )
-    )
+    val collectionRequest = write(CreateCollectionRequest(name = "1" * 256))
 
     postJson(
       s"/",
@@ -115,7 +137,6 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't create a collection if the name already exists") {
-
     val collectionRequest =
       write(CreateCollectionRequest(name = myCollectionName))
 
@@ -140,24 +161,17 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can list all the collections") {
-
-    val collectionRequest =
-      write(CreateCollectionRequest(name = myCollectionName))
-
     postJson(
       s"/",
-      collectionRequest,
+      write(CreateCollectionRequest(name = myCollectionName)),
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
     }
 
-    val collectionRequest2 =
-      write(CreateCollectionRequest(name = myOtherCollectionName))
-
     postJson(
       s"/",
-      collectionRequest2,
+      write(CreateCollectionRequest(name = myOtherCollectionName)),
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
@@ -168,13 +182,10 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
         .extract[List[CollectionDTO]]
         .map(_.name) shouldBe List(myCollectionName, myOtherCollectionName)
     }
-
   }
 
   test("can update the name of a collection") {
-
     val collection = createCollection(myCollectionName)
-
     val collectionUpdateRequest =
       write(UpdateCollectionRequest(name = myNewOtherCollectionName))
 
@@ -194,11 +205,8 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't update the name of a collection if the new name already exists") {
-
     val collection = createCollection(myCollectionName)
-
-    val collection2 = createCollection(myOtherCollectionName)
-
+    createCollection(myOtherCollectionName)
     val collectionUpdateRequest =
       write(UpdateCollectionRequest(name = myOtherCollectionName))
 
@@ -215,9 +223,7 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't update the name of a collection if the new name is empty") {
-
     val collection = createCollection(myCollectionName)
-
     val collectionUpdateRequest =
       write(UpdateCollectionRequest(name = ""))
 
@@ -236,15 +242,9 @@ class TestCollectionsController extends BaseApiTest with DataSetTestMixin {
   test(
     "can't update the name of a collection if the new name is longer than 255 characters"
   ) {
-
     val collection = createCollection(myCollectionName)
-
     val collectionUpdateRequest =
-      write(
-        UpdateCollectionRequest(
-          name = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456"
-        )
-      )
+      write(UpdateCollectionRequest(name = "1" * 256))
 
     putJson(
       s"/${collection.id}",

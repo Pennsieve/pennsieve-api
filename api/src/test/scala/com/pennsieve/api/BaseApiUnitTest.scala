@@ -44,6 +44,7 @@ import com.pennsieve.helpers.APIContainers.{
   SecureContainerBuilderType
 }
 import com.pennsieve.helpers.fakes.{
+  FakeCollectionManager,
   FakeSecureOrganizationManager,
   FakeSecureTokenManager,
   FakeUserManager,
@@ -55,6 +56,7 @@ import com.pennsieve.helpers.{
   MockSNSContainer
 }
 import com.pennsieve.managers.{
+  CollectionManager,
   SecureOrganizationManager,
   SecureTokenManager,
   UserManager
@@ -225,6 +227,8 @@ trait BaseApiUnitTest
           new FakeSecureOrganizationManager(st, u)
         override lazy val tokenManager: SecureTokenManager =
           new FakeSecureTokenManager(st, u)
+        override lazy val collectionManager: CollectionManager =
+          new FakeCollectionManager(st, org)
       }
   }
 
@@ -260,8 +264,15 @@ trait BaseApiUnitTest
     Jwt.generateToken(claim).value
   }
 
+  protected def parsedBody: org.json4s.JValue = parse(response.body)
+
   protected def authorizationHeader(jwt: String): Map[String, String] =
     Map("Authorization" -> s"Bearer $jwt")
+
+  protected def traceIdHeader(
+    id: String = java.util.UUID.randomUUID.toString
+  ): Map[String, String] =
+    Map(com.pennsieve.audit.middleware.AuditLogger.TRACE_ID_HEADER -> id)
 
   protected val contentTypeApplicationJsonHeader: (String, String) =
     "Content-Type" -> "application/json"

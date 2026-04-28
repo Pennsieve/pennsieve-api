@@ -16,6 +16,7 @@
 
 package com.pennsieve.managers
 
+import com.pennsieve.domain.PredicateError
 import org.scalatest.EitherValues._
 import org.scalatest.matchers.should.Matchers._
 
@@ -120,6 +121,48 @@ class DatasetCollectionManagerSpec extends BaseManagerSpec {
     val newName = ""
     val c1 = cm.update(newName, collectionList(0)).await
     assert(c1.isLeft)
+  }
+
+  "a collectionManager" should "fail with the unique-name PredicateError when create collides on name" in {
+    val cm = datasetCollectionManager(testOrganization)
+    val name = "DuplicateName"
+    cm.create(name).await.value
+    cm.create(name).await.left.value shouldBe PredicateError(
+      "Collection name must be unique"
+    )
+  }
+
+  "a collectionManager" should "fail with the length PredicateError when create gets an empty name" in {
+    val cm = datasetCollectionManager(testOrganization)
+    cm.create("").await.left.value shouldBe PredicateError(
+      "Collection name must be between 1 and 255 characters"
+    )
+  }
+
+  "a collectionManager" should "fail with the length PredicateError when create gets a name longer than 255 chars" in {
+    val cm = datasetCollectionManager(testOrganization)
+    val tooLong = "a" * 256
+    cm.create(tooLong).await.left.value shouldBe PredicateError(
+      "Collection name must be between 1 and 255 characters"
+    )
+  }
+
+  "a collectionManager" should "fail with the unique-name PredicateError when update collides on name" in {
+    val cm = datasetCollectionManager(testOrganization)
+    cm.create("First").await.value
+    val second = cm.create("Second").await.value
+    cm.update("First", second).await.left.value shouldBe PredicateError(
+      "Collection name must be unique"
+    )
+  }
+
+  "a collectionManager" should "fail with the length PredicateError when update gets a name longer than 255 chars" in {
+    val cm = datasetCollectionManager(testOrganization)
+    val collection = cm.create("OK").await.value
+    val tooLong = "a" * 256
+    cm.update(tooLong, collection).await.left.value shouldBe PredicateError(
+      "Collection name must be between 1 and 255 characters"
+    )
   }
 
   "a collectionManager" should "delete an existing collection" in {

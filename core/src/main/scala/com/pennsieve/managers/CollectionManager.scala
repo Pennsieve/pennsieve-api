@@ -28,14 +28,22 @@ import slick.dbio.DBIO
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class CollectionManager(
-  val db: Database,
-  val collectionMapper: CollectionMapper
-) {
+object CollectionManager {
+  def apply(
+    db: Database,
+    collectionMapper: CollectionMapper
+  ): CollectionManager =
+    new CollectionManagerImpl(db, collectionMapper)
+}
 
-  val organization: Organization = collectionMapper.organization
+trait CollectionManager {
 
-  val datasetsMapper: DatasetsMapper = new DatasetsMapper(organization)
+  def db: Database
+  def collectionMapper: CollectionMapper
+
+  def organization: Organization = collectionMapper.organization
+
+  def datasetsMapper: DatasetsMapper = new DatasetsMapper(organization)
 
   def create(
     name: String
@@ -143,3 +151,8 @@ class CollectionManager(
     } yield ()
   }
 }
+
+class CollectionManagerImpl(
+  val db: Database,
+  val collectionMapper: CollectionMapper
+) extends CollectionManager
