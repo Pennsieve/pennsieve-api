@@ -16,11 +16,8 @@
 
 package com.pennsieve.api
 
-import java.time.LocalDateTime
-import com.pennsieve.auth.middleware.{ Jwt, UserClaim }
 import com.pennsieve.aws.cognito.MockCognito
 import com.pennsieve.clients.MockCustomTermsOfServiceClient
-import com.pennsieve.db.CustomTermsOfService
 import com.pennsieve.dtos.{
   CustomTermsOfServiceDTO,
   OrcidDTO,
@@ -33,15 +30,22 @@ import com.pennsieve.helpers.{
   OrcidWorkPublishing,
   OrcidWorkUnpublishing
 }
-import com.pennsieve.models.DBPermission.Delete
-import com.pennsieve.models.{ DateVersion, Degree, OrcidAuthorization, User }
-import com.typesafe.scalalogging.Logger
+import com.pennsieve.models.{
+  CognitoId,
+  DBPermission,
+  DateVersion,
+  Degree,
+  OrcidAuthorization,
+  Organization,
+  User
+}
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 
+import java.time.LocalDateTime
 import scala.concurrent.Future
 
-class TestUsersController extends BaseApiTest {
+class TestUsersController extends BaseApiUnitTest {
 
   val auditLogger = new MockAuditLogger()
 
@@ -61,17 +65,17 @@ class TestUsersController extends BaseApiTest {
     override def getToken(
       authorizationCode: String
     ): Future[OrcidAuthorization] =
-      if (authorizationCode == testAuthorizationCode) {
+      if (authorizationCode == testAuthorizationCode)
         Future.successful(orcidAuthorization)
-      } else {
-        Future.failed(new Throwable("invalid authorization code"))
-      }
+      else Future.failed(new Throwable("invalid authorization code"))
+
     override def verifyOrcid(orcid: Option[String]): Future[Boolean] =
       Future.successful(true)
 
     override def publishWork(
       work: OrcidWorkPublishing
-    ): Future[Option[String]] = Future.successful(Some("1234567"))
+    ): Future[Option[String]] =
+      Future.successful(Some("1234567"))
 
     override def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean] =
       Future.successful(true)
@@ -80,10 +84,95 @@ class TestUsersController extends BaseApiTest {
   val mockCustomToSClient: MockCustomTermsOfServiceClient =
     new MockCustomTermsOfServiceClient()
 
-  val mockCognito: MockCognito =
-    new MockCognito()
+  // Mirrors the BaseApiTest fixtures.
+  private val me: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000001",
+    email = "test@test.com",
+    firstName = "first",
+    middleInitial = Some("M"),
+    lastName = "last",
+    degree = Some(Degree.MS),
+    credential = "cred",
+    color = "",
+    url = "http://test.com",
+    isSuperAdmin = false,
+    cognitoId = Some(CognitoId.UserPoolId.randomId()),
+    id = 1
+  )
 
-  def updateRequestFromUser(
+  private val colleague: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000002",
+    email = "colleague@test.com",
+    firstName = "first",
+    middleInitial = None,
+    lastName = "last",
+    degree = None,
+    credential = "cred",
+    color = "",
+    url = "http://test.com",
+    isSuperAdmin = false,
+    cognitoId = Some(CognitoId.UserPoolId.randomId()),
+    id = 2
+  )
+
+  private val external: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000003",
+    email = "test@external.com",
+    firstName = "first",
+    middleInitial = None,
+    lastName = "last",
+    degree = None,
+    credential = "cred",
+    color = "",
+    url = "http://other.com",
+    isSuperAdmin = false,
+    cognitoId = Some(CognitoId.UserPoolId.randomId()),
+    id = 3
+  )
+
+  private val orcidUser: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000004",
+    email = "orcid@test.com",
+    firstName = "Orcid",
+    middleInitial = None,
+    lastName = "User",
+    degree = None,
+    credential = "cred",
+    color = "",
+    url = "http://orcid.com",
+    isSuperAdmin = false,
+    cognitoId = Some(CognitoId.UserPoolId.randomId()),
+    orcidAuthorization = Some(orcidAuthorization),
+    id = 4
+  )
+
+  private val loggedInOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-000000000001",
+    name = "Test Organization",
+    slug = "test-organization",
+    encryptionKeyId = Some("test-key"),
+    id = 1
+  )
+
+  private val externalOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-000000000002",
+    name = "External Organization",
+    slug = "external-organization",
+    encryptionKeyId = Some("test-key-2"),
+    id = 2
+  )
+
+  // The mockCognito on the BaseApiUnitTest is shared across all tests; the
+  // controller wires it as the cognito client.
+  private var loggedInJwt: String = _
+  private var loggedInOrcidJwt: String = _
+  private var colleagueJwt: String = _
+  private var externalJwt: String = _
+
+  // The original BaseApiTest defines `loggedInUser` (= `me`) as the actor.
+  private def loggedInUser: User = me
+
+  private def updateRequestFromUser(
     user: User,
     userRequestedChange: Option[Boolean] = None
   ): UpdateUserRequest =
@@ -100,9 +189,8 @@ class TestUsersController extends BaseApiTest {
       userRequestedChange = userRequestedChange
     )
 
-  override def afterStart(): Unit = {
-    super.afterStart()
-
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new UserController(
         insecureContainer,
@@ -118,7 +206,34 @@ class TestUsersController extends BaseApiTest {
 
   override def beforeEach(): Unit = {
     super.beforeEach()
+    state.users.clear()
+    state.organizations.clear()
+    state.orgUsers.clear()
+    state.orgUserPermissions.clear()
+    state.pennsieveTos.clear()
+    state.customTos.clear()
     mockCustomToSClient.reset()
+    mockCognito.reset()
+
+    state.users.put(me.id, me)
+    state.users.put(colleague.id, colleague)
+    state.users.put(external.id, external)
+    state.users.put(orcidUser.id, orcidUser)
+    state.organizations.put(loggedInOrganization.id, loggedInOrganization)
+    state.organizations.put(externalOrganization.id, externalOrganization)
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, me.id), DBPermission.Owner)
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, colleague.id), DBPermission.Delete)
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, orcidUser.id), DBPermission.Delete)
+    state.orgUserPermissions
+      .put((externalOrganization.id, external.id), DBPermission.Owner)
+
+    loggedInJwt = mintUserJwt(me, loggedInOrganization)
+    loggedInOrcidJwt = mintUserJwt(orcidUser, loggedInOrganization)
+    colleagueJwt = mintUserJwt(colleague, loggedInOrganization)
+    externalJwt = mintUserJwt(external, externalOrganization)
   }
 
   test("swagger") {
@@ -127,7 +242,6 @@ class TestUsersController extends BaseApiTest {
 
     get("/api-docs/swagger.json") {
       status should equal(200)
-      println(body)
     }
   }
 
@@ -314,13 +428,11 @@ class TestUsersController extends BaseApiTest {
     ) {
       status should equal(200)
 
-      // returned userDTO should contain new terms
       val terms = (parsedBody \ "pennsieveTermsOfService")
         .extract[Option[PennsieveTermsOfServiceDTO]]
         .get
       terms.version should equal(tosTestVersion)
 
-      // new terms should be updated in the database
       val dbTerms = insecureContainer.pennsieveTermsOfServiceManager
         .get(loggedInUser.id)
         .await
@@ -329,8 +441,6 @@ class TestUsersController extends BaseApiTest {
         .toDTO
       dbTerms.version should equal(tosTestVersion)
 
-      // terms stored in the database should be equal to the terms
-      // returned to the client
       dbTerms should equal(terms)
     }
   }
@@ -396,7 +506,6 @@ class TestUsersController extends BaseApiTest {
         )
       )
     )
-    // first we POST to link the ORCID iD, then we DELETE to unlink it
     postJson(
       s"/orcid",
       orcidRequest,
@@ -419,7 +528,6 @@ class TestUsersController extends BaseApiTest {
         )
       )
     )
-    // first we POST to link the ORCID iD, then we DELETE to unlink it
     postJson(
       s"/orcid",
       orcidRequest,
@@ -441,7 +549,6 @@ class TestUsersController extends BaseApiTest {
   }
 
   test("terms of service date versions should function as expected") {
-    // Parsing correctly formatted dates should work:
     val dv1: DateVersion = DateVersion.from("19990909120000").value
     val dv2: DateVersion = DateVersion.from("20080501053000").value
     dv1 should be < (dv2)
@@ -451,7 +558,7 @@ class TestUsersController extends BaseApiTest {
   }
 
   test("getting mock terms of service from an empty store should fail") {
-    import DateVersion._
+    import com.pennsieve.models.DateVersion._
     val version = LocalDateTime.of(1999, 9, 9, 12, 0, 0)
     mockCustomToSClient
       .getTermsOfService("pennsieve", version)
@@ -459,8 +566,7 @@ class TestUsersController extends BaseApiTest {
   }
 
   test("getting and setting mock terms of service should work as expected") {
-    import DateVersion._
-
+    import com.pennsieve.models.DateVersion._
     val v1 = LocalDateTime.of(1999, 9, 9, 12, 0, 0)
     val v2 = LocalDateTime.of(2008, 5, 1, 5, 30, 0)
     val v3 = LocalDateTime.of(2010, 2, 28, 8, 20, 10)
@@ -512,33 +618,26 @@ class TestUsersController extends BaseApiTest {
   }
 
   test("updating a valid custom terms of service") {
-    val tos1: CustomTermsOfServiceDTO = putJson(
+    putJson(
       s"/custom-terms-of-service",
       """{ "version": "19990909120000" }""",
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
-      (parsedBody \ "customTermsOfService")
-        .extract[Seq[CustomTermsOfServiceDTO]]
-        .head
     }
-    val tos2: CustomTermsOfServiceDTO = putJson(
+    putJson(
       s"/custom-terms-of-service",
       """{ "version": "20080501053000" }""",
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
-      (parsedBody \ "customTermsOfService")
-        .extract[Seq[CustomTermsOfServiceDTO]]
-        .head
     }
 
-    val foundToS: CustomTermsOfService =
-      insecureContainer.customTermsOfServiceManager
-        .get(loggedInUser.id, loggedInOrganization.id)
-        .await
-        .value
-        .get
+    val foundToS = insecureContainer.customTermsOfServiceManager
+      .get(loggedInUser.id, loggedInOrganization.id)
+      .await
+      .value
+      .get
 
     val v = foundToS.acceptedVersion
     v.getYear should ===(2008)
@@ -562,7 +661,7 @@ class TestUsersController extends BaseApiTest {
   test("non-service token should not be able to access get user endpoint") {
     get(
       s"/${loggedInUser.id}",
-      headers = jwtUserAuthorizationHeader(loggedInOrganization)
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status shouldEqual 403
     }
