@@ -51,6 +51,37 @@ class UserManagerSpec extends BaseManagerSpec {
     assert(savedUpdatedUser.email == "new-email")
   }
 
+  "createFromSelfServiceSignUp" should "create a user attached to the welcome_to_pennsieve organization" in {
+    val welcome = organizationManager(superAdmin)
+      .create(name = "Welcome", slug = "welcome_to_pennsieve")
+      .await
+      .value
+
+    val cognitoId = CognitoId.UserPoolId.randomId()
+    val email = "self-service@test.com"
+    val user = userManager
+      .createFromSelfServiceSignUp(
+        cognitoId = cognitoId,
+        email = email,
+        firstName = "Self",
+        middleInitial = None,
+        lastName = "Service",
+        degree = None,
+        title = "tester"
+      )(organizationManager(), global)
+      .await
+      .value
+
+    user.email shouldBe email.toLowerCase
+    user.cognitoId shouldBe Some(cognitoId)
+    user.preferredOrganizationId shouldBe Some(welcome.id)
+    userManager
+      .getOrganizations(user)
+      .await
+      .value
+      .map(_.id) should contain(welcome.id)
+  }
+
   "updating or creating a user with an email already in the system" should "return an error" in {
     val user = createUser()
 
