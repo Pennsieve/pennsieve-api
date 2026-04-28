@@ -15,6 +15,7 @@
  */
 
 package com.pennsieve.api
+
 import com.blackfynn.clients.AntiSpamChallengeClient
 import com.pennsieve.aws.cognito.{
   Cognito,
@@ -22,6 +23,7 @@ import com.pennsieve.aws.cognito.{
   CognitoPoolConfig,
   MockCognitoIdentityProviderAsyncClient
 }
+import com.pennsieve.models.Organization
 import org.json4s.jackson.Serialization.write
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.cognitoidentityprovider.model.{
@@ -33,8 +35,9 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.{
 
 import java.util.UUID
 
-// A test class for AccountController that uses a real CognitoClient implementation with a mock CognitoIdentityProviderAsyncClient
-class TestAccountControllerMockIdentityProvider extends BaseApiTest {
+/** Variant of TestAccountController that wires a real `Cognito` client over a
+  * mocked `CognitoIdentityProviderAsyncClient`. */
+class TestAccountControllerMockIdentityProvider extends BaseApiUnitTest {
 
   private val cognitoConfig: CognitoConfig = CognitoConfig(
     Region.US_EAST_1,
@@ -43,15 +46,21 @@ class TestAccountControllerMockIdentityProvider extends BaseApiTest {
     CognitoPoolConfig(Region.US_EAST_1, "identity-pool-id", "")
   )
 
-  val recaptchaClient: AntiSpamChallengeClient =
-    new MockRecaptchaClient()
+  val recaptchaClient: AntiSpamChallengeClient = new MockRecaptchaClient()
 
   val mockIdentityProvider = new MockCognitoIdentityProviderAsyncClient()
   val cognitoClient = new Cognito(mockIdentityProvider, cognitoConfig)
 
-  override def afterStart(): Unit = {
-    super.afterStart()
+  protected lazy val welcomeOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-0000000000ff",
+    name = "Welcome",
+    slug = "welcome_to_pennsieve",
+    encryptionKeyId = Some("welcome-key"),
+    id = 99
+  )
 
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new AccountController(
         insecureContainer,
@@ -66,11 +75,15 @@ class TestAccountControllerMockIdentityProvider extends BaseApiTest {
 
   override def beforeEach(): Unit = {
     super.beforeEach()
+    state.users.clear()
+    state.organizations.clear()
+    state.orgUsers.clear()
+    state.orgUserPermissions.clear()
     mockIdentityProvider.reset()
+    state.organizations.put(welcomeOrganization.id, welcomeOrganization)
   }
 
   test("create new account without an organization") {
-
     val newUserRequest = CreateUserWithRecaptchaRequest(
       firstName = "test",
       middleInitial = None,
@@ -119,7 +132,6 @@ class TestAccountControllerMockIdentityProvider extends BaseApiTest {
       Right(UsernameExistsException.builder().build())
 
     postJson("/sign-up", write(newUserRequest)) {
-      println(parsedBody)
       status should be(409)
       body should include("An account with the given email already exists")
     }
