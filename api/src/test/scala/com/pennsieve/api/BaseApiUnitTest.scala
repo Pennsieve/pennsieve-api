@@ -46,8 +46,11 @@ import com.pennsieve.helpers.APIContainers.{
 import com.pennsieve.helpers.fakes.{
   FakeCollectionManager,
   FakeContributorManager,
+  FakeCustomTermsOfServiceManager,
+  FakePennsieveTermsOfServiceManager,
   FakeSecureOrganizationManager,
   FakeSecureTokenManager,
+  FakeStorageManager,
   FakeUserManager,
   InMemoryState
 }
@@ -60,8 +63,11 @@ import com.pennsieve.test.helpers.AwaitableImplicits
 import com.pennsieve.managers.{
   CollectionManager,
   ContributorManager,
+  CustomTermsOfServiceManager,
+  PennsieveTermsOfServiceManager,
   SecureOrganizationManager,
   SecureTokenManager,
+  StorageServiceClientTrait,
   UserInviteManager,
   UserManager
 }
@@ -214,6 +220,12 @@ trait BaseApiUnitTest
         new FakeSecureOrganizationManager(st, User.serviceUser())
       override lazy val tokenManager: SecureTokenManager =
         new FakeSecureTokenManager(st, User.serviceUser())
+      override lazy val pennsieveTermsOfServiceManager
+        : PennsieveTermsOfServiceManager =
+        new FakePennsieveTermsOfServiceManager(st)
+      override lazy val customTermsOfServiceManager
+        : CustomTermsOfServiceManager =
+        new FakeCustomTermsOfServiceManager(st)
     }
   }
 
@@ -238,6 +250,14 @@ trait BaseApiUnitTest
           new FakeCollectionManager(st, org)
         override lazy val contributorsManager: ContributorManager =
           new FakeContributorManager(st, org, u)
+        override lazy val storageManager: StorageServiceClientTrait =
+          new FakeStorageManager
+        override lazy val pennsieveTermsOfServiceManager
+          : PennsieveTermsOfServiceManager =
+          new FakePennsieveTermsOfServiceManager(st)
+        override lazy val customTermsOfServiceManager
+          : CustomTermsOfServiceManager =
+          new FakeCustomTermsOfServiceManager(st)
       }
   }
 

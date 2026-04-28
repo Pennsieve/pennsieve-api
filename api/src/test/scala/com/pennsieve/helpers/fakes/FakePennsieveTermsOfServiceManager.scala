@@ -14,64 +14,51 @@
  * limitations under the License.
  */
 
-// Copyright (c) 2019 Pennsieve, Inc. All Rights Reserved.
-
-package com.pennsieve.managers
+package com.pennsieve.helpers.fakes
 
 import cats.data.EitherT
-import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
-import com.pennsieve.db.{
-  PennsieveTermsOfService,
-  PennsieveTermsOfServiceMapper
-}
-import com.pennsieve.traits.PostgresProfile.api._
-import java.time.ZonedDateTime
-
+import com.pennsieve.db.PennsieveTermsOfService
 import com.pennsieve.domain.CoreError
+import com.pennsieve.managers.PennsieveTermsOfServiceManager
+import com.pennsieve.traits.PostgresProfile.api.Database
 
+import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
 
-object PennsieveTermsOfServiceManager {
-  def apply(db: Database): PennsieveTermsOfServiceManager =
-    new PennsieveTermsOfServiceManagerImpl(db)
-}
+class FakePennsieveTermsOfServiceManager(state: InMemoryState)
+    extends PennsieveTermsOfServiceManager {
 
-trait PennsieveTermsOfServiceManager {
+  def db: Database =
+    sys.error(
+      "FakePennsieveTermsOfServiceManager: a method not yet stubbed by your " +
+        "test tried to use the database. Override the method on this fake."
+    )
 
-  def db: Database
-
-  def get(
+  override def get(
     userId: Int
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Option[PennsieveTermsOfService]] =
-    db.run(PennsieveTermsOfServiceMapper.get(userId)).toEitherT
+    EitherT.rightT(state.pennsieveTos.get(userId))
 
-  def getUserMap(
+  override def getUserMap(
     userIds: Seq[Int]
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Map[Int, PennsieveTermsOfService]] =
-    db.run(PennsieveTermsOfServiceMapper.getAll(userIds))
-      .map(_.map(tos => tos.userId -> tos).toMap)
-      .toEitherT
+    EitherT.rightT(
+      userIds.flatMap(id => state.pennsieveTos.get(id).map(id -> _)).toMap
+    )
 
-  def setNewVersion(
+  override def setNewVersion(
     userId: Int,
     version: ZonedDateTime
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, PennsieveTermsOfService] = {
-    val newTerms =
+    val tos =
       PennsieveTermsOfService(userId = userId, acceptedVersion = version)
-    db.run(
-        PennsieveTermsOfServiceMapper
-          .insertOrUpdate(newTerms)
-      )
-      .map(_ => newTerms)
-      .toEitherT
+    state.pennsieveTos.put(userId, tos)
+    EitherT.rightT(tos)
   }
 }
-
-class PennsieveTermsOfServiceManagerImpl(val db: Database)
-    extends PennsieveTermsOfServiceManager

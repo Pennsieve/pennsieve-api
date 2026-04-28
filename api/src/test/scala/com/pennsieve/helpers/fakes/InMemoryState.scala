@@ -16,6 +16,7 @@
 
 package com.pennsieve.helpers.fakes
 
+import com.pennsieve.db.{ CustomTermsOfService, PennsieveTermsOfService }
 import com.pennsieve.models.{
   Collection,
   Contributor,
@@ -53,6 +54,12 @@ class InMemoryState {
   // Active feature flags per organization. `(orgId, feature) -> true` means
   // the flag is enabled. Tests configure as needed.
   val featureFlags: TrieMap[(Int, Feature), Boolean] = new TrieMap()
+
+  // Pennsieve ToS acceptance per user.
+  val pennsieveTos: TrieMap[Int, PennsieveTermsOfService] = new TrieMap()
+
+  // Custom ToS acceptance per (userId, organizationId).
+  val customTos: TrieMap[(Int, Int), CustomTermsOfService] = new TrieMap()
 
   private val ids = new AtomicInteger(1)
   def newId(): Int = ids.getAndIncrement()
