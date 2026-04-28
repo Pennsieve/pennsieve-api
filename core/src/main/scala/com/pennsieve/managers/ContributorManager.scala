@@ -30,16 +30,26 @@ import org.apache.commons.validator.routines.EmailValidator
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class ContributorManager(
-  val db: Database,
-  val actor: User,
-  val contributorMapper: ContributorMapper,
-  val userManager: UserManager
-) {
+object ContributorManager {
+  def apply(
+    db: Database,
+    actor: User,
+    contributorMapper: ContributorMapper,
+    userManager: UserManager
+  ): ContributorManager =
+    new ContributorManagerImpl(db, actor, contributorMapper, userManager)
+}
 
-  val organization: Organization = contributorMapper.organization
+trait ContributorManager {
 
-  implicit val datasetContributor: DatasetContributorMapper =
+  def db: Database
+  def actor: User
+  def contributorMapper: ContributorMapper
+  def userManager: UserManager
+
+  def organization: Organization = contributorMapper.organization
+
+  implicit def datasetContributor: DatasetContributorMapper =
     new DatasetContributorMapper(organization)
 
   def emailExists(
@@ -365,3 +375,10 @@ class ContributorManager(
 
     } yield (updatedContributor, user)
 }
+
+class ContributorManagerImpl(
+  val db: Database,
+  val actor: User,
+  val contributorMapper: ContributorMapper,
+  val userManager: UserManager
+) extends ContributorManager
