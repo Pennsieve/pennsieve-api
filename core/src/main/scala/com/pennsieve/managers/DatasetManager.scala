@@ -146,7 +146,7 @@ class DatasetManager(
     new DatasetStatusLogMapper(organization)
 
   val collectionManager: CollectionManager =
-    new CollectionManager(db, collectionMapper)
+    new CollectionManagerImpl(db, collectionMapper)
 
   val datasetIgnoreFiles: DatasetIgnoreFilesMapper =
     new DatasetIgnoreFilesMapper(organization)
