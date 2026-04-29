@@ -37,15 +37,14 @@ import java.time.ZonedDateTime
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.compat._
 
-class WebhookManager(
-  val db: PostgresProfile.api.Database,
-  val actor: User,
-  val webhooksMapper: WebhooksMapper,
-  val webhookEventSubscriptionsMapper: WebhookEventSubscriptionsMapper,
-  val webhookEventTypesMapper: WebhookEventTypesMapper
-) {
+trait WebhookManager {
+  def db: PostgresProfile.api.Database
+  def actor: User
+  def webhooksMapper: WebhooksMapper
+  def webhookEventSubscriptionsMapper: WebhookEventSubscriptionsMapper
+  def webhookEventTypesMapper: WebhookEventTypesMapper
 
-  val organization: Organization = webhooksMapper.organization
+  lazy val organization: Organization = webhooksMapper.organization
 
   def validateWebhookValues(
     apiUrl: String,
@@ -448,3 +447,11 @@ class WebhookManager(
     } yield webhook
   }
 }
+
+class WebhookManagerImpl(
+  val db: PostgresProfile.api.Database,
+  val actor: User,
+  val webhooksMapper: WebhooksMapper,
+  val webhookEventSubscriptionsMapper: WebhookEventSubscriptionsMapper,
+  val webhookEventTypesMapper: WebhookEventTypesMapper
+) extends WebhookManager

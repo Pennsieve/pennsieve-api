@@ -37,12 +37,14 @@ import java.text.Normalizer
 import scala.concurrent.{ ExecutionContext, Future }
 import slick.dbio.DBIO
 
-class DatasetStatusManager(val db: Database, val organization: Organization) {
+trait DatasetStatusManager {
+  def db: Database
+  def organization: Organization
 
-  val datasetStatusMapper: DatasetStatusMapper = new DatasetStatusMapper(
+  lazy val datasetStatusMapper: DatasetStatusMapper = new DatasetStatusMapper(
     organization
   )
-  val datasetMapper: DatasetsMapper = new DatasetsMapper(organization)
+  lazy val datasetMapper: DatasetsMapper = new DatasetsMapper(organization)
 
   val datasetStatusColors: Map[String, String] = Map(
     "Grey" -> "#71747C", // No Status
@@ -340,3 +342,6 @@ class DatasetStatusManager(val db: Database, val organization: Organization) {
       )
   }
 }
+
+class DatasetStatusManagerImpl(val db: Database, val organization: Organization)
+    extends DatasetStatusManager

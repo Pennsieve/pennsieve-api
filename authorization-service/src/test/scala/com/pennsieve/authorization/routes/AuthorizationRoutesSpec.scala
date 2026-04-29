@@ -55,8 +55,10 @@ import com.pennsieve.dtos.UserDTO
 import com.pennsieve.managers.{
   ContributorManager,
   DatasetManager,
+  DatasetManagerImpl,
   DatasetPreviewManager,
   DatasetPublicationStatusManager,
+  DatasetPublicationStatusManagerImpl,
   TeamManager,
   UserManager
 }
@@ -118,7 +120,7 @@ class AuthorizationRoutesSpec
 
     "return a JWT for an authorized user with a dataset claim" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, nonAdmin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
       val dataset = datasetManager.create("Test Dataset").await.value
 
       testRequest(
@@ -139,7 +141,7 @@ class AuthorizationRoutesSpec
 
     "return a JWT for resolving a valid dataset by node ID" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, nonAdmin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset (from node ID)")
         .await
@@ -172,13 +174,14 @@ class AuthorizationRoutesSpec
 
     "return a JWT with locked = true for datasets with the right publication status" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, nonAdmin, datasetsMapper)
-      val datasetPublicationStatusManager = new DatasetPublicationStatusManager(
-        db,
-        nonAdmin,
-        new DatasetPublicationStatusMapper(organizationTwo),
-        new ChangelogEventMapper(organizationTwo)
-      )
+      val datasetManager = new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
+      val datasetPublicationStatusManager =
+        new DatasetPublicationStatusManagerImpl(
+          db,
+          nonAdmin,
+          new DatasetPublicationStatusMapper(organizationTwo),
+          new ChangelogEventMapper(organizationTwo)
+        )
 
       val dataset = datasetManager
         .create("Test Dataset (from node ID)")
@@ -404,14 +407,15 @@ class AuthorizationRoutesSpec
     "return a JWT with locked = false if the dataset is being published and the user is a publisher" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, nonAdmin, datasetsMapper)
+        new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
 
-      val datasetPublicationStatusManager = new DatasetPublicationStatusManager(
-        db,
-        nonAdmin,
-        new DatasetPublicationStatusMapper(organizationTwo),
-        new ChangelogEventMapper(organizationTwo)
-      )
+      val datasetPublicationStatusManager =
+        new DatasetPublicationStatusManagerImpl(
+          db,
+          nonAdmin,
+          new DatasetPublicationStatusMapper(organizationTwo),
+          new ChangelogEventMapper(organizationTwo)
+        )
 
       val teamManager = TeamManager(organizationManager)
 
@@ -525,14 +529,15 @@ class AuthorizationRoutesSpec
     "return a JWT with locked = false and role = Editor if the dataset is in review (requested) and the user is a publisher" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, admin, datasetsMapper) // not dataset owner
+        new DatasetManagerImpl(db, admin, datasetsMapper) // not dataset owner
 
-      val datasetPublicationStatusManager = new DatasetPublicationStatusManager(
-        db,
-        nonAdmin,
-        new DatasetPublicationStatusMapper(organizationTwo),
-        new ChangelogEventMapper(organizationTwo)
-      )
+      val datasetPublicationStatusManager =
+        new DatasetPublicationStatusManagerImpl(
+          db,
+          nonAdmin,
+          new DatasetPublicationStatusMapper(organizationTwo),
+          new ChangelogEventMapper(organizationTwo)
+        )
 
       val teamManager = TeamManager(organizationManager)
 
@@ -620,7 +625,7 @@ class AuthorizationRoutesSpec
     "return a JWT for an authorized user with a dataset claim if the dataset is shared with the organization" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, admin, datasetsMapper)
+        new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
@@ -649,7 +654,7 @@ class AuthorizationRoutesSpec
     "return a 404 Not Found for a user requesting a dataset shared in another organization" in {
       val datasetsMapper = new DatasetsMapper(organizationOne)
       val datasetManager =
-        new DatasetManager(db, admin, datasetsMapper)
+        new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await

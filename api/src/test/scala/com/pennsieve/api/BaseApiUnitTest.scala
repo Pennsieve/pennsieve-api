@@ -46,14 +46,25 @@ import com.pennsieve.helpers.APIContainers.{
   SecureContainerBuilderType
 }
 import com.pennsieve.helpers.fakes.{
+  FakeChangelogManager,
   FakeCollectionManager,
   FakeContributorManager,
   FakeCustomTermsOfServiceManager,
+  FakeDataUseAgreementManager,
+  FakeDatasetAssetsManager,
+  FakeDatasetManager,
+  FakeDatasetPreviewManager,
+  FakeDatasetPublicationStatusManager,
+  FakeDatasetStatusManager,
+  FakeExternalPublicationManager,
+  FakeFileManager,
+  FakePackageManager,
   FakePennsieveTermsOfServiceManager,
   FakeSecureOrganizationManager,
   FakeSecureTokenManager,
   FakeStorageManager,
   FakeUserManager,
+  FakeWebhookManager,
   InMemoryState
 }
 import com.pennsieve.helpers.{
@@ -63,15 +74,26 @@ import com.pennsieve.helpers.{
 }
 import com.pennsieve.test.helpers.AwaitableImplicits
 import com.pennsieve.managers.{
+  ChangelogManager,
   CollectionManager,
   ContributorManager,
   CustomTermsOfServiceManager,
+  DataUseAgreementManager,
+  DatasetAssetsManager,
+  DatasetManager,
+  DatasetPreviewManager,
+  DatasetPublicationStatusManager,
+  DatasetStatusManager,
+  ExternalPublicationManager,
+  FileManager,
+  PackageManager,
   PennsieveTermsOfServiceManager,
   SecureOrganizationManager,
   SecureTokenManager,
   StorageServiceClientTrait,
   UserInviteManager,
-  UserManager
+  UserManager,
+  WebhookManager
 }
 import com.pennsieve.models.{ CognitoId, Organization, Role, User }
 import com.pennsieve.traits.PostgresProfile.api._
@@ -260,6 +282,30 @@ trait BaseApiUnitTest
         override lazy val customTermsOfServiceManager
           : CustomTermsOfServiceManager =
           new FakeCustomTermsOfServiceManager(st)
+        override lazy val datasetManager: DatasetManager =
+          new FakeDatasetManager(st, org, u)
+        override lazy val packageManager: PackageManager =
+          new FakePackageManager(datasetManager)
+        override lazy val fileManager: FileManager =
+          new FakeFileManager(packageManager, org)
+        override lazy val datasetStatusManager: DatasetStatusManager =
+          new FakeDatasetStatusManager(st, org)
+        override lazy val datasetPreviewManager: DatasetPreviewManager =
+          new FakeDatasetPreviewManager(st, org)
+        override lazy val datasetPublicationStatusManager
+          : DatasetPublicationStatusManager =
+          new FakeDatasetPublicationStatusManager(st, org, u)
+        override lazy val dataUseAgreementManager: DataUseAgreementManager =
+          new FakeDataUseAgreementManager(st, org)
+        override lazy val datasetAssetsManager: DatasetAssetsManager =
+          new FakeDatasetAssetsManager(st, org)
+        override lazy val externalPublicationManager
+          : ExternalPublicationManager =
+          new FakeExternalPublicationManager(st, org)
+        override lazy val webhookManager: WebhookManager =
+          new FakeWebhookManager(st, org, u)
+        override lazy val changelogManager: ChangelogManager =
+          new FakeChangelogManager(st, org, u)
       }
   }
 

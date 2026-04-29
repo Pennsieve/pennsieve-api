@@ -40,7 +40,11 @@ import com.pennsieve.db.{
 import com.pennsieve.domain.{ CoreError, ThrowableError }
 import com.pennsieve.jobs._
 import com.pennsieve.jobs.types.DeleteJob.Container
-import com.pennsieve.managers.{ DatasetAssetsManager, ManagerSpec }
+import com.pennsieve.managers.{
+  DatasetAssetsManager,
+  DatasetAssetsManagerImpl,
+  ManagerSpec
+}
 import com.pennsieve.messages._
 import com.pennsieve.models.FileType.Aperio
 import com.pennsieve.models.PackageType.{ ExternalFile, Slide, TimeSeries }
@@ -564,7 +568,7 @@ class DeleteJobSpec
     val content = "#Markdown content\nA paragraph!"
 
     lazy val datasetAssetsManager: DatasetAssetsManager =
-      new DatasetAssetsManager(database, datasetTable)
+      new DatasetAssetsManagerImpl(database, datasetTable)
 
     val readmeAsset = datasetAssetsManager
       .createOrUpdateReadme(

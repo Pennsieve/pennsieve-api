@@ -110,7 +110,7 @@ object Builders {
     * explosions when adding related data to the DTOs.
     */
   def datasetDTOs[
-    DIContainer <: DatasetManagerContainer with PackageDTODIContainer with OrganizationManagerContainer with DatasetAssetsContainer
+    DIContainer <: DatasetManagerContainer with PackageDTODIContainer with OrganizationManagerContainer with DatasetAssetsContainer with RequestContextContainer with DatabaseContainer
   ](
     datasetAndStatus: Seq[DatasetAndStatus],
     includeBannerUrl: Boolean = false,
@@ -242,7 +242,7 @@ object Builders {
   }
 
   def datasetDTO[
-    DIContainer <: DatasetManagerContainer with PackageDTODIContainer with OrganizationManagerContainer with DatasetAssetsContainer
+    DIContainer <: DatasetManagerContainer with PackageDTODIContainer with OrganizationManagerContainer with DatasetAssetsContainer with RequestContextContainer with DatabaseContainer
   ](
     dataset: Dataset,
     status: DatasetStatus,

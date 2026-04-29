@@ -35,6 +35,7 @@ import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.helpers.ResultHandlers._
 import com.pennsieve.managers.{
   DatasetStatusManager,
+  DatasetStatusManagerImpl,
   OrganizationManager,
   SecureOrganizationManager,
   StorageManager,
@@ -1450,7 +1451,10 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Guest)
           .coreErrorToActionResult()
 
-        status <- new DatasetStatusManager(insecureContainer.db, organization).getAllWithUsage
+        status <- new DatasetStatusManagerImpl(
+          insecureContainer.db,
+          organization
+        ).getAllWithUsage
           .coreErrorToActionResult()
 
       } yield status.map(DatasetStatusDTO(_))
@@ -1481,8 +1485,10 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
 
-        status <- new DatasetStatusManager(insecureContainer.db, organization)
-          .create(displayName = body.displayName, color = body.color)
+        status <- new DatasetStatusManagerImpl(
+          insecureContainer.db,
+          organization
+        ).create(displayName = body.displayName, color = body.color)
           .coreErrorToActionResult()
 
       } yield DatasetStatusDTO(status, inUse = DatasetStatusInUse(false))
@@ -1516,8 +1522,10 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
 
-        status <- new DatasetStatusManager(insecureContainer.db, organization)
-          .update(
+        status <- new DatasetStatusManagerImpl(
+          insecureContainer.db,
+          organization
+        ).update(
             id = datasetStatusId,
             displayName = body.displayName,
             color = body.color
@@ -1553,8 +1561,10 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
 
-        status <- new DatasetStatusManager(insecureContainer.db, organization)
-          .delete(id = datasetStatusId)
+        status <- new DatasetStatusManagerImpl(
+          insecureContainer.db,
+          organization
+        ).delete(id = datasetStatusId)
           .coreErrorToActionResult()
 
       } yield DatasetStatusDTO(status)

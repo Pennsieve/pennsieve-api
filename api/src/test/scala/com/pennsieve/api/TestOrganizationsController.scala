@@ -24,6 +24,7 @@ import com.pennsieve.db.UserInvitesMapper
 import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
 import com.pennsieve.managers.{
   DatasetStatusManager,
+  DatasetStatusManagerImpl,
   SecureOrganizationManagerImpl,
   UpdateOrganization
 }
@@ -1232,7 +1233,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     val datasetStatusManager = secureContainer.datasetStatusManager
     val externalDatasetStatusManager =
-      new DatasetStatusManager(secureContainer.db, externalOrganization)
+      new DatasetStatusManagerImpl(secureContainer.db, externalOrganization)
 
     // Can create status in `loggedInOrganization`
     postJson(
