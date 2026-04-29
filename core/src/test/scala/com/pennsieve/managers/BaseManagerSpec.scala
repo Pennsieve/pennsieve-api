@@ -150,7 +150,13 @@ trait ManagerSpec
     user: User = superAdmin
   ): ChangelogManager = {
     val sns: SNSClient = new MockSNS
-    new ChangelogManager(database, organization, user, "test-topic", sns = sns)
+    new ChangelogManagerImpl(
+      database,
+      organization,
+      user,
+      "test-topic",
+      sns = sns
+    )
   }
 
   def datasetManager(
@@ -159,7 +165,7 @@ trait ManagerSpec
   ): DatasetManager = {
     val datasetsMapper = new DatasetsMapper(organization)
 
-    new DatasetManager(database, user, datasetsMapper)
+    new DatasetManagerImpl(database, user, datasetsMapper)
   }
 
   def datasetCollectionManager(
@@ -178,7 +184,7 @@ trait ManagerSpec
       organization
     )
 
-    new DatasetPublicationStatusManager(
+    new DatasetPublicationStatusManagerImpl(
       database,
       user,
       datasetPublicationStatusMapper,
@@ -188,7 +194,7 @@ trait ManagerSpec
 
   def datasetStatusManager(
     organization: Organization = testOrganization
-  ): DatasetStatusManager = new DatasetStatusManager(database, organization)
+  ): DatasetStatusManager = new DatasetStatusManagerImpl(database, organization)
 
   def contributorsManager(
     organization: Organization = testOrganization,
@@ -207,7 +213,7 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): FileManager =
-    new FileManager(packageManager(organization, user), organization)
+    new FileManagerImpl(packageManager(organization, user), organization)
 
   def externalFileManager(
     organization: Organization = testOrganization,
@@ -227,7 +233,7 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): PackageManager =
-    new PackageManager(datasetManager(organization, user))
+    new PackageManagerImpl(datasetManager(organization, user))
 
   def timeSeriesManager(
     organization: Organization = testOrganization
@@ -272,7 +278,7 @@ trait ManagerSpec
     val datasetIntegrationsMapper: DatasetIntegrationsMapper =
       new DatasetIntegrationsMapper(organization)
 
-    new WebhookManager(
+    new WebhookManagerImpl(
       db = database,
       actor = user,
       webhooksMapper = webhooksMapper,

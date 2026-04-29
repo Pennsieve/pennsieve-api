@@ -25,11 +25,11 @@ import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
 import scala.concurrent.{ ExecutionContext, Future }
 
-class ExternalPublicationManager(
-  val db: Database,
-  val organization: Organization
-) {
-  val externalPublicationMapper = new ExternalPublicationMapper(organization)
+trait ExternalPublicationManager {
+  def db: Database
+  def organization: Organization
+  lazy val externalPublicationMapper =
+    new ExternalPublicationMapper(organization)
 
   def get(
     dataset: Dataset
@@ -70,3 +70,8 @@ class ExternalPublicationManager(
         case _ => Right(())
       }
 }
+
+class ExternalPublicationManagerImpl(
+  val db: Database,
+  val organization: Organization
+) extends ExternalPublicationManager

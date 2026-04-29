@@ -94,73 +94,79 @@ object DatasetManager {
   }
 }
 
-class DatasetManager(
-  val db: Database,
-  val actor: User,
-  val datasetsMapper: DatasetsMapper
-) {
+trait DatasetManager {
+
+  def db: Database
+  def actor: User
+  def datasetsMapper: DatasetsMapper
 
   import DatasetManager._
 
-  val organization: Organization = datasetsMapper.organization
+  // All helper members are `lazy val` so a fake (or any subclass that
+  // overrides `db`/`actor`/`datasetsMapper` to throw) doesn't try to construct
+  // them at trait initialization time.
 
-  val packagesMapper: PackagesMapper = new PackagesMapper(organization)
+  lazy val organization: Organization = datasetsMapper.organization
 
-  val filesMapper: FilesMapper = new FilesMapper(organization)
+  lazy val packagesMapper: PackagesMapper = new PackagesMapper(organization)
 
-  val contributor: ContributorMapper = new ContributorMapper(organization)
+  lazy val filesMapper: FilesMapper = new FilesMapper(organization)
 
-  val contributorManager: ContributorManager =
+  lazy val contributor: ContributorMapper = new ContributorMapper(organization)
+
+  lazy val contributorManager: ContributorManager =
     new ContributorManagerImpl(db, actor, contributor, new UserManagerImpl(db))
 
-  val datasetStatusManager: DatasetStatusManager =
-    new DatasetStatusManager(db, organization)
+  lazy val datasetStatusManager: DatasetStatusManager =
+    new DatasetStatusManagerImpl(db, organization)
 
-  val datasetPublicationStatusMapper: DatasetPublicationStatusMapper =
+  lazy val datasetPublicationStatusMapper: DatasetPublicationStatusMapper =
     new DatasetPublicationStatusMapper(organization)
 
-  val datasetContributorMapper = new DatasetContributorMapper(organization)
+  lazy val datasetContributorMapper = new DatasetContributorMapper(organization)
 
-  val datasetIntegrationsMapper = new DatasetIntegrationsMapper(organization)
+  lazy val datasetIntegrationsMapper = new DatasetIntegrationsMapper(
+    organization
+  )
 
-  val webhooksMapper = new WebhooksMapper(organization)
+  lazy val webhooksMapper = new WebhooksMapper(organization)
 
-  implicit val collectionMapper: CollectionMapper =
+  implicit lazy val collectionMapper: CollectionMapper =
     new CollectionMapper(organization)
 
-  implicit val datasetTeam: DatasetTeamMapper = new DatasetTeamMapper(
+  implicit lazy val datasetTeam: DatasetTeamMapper = new DatasetTeamMapper(
     organization
   )
 
-  implicit val datasetUser: DatasetUserMapper = new DatasetUserMapper(
+  implicit lazy val datasetUser: DatasetUserMapper = new DatasetUserMapper(
     organization
   )
 
-  implicit val datasetCollection: DatasetCollectionMapper =
+  implicit lazy val datasetCollection: DatasetCollectionMapper =
     new DatasetCollectionMapper(organization)
 
-  implicit val datasetContributor: DatasetContributorMapper =
+  implicit lazy val datasetContributor: DatasetContributorMapper =
     new DatasetContributorMapper(organization)
 
-  implicit val datasetStatusLog: DatasetStatusLogMapper =
+  implicit lazy val datasetStatusLog: DatasetStatusLogMapper =
     new DatasetStatusLogMapper(organization)
 
-  val collectionManager: CollectionManager =
+  lazy val collectionManager: CollectionManager =
     new CollectionManagerImpl(db, collectionMapper)
 
-  val datasetIgnoreFiles: DatasetIgnoreFilesMapper =
+  lazy val datasetIgnoreFiles: DatasetIgnoreFilesMapper =
     new DatasetIgnoreFilesMapper(organization)
 
-  val organizationManager: OrganizationManager =
+  lazy val organizationManager: OrganizationManager =
     new OrganizationManagerImpl(db)
 
-  val datasetRegistrationMapper: DatasetRegistrationMapper =
+  lazy val datasetRegistrationMapper: DatasetRegistrationMapper =
     new DatasetRegistrationMapper(organization)
 
-  val datasetReleaseMapper: DatasetReleaseMapper =
+  lazy val datasetReleaseMapper: DatasetReleaseMapper =
     new DatasetReleaseMapper(organization)
 
-  val externalRepositoryMapper: ExternalRepositoryMapper =
+  lazy val externalRepositoryMapper: ExternalRepositoryMapper =
     new ExternalRepositoryMapper()
 
   def isLocked(
@@ -1859,3 +1865,9 @@ class DatasetManager(
         .toEitherT
     } yield repository
 }
+
+class DatasetManagerImpl(
+  val db: Database,
+  val actor: User,
+  val datasetsMapper: DatasetsMapper
+) extends DatasetManager

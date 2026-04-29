@@ -31,7 +31,7 @@ import com.pennsieve.jobs.{
   JSONParseFailException,
   JobException
 }
-import com.pennsieve.managers.ChangelogManager
+import com.pennsieve.managers.{ ChangelogManager, ChangelogManagerImpl }
 import com.pennsieve.messages.{ DatasetChangelogEventJob, EventInstance }
 import com.pennsieve.models.{
   ChangelogEventAndType,
@@ -79,7 +79,7 @@ class DatasetChangelogEvent(
     )
 
     val changelogManager =
-      new ChangelogManager(db, organization, user, eventsTopic, sns)
+      new ChangelogManagerImpl(db, organization, user, eventsTopic, sns)
     for ((eventDetail, _) <- eventDetails) {
       log.tierContext.info(s"event = ${eventDetail.eventType.asJson.noSpaces}")
     }

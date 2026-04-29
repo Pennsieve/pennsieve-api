@@ -97,7 +97,7 @@ class DataCanvasManager(
   val dataCanvasFolderMapper = new DataCanvasFolderMapper(organization)
 
   val datasetStatusManager: DatasetStatusManager =
-    new DatasetStatusManager(db, organization)
+    new DatasetStatusManagerImpl(db, organization)
 
   val packagesMapper: PackagesMapper = new PackagesMapper(organization)
 
