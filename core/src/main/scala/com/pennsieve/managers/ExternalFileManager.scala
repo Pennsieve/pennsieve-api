@@ -42,7 +42,7 @@ class ExternalFileManager(
   externalFiles: ExternalFilesMapper,
   packageManager: PackageManager
 ) {
-  val db = packageManager.db
+  lazy val db = packageManager.db
 
   val mapper = externalFiles
 

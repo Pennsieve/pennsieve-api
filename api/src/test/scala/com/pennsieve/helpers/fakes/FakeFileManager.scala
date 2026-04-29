@@ -16,11 +16,58 @@
 
 package com.pennsieve.helpers.fakes
 
+import com.pennsieve.db.FilesTable.{ OrderByColumn, OrderByDirection }
 import com.pennsieve.managers.{ FileManager, PackageManager }
-import com.pennsieve.models.Organization
+import com.pennsieve.models.{
+  File,
+  FileObjectType => FileObjType,
+  Organization,
+  Package
+}
 
-/** Skeleton fake. */
+import scala.concurrent.{ ExecutionContext, Future }
+
+/**
+  * In-memory fake of `FileManager`. Reads `state.files`.
+  */
 class FakeFileManager(
   val packageManager: PackageManager,
   override val organization: Organization
-) extends FileManager
+) extends FileManager {
+
+  private def state: InMemoryState =
+    packageManager
+      .asInstanceOf[FakePackageManager]
+      .datasetManager
+      .asInstanceOf[FakeDatasetManager]
+      .state
+
+  private def filesForPackage(packageId: Int): Iterable[File] =
+    state.files.collect {
+      case ((orgId, _), f)
+          if orgId == organization.id && f.packageId == packageId =>
+        f
+    }
+
+  override def getSingleSourceMap(
+    `packages`: Seq[Package],
+    limit: Option[Int] = None,
+    offset: Option[Int] = None,
+    orderBy: Option[(OrderByColumn, OrderByDirection)] = None,
+    excludePending: Boolean = false
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Map[Int, Option[File]]] =
+    Future.successful(`packages`.map { p =>
+      val sources = filesForPackage(p.id)
+        .filter(_.objectType == FileObjType.Source)
+        .filterNot(
+          f =>
+            excludePending && f.uploadedState
+              .contains(com.pennsieve.models.FileState.PENDING)
+        )
+        .toSeq
+      val single = if (sources.size == 1) sources.headOption else None
+      p.id -> single
+    }.toMap)
+}

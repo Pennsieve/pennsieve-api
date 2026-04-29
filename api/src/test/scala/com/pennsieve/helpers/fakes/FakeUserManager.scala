@@ -62,6 +62,16 @@ class FakeUserManager(state: InMemoryState) extends UserManager {
       case None => EitherT.leftT(NotFound(s"User ($email)"))
     }
 
+  override def getByNodeId(
+    nodeId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    state.users.values.find(_.nodeId == nodeId) match {
+      case Some(u) => EitherT.rightT(u)
+      case None => EitherT.leftT(NotFound(s"User ($nodeId)"))
+    }
+
   override def emailExists(
     email: String
   )(implicit

@@ -16,11 +16,18 @@
 
 package com.pennsieve.helpers.fakes
 
+import cats.data.EitherT
+import com.pennsieve.domain.{
+  CoreError,
+  MissingDataUseAgreement,
+  PredicateError
+}
 import com.pennsieve.managers.DataUseAgreementManager
-import com.pennsieve.models.Organization
+import com.pennsieve.models.{ DataUseAgreement, Organization }
 import com.pennsieve.traits.PostgresProfile.api.Database
 
-/** Skeleton fake. */
+import scala.concurrent.{ ExecutionContext, Future }
+
 class FakeDataUseAgreementManager(
   val state: InMemoryState,
   override val organization: Organization
@@ -31,4 +38,62 @@ class FakeDataUseAgreementManager(
       "FakeDataUseAgreementManager: a method not yet stubbed by your test " +
         "tried to use the database. Override the method on this fake."
     )
+
+  private def agreementsForOrg: Iterable[DataUseAgreement] =
+    state.dataUseAgreements.collect {
+      case ((orgId, _), a) if orgId == organization.id => a
+    }
+
+  override def get(
+    agreementId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataUseAgreement] =
+    state.dataUseAgreements.get((organization.id, agreementId)) match {
+      case Some(a) => EitherT.rightT(a)
+      case None => EitherT.leftT(MissingDataUseAgreement: CoreError)
+    }
+
+  override def getAll(
+    implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DataUseAgreement]] =
+    EitherT.rightT(
+      agreementsForOrg.toSeq.sortBy(a => (!a.isDefault, a.createdAt))
+    )
+
+  override def getDefault(
+    implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[DataUseAgreement]] =
+    EitherT.rightT(agreementsForOrg.find(_.isDefault))
+
+  override def create(
+    name: String,
+    body: String,
+    isDefault: Boolean = false,
+    description: String = ""
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DataUseAgreement] = {
+    if (agreementsForOrg.exists(_.name == name))
+      EitherT.leftT(PredicateError("Data use agreement name must be unique"))
+    else {
+      if (isDefault)
+        agreementsForOrg.filter(_.isDefault).foreach { a =>
+          state.dataUseAgreements
+            .put((organization.id, a.id), a.copy(isDefault = false))
+        }
+      val id = state.newId()
+      val agreement = DataUseAgreement(
+        name = name,
+        description = description,
+        body = body,
+        isDefault = isDefault,
+        id = id
+      )
+      state.dataUseAgreements.put((organization.id, id), agreement)
+      EitherT.rightT(agreement)
+    }
+  }
 }

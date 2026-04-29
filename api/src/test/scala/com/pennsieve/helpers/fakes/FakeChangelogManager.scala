@@ -16,14 +16,24 @@
 
 package com.pennsieve.helpers.fakes
 
+import cats.data.EitherT
 import com.pennsieve.aws.sns.{ MockSNS, SNSClient }
 import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
+import com.pennsieve.domain.CoreError
 import com.pennsieve.managers.ChangelogManager
-import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.models.{
+  ChangelogEventAndType,
+  ChangelogEventDetail,
+  ChangelogEventName,
+  Dataset,
+  Organization,
+  User
+}
 import com.pennsieve.traits.PostgresProfile.api.Database
 
-/** Skeleton fake. Uses MockSNS for the SNS client by default — tests can
-  * override or supply their own. */
+import java.time.ZonedDateTime
+import scala.concurrent.{ ExecutionContext, Future }
+
 class FakeChangelogManager(
   val state: InMemoryState,
   override val organization: Organization,
@@ -37,4 +47,36 @@ class FakeChangelogManager(
       "FakeChangelogManager: a method not yet stubbed by your test tried to " +
         "use the database. Override the method on this fake."
     )
+
+  override def logEvent(
+    dataset: Dataset,
+    detail: ChangelogEventDetail,
+    timestamp: ZonedDateTime = ZonedDateTime.now()
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, ChangelogEventAndType] = {
+    val id = state.newId()
+    val event = ChangelogEventAndType(
+      datasetId = dataset.id,
+      userId = actor.id,
+      eventType = detail.eventType,
+      detail = detail,
+      createdAt = timestamp,
+      id = id
+    )
+    state.changelogEvents.put((organization.id, id), event)
+    EitherT.rightT(event)
+  }
+
+  override def logEvents(
+    dataset: Dataset,
+    events: List[(ChangelogEventDetail, Option[ZonedDateTime])]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[ChangelogEventAndType]] = {
+    import cats.implicits._
+    events.traverse {
+      case (d, ts) => logEvent(dataset, d, ts.getOrElse(ZonedDateTime.now()))
+    }
+  }
 }

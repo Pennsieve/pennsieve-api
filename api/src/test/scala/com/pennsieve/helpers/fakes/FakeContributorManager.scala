@@ -296,4 +296,50 @@ class FakeContributorManager(
       )
       _ = state.contributors.put((organization.id, contributorId), updated)
     } yield (updated, user)
+
+  override def getOrCreateContributorFromUser(
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (Contributor, User)] = {
+    // Look up by userId first
+    val byUser = state.contributors.values.find(
+      c =>
+        c.userId.contains(user.id) &&
+          state.contributors.exists {
+            case ((orgId, id), c2) =>
+              orgId == organization.id && id == c.id
+          }
+    )
+    val byEmail = state.contributors.collect {
+      case ((orgId, _), c)
+          if orgId == organization.id &&
+            c.email.exists(_.equalsIgnoreCase(user.email)) =>
+        c
+    }.headOption
+
+    val contributor = byUser.orElse(byEmail).getOrElse {
+      val id = state.newId()
+      val c = Contributor(
+        firstName = Some(user.firstName),
+        lastName = Some(user.lastName),
+        email = Some(user.email.toLowerCase),
+        middleInitial = user.middleInitial,
+        degree = user.degree,
+        orcid = user.orcidAuthorization.map(_.orcid),
+        userId = Some(user.id),
+        id = id
+      )
+      state.contributors.put((organization.id, id), c)
+      c
+    }
+    // Backfill userId if missing
+    val finalContributor =
+      if (contributor.userId.isEmpty) {
+        val withUser = contributor.copy(userId = Some(user.id))
+        state.contributors.put((organization.id, contributor.id), withUser)
+        withUser
+      } else contributor
+    EitherT.rightT((finalContributor, user))
+  }
 }

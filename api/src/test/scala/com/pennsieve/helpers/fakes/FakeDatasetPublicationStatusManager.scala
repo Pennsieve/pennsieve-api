@@ -16,12 +16,23 @@
 
 package com.pennsieve.helpers.fakes
 
+import cats.data.EitherT
 import com.pennsieve.db.{ ChangelogEventMapper, DatasetPublicationStatusMapper }
+import com.pennsieve.domain.CoreError
 import com.pennsieve.managers.DatasetPublicationStatusManager
-import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.models.{
+  Dataset,
+  DatasetPublicationStatus,
+  Organization,
+  PublicationStatus,
+  PublicationType,
+  User
+}
 import com.pennsieve.traits.PostgresProfile.api.Database
 
-/** Skeleton fake. */
+import java.time.LocalDate
+import scala.concurrent.{ ExecutionContext, Future }
+
 class FakeDatasetPublicationStatusManager(
   val state: InMemoryState,
   organization: Organization,
@@ -34,10 +45,61 @@ class FakeDatasetPublicationStatusManager(
         "your test tried to use the database. Override the method on this fake."
     )
 
-  // Slick mappers; only touch db on `.run(...)`.
   override lazy val datasetPublicationStatusMapper
     : DatasetPublicationStatusMapper =
     new DatasetPublicationStatusMapper(organization)
   override lazy val changelogEventMapper: ChangelogEventMapper =
     new ChangelogEventMapper(organization)
+
+  private def statusesForDataset(
+    datasetId: Int
+  ): Seq[DatasetPublicationStatus] =
+    state.datasetPublicationStatuses
+      .collect {
+        case ((orgId, _), s)
+            if orgId == organization.id && s.datasetId == datasetId =>
+          s
+      }
+      .toSeq
+      .sortBy(_.id)
+
+  override def getLatestByDataset(
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[DatasetPublicationStatus]] =
+    EitherT.rightT(statusesForDataset(datasetId).reverse.headOption)
+
+  override def getLogByDataset(
+    datasetId: Int,
+    sortAscending: Boolean = false
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[DatasetPublicationStatus]] = {
+    val ordered = statusesForDataset(datasetId)
+    EitherT.rightT(if (sortAscending) ordered else ordered.reverse)
+  }
+
+  override def create(
+    dataset: Dataset,
+    publicationStatus: PublicationStatus,
+    publicationType: PublicationType,
+    comments: Option[String] = None,
+    embargoReleaseDate: Option[LocalDate] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetPublicationStatus] = {
+    val id = state.newId()
+    val row = DatasetPublicationStatus(
+      datasetId = dataset.id,
+      publicationStatus = publicationStatus,
+      publicationType = publicationType,
+      createdBy = if (actor.id == 0) None else Some(actor.id),
+      comments = comments,
+      embargoReleaseDate = embargoReleaseDate,
+      id = id
+    )
+    state.datasetPublicationStatuses.put((organization.id, id), row)
+    EitherT.rightT(row)
+  }
 }

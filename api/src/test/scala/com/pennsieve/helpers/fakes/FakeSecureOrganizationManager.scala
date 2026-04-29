@@ -67,6 +67,44 @@ class FakeSecureOrganizationManager(state: InMemoryState, val actor: User)
       case None => EitherT.leftT(NotFound(nodeId))
     }
 
+  override def getTeamWithOrganizationTeamByNodeId(
+    organization: Organization,
+    teamId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[
+    Future,
+    CoreError,
+    (com.pennsieve.models.Team, com.pennsieve.models.OrganizationTeam)
+  ] = {
+    val team = state.teams.collectFirst {
+      case ((orgId, _), t) if orgId == organization.id && t.nodeId == teamId =>
+        t
+    }
+    team match {
+      case Some(t) =>
+        EitherT.rightT(
+          (
+            t,
+            com.pennsieve.models.OrganizationTeam(
+              organizationId = organization.id,
+              teamId = t.id,
+              permission = DBPermission.Delete
+            )
+          )
+        )
+      case None => EitherT.leftT(NotFound(teamId))
+    }
+  }
+
+  override def getUserPermission(
+    organization: Organization,
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[DBPermission]] =
+    EitherT.rightT(state.orgUserPermissions.get((organization.id, user.id)))
+
   override def hasPermission(
     organization: Organization,
     permission: DBPermission

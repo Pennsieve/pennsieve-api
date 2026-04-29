@@ -34,6 +34,8 @@ import com.pennsieve.models.{
   Organization,
   OrganizationUser,
   Package,
+  Role,
+  Team,
   Token,
   User,
   Webhook,
@@ -89,6 +91,39 @@ class InMemoryState {
     new TrieMap() // (orgId, datasetId, doi+rel)
   val webhooks: TrieMap[(Int, Int), Webhook] = new TrieMap()
   val changelogEvents: TrieMap[(Int, Int), ChangelogEventAndType] =
+    new TrieMap()
+
+  // Per-org list of default DatasetStatus options that have been seeded.
+  val datasetStatusDefaultsSeeded: TrieMap[Int, Boolean] = new TrieMap()
+
+  // Roles linking principals to datasets.
+  // (orgId, userId, datasetId) -> Role
+  val datasetUserRoles: TrieMap[(Int, Int, Int), Role] = new TrieMap()
+  // (orgId, teamId, datasetId) -> Role
+  val datasetTeamRoles: TrieMap[(Int, Int, Int), Role] = new TrieMap()
+  // (orgId, datasetId) -> Role (the org-wide default role for the dataset)
+  val datasetOrgRoles: TrieMap[(Int, Int), Role] = new TrieMap()
+
+  // (orgId, datasetId, contributorId) -> order
+  val datasetContributors: TrieMap[(Int, Int, Int), Int] = new TrieMap()
+  // (orgId, datasetId, collectionId) -> Unit (membership)
+  val datasetCollections: TrieMap[(Int, Int, Int), Unit] = new TrieMap()
+
+  // (orgId, teamId) -> Team
+  val teams: TrieMap[(Int, Int), Team] = new TrieMap()
+
+  // (orgId, packageId) -> ExternalFile
+  val externalFiles: TrieMap[(Int, Int), com.pennsieve.models.ExternalFile] =
+    new TrieMap()
+
+  // (orgId, datasetAssetUuid) -> DatasetAsset (UUID-keyed instead of Int)
+  val datasetAssetsByUuid
+    : TrieMap[(Int, java.util.UUID), com.pennsieve.models.DatasetAsset] =
+    new TrieMap()
+
+  // (orgId, datasetId) -> Seq[DatasetIgnoreFile]
+  val datasetIgnoreFiles
+    : TrieMap[(Int, Int), Seq[com.pennsieve.models.DatasetIgnoreFile]] =
     new TrieMap()
 
   private val ids = new AtomicInteger(1)

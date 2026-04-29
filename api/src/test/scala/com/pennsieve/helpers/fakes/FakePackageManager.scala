@@ -16,10 +16,192 @@
 
 package com.pennsieve.helpers.fakes
 
+import cats.data.EitherT
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
 import com.pennsieve.managers.{ DatasetManager, PackageManager }
+import com.pennsieve.models._
 
-/** Skeleton fake. Inherits db/actor/datasetsMapper from the supplied (fake)
-  * DatasetManager. Methods fall through to the trait body and hit the
-  * throwing `db` until tests override them. */
+import scala.concurrent.{ ExecutionContext, Future }
+
+/**
+  * In-memory fake of `PackageManager`. Reads/writes `state.packages`.
+  *
+  * Inherits `db` (throwing) and `actor` from the supplied (fake)
+  * `DatasetManager`. The trait's `organization` derives from `datasetManager.organization`.
+  */
 class FakePackageManager(val datasetManager: DatasetManager)
-    extends PackageManager
+    extends PackageManager {
+
+  // We can rely on the supplied datasetManager being a FakeDatasetManager so
+  // we can access shared InMemoryState through it.
+  private def state: InMemoryState =
+    datasetManager.asInstanceOf[FakeDatasetManager].state
+  private def orgId: Int = datasetManager.organization.id
+
+  private def putPackage(p: Package): Package = {
+    state.packages.put((orgId, p.id), p)
+    p
+  }
+
+  private def packagesForDataset(datasetId: Int): Iterable[Package] =
+    state.packages.collect {
+      case ((o, _), p) if o == orgId && p.datasetId == datasetId => p
+    }
+
+  override def create(
+    name: String,
+    `type`: PackageType,
+    state0: PackageState,
+    dataset: Dataset,
+    ownerId: Option[Int],
+    parent: Option[Package],
+    importId: Option[java.util.UUID] = None,
+    attributes: List[ModelProperty] = List(),
+    description: Option[String] = None,
+    externalLocation: Option[String] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Package] = {
+    if (parent.exists(_.datasetId != dataset.id))
+      EitherT.leftT(
+        PredicateError(
+          "a package must belong to the same dataset as its parent"
+        )
+      )
+    else if (name.trim.isEmpty)
+      EitherT.leftT(PredicateError("package name must not be empty"))
+    else if (`type` == PackageType.ExternalFile && externalLocation.isEmpty)
+      EitherT.leftT(
+        PredicateError("Externally Linked files must have a location")
+      )
+    else {
+      val nodeCode =
+        if (`type` == PackageType.Collection) NodeCodes.collectionCode
+        else NodeCodes.packageCode
+      val id = state.newId()
+      val pkg = Package(
+        nodeId = NodeCodes.generateId(nodeCode),
+        name = name,
+        `type` = `type`,
+        datasetId = dataset.id,
+        ownerId = ownerId,
+        state = state0,
+        parentId = parent.map(_.id),
+        importId = importId,
+        attributes = attributes,
+        id = id
+      )
+      putPackage(pkg)
+      // optional external file linkage — not needed for the tests we currently
+      // exercise, but keep the placeholder for later
+      EitherT.rightT(pkg)
+    }
+  }
+
+  override def get(
+    id: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Package] =
+    state.packages.get((orgId, id)) match {
+      case Some(p) => EitherT.rightT(p)
+      case None => EitherT.leftT(NotFound(s"Package ($id)"))
+    }
+
+  override def getByNodeId(
+    nodeId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Package] =
+    state.packages.values.find(p => p.nodeId == nodeId) match {
+      case Some(p) => EitherT.rightT(p)
+      case None => EitherT.leftT(NotFound(nodeId))
+    }
+
+  override def children(
+    parent: Option[Package],
+    dataset: Dataset,
+    offset: Option[Int] = None,
+    limit: Option[Int] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[Package]] = {
+    val all = packagesForDataset(dataset.id)
+      .filter(p => p.parentId == parent.map(_.id))
+      .toList
+      .sortBy(_.name)
+    val sliced = (offset, limit) match {
+      case (Some(o), Some(l)) => all.drop(o).take(l)
+      case _ => all
+    }
+    EitherT.rightT(sliced)
+  }
+
+  override def getPackagesPage(
+    dataset: Dataset,
+    startAtId: Option[Int],
+    pageSize: Int,
+    filterType: Option[Set[PackageType]],
+    filename: Option[String]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Vector[Package]] = {
+    val all = packagesForDataset(dataset.id)
+      .filterNot(_.state == PackageState.DELETING)
+      .filterNot(_.state == PackageState.DELETED)
+      .toList
+      .sortBy(_.id)
+      .filter(p => startAtId.forall(p.id >= _))
+      .filter(p => filterType.forall(_.contains(p.`type`)))
+      .filter(
+        p =>
+          filename.forall(name => p.name.toLowerCase.contains(name.toLowerCase))
+      )
+    EitherT.rightT(all.take(pageSize + 1).toVector)
+  }
+
+  override def getPackagesPageWithFiles(
+    dataset: Dataset,
+    startAtId: Option[Int],
+    pageSize: Int,
+    filterType: Option[Set[PackageType]],
+    filename: Option[String]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[PackagePageTruncated]] = {
+    for {
+      pkgs <- getPackagesPage(
+        dataset,
+        startAtId,
+        pageSize,
+        filterType,
+        filename
+      )
+    } yield
+      pkgs.map { p =>
+        val files = state.files.collect {
+          case ((o, _), f) if o == orgId && f.packageId == p.id => f
+        }.toSeq
+        (p, files, false)
+      }
+  }
+
+  override def packageTypes(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Map[PackageType, Int]] = {
+    val grouped = packagesForDataset(dataset.id)
+      .filterNot(
+        p =>
+          p.state == PackageState.DELETING ||
+            p.state == PackageState.DELETED ||
+            p.state == PackageState.RESTORING
+      )
+      .groupBy(_.`type`)
+      .view
+      .mapValues(_.size)
+      .toMap
+    EitherT.rightT(grouped)
+  }
+}

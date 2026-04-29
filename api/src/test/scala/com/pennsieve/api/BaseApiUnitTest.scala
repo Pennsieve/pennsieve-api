@@ -56,6 +56,7 @@ import com.pennsieve.helpers.fakes.{
   FakeDatasetPreviewManager,
   FakeDatasetPublicationStatusManager,
   FakeDatasetStatusManager,
+  FakeExternalFileManager,
   FakeExternalPublicationManager,
   FakeFileManager,
   FakePackageManager,
@@ -306,6 +307,36 @@ trait BaseApiUnitTest
           new FakeWebhookManager(st, org, u)
         override lazy val changelogManager: ChangelogManager =
           new FakeChangelogManager(st, org, u)
+        override lazy val externalFileManager
+          : com.pennsieve.managers.ExternalFileManager =
+          new FakeExternalFileManager(
+            st,
+            org,
+            externalFilesMapper,
+            packageManager
+          )
+
+        // SecureCoreContainer.userRoles backs `authorizeDataset` /
+        // `authorizeDatasetId`. Production hits the DB; here we synthesize from
+        // InMemoryState by maxing across (user, team, org) shares per dataset.
+        override lazy val userRoles
+          : scala.concurrent.Future[Map[Int, Option[Role]]] = {
+          val datasetIdsInOrg = st.datasets.collect {
+            case ((orgId, did), _) if orgId == org.id => did
+          }.toSet
+          val map = datasetIdsInOrg.map { did =>
+            val viaUser = st.datasetUserRoles.get((org.id, u.id, did))
+            val viaOrg = st.datasetOrgRoles.get((org.id, did))
+            val viaTeam = st.datasetTeamRoles.collect {
+              case ((orgId, _, dsId), r) if orgId == org.id && dsId == did => r
+            }
+            val maxRole =
+              (viaUser.toSeq ++ viaOrg.toSeq ++ viaTeam)
+                .reduceOption((a, b) => if (a.weight >= b.weight) a else b)
+            did -> maxRole
+          }.toMap
+          scala.concurrent.Future.successful(map)
+        }
       }
   }
 
@@ -401,6 +432,33 @@ trait BaseApiUnitTest
       body.getBytes("utf-8"),
       headers = headers + contentTypeApplicationJsonHeader
     )(f)
+
+  // Apache's default DELETE doesn't allow a body — controller endpoints that
+  // accept a JSON body on DELETE need this hand-rolled variant.
+  private class HttpDeleteEntity(uri: String)
+      extends org.apache.http.client.methods.HttpEntityEnclosingRequestBase {
+    setURI(java.net.URI.create(uri))
+    override def getMethod: String = "DELETE"
+  }
+
+  protected def deleteJson[A](
+    uri: String,
+    body: String,
+    headers: Map[String, String] = Map()
+  )(
+    f: => A
+  ): A = {
+    val bodyBytes: Array[Byte] = body.getBytes("utf-8")
+    val _headers = headers + contentTypeApplicationJsonHeader
+    val client = createClient
+    val url = "%s/%s".format(baseUrl, uri)
+    val req = new HttpDeleteEntity(url)
+    req.setEntity(new org.apache.http.entity.ByteArrayEntity(bodyBytes))
+    _headers.foreach { case (name, v) => req.addHeader(name, v) }
+    withResponse(
+      org.scalatra.test.HttpComponentsClientResponse(client.execute(req))
+    )(f)
+  }
 
   override def afterAll(): Unit = {
     shutdown(system)
