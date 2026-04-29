@@ -249,6 +249,53 @@ class TimeSeriesManagerSpec extends BaseManagerSpec {
     tm.getChannelsByViewerAssetId(UUID.randomUUID()).await.value shouldBe empty
   }
 
+  "creating a channel with viewer_asset_id" should "persist it on the new row" in {
+    val user = createUser()
+    val tm = timeSeriesManager()
+
+    val dataset = createDataset(user = user)
+    val p = createPackage(
+      user = user,
+      dataset = dataset,
+      `type` = PackageType.TimeSeries
+    )
+
+    val assetId = UUID.randomUUID()
+    val channel = tm
+      .createChannel(
+        p,
+        "linked",
+        0,
+        10,
+        "ms",
+        1.0,
+        "eeg",
+        None,
+        0,
+        viewerAssetId = Some(assetId)
+      )
+      .await
+      .value
+
+    channel.viewerAssetId shouldBe Some(assetId)
+    tm.getChannel(channel.id, p).await.value.viewerAssetId shouldBe Some(assetId)
+  }
+
+  "creating a channel without viewer_asset_id" should "leave it null" in {
+    val user = createUser()
+    val tm = timeSeriesManager()
+
+    val dataset = createDataset(user = user)
+    val p = createPackage(
+      user = user,
+      dataset = dataset,
+      `type` = PackageType.TimeSeries
+    )
+
+    val channel = createChannel(p, "unlinked")(tm)
+    channel.viewerAssetId shouldBe None
+  }
+
   "a channel on a timeseries package created by a user" should "readable by another user in the same group" in {
     val user = createUser()
     val tm = timeSeriesManager()

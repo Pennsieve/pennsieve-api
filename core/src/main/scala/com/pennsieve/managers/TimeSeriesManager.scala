@@ -51,24 +51,26 @@ class TimeSeriesManager(db: Database, organization: Organization) {
     group: Option[String],
     lastAnnotation: Long,
     spikeDuration: Option[Long] = None,
-    properties: List[ModelProperty] = Nil
+    properties: List[ModelProperty] = Nil,
+    viewerAssetId: Option[UUID] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Channel] = {
     val nodeId = NodeCodes.generateId(NodeCodes.channelCode)
     val query = table returning table += Channel(
-      nodeId,
-      `package`.id,
-      name.trim,
-      start,
-      end,
-      unit,
-      rate,
-      `type`,
-      group,
-      lastAnnotation,
-      spikeDuration,
-      properties
+      nodeId = nodeId,
+      packageId = `package`.id,
+      name = name.trim,
+      start = start,
+      end = end,
+      unit = unit,
+      rate = rate,
+      `type` = `type`,
+      group = group,
+      lastAnnotation = lastAnnotation,
+      spikeDuration = spikeDuration,
+      properties = properties,
+      viewerAssetId = viewerAssetId
     )
     db.run(query.transactionally).toEitherT
   }

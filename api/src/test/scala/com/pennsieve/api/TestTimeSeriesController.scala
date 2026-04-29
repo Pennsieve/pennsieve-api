@@ -20,6 +20,7 @@ import com.pennsieve.db.TimeSeriesAnnotation
 import com.pennsieve.models.{ Channel, ModelProperty, Package }
 import com.pennsieve.dtos.{ ChannelDTO, ModelPropertiesDTO, ModelPropertyRO }
 
+import java.util.UUID
 import scala.collection.SortedSet
 import com.pennsieve.helpers.{ DataSetTestMixin, TimeSeriesHelper }
 import com.pennsieve.models.PackageState.READY
@@ -275,6 +276,42 @@ class TestTimeSeriesController
     ) {
       status should equal(201)
       parsedBody.extract[List[ChannelDTO]] should have size 5
+    }
+  }
+
+  it should "create channel with viewer_asset_id" in {
+    val tsPkg = createTimeSeriesPackage()._1
+    val assetId = UUID.randomUUID()
+
+    val request = TimeSeriesChannelWriteRequest(
+      name = "asset-linked",
+      start = 1000,
+      end = 10000,
+      unit = "unit",
+      rate = 256.5,
+      channelType = "eeg",
+      lastAnnotation = 0,
+      group = None,
+      spikeDuration = None,
+      properties = List(),
+      viewerAssetId = Some(assetId)
+    )
+    val json = write(request)
+
+    postJson(
+      s"/${tsPkg.nodeId}/channels",
+      json,
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status should equal(201)
+      val created = parsedBody.extract[ChannelDTO]
+      created.content.name should equal(request.name)
+
+      val persisted = timeSeriesManager
+        .getChannel(created.content.id, tsPkg)
+        .await
+        .value
+      persisted.viewerAssetId shouldBe Some(assetId)
     }
   }
 
