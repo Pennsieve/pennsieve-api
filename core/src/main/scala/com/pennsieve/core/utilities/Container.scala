@@ -321,7 +321,7 @@ trait ChangelogContainer {
   val events_topic: SnsTopic =
     config.as[String]("pennsieve.changelog.sns_topic")
 
-  lazy val changelogManager =
+  lazy val changelogManager: ChangelogManager =
     new ChangelogManagerImpl(db, organization, user, events_topic, sns)
 
 }
@@ -572,7 +572,7 @@ trait ExternalPublicationContainer
     with DatabaseContainer {
   self: Container =>
 
-  lazy val externalPublicationManager =
+  lazy val externalPublicationManager: ExternalPublicationManager =
     new ExternalPublicationManagerImpl(db, organization)
 }
 
