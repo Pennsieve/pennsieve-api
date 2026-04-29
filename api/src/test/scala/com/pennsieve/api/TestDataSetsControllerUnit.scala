@@ -54,6 +54,7 @@ import com.pennsieve.models.{
   CognitoId,
   DBPermission,
   Dataset,
+  DatasetType,
   Degree,
   License,
   NodeCodes,
@@ -1475,6 +1476,52 @@ class TestDataSetsControllerUnit extends BaseApiUnitTest {
     }
   }
 
+  test("get a data set with its collaborators") {
+    val ds = createDataSet("Foo")
+
+    val organizationIds = write(List(loggedInOrganization.nodeId))
+    putJson(
+      s"/${ds.nodeId}/collaborators",
+      organizationIds,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      parsedBody
+        .extract[CollaboratorChanges]
+        .changes
+        .get(loggedInOrganization.nodeId)
+        .value
+        .success should equal(true)
+    }
+
+    val userIds = write(List(colleagueUser.nodeId))
+    putJson(
+      s"/${ds.nodeId}/collaborators",
+      userIds,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      parsedBody
+        .extract[CollaboratorChanges]
+        .changes
+        .get(colleagueUser.nodeId)
+        .value
+        .success should equal(true)
+    }
+
+    get(
+      s"/${ds.nodeId}/collaborators",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      (parsedBody \ "organizations" \ "id")
+        .extract[List[String]] should equal(List(loggedInOrganization.nodeId))
+      (parsedBody \ "users" \ "id").extract[List[String]] should contain(
+        colleagueUser.nodeId
+      )
+    }
+  }
+
   test("PUT collaborators/users does not allow owner change") {
     val myDS = createDataSet("My DataSet")
     val roleChangeRequest =
@@ -2070,6 +2117,26 @@ class TestDataSetsControllerUnit extends BaseApiUnitTest {
     }
   }
 
+  test("return bad request for a invalid package type") {
+    get(
+      s"/unused-dataset-id/packages?types=faketype",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 400
+      body shouldBe "Invalid type name"
+    }
+  }
+
+  test("return bad request for a invalid package type with a real type in list") {
+    get(
+      s"/unused-dataset-id/packages?types=faketype:CSV",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 400
+      body shouldBe "Invalid type name"
+    }
+  }
+
   test("return bad request for a non number as the cursor starting id") {
     get(
       s"/unused-dataset-id/packages?cursor=packages:aa",
@@ -2533,6 +2600,139 @@ class TestDataSetsControllerUnit extends BaseApiUnitTest {
     read[PublishCompleteRequest](request).lastPublishedDate shouldBe Some(date)
   }
 
+  test("external repository synchronization flags can be missing") {
+    val repoName = "test-dataset-for-external-repo"
+    val repoUrl = s"https://github.com/Pennsieve/$repoName"
+
+    val ds = createDataSet(repoName, `type` = DatasetType.Release)
+
+    secureContainer.datasetManager
+      .addRelease(
+        com.pennsieve.models.DatasetRelease(
+          datasetId = ds.id,
+          origin = "GitHub",
+          url = repoUrl,
+          label = Some("v1.0.0"),
+          marker = Some("1ab2c98"),
+          releaseDate = Some(java.time.ZonedDateTime.now())
+        )
+      )
+      .await
+      .value
+
+    val extRepo = com.pennsieve.models.ExternalRepository(
+      origin = "GitHub",
+      `type` = com.pennsieve.models.ExternalRepositoryType.Publishing,
+      url = repoUrl,
+      organizationId = secureContainer.organization.id,
+      userId = secureContainer.user.id,
+      datasetId = Some(ds.id),
+      status = com.pennsieve.models.ExternalRepositoryStatus.Enabled,
+      autoProcess = true
+    )
+    secureContainer.datasetManager.addExternalRepository(extRepo).await.value
+
+    get(
+      s"/paginated?type=release",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val returned =
+        parsedBody.extract[com.pennsieve.api.PaginatedDatasets].datasets
+      returned.length shouldEqual 1
+      val head = returned.head
+      head.content.datasetType shouldBe DatasetType.Release
+      head.content.repository.isDefined shouldBe true
+      head.content.repository.get.synchronize.isDefined shouldBe false
+    }
+  }
+
+  test("external repository includes synchronization flags when set") {
+    val repoName = "test-dataset-for-external-repo"
+    val repoUrl = s"https://github.com/Pennsieve/$repoName"
+
+    val ds = createDataSet(repoName, `type` = DatasetType.Release)
+
+    secureContainer.datasetManager
+      .addRelease(
+        com.pennsieve.models.DatasetRelease(
+          datasetId = ds.id,
+          origin = "GitHub",
+          url = repoUrl,
+          label = Some("v1.0.0"),
+          marker = Some("1ab2c98"),
+          releaseDate = Some(java.time.ZonedDateTime.now())
+        )
+      )
+      .await
+      .value
+
+    val syncFlags = com.pennsieve.models.SynchrnonizationSettings(
+      banner = false,
+      changelog = false,
+      contributors = true,
+      license = true,
+      readme = true
+    )
+    val extRepo = com.pennsieve.models.ExternalRepository(
+      origin = "GitHub",
+      `type` = com.pennsieve.models.ExternalRepositoryType.Publishing,
+      url = repoUrl,
+      organizationId = secureContainer.organization.id,
+      userId = secureContainer.user.id,
+      datasetId = Some(ds.id),
+      status = com.pennsieve.models.ExternalRepositoryStatus.Enabled,
+      autoProcess = true,
+      synchronize = Some(syncFlags)
+    )
+    secureContainer.datasetManager.addExternalRepository(extRepo).await.value
+
+    get(
+      s"/paginated?type=release",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val returned =
+        parsedBody.extract[com.pennsieve.api.PaginatedDatasets].datasets
+      returned.length shouldEqual 1
+      val head = returned.head
+      head.content.repository.get.synchronize.get shouldEqual syncFlags
+    }
+  }
+
+  test("2 step publishing - fail to embargo dataset without release date") {
+    val ds = createDataSet("embargo-no-release-date")
+
+    post(
+      s"/${ds.nodeId}/publication/request?publicationType=embargo",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 400
+    }
+  }
+
+  test("2 step publishing - invalid embargo release date") {
+    val ds = createDataSet("embargo-invalid-date")
+
+    // Greater than 1 year in the future
+    postJson(
+      s"/${ds.nodeId}/publication/request?publicationType=embargo&embargoReleaseDate=2040-01-01",
+      "",
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status shouldBe 400
+    }
+
+    // In the past
+    postJson(
+      s"/${ds.nodeId}/publication/request?publicationType=embargo&embargoReleaseDate=2020-01-01",
+      "",
+      headers = authorizationHeader(loggedInJwt)
+    ) {
+      status shouldBe 400
+    }
+  }
+
   // ---- ORCID work JSON encoding (pure model tests) -----------------
 
   test("orcid work json encoding - add record") {
@@ -2636,6 +2836,58 @@ class TestDataSetsControllerUnit extends BaseApiUnitTest {
   }
 
   // ---- custom event --------------------------------------------------
+
+  test(
+    "guest user should be restricted to seeing only authorized datasets on paginated endpoint"
+  ) {
+    for (i <- 1 to 10) {
+      createDataSet(s"test-dataset-$i")
+    }
+    val guestContainer = secureContainerBuilder(guestUser, loggedInOrganization)
+    guestContainer.datasetManager
+      .create(name = "guest-user-dataset")
+      .await
+      .value
+
+    get(
+      "/paginated",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[com.pennsieve.api.PaginatedDatasets]
+      response.datasets.length shouldEqual 11
+    }
+
+    get(
+      "/paginated",
+      headers = authorizationHeader(guestJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      val response = parsedBody.extract[com.pennsieve.api.PaginatedDatasets]
+      response.datasets.length shouldEqual 1
+    }
+  }
+
+  test("guest user should have access to their own dataset") {
+    val dataset1 = createDataSet("workspace-shared-dataset")
+    secureContainer.datasetManager
+      .update(dataset1.copy(permission = Some(DBPermission.Delete)))
+      .await
+      .value
+
+    val guestContainer = secureContainerBuilder(guestUser, loggedInOrganization)
+    guestContainer.datasetManager
+      .create(name = "guest-user-dataset")
+      .await
+      .value
+
+    get("/", headers = authorizationHeader(guestJwt) ++ traceIdHeader()) {
+      status should equal(200)
+      val result = parsedBody.extract[List[DataSetDTO]]
+      result.length should equal(1)
+      result.map(_.content.name) should contain("guest-user-dataset")
+    }
+  }
 
   test(
     "guest user is not permitted access to datasets shared to workspace users"
@@ -3097,11 +3349,12 @@ class TestDataSetsControllerUnit extends BaseApiUnitTest {
   private def createDataSet(
     name: String,
     description: Option[String] = Some("This is a dataset."),
-    tags: List[String] = List("tag")
+    tags: List[String] = List("tag"),
+    `type`: DatasetType = DatasetType.Research
   ): Dataset = {
     val container = secureContainerFor(loggedInUser, loggedInOrganization)
     container.datasetManager
-      .create(name, description, tags = tags)
+      .create(name, description, tags = tags, `type` = `type`)
       .await
       .value
   }

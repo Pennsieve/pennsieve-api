@@ -245,6 +245,44 @@ class FakeDatasetManager(
     }
   }
 
+  override def getCollaborators(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, com.pennsieve.managers.Collaborators] = {
+    val users = state.datasetUserRoles
+      .collect {
+        case ((orgId, uid, dsId), role)
+            if orgId == org.id && dsId == dataset.id && role != Role.Owner =>
+          uid
+      }
+      .flatMap(state.users.get)
+      .toSeq
+    val teams = state.datasetTeamRoles
+      .collect {
+        case ((orgId, tid, dsId), _) if orgId == org.id && dsId == dataset.id =>
+          tid
+      }
+      .flatMap(
+        tid =>
+          state.teams.get((org.id, tid)).map { t =>
+            (
+              t,
+              com.pennsieve.models.OrganizationTeam(
+                organizationId = org.id,
+                teamId = t.id,
+                permission = DBPermission.Delete
+              )
+            )
+          }
+      )
+      .toSeq
+    val orgs =
+      if (state.datasetOrgRoles.contains((org.id, dataset.id))) Seq(org)
+      else Seq.empty
+    EitherT.rightT(com.pennsieve.managers.Collaborators(users, orgs, teams))
+  }
+
   // ---- collaborators / counts -----------------------------------------
   override def getCollaboratorCounts(
     dataset: Dataset
@@ -1005,6 +1043,71 @@ class FakeDatasetManager(
     }
     EitherT.rightT(())
   }
+
+  // ---- releases & external repositories -------------------------------
+  override def getReleases(
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[
+    Seq[com.pennsieve.models.DatasetRelease]
+  ]] = {
+    val releases = state.datasetReleases.collect {
+      case ((orgId, dsId, _), r) if orgId == org.id && dsId == datasetId => r
+    }.toSeq
+    EitherT.rightT(if (releases.isEmpty) None else Some(releases))
+  }
+
+  override def addRelease(
+    release: com.pennsieve.models.DatasetRelease
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, com.pennsieve.models.DatasetRelease] = {
+    state.datasets.get((org.id, release.datasetId)) match {
+      case Some(d) if d.`type` == DatasetType.Release =>
+        val id = state.newId()
+        val withId = release.copy(id = id)
+        state.datasetReleases.put((org.id, release.datasetId, id), withId)
+        EitherT.rightT(withId)
+      case Some(_) =>
+        EitherT.leftT(
+          PredicateError(
+            s"dataset type must be ${DatasetType.Release.toString}"
+          )
+        )
+      case None => EitherT.leftT(NotFound(s"Dataset (${release.datasetId})"))
+    }
+  }
+
+  override def addExternalRepository(
+    extRepo: com.pennsieve.models.ExternalRepository
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, com.pennsieve.models.ExternalRepository] = {
+    val datasetId = extRepo.datasetId.getOrElse(-1)
+    state.datasets.get((org.id, datasetId)) match {
+      case Some(d) if d.`type` == DatasetType.Release =>
+        state.externalRepositories.put((org.id, datasetId), extRepo)
+        EitherT.rightT(extRepo)
+      case Some(_) =>
+        EitherT.leftT(
+          PredicateError(
+            s"dataset type must be ${DatasetType.Release.toString}"
+          )
+        )
+      case None => EitherT.leftT(NotFound(s"Dataset ($datasetId)"))
+    }
+  }
+
+  override def getExternalRepository(
+    organizationId: Int,
+    datasetId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[
+    com.pennsieve.models.ExternalRepository
+  ]] =
+    EitherT.rightT(state.externalRepositories.get((organizationId, datasetId)))
 
   // ---- ignore files / status log -------------------------------------
   override def getIgnoreFiles(

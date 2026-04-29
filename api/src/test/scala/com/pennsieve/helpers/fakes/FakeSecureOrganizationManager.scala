@@ -105,6 +105,22 @@ class FakeSecureOrganizationManager(state: InMemoryState, val actor: User)
   ): EitherT[Future, CoreError, Option[DBPermission]] =
     EitherT.rightT(state.orgUserPermissions.get((organization.id, user.id)))
 
+  override def getSubscription(
+    organizationId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, com.pennsieve.models.Subscription] =
+    EitherT.rightT(
+      com.pennsieve.models.Subscription(
+        organizationId = organizationId,
+        status = com.pennsieve.models.SubscriptionStatus.ConfirmedSubscription,
+        `type` = None,
+        acceptedForOrganization = None,
+        acceptedByUser = None,
+        acceptedBy = None
+      )
+    )
+
   override def hasPermission(
     organization: Organization,
     permission: DBPermission

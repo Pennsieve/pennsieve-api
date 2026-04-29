@@ -126,6 +126,16 @@ class InMemoryState {
     : TrieMap[(Int, Int), Seq[com.pennsieve.models.DatasetIgnoreFile]] =
     new TrieMap()
 
+  // (orgId, datasetId, releaseId) -> DatasetRelease
+  val datasetReleases
+    : TrieMap[(Int, Int, Int), com.pennsieve.models.DatasetRelease] =
+    new TrieMap()
+
+  // (orgId, datasetId) -> ExternalRepository
+  val externalRepositories
+    : TrieMap[(Int, Int), com.pennsieve.models.ExternalRepository] =
+    new TrieMap()
+
   private val ids = new AtomicInteger(1)
   def newId(): Int = ids.getAndIncrement()
 }
