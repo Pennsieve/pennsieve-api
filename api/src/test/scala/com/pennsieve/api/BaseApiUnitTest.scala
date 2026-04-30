@@ -66,6 +66,7 @@ import com.pennsieve.helpers.fakes.{
   FakeSecureTokenManager,
   FakeStorageManager,
   FakeTeamManager,
+  FakeTimeSeriesManager,
   FakeUserManager,
   FakeWebhookManager,
   InMemoryState
@@ -278,7 +279,7 @@ trait BaseApiUnitTest
         override lazy val contributorsManager: ContributorManager =
           new FakeContributorManager(st, org, u)
         override lazy val storageManager: StorageServiceClientTrait =
-          new FakeStorageManager
+          new FakeStorageManager(st, org)
         override lazy val pennsieveTermsOfServiceManager
           : PennsieveTermsOfServiceManager =
           new FakePennsieveTermsOfServiceManager(st)
@@ -322,6 +323,9 @@ trait BaseApiUnitTest
         override lazy val metadataManager
           : com.pennsieve.managers.MetadataManager =
           new FakeMetadataManager(phantomDb, u, org)
+        override lazy val timeSeriesManager
+          : com.pennsieve.managers.TimeSeriesManager =
+          new FakeTimeSeriesManager(st, org, phantomDb)
 
         // SecureCoreContainer.userRoles backs `authorizeDataset` /
         // `authorizeDatasetId`. Production hits the DB; here we synthesize from

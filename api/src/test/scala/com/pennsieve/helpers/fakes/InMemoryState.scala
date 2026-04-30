@@ -161,6 +161,17 @@ class InMemoryState {
     : TrieMap[(Int, Int), com.pennsieve.models.DatasetIntegration] =
     new TrieMap()
 
+  // (orgId, channelId) -> Channel
+  val channels: TrieMap[(Int, Int), com.pennsieve.models.Channel] =
+    new TrieMap()
+
+  // Storage accounting. (orgId, packageId) -> bytes; (orgId, datasetId) -> bytes;
+  // orgId -> bytes (org-wide). userId -> bytes.
+  val packageStorage: TrieMap[(Int, Int), Long] = new TrieMap()
+  val datasetStorage: TrieMap[(Int, Int), Long] = new TrieMap()
+  val organizationStorage: TrieMap[Int, Long] = new TrieMap()
+  val userStorage: TrieMap[Int, Long] = new TrieMap()
+
   private val ids = new AtomicInteger(1)
   def newId(): Int = ids.getAndIncrement()
 
@@ -204,6 +215,11 @@ class InMemoryState {
     datasetStatusLog.clear()
     datasetRegistrations.clear()
     datasetIntegrations.clear()
+    channels.clear()
+    packageStorage.clear()
+    datasetStorage.clear()
+    organizationStorage.clear()
+    userStorage.clear()
     ids.set(1)
   }
 }

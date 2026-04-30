@@ -134,6 +134,209 @@ class FakeFileManager(
       case _ => EitherT.leftT[Future, File](NotFound(s"File ($id)"): CoreError)
     }
 
+  override def getSources(
+    `package`: Package,
+    limit: Option[Int] = None,
+    offset: Option[Int] = None,
+    orderBy: Option[(OrderByColumn, OrderByDirection)] = None,
+    excludePending: Boolean = false
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[File]] = {
+    val all = filesForPackage(`package`.id)
+      .filter(_.objectType == FileObjectType.Source)
+      .filterNot(
+        f =>
+          excludePending && f.uploadedState
+            .contains(com.pennsieve.models.FileState.PENDING)
+      )
+      .toSeq
+    val sorted = orderBy match {
+      case Some((OrderByColumn.Name, dir)) =>
+        val asc = all.sortBy(_.name)
+        if (dir == OrderByDirection.Desc) asc.reverse else asc
+      case Some((OrderByColumn.Size, dir)) =>
+        val asc = all.sortBy(_.size)
+        if (dir == OrderByDirection.Desc) asc.reverse else asc
+      case Some((OrderByColumn.CreatedAt, dir)) =>
+        val asc = all.sortBy(_.createdAt.toInstant)
+        if (dir == OrderByDirection.Desc) asc.reverse else asc
+      case _ => all.sortBy(_.id)
+    }
+    val withOffset = offset.fold(sorted)(o => sorted.drop(o))
+    val withLimit = limit.fold(withOffset)(l => withOffset.take(l))
+    EitherT.rightT(withLimit)
+  }
+
+  private def filesByType(
+    `package`: Package,
+    t: FileObjectType,
+    limit: Option[Int],
+    offset: Option[Int]
+  ): Seq[File] = {
+    val all = filesForPackage(`package`.id)
+      .filter(_.objectType == t)
+      .toSeq
+      .sortBy(_.id)
+    val withOffset = offset.fold(all)(o => all.drop(o))
+    limit.fold(withOffset)(l => withOffset.take(l))
+  }
+
+  override def getViews(
+    `package`: Package,
+    limit: Option[Int],
+    offset: Option[Int],
+    matchExact: Boolean
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[File]] = {
+    if (matchExact)
+      EitherT.rightT(filesByType(`package`, FileObjectType.View, limit, offset))
+    else {
+      // Mirror real fall-through: Views, else Files, else Sources.
+      val views = filesByType(`package`, FileObjectType.View, limit, offset)
+      if (views.nonEmpty) EitherT.rightT(views)
+      else {
+        val files = filesByType(`package`, FileObjectType.File, limit, offset)
+        if (files.nonEmpty) EitherT.rightT(files)
+        else
+          EitherT.rightT(
+            filesByType(`package`, FileObjectType.Source, limit, offset)
+          )
+      }
+    }
+  }
+
+  override def getFiles(
+    `package`: Package,
+    limit: Option[Int],
+    offset: Option[Int],
+    matchExact: Boolean
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[File]] = {
+    if (matchExact)
+      EitherT.rightT(filesByType(`package`, FileObjectType.File, limit, offset))
+    else {
+      val files = filesByType(`package`, FileObjectType.File, limit, offset)
+      if (files.nonEmpty) EitherT.rightT(files)
+      else
+        EitherT.rightT(
+          filesByType(`package`, FileObjectType.Source, limit, offset)
+        )
+    }
+  }
+
+  override def getByType(
+    `package`: Package,
+    objectTypes: Set[FileObjectType]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[File]] =
+    EitherT.rightT(
+      filesForPackage(`package`.id)
+        .filter(f => objectTypes.contains(f.objectType))
+        .toSeq
+        .sortBy(_.id)
+    )
+
+  override def setPublished(
+    `package`: Package,
+    published: Boolean,
+    s3Key: Option[String] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
+    val toUpdate = state.files.collect {
+      case ((o, fid), f)
+          if o == organization.id && f.packageId == `package`.id &&
+            s3Key.forall(_ == f.s3Key) =>
+        (fid, f)
+    }
+    toUpdate.foreach {
+      case (fid, f) =>
+        state.files.put((organization.id, fid), f.copy(published = published))
+    }
+    EitherT.rightT(toUpdate.size)
+  }
+
+  override def setFilePublished(
+    file: File,
+    s3Bucket: String,
+    s3Key: String,
+    s3VersionId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    if (s3VersionId.isEmpty)
+      EitherT.leftT[Future, Int](
+        PredicateError("Published S3 versionId cannot be empty string")
+      )
+    else
+      state.files.get((organization.id, file.id)) match {
+        case Some(f) if f.packageId == file.packageId =>
+          state.files.put(
+            (organization.id, file.id),
+            f.copy(
+              s3Bucket = s3Bucket,
+              s3Key = s3Key,
+              publishedS3VersionId = Some(s3VersionId),
+              published = true
+            )
+          )
+          EitherT.rightT(1)
+        case _ =>
+          EitherT.leftT(
+            NotFound(s"File for package ${file.packageId} with id ${file.id}"): CoreError
+          )
+      }
+
+  override def setFileUnpublished(
+    file: File,
+    s3Bucket: String,
+    s3Key: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    state.files.get((organization.id, file.id)) match {
+      case Some(f) if f.packageId == file.packageId =>
+        state.files.put(
+          (organization.id, file.id),
+          f.copy(
+            s3Bucket = s3Bucket,
+            s3Key = s3Key,
+            publishedS3VersionId = None,
+            published = false
+          )
+        )
+        EitherT.rightT(1)
+      case _ =>
+        EitherT.leftT(
+          NotFound(s"File for package ${file.packageId} with id ${file.id}"): CoreError
+        )
+    }
+
+  override def renameFile(
+    `file`: File,
+    newName: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, File] = {
+    val updated = `file`.copy(name = newName)
+    state.files.put((organization.id, `file`.id), updated)
+    EitherT.rightT(updated)
+  }
+
+  override def getTotalSourceCount(
+    `package`: Package
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    EitherT.rightT(
+      filesForPackage(`package`.id)
+        .count(_.objectType == FileObjectType.Source)
+    )
+
   override def getSingleSourceMap(
     `packages`: Seq[Package],
     limit: Option[Int] = None,
