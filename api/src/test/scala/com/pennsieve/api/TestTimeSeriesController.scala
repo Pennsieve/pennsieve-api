@@ -308,7 +308,7 @@ class TestTimeSeriesController
       created.content.name should equal(request.name)
 
       val persisted = timeSeriesManager
-        .getChannel(created.content.id, tsPkg)
+        .getChannelByNodeId(created.content.id, tsPkg)
         .await
         .value
       persisted.viewerAssetId shouldBe Some(assetId)
