@@ -16,14 +16,22 @@
 
 package com.pennsieve.helpers.fakes
 
+import cats.data.EitherT
 import com.pennsieve.db.FilesTable.{ OrderByColumn, OrderByDirection }
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
 import com.pennsieve.managers.{ FileManager, PackageManager }
 import com.pennsieve.models.{
   File,
+  FileChecksum,
+  FileObjectType,
   FileObjectType => FileObjType,
+  FileProcessingState,
+  FileState,
+  FileType,
   Organization,
   Package
 }
+import io.circe.Json
 
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -47,6 +55,83 @@ class FakeFileManager(
       case ((orgId, _), f)
           if orgId == organization.id && f.packageId == packageId =>
         f
+    }
+
+  override def create(
+    name: String,
+    `type`: FileType,
+    `package`: Package,
+    s3Bucket: String,
+    s3Key: String,
+    objectType: FileObjectType,
+    processingState: FileProcessingState,
+    size: Long = 0,
+    fileChecksum: Option[FileChecksum] = None,
+    uploadedState: Option[FileState] = None,
+    properties: Option[Json] = None,
+    assetType: Option[String] = None,
+    provenanceId: Option[java.util.UUID] = None,
+    publishedS3VersionId: Option[String] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, File] = {
+    val isValidProcessingState = (objectType, processingState) match {
+      case (FileObjectType.Source, FileProcessingState.Unprocessed) => true
+      case (FileObjectType.Source, FileProcessingState.Processed) => true
+      case (FileObjectType.File, FileProcessingState.NotProcessable) => true
+      case (FileObjectType.View, FileProcessingState.NotProcessable) => true
+      case _ => false
+    }
+    if (!isValidProcessingState)
+      EitherT.leftT[Future, File](
+        PredicateError(
+          s"Invalid file object type (${objectType.entryName}) and processing state (${processingState.entryName}) combination"
+        ): CoreError
+      )
+    else {
+      val id = state.newId()
+      // Match Postgres-side timestamps without named zones — JSON encode
+      // round-trip drops the zone, so equality checks would fail otherwise.
+      val now = java.time.ZonedDateTime
+        .now()
+        .withZoneSameInstant(
+          java.time.ZoneOffset.ofTotalSeconds(
+            java.time.ZonedDateTime.now().getOffset.getTotalSeconds
+          )
+        )
+      val file = File(
+        `package`.id,
+        name,
+        `type`,
+        s3Bucket,
+        s3Key,
+        objectType,
+        processingState,
+        size,
+        fileChecksum,
+        uploadedState = uploadedState,
+        properties = properties,
+        assetType = assetType,
+        provenanceId = provenanceId,
+        publishedS3VersionId = publishedS3VersionId,
+        createdAt = now,
+        updatedAt = now,
+        id = id
+      )
+      state.files.put((organization.id, id), file)
+      EitherT.rightT[Future, CoreError](file)
+    }
+  }
+
+  override def get(
+    id: Int,
+    `package`: Package
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, File] =
+    state.files.get((organization.id, id)) match {
+      case Some(f) if f.packageId == `package`.id => EitherT.rightT(f)
+      case _ => EitherT.leftT[Future, File](NotFound(s"File ($id)"): CoreError)
     }
 
   override def getSingleSourceMap(

@@ -20,7 +20,6 @@ import com.pennsieve.managers.ExternalPublicationManager
 import com.pennsieve.models.Organization
 import com.pennsieve.traits.PostgresProfile.api.Database
 
-/** Skeleton fake. */
 class FakeExternalPublicationManager(
   val state: InMemoryState,
   override val organization: Organization
@@ -31,4 +30,19 @@ class FakeExternalPublicationManager(
       "FakeExternalPublicationManager: a method not yet stubbed by your test " +
         "tried to use the database. Override the method on this fake."
     )
+
+  override def get(
+    dataset: com.pennsieve.models.Dataset
+  )(implicit
+    ec: scala.concurrent.ExecutionContext
+  ): cats.data.EitherT[
+    scala.concurrent.Future,
+    com.pennsieve.domain.CoreError,
+    Seq[com.pennsieve.models.ExternalPublication]
+  ] =
+    cats.data.EitherT.rightT(state.externalPublications.collect {
+      case ((orgId, dsId, _), p)
+          if orgId == organization.id && dsId == dataset.id =>
+        p
+    }.toSeq)
 }

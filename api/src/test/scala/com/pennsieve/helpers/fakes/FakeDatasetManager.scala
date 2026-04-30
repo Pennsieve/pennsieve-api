@@ -59,6 +59,26 @@ class FakeDatasetManager(
     d
   }
 
+  private def appendStatusLog(
+    d: Dataset,
+    status: com.pennsieve.models.DatasetStatus
+  ): Unit = {
+    val entry = com.pennsieve.models.DatasetStatusLog(
+      datasetId = d.id,
+      statusId = Some(status.id),
+      statusName = status.name,
+      statusDisplayName = status.displayName,
+      userId = Some(actor.id)
+    )
+    val buf = state.datasetStatusLog
+      .getOrElseUpdate(
+        (org.id, d.id),
+        scala.collection.mutable.ArrayBuffer.empty
+      )
+    buf += entry
+    ()
+  }
+
   // ---- create -----------------------------------------------------------
   override def create(
     name: String,
@@ -119,6 +139,8 @@ class FakeDatasetManager(
             id = id
           )
           putDataset(ds)
+          // append initial status log entry
+          appendStatusLog(ds, status)
           // owner role for actor
           state.datasetUserRoles.put((org.id, actor.id, ds.id), Role.Owner)
           // Auto-create-or-link a Contributor for the actor and link to dataset
@@ -193,6 +215,45 @@ class FakeDatasetManager(
   override def nameExists(name: String): Future[Boolean] =
     Future.successful(datasetsForOrg.exists(_.name == name))
 
+  override def getByExternalIdWithMaxRole(
+    externalId: com.pennsieve.models.ExternalId
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (Dataset, Option[Role])] = {
+    val dsOpt = externalId.value match {
+      case Left(id) => state.datasets.get((org.id, id))
+      case Right(nodeId) => datasetsForOrg.find(_.nodeId == nodeId)
+    }
+    dsOpt.filter(_.state != DatasetState.DELETING) match {
+      case None =>
+        EitherT.leftT[Future, (Dataset, Option[Role])](
+          NotFound(externalId.toString): CoreError
+        )
+      case Some(d) =>
+        val viaUser = state.datasetUserRoles.get((org.id, actor.id, d.id))
+        val viaOrg = state.datasetOrgRoles.get((org.id, d.id))
+        val userTeamIds = state.teamMemberships.collect {
+          case ((o, t, u), _) if o == org.id && u == actor.id => t
+        }.toSet
+        val viaTeam = state.datasetTeamRoles.collect {
+          case ((o, t, dsId), r)
+              if o == org.id && dsId == d.id && userTeamIds.contains(t) =>
+            r
+        }
+        val role: Option[Role] = (viaUser.toSeq ++ viaOrg.toSeq ++ viaTeam)
+          .reduceOption((a, b) => if (a.weight >= b.weight) a else b)
+        val effective: Option[Role] =
+          if (actor.isSuperAdmin) Role.maxRole else role
+        if (effective.isDefined)
+          EitherT.rightT[Future, CoreError]((d, effective))
+        else
+          EitherT.leftT[Future, (Dataset, Option[Role])](
+            com.pennsieve.domain
+              .DatasetRolePermissionError(actor.nodeId, d.id): CoreError
+          )
+    }
+  }
+
   // ---- update / delete -------------------------------------------------
   override def update(
     dataset: Dataset,
@@ -236,6 +297,15 @@ class FakeDatasetManager(
           updatedAt = newUpdatedAt,
           etag = com.pennsieve.models.ETag(newUpdatedAt)
         )
+        // If statusId changed, append a status log entry.
+        val previousStatusId = state.datasets
+          .get((org.id, dataset.id))
+          .map(_.statusId)
+        if (previousStatusId.exists(_ != refreshed.statusId)) {
+          state.datasetStatuses
+            .get((org.id, refreshed.statusId))
+            .foreach(appendStatusLog(refreshed, _))
+        }
         putDataset(refreshed)
         if (refreshed.state == DatasetState.DELETING)
           EitherT.rightT(refreshed)
@@ -243,6 +313,33 @@ class FakeDatasetManager(
           get(refreshed.id)
       }
     }
+  }
+
+  override def getStatusLog(
+    dataset: Dataset,
+    limit: Int,
+    offset: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[
+    Future,
+    CoreError,
+    (Seq[(com.pennsieve.models.DatasetStatusLog, Option[User])], Long)
+  ] = {
+    val buf = state.datasetStatusLog
+      .get((org.id, dataset.id))
+      .map(_.toSeq)
+      .getOrElse(Seq.empty)
+    // Newest first
+    val ordered = buf.reverse
+    val total = ordered.size.toLong
+    val page = ordered.drop(offset).take(limit)
+    val rows = page.map(
+      e =>
+        e -> e.userId
+          .flatMap(uid => state.users.get(uid))
+    )
+    EitherT.rightT((rows, total))
   }
 
   override def getCollaborators(
@@ -646,15 +743,29 @@ class FakeDatasetManager(
         .toSeq
         .sortBy(_.id)
         .lastOption
-      val canPub = d.tags.nonEmpty && d.license.isDefined &&
-        state.datasetContributors.keys
-          .exists(k => k._1 == org.id && k._2 == d.id)
       val locked = pub.exists(
-        p =>
-          p.publicationStatus != PublicationStatus.Cancelled &&
-            p.publicationStatus != PublicationStatus.Rejected &&
-            p.publicationStatus != PublicationStatus.Completed
+        p => PublicationStatus.lockedStatuses.contains(p.publicationStatus)
       )
+      // Owner with ORCID — find owner of dataset and check orcid
+      val ownerHasOrcid = state.datasetUserRoles
+        .collect {
+          case ((orgId, uid, dsId), Role.Owner)
+              if orgId == org.id && dsId == d.id =>
+            uid
+        }
+        .flatMap(state.users.get)
+        .exists(_.orcidAuthorization.isDefined)
+      val hasContributor = state.datasetContributors.keys
+        .exists(k => k._1 == org.id && k._2 == d.id)
+      val canPub = d.name.nonEmpty &&
+        d.description.exists(_.nonEmpty) &&
+        d.tags.nonEmpty &&
+        d.license.isDefined &&
+        d.readmeId.isDefined &&
+        d.bannerId.isDefined &&
+        hasContributor &&
+        ownerHasOrcid &&
+        !locked
       com.pennsieve.db.DatasetAndStatus(d, s, pub, canPub, locked)
     }
 
@@ -1079,6 +1190,59 @@ class FakeDatasetManager(
     }
   }
 
+  override def getRegistration(
+    dataset: Dataset,
+    registry: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Option[
+    com.pennsieve.models.DatasetRegistration
+  ]] =
+    EitherT.rightT(
+      state.datasetRegistrations.get((org.id, dataset.id, registry))
+    )
+
+  override def addRegistration(
+    registration: com.pennsieve.models.DatasetRegistration
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, com.pennsieve.models.DatasetRegistration] = {
+    state.datasetRegistrations.put(
+      (org.id, registration.datasetId, registration.registry),
+      registration
+    )
+    EitherT.rightT(registration)
+  }
+
+  override def removeRegistration(
+    dataset: Dataset,
+    registry: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] = {
+    state.datasetRegistrations.remove((org.id, dataset.id, registry))
+    EitherT.rightT(true)
+  }
+
+  override def switchOwner(
+    dataset: Dataset,
+    currentOwner: User,
+    newOwner: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
+    // Mirror the real `canShareWithUser` check — new owner must be a member
+    // of the dataset's organization.
+    if (!state.orgUserPermissions.contains((org.id, newOwner.id)))
+      EitherT.leftT(NotFound(s"user ${newOwner.nodeId}"): CoreError)
+    else {
+      state.datasetUserRoles
+        .put((org.id, currentOwner.id, dataset.id), Role.Manager)
+      state.datasetUserRoles.put((org.id, newOwner.id, dataset.id), Role.Owner)
+      EitherT.rightT(())
+    }
+  }
+
   override def addExternalRepository(
     extRepo: com.pennsieve.models.ExternalRepository
   )(implicit
@@ -1109,6 +1273,23 @@ class FakeDatasetManager(
   ]] =
     EitherT.rightT(state.externalRepositories.get((organizationId, datasetId)))
 
+  override def sourceFileCount(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Long] = {
+    val pkgIds = state.packages.collect {
+      case ((orgId, _), p) if orgId == org.id && p.datasetId == dataset.id =>
+        p.id
+    }.toSet
+    val count = state.files.count {
+      case ((orgId, _), f) =>
+        orgId == org.id && pkgIds.contains(f.packageId) &&
+          f.objectType == com.pennsieve.models.FileObjectType.Source
+    }
+    EitherT.rightT(count.toLong)
+  }
+
   // ---- ignore files / status log -------------------------------------
   override def getIgnoreFiles(
     dataset: Dataset
@@ -1136,8 +1317,91 @@ class FakeDatasetManager(
     excludedWebhookIds: Option[Set[Int]] = None
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Option[Int]] =
-    EitherT.rightT(Some(0))
+  ): EitherT[Future, CoreError, Option[Int]] = {
+    val orgWebhooks = state.webhooks.collect {
+      case ((orgId, _), w) if orgId == org.id => w
+    }.toSeq
+    val excluded = excludedWebhookIds.getOrElse(Set.empty)
+    val included = includedWebhookIds.getOrElse(Set.empty)
+    val toEnable = orgWebhooks.filter { w =>
+      !excluded.contains(w.id) &&
+      (w.isDefault ||
+      (included.contains(w.id) &&
+      (!w.isPrivate || actor.isSuperAdmin || w.createdBy == actor.id)))
+    }
+    toEnable.foreach { w =>
+      val id = state.newId()
+      state.datasetIntegrations.put(
+        (org.id, id),
+        com.pennsieve.models.DatasetIntegration(
+          webhookId = w.id,
+          datasetId = dataset.id,
+          enabledBy = actor.id,
+          id = id
+        )
+      )
+      // Mirror the real manager: link integration user to dataset
+      state.datasetUserRoles
+        .put((org.id, w.integrationUserId, dataset.id), Role.Manager)
+    }
+    EitherT.rightT(Some(toEnable.size))
+  }
+
+  override def getIntegrations(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[com.pennsieve.models.DatasetIntegration]] = {
+    val rows = state.datasetIntegrations.values
+      .filter(d => d.datasetId == dataset.id)
+      .toSeq
+    EitherT.rightT(rows)
+  }
+
+  override def enableWebhook(
+    dataset: Dataset,
+    webhook: com.pennsieve.models.Webhook,
+    integrationUser: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, com.pennsieve.models.DatasetIntegration] = {
+    val existing = state.datasetIntegrations.values.find { d =>
+      d.datasetId == dataset.id && d.webhookId == webhook.id
+    }
+    val integration = existing.getOrElse {
+      val id = state.newId()
+      val di = com.pennsieve.models.DatasetIntegration(
+        webhookId = webhook.id,
+        datasetId = dataset.id,
+        enabledBy = actor.id,
+        id = id
+      )
+      state.datasetIntegrations.put((org.id, id), di)
+      di
+    }
+    val role = if (webhook.hasAccess) Role.Manager else Role.Viewer
+    state.datasetUserRoles
+      .put((org.id, integrationUser.id, dataset.id), role)
+    EitherT.rightT(integration)
+  }
+
+  override def disableWebhook(
+    dataset: Dataset,
+    webhook: com.pennsieve.models.Webhook,
+    integrationUser: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
+    val matching = state.datasetIntegrations.collect {
+      case (k @ (orgId, _), d)
+          if orgId == org.id && d.datasetId == dataset.id &&
+            d.webhookId == webhook.id =>
+        k
+    }
+    matching.foreach(state.datasetIntegrations.remove)
+    state.datasetUserRoles.remove((org.id, integrationUser.id, dataset.id))
+    EitherT.rightT(matching.size)
+  }
 
   override def touchUpdatedAtTimestamp(
     dataset: Dataset

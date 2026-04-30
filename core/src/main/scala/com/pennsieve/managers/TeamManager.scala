@@ -36,7 +36,7 @@ import com.pennsieve.traits.PostgresProfile.api._
 
 case class TeamManager(secureOrganizationManager: SecureOrganizationManager) {
 
-  val db: Database = secureOrganizationManager.db
+  lazy val db: Database = secureOrganizationManager.db
   val actor: User = secureOrganizationManager.actor
 
   // admin

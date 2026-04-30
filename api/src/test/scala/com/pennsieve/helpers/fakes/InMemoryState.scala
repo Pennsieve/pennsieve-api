@@ -28,6 +28,7 @@ import com.pennsieve.models.{
   DatasetPreviewer,
   DatasetPublicationStatus,
   DatasetStatus,
+  DatasetStatusLog,
   ExternalPublication,
   Feature,
   File,
@@ -136,6 +137,88 @@ class InMemoryState {
     : TrieMap[(Int, Int), com.pennsieve.models.ExternalRepository] =
     new TrieMap()
 
+  // (orgId, teamId, userId) -> DBPermission for team membership.
+  val teamMemberships: TrieMap[(Int, Int, Int), DBPermission] = new TrieMap()
+
+  // (orgId) -> teamId of the per-org "publisher" team (system team).
+  val publisherTeamByOrg: TrieMap[Int, Int] = new TrieMap()
+
+  // (orgId, datasetId) -> append-ordered status log entries (newest last).
+  val datasetStatusLog: TrieMap[
+    (Int, Int),
+    scala.collection.mutable.ArrayBuffer[DatasetStatusLog]
+  ] =
+    new TrieMap()
+
+  // (orgId, datasetId, registry) -> DatasetRegistration
+  val datasetRegistrations
+    : TrieMap[(Int, Int, String), com.pennsieve.models.DatasetRegistration] =
+    new TrieMap()
+
+  // (orgId, integrationId) -> DatasetIntegration. Integration is a separate
+  // record per (datasetId, webhookId) pair.
+  val datasetIntegrations
+    : TrieMap[(Int, Int), com.pennsieve.models.DatasetIntegration] =
+    new TrieMap()
+
   private val ids = new AtomicInteger(1)
   def newId(): Int = ids.getAndIncrement()
+
+  /** Reset all state, used by spec `beforeEach` to keep tests isolated. */
+  def clear(): Unit = {
+    organizations.clear()
+    users.clear()
+    orgUsers.clear()
+    orgUserPermissions.clear()
+    tokens.clear()
+    collections.clear()
+    contributors.clear()
+    featureFlags.clear()
+    pennsieveTos.clear()
+    customTos.clear()
+    datasets.clear()
+    packages.clear()
+    files.clear()
+    datasetStatuses.clear()
+    datasetPublicationStatuses.clear()
+    datasetPreviewers.clear()
+    dataUseAgreements.clear()
+    datasetAssets.clear()
+    externalPublications.clear()
+    webhooks.clear()
+    changelogEvents.clear()
+    datasetStatusDefaultsSeeded.clear()
+    datasetUserRoles.clear()
+    datasetTeamRoles.clear()
+    datasetOrgRoles.clear()
+    datasetContributors.clear()
+    datasetCollections.clear()
+    teams.clear()
+    externalFiles.clear()
+    datasetAssetsByUuid.clear()
+    datasetIgnoreFiles.clear()
+    datasetReleases.clear()
+    externalRepositories.clear()
+    teamMemberships.clear()
+    publisherTeamByOrg.clear()
+    datasetStatusLog.clear()
+    datasetRegistrations.clear()
+    datasetIntegrations.clear()
+    ids.set(1)
+  }
+}
+
+object InMemoryState {
+
+  /** A `ZonedDateTime` whose zone is a plain offset (no named zone). The
+    * model JSON encoder uses ISO_OFFSET_DATE_TIME which drops named zones,
+    * so fakes that use this helper produce values that survive a JSON
+    * round-trip and remain `equals` to the deserialized form.
+    */
+  def now(): java.time.ZonedDateTime = {
+    val z = java.time.ZonedDateTime.now()
+    z.withZoneSameInstant(
+      java.time.ZoneOffset.ofTotalSeconds(z.getOffset.getTotalSeconds)
+    )
+  }
 }

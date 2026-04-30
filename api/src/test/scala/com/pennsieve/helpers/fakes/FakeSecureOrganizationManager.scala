@@ -83,13 +83,18 @@ class FakeSecureOrganizationManager(state: InMemoryState, val actor: User)
     }
     team match {
       case Some(t) =>
+        val systemTeam =
+          if (state.publisherTeamByOrg.get(organization.id).contains(t.id))
+            Some(com.pennsieve.models.SystemTeamType.Publishers)
+          else None
         EitherT.rightT(
           (
             t,
             com.pennsieve.models.OrganizationTeam(
               organizationId = organization.id,
               teamId = t.id,
-              permission = DBPermission.Delete
+              permission = DBPermission.Delete,
+              systemTeamType = systemTeam
             )
           )
         )
@@ -104,6 +109,91 @@ class FakeSecureOrganizationManager(state: InMemoryState, val actor: User)
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Option[DBPermission]] =
     EitherT.rightT(state.orgUserPermissions.get((organization.id, user.id)))
+
+  override def getPublisherTeam(
+    organization: Organization
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[
+    Future,
+    CoreError,
+    (com.pennsieve.models.Team, com.pennsieve.models.OrganizationTeam)
+  ] = {
+    val teamId = state.publisherTeamByOrg.get(organization.id) match {
+      case Some(id) => id
+      case None =>
+        val id = state.newId()
+        val team = com.pennsieve.models.Team(
+          nodeId = com.pennsieve.models.NodeCodes
+            .generateId(com.pennsieve.models.NodeCodes.teamCode),
+          name = "Publishers",
+          id = id
+        )
+        state.teams.put((organization.id, id), team)
+        state.publisherTeamByOrg.put(organization.id, id)
+        id
+    }
+    val team = state.teams((organization.id, teamId))
+    EitherT.rightT(
+      (
+        team,
+        com.pennsieve.models.OrganizationTeam(
+          organizationId = organization.id,
+          teamId = team.id,
+          permission = DBPermission.Delete,
+          systemTeamType = Some(com.pennsieve.models.SystemTeamType.Publishers)
+        )
+      )
+    )
+  }
+
+  override def isPublisher(
+    organization: Organization
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] = {
+    state.publisherTeamByOrg.get(organization.id) match {
+      case Some(teamId) =>
+        EitherT.rightT(
+          state.teamMemberships.contains((organization.id, teamId, actor.id))
+        )
+      case None => EitherT.rightT(false)
+    }
+  }
+
+  override def getPublishingTeamMembers(
+    organization: Organization
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[User]] = {
+    val ids = state.publisherTeamByOrg
+      .get(organization.id)
+      .toSeq
+      .flatMap { teamId =>
+        state.teamMemberships.collect {
+          case ((orgId, tid, uid), _)
+              if orgId == organization.id && tid == teamId =>
+            uid
+        }
+      }
+    EitherT.rightT(ids.flatMap(state.users.get))
+  }
+
+  override def addGuestUser(
+    organization: Organization,
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, OrganizationUser] = {
+    state.orgUserPermissions.put((organization.id, user.id), DBPermission.Guest)
+    EitherT.rightT(
+      OrganizationUser(
+        organizationId = organization.id,
+        userId = user.id,
+        permission = DBPermission.Guest
+      )
+    )
+  }
 
   override def getSubscription(
     organizationId: Int

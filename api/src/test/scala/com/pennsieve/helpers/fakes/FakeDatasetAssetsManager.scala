@@ -67,11 +67,14 @@ class FakeDatasetAssetsManager(val state: InMemoryState, org: Organization)
     dataset: Dataset
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Option[DatasetAsset]] =
+  ): EitherT[Future, CoreError, Option[DatasetAsset]] = {
+    val currentBannerId = state.datasets
+      .get((org.id, dataset.id))
+      .flatMap(_.bannerId)
     EitherT.rightT(
-      dataset.bannerId
-        .flatMap(id => state.datasetAssetsByUuid.get((org.id, id)))
+      currentBannerId.flatMap(id => state.datasetAssetsByUuid.get((org.id, id)))
     )
+  }
 
   override def getBannersByIds(
     bannerIds: List[UUID]
@@ -89,21 +92,30 @@ class FakeDatasetAssetsManager(val state: InMemoryState, org: Organization)
     dataset: Dataset
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Option[DatasetAsset]] =
+  ): EitherT[Future, CoreError, Option[DatasetAsset]] = {
+    // Mirror the core impl which joins on the *current* readmeId from the
+    // datasets table — not the stale `readmeId` on the parameter.
+    val currentReadmeId = state.datasets
+      .get((org.id, dataset.id))
+      .flatMap(_.readmeId)
     EitherT.rightT(
-      dataset.readmeId
-        .flatMap(id => state.datasetAssetsByUuid.get((org.id, id)))
+      currentReadmeId.flatMap(id => state.datasetAssetsByUuid.get((org.id, id)))
     )
+  }
 
   override def getChangelog(
     dataset: Dataset
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, Option[DatasetAsset]] =
+  ): EitherT[Future, CoreError, Option[DatasetAsset]] = {
+    val currentChangelogId = state.datasets
+      .get((org.id, dataset.id))
+      .flatMap(_.changelogId)
     EitherT.rightT(
-      dataset.changelogId
+      currentChangelogId
         .flatMap(id => state.datasetAssetsByUuid.get((org.id, id)))
     )
+  }
 
   override def createOrUpdateReadme[T](
     dataset: Dataset,
@@ -134,8 +146,12 @@ class FakeDatasetAssetsManager(val state: InMemoryState, org: Organization)
     }
     // Refresh asset etag/updatedAt on every call so subsequent reads see a
     // new ETag (mirroring the Postgres dataset_asset_update_etag trigger).
-    val refreshed =
-      asset.copy(updatedAt = java.time.ZonedDateTime.now().plusSeconds(1))
+    val newUpdatedAt = {
+      val now = InMemoryState.now()
+      if (now.toEpochSecond > asset.updatedAt.toEpochSecond) now
+      else asset.updatedAt.plusSeconds(1)
+    }
+    val refreshed = asset.copy(updatedAt = newUpdatedAt)
     state.datasetAssetsByUuid.put((org.id, refreshed.id), refreshed)
     uploadAsset(refreshed) match {
       case Right(_) => EitherT.rightT(refreshed)

@@ -59,11 +59,13 @@ import com.pennsieve.helpers.fakes.{
   FakeExternalFileManager,
   FakeExternalPublicationManager,
   FakeFileManager,
+  FakeMetadataManager,
   FakePackageManager,
   FakePennsieveTermsOfServiceManager,
   FakeSecureOrganizationManager,
   FakeSecureTokenManager,
   FakeStorageManager,
+  FakeTeamManager,
   FakeUserManager,
   FakeWebhookManager,
   InMemoryState
@@ -315,6 +317,11 @@ trait BaseApiUnitTest
             externalFilesMapper,
             packageManager
           )
+        override lazy val teamManager: com.pennsieve.managers.TeamManager =
+          new FakeTeamManager(st, org.id)(organizationManager)
+        override lazy val metadataManager
+          : com.pennsieve.managers.MetadataManager =
+          new FakeMetadataManager(phantomDb, u, org)
 
         // SecureCoreContainer.userRoles backs `authorizeDataset` /
         // `authorizeDatasetId`. Production hits the DB; here we synthesize from
@@ -324,11 +331,20 @@ trait BaseApiUnitTest
           val datasetIdsInOrg = st.datasets.collect {
             case ((orgId, did), _) if orgId == org.id => did
           }.toSet
+          // Teams the user is a member of (any permission) within this org.
+          val userTeamIds: Set[Int] = st.teamMemberships.collect {
+            case ((orgId, tid, uid), _) if orgId == org.id && uid == u.id => tid
+          }.toSet
           val map = datasetIdsInOrg.map { did =>
             val viaUser = st.datasetUserRoles.get((org.id, u.id, did))
             val viaOrg = st.datasetOrgRoles.get((org.id, did))
+            // Only count team-share roles where the user is in that team.
             val viaTeam = st.datasetTeamRoles.collect {
-              case ((orgId, _, dsId), r) if orgId == org.id && dsId == did => r
+              case ((orgId, tid, dsId), r)
+                  if orgId == org.id && dsId == did && userTeamIds.contains(
+                    tid
+                  ) =>
+                r
             }
             val maxRole =
               (viaUser.toSeq ++ viaOrg.toSeq ++ viaTeam)

@@ -85,11 +85,19 @@ class FakeDataUseAgreementManager(
             .put((organization.id, a.id), a.copy(isDefault = false))
         }
       val id = state.newId()
+      val now = java.time.ZonedDateTime
+        .now()
+        .withZoneSameInstant(
+          java.time.ZoneOffset.ofTotalSeconds(
+            java.time.ZonedDateTime.now().getOffset.getTotalSeconds
+          )
+        )
       val agreement = DataUseAgreement(
         name = name,
         description = description,
         body = body,
         isDefault = isDefault,
+        createdAt = now,
         id = id
       )
       state.dataUseAgreements.put((organization.id, id), agreement)

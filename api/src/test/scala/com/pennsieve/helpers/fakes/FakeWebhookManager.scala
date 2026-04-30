@@ -16,16 +16,19 @@
 
 package com.pennsieve.helpers.fakes
 
+import cats.data.EitherT
 import com.pennsieve.db.{
   WebhookEventSubscriptionsMapper,
   WebhookEventTypesMapper,
   WebhooksMapper
 }
+import com.pennsieve.domain.{ CoreError, InvalidAction, NotFound }
 import com.pennsieve.managers.WebhookManager
-import com.pennsieve.models.{ Organization, User }
+import com.pennsieve.models.{ Organization, User, Webhook }
 import com.pennsieve.traits.PostgresProfile
 
-/** Skeleton fake. */
+import scala.concurrent.{ ExecutionContext, Future }
+
 class FakeWebhookManager(
   val state: InMemoryState,
   org: Organization,
@@ -38,7 +41,6 @@ class FakeWebhookManager(
         "use the database. Override the method on this fake."
     )
 
-  // Slick mappers, no db access at construction.
   override lazy val webhooksMapper: WebhooksMapper =
     new WebhooksMapper(org)
   override lazy val webhookEventSubscriptionsMapper
@@ -46,4 +48,23 @@ class FakeWebhookManager(
     new WebhookEventSubscriptionsMapper(org)
   override lazy val webhookEventTypesMapper: WebhookEventTypesMapper =
     new WebhookEventTypesMapper(org)
+
+  override def getForIntegration(
+    webhookId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Webhook] = {
+    state.webhooks.get((org.id, webhookId)) match {
+      case Some(w) =>
+        if (!w.isPrivate || actor.isSuperAdmin || w.createdBy == actor.id)
+          EitherT.rightT(w)
+        else
+          EitherT.leftT(
+            InvalidAction(
+              s"user ${actor.nodeId} does not have dataset integration access to webhook ${w.id}"
+            ): CoreError
+          )
+      case None => EitherT.leftT(NotFound(s"Webhook ($webhookId)"): CoreError)
+    }
+  }
 }

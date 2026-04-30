@@ -79,6 +79,16 @@ class FakePackageManager(val datasetManager: DatasetManager)
         if (`type` == PackageType.Collection) NodeCodes.collectionCode
         else NodeCodes.packageCode
       val id = state.newId()
+      // Match the json round-trip: ISO_OFFSET_DATE_TIME drops named zones.
+      // Using a plain ZoneOffset (not ZonedDateTime.now()) keeps fake-side
+      // timestamps comparable to deserialized PackagesPage values.
+      val now = java.time.ZonedDateTime
+        .now()
+        .withZoneSameInstant(
+          java.time.ZoneOffset.ofTotalSeconds(
+            java.time.ZonedDateTime.now().getOffset.getTotalSeconds
+          )
+        )
       val pkg = Package(
         nodeId = NodeCodes.generateId(nodeCode),
         name = name,
@@ -89,6 +99,8 @@ class FakePackageManager(val datasetManager: DatasetManager)
         parentId = parent.map(_.id),
         importId = importId,
         attributes = attributes,
+        createdAt = now,
+        updatedAt = now,
         id = id
       )
       putPackage(pkg)
@@ -137,6 +149,13 @@ class FakePackageManager(val datasetManager: DatasetManager)
     EitherT.rightT(sliced)
   }
 
+  private def hasMatchingSourceFile(pkg: Package, filename: String): Boolean =
+    state.files.exists {
+      case ((o, _), f) =>
+        o == orgId && f.packageId == pkg.id && f.name == filename &&
+          f.objectType == com.pennsieve.models.FileObjectType.Source
+    }
+
   override def getPackagesPage(
     dataset: Dataset,
     startAtId: Option[Int],
@@ -153,10 +172,7 @@ class FakePackageManager(val datasetManager: DatasetManager)
       .sortBy(_.id)
       .filter(p => startAtId.forall(p.id >= _))
       .filter(p => filterType.forall(_.contains(p.`type`)))
-      .filter(
-        p =>
-          filename.forall(name => p.name.toLowerCase.contains(name.toLowerCase))
-      )
+      .filter(p => filename.forall(hasMatchingSourceFile(p, _)))
     EitherT.rightT(all.take(pageSize + 1).toVector)
   }
 
@@ -179,11 +195,65 @@ class FakePackageManager(val datasetManager: DatasetManager)
       )
     } yield
       pkgs.map { p =>
-        val files = state.files.collect {
-          case ((o, _), f) if o == orgId && f.packageId == p.id => f
-        }.toSeq
-        (p, files, false)
+        val matched = state.files
+          .collect {
+            case ((o, _), f)
+                if o == orgId && f.packageId == p.id &&
+                  f.objectType == com.pennsieve.models.FileObjectType.Source &&
+                  filename.forall(_ == f.name) =>
+              f
+          }
+          .toSeq
+          .sortBy(_.id)
+        // Mirror SQL: cap at 100 files, signal truncation if more remain.
+        val (files, truncated) =
+          if (matched.size > 100) (matched.take(100), true)
+          else (matched, false)
+        (p, files, truncated)
       }
+  }
+
+  override def markFilesInPendingStateAsUploaded(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
+    val pkgIds = packagesForDataset(dataset.id).map(_.id).toSet
+    val updates = state.files.collect {
+      case ((o, fid), f)
+          if o == orgId && pkgIds.contains(f.packageId) &&
+            f.uploadedState.contains(com.pennsieve.models.FileState.PENDING) =>
+        (fid, f)
+    }
+    updates.foreach {
+      case (fid, f) =>
+        state.files.put(
+          (orgId, fid),
+          f.copy(uploadedState = Some(com.pennsieve.models.FileState.UPLOADED))
+        )
+    }
+    EitherT.rightT(updates.size)
+  }
+
+  override def getByExternalIdsForDataset(
+    dataset: Dataset,
+    ids: List[com.pennsieve.models.ExternalId]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[Package]] = {
+    val (intIds, nodeIds) = ids.map(_.value) match {
+      case xs =>
+        (xs.collect { case Left(i) => i }, xs.collect {
+          case Right(s) => s
+        })
+    }
+    val pkgs = packagesForDataset(dataset.id)
+      .filterNot(
+        p => p.state == PackageState.DELETING || p.state == PackageState.DELETED
+      )
+      .filter(p => intIds.contains(p.id) || nodeIds.contains(p.nodeId))
+      .toList
+    EitherT.rightT(pkgs)
   }
 
   override def packageTypes(
