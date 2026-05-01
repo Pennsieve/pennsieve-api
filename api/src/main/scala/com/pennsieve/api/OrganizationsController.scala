@@ -1451,10 +1451,9 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Guest)
           .coreErrorToActionResult()
 
-        status <- new DatasetStatusManagerImpl(
-          insecureContainer.db,
-          organization
-        ).getAllWithUsage
+        status <- insecureContainer
+          .newDatasetStatusManager(organization)
+          .getAllWithUsage
           .coreErrorToActionResult()
 
       } yield status.map(DatasetStatusDTO(_))
@@ -1485,10 +1484,9 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
 
-        status <- new DatasetStatusManagerImpl(
-          insecureContainer.db,
-          organization
-        ).create(displayName = body.displayName, color = body.color)
+        status <- insecureContainer
+          .newDatasetStatusManager(organization)
+          .create(displayName = body.displayName, color = body.color)
           .coreErrorToActionResult()
 
       } yield DatasetStatusDTO(status, inUse = DatasetStatusInUse(false))
@@ -1522,10 +1520,9 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
 
-        status <- new DatasetStatusManagerImpl(
-          insecureContainer.db,
-          organization
-        ).update(
+        status <- insecureContainer
+          .newDatasetStatusManager(organization)
+          .update(
             id = datasetStatusId,
             displayName = body.displayName,
             color = body.color
@@ -1561,10 +1558,9 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
 
-        status <- new DatasetStatusManagerImpl(
-          insecureContainer.db,
-          organization
-        ).delete(id = datasetStatusId)
+        status <- insecureContainer
+          .newDatasetStatusManager(organization)
+          .delete(id = datasetStatusId)
           .coreErrorToActionResult()
 
       } yield DatasetStatusDTO(status)

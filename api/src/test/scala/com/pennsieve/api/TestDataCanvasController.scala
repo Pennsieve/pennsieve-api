@@ -22,37 +22,53 @@ import com.pennsieve.dtos.{
   DownloadManifestDTO,
   DownloadRequest
 }
-import com.pennsieve.helpers.{
-  DataCanvasTestMixin,
-  DataSetTestMixin,
-  MockObjectStore
+import com.pennsieve.helpers.{ APIContainers, MockObjectStore }
+import com.pennsieve.models.{
+  CognitoId,
+  DBPermission,
+  DataCanvas,
+  DataCanvasFolder,
+  DataCanvasFolderPath,
+  Dataset,
+  FileObjectType,
+  FileProcessingState,
+  FileState,
+  FileType,
+  NodeCodes,
+  Organization,
+  Package,
+  PackageState,
+  PackageType,
+  Role,
+  User
 }
-import com.pennsieve.models.{ DataCanvasFolderPath, FileType, PackageType }
+import org.json4s.jackson.Serialization.write
+import org.scalatest.EitherValues._
 
+import java.util.UUID
 import scala.concurrent.Future
-import org.json4s.jackson.Serialization.{ read, write }
-
 import scala.util.Random
 
-// TODO: add the following tests
-//   1. create with empty name
-//   2. create with duplicate name
-//   3. update with empty name
+class TestDataCanvasController extends BaseApiUnitTest {
 
-// TODO: write a test for assign DataCanvas owner on create
+  var loggedInUser: User = _
+  var colleagueUser: User = _
+  var externalUser: User = _
+  var loggedInOrganization: Organization = _
+  var externalOrganization: Organization = _
+  var loggedInJwt: String = _
+  var colleagueJwt: String = _
+  var externalJwt: String = _
+  var secureContainer: APIContainers.SecureAPIContainer = _
 
-class TestDataCanvasController
-    extends BaseApiTest
-    with DataCanvasTestMixin
-    with DataSetTestMixin {
+  val bogusCanvasId = 314159
+  val bogusFolderId = 271828
 
-  override def afterStart(): Unit = {
-    super.afterStart()
-
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
       Future.successful(HttpResponse())
     }
-
     addServlet(
       new DataCanvasController(
         insecureContainer,
@@ -63,31 +79,178 @@ class TestDataCanvasController
       ),
       "/*"
     )
-
   }
 
-  override def afterEach(): Unit = {
-    super.afterEach()
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    state.clear()
+    setUpFixtures()
   }
 
-  /**
-    * GET tests (read)
-    */
-  test("get requires authentication") {
-    val canvas = createDataCanvas(
-      "test: get requires authentication",
-      "test: get requires authentication"
+  private def setUpFixtures(): Unit = {
+    val orgId = state.newId()
+    loggedInOrganization = Organization(
+      nodeId = NodeCodes.generateId(NodeCodes.organizationCode),
+      name = "Test Organization",
+      slug = "test-org",
+      id = orgId
     )
+    state.organizations.put(orgId, loggedInOrganization)
+
+    val extOrgId = state.newId()
+    externalOrganization = Organization(
+      nodeId = NodeCodes.generateId(NodeCodes.organizationCode),
+      name = "External Organization",
+      slug = "external-org",
+      id = extOrgId
+    )
+    state.organizations.put(extOrgId, externalOrganization)
+
+    loggedInUser = mkUser("test@test.com")
+    colleagueUser = mkUser("colleague@test.com")
+    externalUser = mkUser("external@test.com")
+
+    addOrgMember(loggedInOrganization, loggedInUser, DBPermission.Administer)
+    addOrgMember(loggedInOrganization, colleagueUser, DBPermission.Delete)
+    addOrgMember(externalOrganization, externalUser, DBPermission.Delete)
+
+    loggedInJwt = mintUserJwt(loggedInUser, loggedInOrganization)
+    colleagueJwt = mintUserJwt(colleagueUser, loggedInOrganization)
+    externalJwt = mintUserJwt(externalUser, externalOrganization)
+
+    secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
+    secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.value
+  }
+
+  private def mkUser(email: String): User = {
+    val id = state.newId()
+    val u = User(
+      nodeId = NodeCodes.generateId(NodeCodes.userCode),
+      email = email,
+      firstName = "first",
+      middleInitial = None,
+      lastName = "last",
+      degree = None,
+      credential = "cred",
+      color = "",
+      url = "http://test.com",
+      authyId = 0,
+      isSuperAdmin = false,
+      isIntegrationUser = false,
+      preferredOrganizationId = None,
+      status = true,
+      orcidAuthorization = None,
+      cognitoId = Some(CognitoId.UserPoolId(UUID.randomUUID())),
+      id = id
+    )
+    state.users.put(id, u)
+    u
+  }
+
+  private def addOrgMember(
+    org: Organization,
+    user: User,
+    permission: DBPermission
+  ): Unit = {
+    state.orgUserPermissions.put((org.id, user.id), permission)
+    state.orgUsers.put(
+      (org.id, user.id),
+      com.pennsieve.models.OrganizationUser(org.id, user.id, permission)
+    )
+  }
+
+  private def randomString(length: Int = 32): String =
+    Random.alphanumeric.take(length).mkString
+
+  private def createDataCanvas(
+    name: String = randomString(32),
+    description: String = randomString(64),
+    isPublic: Boolean = false,
+    container: APIContainers.SecureAPIContainer = null
+  ): DataCanvas = {
+    val c = if (container == null) secureContainer else container
+    c.dataCanvasManager
+      .create(
+        name,
+        description,
+        isPublic = Some(isPublic),
+        nodeId = NodeCodes.generateId(NodeCodes.dataCanvasCode)
+      )
+      .await
+      .value
+  }
+
+  private def createFolder(
+    canvasId: Int,
+    name: String = randomString(),
+    parent: Option[Int] = None
+  ): DataCanvasFolder =
+    secureContainer.dataCanvasManager
+      .createFolder(
+        canvasId,
+        name,
+        parent.orElse(Some(getRootFolder(canvasId).id))
+      )
+      .await
+      .value
+
+  private def getRootFolder(canvasId: Int): DataCanvasFolder =
+    secureContainer.dataCanvasManager.getRootFolder(canvasId).await.value
+
+  private def createDataSet(name: String): Dataset =
+    secureContainer.datasetManager.create(name, Some("desc")).await.value
+
+  private def createPackage(
+    ds: Dataset,
+    name: String,
+    `type`: PackageType = PackageType.Collection
+  ): Package =
+    secureContainer.packageManager
+      .create(name, `type`, PackageState.READY, ds, Some(loggedInUser.id), None)
+      .await
+      .value
+
+  private def createFile(name: String, dataset: Dataset, pkg: Package) =
+    secureContainer.fileManager
+      .create(
+        name = name,
+        `type` = FileType.CSV,
+        `package` = pkg,
+        s3Bucket = "test-data-bucket",
+        s3Key = s"${dataset.id}/${UUID.randomUUID().toString}/$name",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Unprocessed,
+        size = 1024,
+        fileChecksum = None,
+        uploadedState = Some(FileState.UPLOADED)
+      )
+      .await
+      .value
+
+  private def attachPackage(
+    canvas: DataCanvas,
+    folder: DataCanvasFolder,
+    dataset: Dataset,
+    pkg: Package,
+    organization: Organization = loggedInOrganization
+  ): Unit =
+    secureContainer.dataCanvasManager
+      .attachPackage(canvas.id, folder.id, dataset.id, pkg.id, organization.id)
+      .await
+      .value
+
+  // -------------- Tests --------------------------------------------------
+
+  // GET tests
+  test("get requires authentication") {
+    val canvas = createDataCanvas("g1", "g1")
     get(s"/${canvas.id}") {
       status should equal(401)
     }
   }
 
   test("get an existing data-canvas") {
-    val canvas = createDataCanvas(
-      "test: get an existing data-canvas",
-      "test: get an existing data-canvas"
-    )
+    val canvas = createDataCanvas("g2", "g2")
     get(
       s"/${canvas.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -98,7 +261,7 @@ class TestDataCanvasController
 
   test("get a non-existant data-canvas should return a 404") {
     get(
-      s"/${bogusCanvasId}",
+      s"/$bogusCanvasId",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
@@ -106,27 +269,20 @@ class TestDataCanvasController
   }
 
   test("get a user's own data-canvases requires authentication") {
-    val canvas = createDataCanvas(
-      "get a user's own data-canvases requires authentication",
-      "get a user's own data-canvases requires authentication"
-    )
+    createDataCanvas("u1", "u1")
     get("/", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
       status should equal(200)
     }
   }
 
   test("get a user's own data-canvases fails when not authenticated") {
-    val canvas = createDataCanvas(
-      "get a user's own data-canvases requires authentication",
-      "get a user's own data-canvases requires authentication"
-    )
+    createDataCanvas("u2", "u2")
     get("/") {
       status should equal(401)
     }
   }
 
   test("get a user's own data-canvases returns only their data-canvases") {
-    // create a data-canvas, owner = user 1
     postJson(
       "/",
       write(
@@ -139,7 +295,6 @@ class TestDataCanvasController
     ) {
       status should equal(201)
     }
-    // create a data-canvas, owner = user 2
     postJson(
       "/",
       write(
@@ -152,21 +307,17 @@ class TestDataCanvasController
     ) {
       status should equal(201)
     }
-    // invoke the API for user 1
     get("/", headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()) {
       status should equal(200)
-      // only one data-canvas should be returned
       val result: List[DataCanvasDTO] = parsedBody
         .extract[List[DataCanvasDTO]]
       result.length should equal(1)
     }
   }
 
-  /**
-    * POST tests (create)
-    */
+  // POST tests
   test("create a new data-canvas") {
-    val createDataCanvasRequest = write(
+    val req = write(
       CreateDataCanvasRequest(
         name = "test: create a new data-canvas",
         description = "test: create a new data-canvas"
@@ -174,7 +325,7 @@ class TestDataCanvasController
     )
     postJson(
       "/",
-      createDataCanvasRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
@@ -182,19 +333,19 @@ class TestDataCanvasController
   }
 
   test("create requires authentication") {
-    val createDataCanvasRequest = write(
+    val req = write(
       CreateDataCanvasRequest(
         name = "test: create requires authentication",
         description = "test: create requires authentication"
       )
     )
-    postJson("/", createDataCanvasRequest) {
+    postJson("/", req) {
       status should equal(401)
     }
   }
 
   test("create does not permit name > 255 chars") {
-    val createDataCanvasRequest = write(
+    val req = write(
       CreateDataCanvasRequest(
         name = randomString(256),
         description = "test: create a new data-canvas"
@@ -202,7 +353,7 @@ class TestDataCanvasController
     )
     postJson(
       "/",
-      createDataCanvasRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(400)
@@ -210,7 +361,7 @@ class TestDataCanvasController
   }
 
   test("create by default data-canvas is not public") {
-    val createDataCanvasRequest = write(
+    val req = write(
       CreateDataCanvasRequest(
         name = randomString(64),
         description = "test: create a new data-canvas"
@@ -218,20 +369,16 @@ class TestDataCanvasController
     )
     postJson(
       "/",
-      createDataCanvasRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
-
-      val result: DataCanvasDTO = parsedBody
-        .extract[DataCanvasDTO]
-
-      result.isPublic shouldBe false
+      parsedBody.extract[DataCanvasDTO].isPublic shouldBe false
     }
   }
 
   test("create a public data-canvas") {
-    val createDataCanvasRequest = write(
+    val req = write(
       CreateDataCanvasRequest(
         name = randomString(64),
         description = "test: create a new data-canvas",
@@ -240,53 +387,39 @@ class TestDataCanvasController
     )
     postJson(
       "/",
-      createDataCanvasRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
-
-      val result: DataCanvasDTO = parsedBody
-        .extract[DataCanvasDTO]
-
-      result.isPublic shouldBe true
+      parsedBody.extract[DataCanvasDTO].isPublic shouldBe true
     }
   }
 
-  /**
-    * PUT tests (update)
-    */
+  // PUT tests
   test("update requires authentication (401)") {
-    val canvas = createDataCanvas(
-      "test: update requires authentication",
-      "test: update requires authentication"
-    )
-    val updateDataCanvasRequest = write(
+    val canvas = createDataCanvas()
+    val req = write(
       UpdateDataCanvasRequest(
-        name = Some("test: update requires authentication UPDATED"),
-        description = Some("test: update requires authentication UPDATED")
+        name = Some(randomString()),
+        description = Some("updated")
       )
     )
-
-    putJson(s"/${canvas.id}", updateDataCanvasRequest) {
+    putJson(s"/${canvas.id}", req) {
       status should equal(401)
     }
   }
 
   test("update an existing data-canvas") {
-    val canvas = createDataCanvas(
-      "test: update an existing data-canvas",
-      "test: update an existing data-canvas"
-    )
-    val updateDataCanvasRequest = write(
+    val canvas = createDataCanvas()
+    val req = write(
       UpdateDataCanvasRequest(
-        name = Some("test: update an existing data-canvas UPDATED"),
-        description = Some("test: update an existing data-canvas UPDATED")
+        name = Some(randomString()),
+        description = Some("updated")
       )
     )
-
     putJson(
       s"/${canvas.id}",
-      updateDataCanvasRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
@@ -294,16 +427,15 @@ class TestDataCanvasController
   }
 
   test("update a non-existent data-canvas should fail") {
-    val updateDataCanvasRequest = write(
+    val req = write(
       UpdateDataCanvasRequest(
         name = Some(randomString()),
-        description = Some("test: update an existing data-canvas UPDATED")
+        description = Some("updated")
       )
     )
-
     putJson(
-      s"/${bogusCanvasId}",
-      updateDataCanvasRequest,
+      s"/$bogusCanvasId",
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
@@ -311,20 +443,16 @@ class TestDataCanvasController
   }
 
   test("update does not permit name > 255 chars") {
-    val canvas = createDataCanvas(
-      "test: update an existing data-canvas",
-      "test: update an existing data-canvas"
-    )
-    val updateDataCanvasRequest = write(
+    val canvas = createDataCanvas()
+    val req = write(
       UpdateDataCanvasRequest(
         name = Some(randomString(256)),
-        description = Some("test: update an existing data-canvas UPDATED")
+        description = Some("updated")
       )
     )
-
     putJson(
       s"/${canvas.id}",
-      updateDataCanvasRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(400)
@@ -332,30 +460,22 @@ class TestDataCanvasController
   }
 
   test("update a data-canvas to be publicly visible") {
-    // first create a data-canvas which will not be publicly visible
     val canvas = createDataCanvas()
     canvas.isPublic shouldBe false
-
-    // update the data-canvas to make it publicly visible
-    val updateDataCanvasRequest = write(
+    val req = write(
       UpdateDataCanvasRequest(
-        name = Some("test: update an existing data-canvas UPDATED"),
-        description = Some("test: update an existing data-canvas UPDATED"),
+        name = Some(randomString()),
+        description = Some("updated"),
         isPublic = Some(true)
       )
     )
-
     putJson(
       s"/${canvas.id}",
-      updateDataCanvasRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
-
-      val result: DataCanvasDTO = parsedBody
-        .extract[DataCanvasDTO]
-
-      result.isPublic shouldBe true
+      parsedBody.extract[DataCanvasDTO].isPublic shouldBe true
     }
   }
 
@@ -370,9 +490,7 @@ class TestDataCanvasController
     }
   }
 
-  /**
-    * DELETE tests
-    */
+  // DELETE tests
   test("delete requires authentication") {
     val canvas = createDataCanvas()
     delete(s"/${canvas.id}") {
@@ -392,29 +510,23 @@ class TestDataCanvasController
 
   test("delete a non-existent data-canvas should fail") {
     delete(
-      s"/${bogusCanvasId}",
+      s"/$bogusCanvasId",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
     }
   }
 
-  /**
-    * Public All DataCanvases View
-    */
+  // Public/All view tests
   test("public get data-canvases requires authentication") {
-    // create data-canvas with isPublic = true
     val canvas = createDataCanvas(isPublic = true)
-    // invoke API without authorization
     get(s"/get/${canvas.nodeId}") {
       status should equal(401)
     }
   }
 
   test("public get a publicly available data-canvas when authenticated") {
-    // create data-canvas with isPublic = true
     val canvas = createDataCanvas(isPublic = true)
-    // invoke API with authorization
     get(
       s"/get/${canvas.nodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -424,9 +536,7 @@ class TestDataCanvasController
   }
 
   test("public get fails because data-canvas is not publicly available") {
-    // create data-canvas with isPublic = false (the default case)
     val canvas = createDataCanvas(isPublic = false)
-    // invoke API with authorization
     get(
       s"/get/${canvas.nodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -438,9 +548,7 @@ class TestDataCanvasController
   test(
     "public get a publicly available data-canvas from a different organization"
   ) {
-    // create data-canvas with isPublic = true, in one organization
     val canvas = createDataCanvas(isPublic = true)
-    // invoke API with authorization for a user in a different organization
     get(
       s"/get/${canvas.nodeId}",
       headers = authorizationHeader(externalJwt) ++ traceIdHeader()
@@ -454,41 +562,32 @@ class TestDataCanvasController
   ) {
     createDataCanvas(isPublic = true)
     createDataCanvas(isPublic = false)
-    val orgNodeId = loggedInOrganization.nodeId
-
     get(
-      s"/get/organization/${orgNodeId}",
+      s"/get/organization/${loggedInOrganization.nodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-
-      val result: List[DataCanvasDTO] = parsedBody
-        .extract[List[DataCanvasDTO]]
-      result.length should equal(1)
+      parsedBody.extract[List[DataCanvasDTO]].length should equal(1)
     }
   }
 
-  /**
-    * Folder tests
-    */
+  // Folder tests
   test("folder create requires authentication") {
     val canvas = createDataCanvas()
-    val createFolderRequest =
+    val req =
       write(CreateDataCanvasFolder(name = randomString(), parent = None))
-
-    postJson(s"/${canvas.id}/folder", createFolderRequest) {
+    postJson(s"/${canvas.id}/folder", req) {
       status should equal(401)
     }
   }
 
   test("folder create succeeds when authenticated") {
     val canvas = createDataCanvas()
-    val createFolderRequest =
+    val req =
       write(CreateDataCanvasFolder(name = randomString(), parent = None))
-
     postJson(
       s"/${canvas.id}/folder",
-      createFolderRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
@@ -496,12 +595,11 @@ class TestDataCanvasController
   }
 
   test("folder create fails for non-existent data-canvas") {
-    val createFolderRequest =
+    val req =
       write(CreateDataCanvasFolder(name = randomString(), parent = None))
-
     postJson(
-      s"/${bogusCanvasId}/folder",
-      createFolderRequest,
+      s"/$bogusCanvasId/folder",
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
@@ -510,12 +608,11 @@ class TestDataCanvasController
 
   test("folder create fails when name is too long") {
     val canvas = createDataCanvas()
-    val createFolderRequest =
+    val req =
       write(CreateDataCanvasFolder(name = randomString(266), parent = None))
-
     postJson(
       s"/${canvas.id}/folder",
-      createFolderRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(400)
@@ -527,25 +624,19 @@ class TestDataCanvasController
     val rootFolder = getRootFolder(canvas.id)
     val filesFolder = createFolder(canvas.id, "Files", Some(rootFolder.id))
 
-    val createFolderRequest =
-      write(
-        CreateDataCanvasFolder(
-          name = "Sub-Files",
-          parent = Some(filesFolder.id)
-        )
-      )
-
+    val req = write(
+      CreateDataCanvasFolder(name = "Sub-Files", parent = Some(filesFolder.id))
+    )
     postJson(
       s"/${canvas.id}/folder",
-      createFolderRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
     }
-
     postJson(
       s"/${canvas.id}/folder",
-      createFolderRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(400)
@@ -555,7 +646,6 @@ class TestDataCanvasController
   test("folder get requires authentication") {
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id, randomString())
-
     get(s"/${canvas.id}/folder/${folder.id}") {
       status should equal(401)
     }
@@ -564,7 +654,6 @@ class TestDataCanvasController
   test("folder get succeeds when authenticated") {
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id, randomString())
-
     get(
       s"/${canvas.id}/folder/${folder.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -575,10 +664,9 @@ class TestDataCanvasController
 
   test("folder get fails on non-existent folder") {
     val canvas = createDataCanvas()
-    val folder = createFolder(canvas.id, randomString())
-
+    createFolder(canvas.id, randomString())
     get(
-      s"/${canvas.id}/folder/${bogusFolderId}",
+      s"/${canvas.id}/folder/$bogusFolderId",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
@@ -588,10 +676,8 @@ class TestDataCanvasController
   test("folder rename requires authentication") {
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id, "FirstName")
-    val folderRenameRequest =
-      write(RenameDataCanvasFolder("FirstName", "SecondName"))
-
-    putJson(s"/${canvas.id}/folder/${folder.id}/rename", folderRenameRequest) {
+    val req = write(RenameDataCanvasFolder("FirstName", "SecondName"))
+    putJson(s"/${canvas.id}/folder/${folder.id}/rename", req) {
       status should equal(401)
     }
   }
@@ -599,12 +685,10 @@ class TestDataCanvasController
   test("folder rename succeeds when authenticated") {
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id, "FirstName")
-    val folderRenameRequest =
-      write(RenameDataCanvasFolder("FirstName", "SecondName"))
-
+    val req = write(RenameDataCanvasFolder("FirstName", "SecondName"))
     putJson(
       s"/${canvas.id}/folder/${folder.id}/rename",
-      folderRenameRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
@@ -614,12 +698,10 @@ class TestDataCanvasController
   test("folder rename fails when name is too long") {
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id, "FirstName")
-    val folderRenameRequest =
-      write(RenameDataCanvasFolder("FirstName", randomString(256)))
-
+    val req = write(RenameDataCanvasFolder("FirstName", randomString(256)))
     putJson(
       s"/${canvas.id}/folder/${folder.id}/rename",
-      folderRenameRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(400)
@@ -631,11 +713,8 @@ class TestDataCanvasController
     val parent1 = createFolder(canvas.id, "parent-1")
     val parent2 = createFolder(canvas.id, "parent-2")
     val folder = createFolder(canvas.id, "sub-folder", Some(parent1.id))
-    val folderMoveRequest = write(
-      MoveDataCanvasFolder(oldParent = parent1.id, newParent = parent2.id)
-    )
-
-    putJson(s"/${canvas.id}/folder/${folder.id}/move", folderMoveRequest) {
+    val req = write(MoveDataCanvasFolder(parent1.id, parent2.id))
+    putJson(s"/${canvas.id}/folder/${folder.id}/move", req) {
       status should equal(401)
     }
   }
@@ -645,13 +724,10 @@ class TestDataCanvasController
     val parent1 = createFolder(canvas.id, "parent-1")
     val parent2 = createFolder(canvas.id, "parent-2")
     val folder = createFolder(canvas.id, "sub-folder", Some(parent1.id))
-    val folderMoveRequest = write(
-      MoveDataCanvasFolder(oldParent = parent1.id, newParent = parent2.id)
-    )
-
+    val req = write(MoveDataCanvasFolder(parent1.id, parent2.id))
     putJson(
       s"/${canvas.id}/folder/${folder.id}/move",
-      folderMoveRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
@@ -662,14 +738,11 @@ class TestDataCanvasController
     val canvas = createDataCanvas()
     val parent1 = createFolder(canvas.id, "parent-1")
     val parent2 = createFolder(canvas.id, "parent-2")
-    val folder = createFolder(canvas.id, "sub-folder", Some(parent1.id))
-    val folderMoveRequest = write(
-      MoveDataCanvasFolder(oldParent = parent1.id, newParent = parent2.id)
-    )
-
+    createFolder(canvas.id, "sub-folder", Some(parent1.id))
+    val req = write(MoveDataCanvasFolder(parent1.id, parent2.id))
     putJson(
-      s"/${canvas.id}/folder/${bogusFolderId}/move",
-      folderMoveRequest,
+      s"/${canvas.id}/folder/$bogusFolderId/move",
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
@@ -681,13 +754,10 @@ class TestDataCanvasController
     val parent1 = createFolder(canvas.id, "parent-1")
     val parent2 = createFolder(canvas.id, "parent-2")
     val folder = createFolder(canvas.id, "sub-folder", Some(parent1.id))
-    val folderMoveRequest = write(
-      MoveDataCanvasFolder(oldParent = bogusFolderId, newParent = parent2.id)
-    )
-
+    val req = write(MoveDataCanvasFolder(bogusFolderId, parent2.id))
     putJson(
       s"/${canvas.id}/folder/${folder.id}/move",
-      folderMoveRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
@@ -697,15 +767,11 @@ class TestDataCanvasController
   test("folder move fails on non-existent new parent") {
     val canvas = createDataCanvas()
     val parent1 = createFolder(canvas.id, "parent-1")
-    val parent2 = createFolder(canvas.id, "parent-2")
     val folder = createFolder(canvas.id, "sub-folder", Some(parent1.id))
-    val folderMoveRequest = write(
-      MoveDataCanvasFolder(oldParent = parent1.id, newParent = bogusFolderId)
-    )
-
+    val req = write(MoveDataCanvasFolder(parent1.id, bogusFolderId))
     putJson(
       s"/${canvas.id}/folder/${folder.id}/move",
-      folderMoveRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
@@ -715,7 +781,6 @@ class TestDataCanvasController
   test("folder delete requires authentication") {
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-
     delete(s"/${canvas.id}/folder/${folder.id}") {
       status should equal(401)
     }
@@ -724,7 +789,6 @@ class TestDataCanvasController
   test("folder delete succeeds when authenticated") {
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-
     delete(
       s"/${canvas.id}/folder/${folder.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -735,10 +799,9 @@ class TestDataCanvasController
 
   test("folder delete fails for non-existent folder") {
     val canvas = createDataCanvas()
-    val folder = createFolder(canvas.id)
-
+    createFolder(canvas.id)
     delete(
-      s"/${canvas.id}/folder/${bogusFolderId}",
+      s"/${canvas.id}/folder/$bogusFolderId",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(404)
@@ -748,7 +811,6 @@ class TestDataCanvasController
   test("folder delete fails when removing root folder") {
     val canvas = createDataCanvas()
     val rootFolder = getRootFolder(canvas.id)
-
     delete(
       s"/${canvas.id}/folder/${rootFolder.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -761,7 +823,7 @@ class TestDataCanvasController
     val canvas = createDataCanvas()
     val topFolder = createFolder(canvas.id, "Top-Folder")
     val subFolder1 = createFolder(canvas.id, "sub-folder-1", Some(topFolder.id))
-    val subFolder2 = createFolder(canvas.id, "sub-folder-2", Some(topFolder.id))
+    createFolder(canvas.id, "sub-folder-2", Some(topFolder.id))
 
     delete(
       s"/${canvas.id}/folder/${topFolder.id}",
@@ -769,7 +831,6 @@ class TestDataCanvasController
     ) {
       status should equal(204)
     }
-
     get(
       s"/${canvas.id}/folder/${subFolder1.id}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
@@ -781,56 +842,46 @@ class TestDataCanvasController
   test("folder get paths should return entire folder structure") {
     val canvas = createDataCanvas()
     val researchFolder = createFolder(canvas.id, "research")
-    val phase1Folder =
-      createFolder(canvas.id, "phase1", Some(researchFolder.id))
-    val phase2Folder =
-      createFolder(canvas.id, "phase2", Some(researchFolder.id))
+    createFolder(canvas.id, "phase1", Some(researchFolder.id))
+    createFolder(canvas.id, "phase2", Some(researchFolder.id))
 
     get(
       s"/${canvas.id}/folder/paths",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(200)
-
-      val result: List[DataCanvasFolderPath] = parsedBody
-        .extract[List[DataCanvasFolderPath]]
-      result.length should equal(4)
+      parsedBody.extract[List[DataCanvasFolderPath]].length should equal(4)
     }
   }
 
-  /**
-    * Package tests
-    */
+  // Package tests
   test("package attach requires authentication") {
-    val dataset = createDataSet("a test dataset")
-    val pkg = createPackage(dataset, "a test package")
+    val ds = createDataSet("a test dataset")
+    val pkg = createPackage(ds, "a test package")
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
+    val req = write(
       AttachPackageRequest(
-        datasetId = dataset.id,
+        datasetId = ds.id,
         packageId = pkg.id,
         organizationId = Some(loggedInOrganization.id)
       )
     )
-
-    postJson(s"/${canvas.id}/folder/${folder.id}/package", attachPackageRequest) {
+    postJson(s"/${canvas.id}/folder/${folder.id}/package", req) {
       status should equal(401)
     }
   }
 
   test("package attach succeeds when no organization is specified") {
-    val dataset = createDataSet("a test dataset")
-    val pkg = createPackage(dataset, "a test package")
+    val ds = createDataSet("a test dataset")
+    val pkg = createPackage(ds, "a test package")
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
-      AttachPackageRequest(datasetId = dataset.id, packageId = pkg.id, None)
-    )
-
+    val req =
+      write(AttachPackageRequest(datasetId = ds.id, packageId = pkg.id, None))
     postJson(
       s"/${canvas.id}/folder/${folder.id}/package",
-      attachPackageRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
@@ -838,21 +889,20 @@ class TestDataCanvasController
   }
 
   test("package attach succeeds when an organization is specified") {
-    val dataset = createDataSet("a test dataset")
-    val pkg = createPackage(dataset, "a test package")
+    val ds = createDataSet("a test dataset")
+    val pkg = createPackage(ds, "a test package")
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
+    val req = write(
       AttachPackageRequest(
-        datasetId = dataset.id,
+        datasetId = ds.id,
         packageId = pkg.id,
         organizationId = Some(loggedInOrganization.id)
       )
     )
-
     postJson(
       s"/${canvas.id}/folder/${folder.id}/package",
-      attachPackageRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
@@ -860,180 +910,60 @@ class TestDataCanvasController
   }
 
   test("package detach requires authentication") {
-    val dataset = createDataSet("a test dataset")
-    val `package` = createPackage(dataset, "a test package")
+    val ds = createDataSet("a test dataset")
+    val pkg = createPackage(ds, "a test package")
     val canvas = createDataCanvas()
     val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
+    val req = write(
       AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = `package`.id,
+        datasetId = ds.id,
+        packageId = pkg.id,
         organizationId = Some(loggedInOrganization.id)
       )
     )
-
     postJson(
       s"/${canvas.id}/folder/${folder.id}/package",
-      attachPackageRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
     }
 
-    delete(s"/${canvas.id}/folder/${folder.id}/package/${`package`.id}") {
+    delete(s"/${canvas.id}/folder/${folder.id}/package/${pkg.id}") {
       status should equal(401)
     }
   }
 
-  // TODO: figure out why this tests fails
-  ignore("package detach from data-canvas") {
-    val dataset = createDataSet("a test dataset")
-    val `package` = createPackage(dataset, "a test package")
-    val canvas = createDataCanvas()
-    val folder = createFolder(canvas.id)
-    val attachPackageRequest = write(
-      AttachPackageRequest(
-        datasetId = dataset.id,
-        packageId = `package`.id,
-        organizationId = Some(loggedInOrganization.id)
-      )
-    )
-
-    postJson(
-      s"/${canvas.id}/folder/${folder.id}/package",
-      attachPackageRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(201)
-    }
-
-    delete(
-      s"/${canvas.id}/folder/${folder.id}/package/${`package`.id}",
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(204)
-    }
-  }
-
-  /**
-    * List of Packages operations
-    */
-  ignore("package list is attached to a data-canvas folder") {
-    val dataset = createDataSet(randomString())
-    val package1 = createPackage(dataset, randomString())
-    val package2 = createPackage(dataset, randomString())
-    val canvas = createDataCanvas()
-    val folder = createFolder(canvas.id)
-
-    val attachPackagesRequest = write(
-      List(
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = package1.id,
-          organizationId = Some(loggedInOrganization.id)
-        ),
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = package2.id,
-          organizationId = Some(loggedInOrganization.id)
-        )
-      )
-    )
-
-    postJson(
-      s"/${canvas.id}/folder/${folder.id}/packages",
-      attachPackagesRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(201)
-    }
-  }
-
-  ignore("package list is detached from a data-canvas folder") {
-    val (canvas, folder, dataset, packages) = setupCanvas(numberOfPackages = 3)
-
-    val detachPackagesRequest = write(
-      List(
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = packages(0).id,
-          organizationId = Some(loggedInOrganization.id)
-        ),
-        AttachPackageRequest(
-          datasetId = dataset.id,
-          packageId = packages(1).id,
-          organizationId = Some(loggedInOrganization.id)
-        )
-      )
-    )
-
-    deleteJson(
-      s"/${canvas.id}/folder/${folder.id}/packages",
-      detachPackagesRequest,
-      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
-    ) {
-      status should equal(204)
-    }
-  }
-
-  /**
-    * Download manifest
-    */
+  // Download manifest
   test("download manifest for simple package and canvas structures") {
-    // create a dataset
-    val dataset = createDataSet("dataset for download manifest")
-    // create 3 packages with files
-    val package1 = createPackage(dataset, "1.csv", `type` = PackageType.CSV)
-    val package2 = createPackage(dataset, "2.csv", `type` = PackageType.CSV)
-    val package3 = createPackage(dataset, "3.csv", `type` = PackageType.CSV)
-    val file1 = createFile("1.csv", dataset, package1)
-    val file2 = createFile("2.csv", dataset, package2)
-    val file3 = createFile("3.csv", dataset, package3)
-    // create a canvas
+    val ds = createDataSet("dataset for download manifest")
+    val package1 = createPackage(ds, "1.csv", `type` = PackageType.CSV)
+    val package2 = createPackage(ds, "2.csv", `type` = PackageType.CSV)
+    val package3 = createPackage(ds, "3.csv", `type` = PackageType.CSV)
+    createFile("1.csv", ds, package1)
+    createFile("2.csv", ds, package2)
+    createFile("3.csv", ds, package3)
+
     val canvas = createDataCanvas(
       "data-canvas for download manifest",
       "data-canvas for download manifest"
     )
-    // create some folders
     val folder1 = createFolder(canvas.id, "folder-1")
     val folder2 = createFolder(canvas.id, "folder-2")
     val folder3a = createFolder(canvas.id, "complete")
     val folder3b = createFolder(canvas.id, "folder-3", Some(folder3a.id))
-    // link each package to a canvas folder
-    attachPackage(canvas, folder1, dataset, package1)
-    attachPackage(canvas, folder2, dataset, package2)
-    attachPackage(canvas, folder3b, dataset, package3)
+    attachPackage(canvas, folder1, ds, package1)
+    attachPackage(canvas, folder2, ds, package2)
+    attachPackage(canvas, folder3b, ds, package3)
 
-    val downloadRequest =
-      write(DownloadRequest(nodeIds = List(canvas.nodeId)))
-
-    // get the download manifest
+    val req = write(DownloadRequest(nodeIds = List(canvas.nodeId)))
     postJson(
       "/download-manifest",
-      downloadRequest,
+      req,
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status should equal(201)
-
-      val result: DownloadManifestDTO = parsedBody
-        .extract[DownloadManifestDTO]
-
-      result.data.length should equal(3)
+      parsedBody.extract[DownloadManifestDTO].data.length should equal(3)
     }
   }
-
-  // TODO: write test for simple package structure and complex canvas structure
-  ignore(
-    "download manifest for simple package structure and complex canvas structure"
-  ) {
-    0 should equal(0)
-  }
-
-  // TODO: write test for complex package structure and complex canvas structure
-  ignore(
-    "download manifest for complex package structure and complex canvas structure"
-  ) {
-    0 should equal(0)
-  }
-
 }

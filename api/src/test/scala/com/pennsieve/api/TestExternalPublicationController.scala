@@ -17,26 +17,34 @@
 package com.pennsieve.api
 
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
-import cats.data._
-import cats.implicits._
-import com.pennsieve.dtos._
-import com.pennsieve.helpers._
-import com.pennsieve.models._
-import com.pennsieve.traits.PostgresProfile.api._
+import com.pennsieve.helpers.MockDoiClient
+import com.pennsieve.models.{
+  CognitoId,
+  DBPermission,
+  Dataset,
+  Doi,
+  NodeCodes,
+  Organization,
+  RelationshipType,
+  User
+}
 import org.json4s._
-import org.json4s.jackson.Serialization.{ read, write }
+import org.json4s.jackson.JsonMethods._
 import org.scalatest.EitherValues._
 import org.scalatest.OptionValues._
 
 import java.net.URLEncoder
+import java.util.UUID
 import scala.concurrent.Future
 
-class TestExternalPublicationController
-    extends BaseApiTest
-    with DataSetTestMixin {
+class TestExternalPublicationController extends BaseApiUnitTest {
 
-  override def afterStart(): Unit = {
-    super.afterStart()
+  var loggedInUser: User = _
+  var loggedInOrganization: Organization = _
+  var loggedInJwt: String = _
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
 
     implicit val httpClient: HttpRequest => Future[HttpResponse] = { _ =>
       Future.successful(HttpResponse())
@@ -53,18 +61,78 @@ class TestExternalPublicationController
     )
   }
 
-  val ValidDoi = Doi("10.21397/jili-ef5r") // MockDoiClient is aware of this value
-  val InvalidDoi = Doi("10.21397/adbb-6903")
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    state.clear()
+    setUpFixtures()
+  }
 
-  def encode(q: String): String =
+  private def setUpFixtures(): Unit = {
+    val orgId = state.newId()
+    loggedInOrganization = Organization(
+      nodeId = NodeCodes.generateId(NodeCodes.organizationCode),
+      name = "Test Organization",
+      slug = "test-org",
+      id = orgId
+    )
+    state.organizations.put(orgId, loggedInOrganization)
+
+    val userId = state.newId()
+    loggedInUser = User(
+      nodeId = NodeCodes.generateId(NodeCodes.userCode),
+      email = "test@test.com",
+      firstName = "first",
+      middleInitial = None,
+      lastName = "last",
+      degree = None,
+      credential = "cred",
+      color = "",
+      url = "http://test.com",
+      authyId = 0,
+      isSuperAdmin = false,
+      isIntegrationUser = false,
+      preferredOrganizationId = None,
+      status = true,
+      orcidAuthorization = None,
+      cognitoId = Some(CognitoId.UserPoolId(UUID.randomUUID())),
+      id = userId
+    )
+    state.users.put(userId, loggedInUser)
+
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, loggedInUser.id), DBPermission.Administer)
+    state.orgUsers.put(
+      (loggedInOrganization.id, loggedInUser.id),
+      com.pennsieve.models.OrganizationUser(
+        loggedInOrganization.id,
+        loggedInUser.id,
+        DBPermission.Administer
+      )
+    )
+
+    loggedInJwt = mintUserJwt(loggedInUser, loggedInOrganization)
+
+    val sc = secureContainerBuilder(loggedInUser, loggedInOrganization)
+    sc.datasetStatusManager.resetDefaultStatusOptions.await.value
+  }
+
+  private def createDataSet(name: String): Dataset = {
+    val sc = secureContainerBuilder(loggedInUser, loggedInOrganization)
+    sc.datasetManager.create(name, Some("desc")).await.value
+  }
+
+  private def encode(q: String): String =
     URLEncoder.encode(q, "utf-8")
 
-  def createExternalPublication(
+  private val ValidDoi = Doi("10.21397/jili-ef5r")
+  private val InvalidDoi = Doi("10.21397/adbb-6903")
+
+  private def createExternalPublication(
     dataset: Dataset,
     doi: Doi
-  ): ExternalPublicationDTO =
+  ): com.pennsieve.api.ExternalPublicationDTO =
     put(
-      s"/datasets/${dataset.nodeId}/external-publications?doi=$doi&relationshipType=IsReferencedBy",
+      s"/datasets/${dataset.nodeId}/external-publications?doi=${doi.value}&relationshipType=IsReferencedBy",
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
@@ -72,7 +140,6 @@ class TestExternalPublicationController
     }
 
   test("link external publications with valid DOIs to a dataset") {
-
     val dataset = createDataSet("dataset")
 
     Seq(
@@ -88,17 +155,13 @@ class TestExternalPublicationController
         parsedBody.extract[ExternalPublicationDTO].doi.value shouldBe doi
         parsedBody
           .extract[ExternalPublicationDTO]
-          .relationshipType
-          .value shouldBe RelationshipType.IsDerivedFrom
-
+          .relationshipType shouldBe RelationshipType.IsDerivedFrom
       }
     }
   }
 
   test("require a DOI query parameter to link external publications") {
-
     val dataset = createDataSet("dataset")
-
     put(
       s"/datasets/${dataset.nodeId}/external-publications?relationshipType=IsSourceOf",
       headers = authorizationHeader(loggedInJwt)
@@ -110,11 +173,7 @@ class TestExternalPublicationController
   test("reject malformed DOIs") {
     val dataset = createDataSet("dataset")
 
-    Seq(
-      "10.134", // missing suffix
-      "10.134/", // missing suffix
-      "10.abc/1234" // letters in prefix
-    ).foreach(
+    Seq("10.134", "10.134/", "10.abc/1234").foreach(
       doi =>
         put(
           s"/datasets/${dataset.nodeId}/external-publications?doi=${encode(doi)}&relationshipType=IsSourceOf",
@@ -140,12 +199,11 @@ class TestExternalPublicationController
   }
 
   test("lowercase DOI when linking to dataset") {
-
     val dataset = createDataSet("dataset")
     val uppercaseDoi = Doi("10.21397/JILI-EF5T")
 
     put(
-      s"/datasets/${dataset.nodeId}/external-publications?doi=$uppercaseDoi&relationshipType=IsSourceOf",
+      s"/datasets/${dataset.nodeId}/external-publications?doi=${uppercaseDoi.value}&relationshipType=IsSourceOf",
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
@@ -159,14 +217,14 @@ class TestExternalPublicationController
     val dataset = createDataSet("dataset")
 
     put(
-      s"/datasets/${dataset.nodeId}/external-publications?doi=$ValidDoi&relationshipType=IsDescribedBy",
+      s"/datasets/${dataset.nodeId}/external-publications?doi=${ValidDoi.value}&relationshipType=IsDescribedBy",
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
     }
 
     put(
-      s"/datasets/${dataset.nodeId}/external-publications?doi=$ValidDoi&relationshipType=IsDescribedBy",
+      s"/datasets/${dataset.nodeId}/external-publications?doi=${ValidDoi.value}&relationshipType=IsDescribedBy",
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
@@ -182,13 +240,10 @@ class TestExternalPublicationController
   }
 
   test("get external publications for a dataset") {
-
     val dataset = createDataSet("dataset")
 
-    val externalPublication1 =
-      createExternalPublication(dataset, ValidDoi)
-    val externalPublication2 =
-      createExternalPublication(dataset, InvalidDoi)
+    createExternalPublication(dataset, ValidDoi)
+    createExternalPublication(dataset, InvalidDoi)
 
     get(
       s"/datasets/${dataset.nodeId}/external-publications",
@@ -210,7 +265,7 @@ class TestExternalPublicationController
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
-      parsedBody.extract[CitationResult].citation shouldBe ("A citation")
+      parsedBody.extract[CitationResult].citation shouldBe "A citation"
     }
 
     get(
@@ -227,7 +282,7 @@ class TestExternalPublicationController
     createExternalPublication(dataset, ValidDoi)
 
     delete(
-      s"/datasets/${dataset.nodeId}/external-publications?relationshipType=IsReferencedBy&doi=$ValidDoi",
+      s"/datasets/${dataset.nodeId}/external-publications?relationshipType=IsReferencedBy&doi=${ValidDoi.value}",
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(204)
@@ -246,7 +301,7 @@ class TestExternalPublicationController
     val dataset = createDataSet("dataset")
 
     delete(
-      s"/datasets/${dataset.nodeId}/external-publications?relationshipType=IsReferencedBy&doi=$ValidDoi",
+      s"/datasets/${dataset.nodeId}/external-publications?relationshipType=IsReferencedBy&doi=${ValidDoi.value}",
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(404)

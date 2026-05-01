@@ -20,6 +20,7 @@ import cats.data.EitherT
 import com.pennsieve.domain.{
   CoreError,
   MissingDataUseAgreement,
+  NotFound,
   PredicateError
 }
 import com.pennsieve.managers.DataUseAgreementManager
@@ -104,4 +105,59 @@ class FakeDataUseAgreementManager(
       EitherT.rightT(agreement)
     }
   }
+
+  override def update(
+    agreementId: Int,
+    name: Option[String],
+    body: Option[String],
+    description: Option[String],
+    isDefault: Option[Boolean]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] =
+    state.dataUseAgreements.get((organization.id, agreementId)) match {
+      case None => EitherT.leftT(NotFound(s"Agreement $agreementId"): CoreError)
+      case Some(existing) =>
+        val newName = name.getOrElse(existing.name)
+        if (name.isDefined && newName != existing.name &&
+          agreementsForOrg.exists(a => a.name == newName))
+          EitherT.leftT(
+            PredicateError("Data use agreement name must be unique"): CoreError
+          )
+        else {
+          val updated = existing.copy(
+            name = newName,
+            body = body.getOrElse(existing.body),
+            description = description.getOrElse(existing.description)
+          )
+          state.dataUseAgreements.put((organization.id, agreementId), updated)
+          isDefault match {
+            case Some(true) =>
+              // Demote any existing default, then promote.
+              agreementsForOrg.foreach { a =>
+                state.dataUseAgreements.put(
+                  (organization.id, a.id),
+                  a.copy(isDefault = a.id == agreementId)
+                )
+              }
+            case Some(false) =>
+              state.dataUseAgreements.put(
+                (organization.id, agreementId),
+                updated.copy(isDefault = false)
+              )
+            case None => ()
+          }
+          EitherT.rightT(())
+        }
+    }
+
+  override def delete(
+    agreementId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] =
+    state.dataUseAgreements.remove((organization.id, agreementId)) match {
+      case Some(_) => EitherT.rightT(())
+      case None => EitherT.leftT(NotFound(s"Agreement $agreementId"): CoreError)
+    }
 }

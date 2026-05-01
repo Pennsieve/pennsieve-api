@@ -190,7 +190,10 @@ class FakePackageManager(val datasetManager: DatasetManager)
     ec: ExecutionContext
   ): EitherT[Future, CoreError, (Package, com.pennsieve.models.Dataset)] = {
     state.packages.values
-      .find(_.nodeId == nodeId)
+      .find(p => p.nodeId == nodeId)
+      .filterNot(
+        p => p.state == PackageState.DELETING || p.state == PackageState.DELETED
+      )
       .flatMap { p =>
         state.datasets.get((orgId, p.datasetId)).map(d => (p, d))
       } match {
@@ -446,6 +449,185 @@ class FakePackageManager(val datasetManager: DatasetManager)
     }
 
     EitherT.rightT(rows)
+  }
+
+  override def checkName(
+    name: String,
+    parent: Option[Package],
+    dataset: Dataset,
+    packageType: PackageType,
+    duplicateThreshold: Int = 100
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, String] = {
+    val siblings = state.packages.collect {
+      case ((o, _), p)
+          if o == orgId && p.datasetId == dataset.id &&
+            p.parentId == parent.map(_.id) &&
+            p.state != PackageState.DELETING &&
+            p.state != PackageState.DELETED &&
+            p.state != PackageState.RESTORING =>
+        p.name
+    }.toSet
+    com.pennsieve.core.utilities.recommendName(
+      name.trim,
+      siblings,
+      duplicateThreshold = duplicateThreshold
+    ) match {
+      case Right(n) => EitherT.rightT(n)
+      case Left(err) => EitherT.leftT(err: CoreError)
+    }
+  }
+
+  override def descendants(
+    p: Package
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Set[Int]] = {
+    def walk(pid: Int): Set[Int] = {
+      val children = state.packages.collect {
+        case ((o, _), c) if o == orgId && c.parentId.contains(pid) => c.id
+      }.toSet
+      children ++ children.flatMap(walk)
+    }
+    Future.successful(walk(p.id))
+  }
+
+  override def delete(
+    traceId: com.pennsieve.audit.middleware.TraceId,
+    pkg: Package
+  )(
+    storageManager: com.pennsieve.managers.StorageServiceClientTrait
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, com.pennsieve.messages.BackgroundJob] = {
+    // Soft-delete: mark DELETING, prepend deletion sentinel, and recurse for
+    // collection types.
+    def softDelete(p: Package): Unit = {
+      val updated = p.copy(
+        state = PackageState.DELETING,
+        name = s"__DELETED__${p.nodeId}_${p.name}"
+      )
+      state.packages.put((orgId, p.id), updated)
+      if (p.`type` == PackageType.Collection) {
+        state.packages
+          .collect {
+            case ((o, _), c) if o == orgId && c.parentId.contains(p.id) => c
+          }
+          .foreach(softDelete)
+      }
+    }
+    softDelete(pkg)
+
+    for {
+      _ <- datasetManager.assertNotLocked(pkg.datasetId)
+      // Decrement package storage if pkg was READY (mirrors real impl).
+      _ <- if (pkg.state == PackageState.READY)
+        storageManager
+          .getStorage(
+            com.pennsieve.domain.StorageAggregation.spackages,
+            List(pkg.id)
+          )
+          .flatMap { m =>
+            m.get(pkg.id).flatten match {
+              case Some(amount) =>
+                storageManager
+                  .incrementStorage(
+                    com.pennsieve.domain.StorageAggregation.spackages,
+                    -amount,
+                    pkg.id
+                  )
+                  .map(_ => ())
+              case None => EitherT.rightT[Future, CoreError](())
+            }
+          } else EitherT.rightT[Future, CoreError](())
+    } yield
+      com.pennsieve.messages.DeletePackageJob(
+        pkg.id,
+        organization.id,
+        datasetManager.actor.nodeId,
+        traceId = traceId
+      ): com.pennsieve.messages.BackgroundJob
+  }
+
+  override def getPackageHierarchyForOrg(
+    orgId: Int,
+    packageIds: List[Int]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[PackageHierarchy]] = {
+    val roots = state.packages.collect {
+      case ((o, _), p) if o == orgId && packageIds.contains(p.id) => p
+    }.toList
+
+    def descend(
+      pkg: Package,
+      nodeIdPath: Seq[String],
+      namePath: Seq[String]
+    ): Seq[(Package, Seq[String], Seq[String])] = {
+      val children = state.packages.collect {
+        case ((o, _), c) if o == orgId && c.parentId.contains(pkg.id) => c
+      }.toList
+      (pkg, nodeIdPath, namePath) +: children.flatMap(
+        c => descend(c, nodeIdPath :+ pkg.nodeId, namePath :+ pkg.name)
+      )
+    }
+
+    val all = roots.flatMap(r => descend(r, Seq.empty, Seq.empty))
+
+    val processable = all.filterNot {
+      case (p, _, _) =>
+        p.`type` == PackageType.Collection ||
+          p.state == PackageState.DELETING ||
+          p.state == PackageState.DELETED
+    }
+
+    val rows = processable.flatMap {
+      case (pkg, nodeIdPath, namePath) =>
+        val sourceFiles = state.files.collect {
+          case ((o, _), f)
+              if o == orgId && f.packageId == pkg.id &&
+                f.objectType == FileObjectType.Source =>
+            f
+        }.toList
+        val totalFileCount = sourceFiles.size
+        sourceFiles.map { f =>
+          PackageHierarchy(
+            datasetId = pkg.datasetId,
+            nodeIdPath = nodeIdPath,
+            packageId = pkg.id,
+            nodeId = pkg.nodeId,
+            packageType = pkg.`type`,
+            packageState = pkg.state,
+            packageNamePath = namePath,
+            packageName = pkg.name,
+            packageFileCount = totalFileCount,
+            fileId = f.id,
+            fileName = f.name,
+            size = f.size,
+            fileType = f.fileType,
+            s3Bucket = f.s3Bucket,
+            s3Key = f.s3Key,
+            publishedS3VersionId = f.publishedS3VersionId
+          )
+        }
+    }
+
+    EitherT.rightT(rows)
+  }
+
+  override def switchOwner(
+    user: com.pennsieve.models.User,
+    owner: Option[com.pennsieve.models.User]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] = {
+    val updated = state.packages.collect {
+      case ((o, pid), p) if o == orgId && p.ownerId.contains(user.id) =>
+        (pid, p.copy(ownerId = owner.map(_.id)))
+    }.toList
+    updated.foreach { case (pid, p) => state.packages.put((orgId, pid), p) }
+    EitherT.rightT(updated.size)
   }
 
   override def packageTypes(

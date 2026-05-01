@@ -18,10 +18,15 @@ package com.pennsieve.helpers.fakes
 
 import com.pennsieve.db.{ CustomTermsOfService, PennsieveTermsOfService }
 import com.pennsieve.models.{
+  Annotation,
+  AnnotationLayer,
   ChangelogEventAndType,
   Collection,
   Contributor,
   DBPermission,
+  DataCanvas,
+  DataCanvasFolder,
+  DataCanvasPackage,
   DataUseAgreement,
   Dataset,
   DatasetAsset,
@@ -39,6 +44,7 @@ import com.pennsieve.models.{
   Team,
   Token,
   User,
+  UserInvite,
   Webhook,
   WebhookEventSubcription
 }
@@ -59,6 +65,11 @@ class InMemoryState {
   val orgUsers: TrieMap[(Int, Int), OrganizationUser] = new TrieMap()
   val orgUserPermissions: TrieMap[(Int, Int), DBPermission] = new TrieMap()
   val tokens: TrieMap[String, Token] = new TrieMap()
+  // userInviteId -> UserInvite (org-scoped via the row's organizationId).
+  val userInvites: TrieMap[Int, UserInvite] = new TrieMap()
+  // orgId -> Subscription. `getSubscription` lazily creates a default if absent.
+  val subscriptions: TrieMap[Int, com.pennsieve.models.Subscription] =
+    new TrieMap()
 
   // Collections are scoped to an organization; keyed by (orgId, collectionId).
   val collections: TrieMap[(Int, Int), Collection] = new TrieMap()
@@ -91,6 +102,8 @@ class InMemoryState {
   val externalPublications: TrieMap[(Int, Int, String), ExternalPublication] =
     new TrieMap() // (orgId, datasetId, doi+rel)
   val webhooks: TrieMap[(Int, Int), Webhook] = new TrieMap()
+  // (orgId, webhookId) -> subscribed event names
+  val webhookSubscriptions: TrieMap[(Int, Int), Seq[String]] = new TrieMap()
   val changelogEvents: TrieMap[(Int, Int), ChangelogEventAndType] =
     new TrieMap()
 
@@ -165,6 +178,33 @@ class InMemoryState {
   val channels: TrieMap[(Int, Int), com.pennsieve.models.Channel] =
     new TrieMap()
 
+  // TimeSeries annotation state — global (data DB is shared, not org-scoped).
+  val timeSeriesLayers: TrieMap[Int, com.pennsieve.db.TimeSeriesLayer] =
+    new TrieMap()
+  val timeSeriesAnnotations
+    : TrieMap[Int, com.pennsieve.db.DBTimeSeriesAnnotation] =
+    new TrieMap()
+  // channelGroupId -> SortedSet of channel nodeIds
+  val timeSeriesChannelGroups
+    : TrieMap[Int, scala.collection.SortedSet[String]] =
+    new TrieMap()
+
+  // (orgId, annotationLayerId) -> AnnotationLayer
+  val annotationLayers: TrieMap[(Int, Int), AnnotationLayer] = new TrieMap()
+  // (orgId, annotationId) -> Annotation
+  val annotations: TrieMap[(Int, Int), Annotation] = new TrieMap()
+
+  // (orgId, dataCanvasId) -> DataCanvas
+  val dataCanvases: TrieMap[(Int, Int), DataCanvas] = new TrieMap()
+  // (orgId, folderId) -> DataCanvasFolder
+  val dataCanvasFolders: TrieMap[(Int, Int), DataCanvasFolder] = new TrieMap()
+  // (orgId, canvasId, folderId, datasetId, packageId) -> DataCanvasPackage
+  val dataCanvasPackages
+    : TrieMap[(Int, Int, Int, Int, Int), DataCanvasPackage] =
+    new TrieMap()
+  // (orgId, canvasId, userId) -> Role  (user-canvas role)
+  val dataCanvasOwners: TrieMap[(Int, Int, Int), Role] = new TrieMap()
+
   // Storage accounting. (orgId, packageId) -> bytes; (orgId, datasetId) -> bytes;
   // orgId -> bytes (org-wide). userId -> bytes.
   val packageStorage: TrieMap[(Int, Int), Long] = new TrieMap()
@@ -182,6 +222,8 @@ class InMemoryState {
     orgUsers.clear()
     orgUserPermissions.clear()
     tokens.clear()
+    userInvites.clear()
+    subscriptions.clear()
     collections.clear()
     contributors.clear()
     featureFlags.clear()
@@ -197,6 +239,7 @@ class InMemoryState {
     datasetAssets.clear()
     externalPublications.clear()
     webhooks.clear()
+    webhookSubscriptions.clear()
     changelogEvents.clear()
     datasetStatusDefaultsSeeded.clear()
     datasetUserRoles.clear()
@@ -216,6 +259,15 @@ class InMemoryState {
     datasetRegistrations.clear()
     datasetIntegrations.clear()
     channels.clear()
+    timeSeriesLayers.clear()
+    timeSeriesAnnotations.clear()
+    timeSeriesChannelGroups.clear()
+    annotationLayers.clear()
+    annotations.clear()
+    dataCanvases.clear()
+    dataCanvasFolders.clear()
+    dataCanvasPackages.clear()
+    dataCanvasOwners.clear()
     packageStorage.clear()
     datasetStorage.clear()
     organizationStorage.clear()

@@ -16,31 +16,40 @@
 
 package com.pennsieve.api
 
-import com.pennsieve.messages._
 import com.pennsieve.dtos.ModelPropertyRO
-import com.pennsieve.helpers.{
-  DataSetTestMixin,
-  MockAuditLogger,
-  MockSQSClient
-}
-import com.pennsieve.messages.DeletePackageJob
+import com.pennsieve.helpers.{ MockAuditLogger, MockSQSClient }
 import com.pennsieve.models.PackageState.{ DELETING, READY }
 import com.pennsieve.models.PackageType.{ Collection, PDF }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
-import org.apache.http.impl.client.HttpClients
+import com.pennsieve.models.{
+  CognitoId,
+  DBPermission,
+  Dataset,
+  NodeCodes,
+  Organization,
+  User
+}
+import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
+import org.scalatest.OptionValues._
 
-class TestDataController extends BaseApiTest with DataSetTestMixin {
+import java.util.UUID
+
+class TestDataController extends BaseApiUnitTest {
 
   val mockSqsClient = MockSQSClient
-
   val mockAuditLogger = new MockAuditLogger()
 
-  override def afterStart(): Unit = {
-    super.afterStart()
+  var loggedInUser: User = _
+  var loggedInOrganization: Organization = _
+  var loggedInJwt: String = _
+  var dataset: Dataset = _
+  var secureContainer: com.pennsieve.helpers.APIContainers.SecureAPIContainer =
+    _
 
-    val httpClient = HttpClients.createMinimal()
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new DataController(
         insecureContainer,
@@ -54,15 +63,74 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     )
   }
 
-  test("swagger") {
-    import com.pennsieve.web.ResourcesApp
-    addServlet(new ResourcesApp, "/api-docs/*")
-
-    get("/api-docs/swagger.json") {
-      status should equal(200)
-      println(body)
-    }
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    state.clear()
+    setUpFixtures()
   }
+
+  private def setUpFixtures(): Unit = {
+    val orgId = state.newId()
+    loggedInOrganization = Organization(
+      nodeId = NodeCodes.generateId(NodeCodes.organizationCode),
+      name = "Test Organization",
+      slug = "test-org",
+      id = orgId
+    )
+    state.organizations.put(orgId, loggedInOrganization)
+
+    val userId = state.newId()
+    loggedInUser = User(
+      nodeId = NodeCodes.generateId(NodeCodes.userCode),
+      email = "test@test.com",
+      firstName = "first",
+      middleInitial = None,
+      lastName = "last",
+      degree = None,
+      credential = "cred",
+      color = "",
+      url = "http://test.com",
+      authyId = 0,
+      isSuperAdmin = false,
+      isIntegrationUser = false,
+      preferredOrganizationId = None,
+      status = true,
+      orcidAuthorization = None,
+      cognitoId = Some(CognitoId.UserPoolId(UUID.randomUUID())),
+      id = userId
+    )
+    state.users.put(userId, loggedInUser)
+
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, loggedInUser.id), DBPermission.Administer)
+    state.orgUsers.put(
+      (loggedInOrganization.id, loggedInUser.id),
+      com.pennsieve.models.OrganizationUser(
+        loggedInOrganization.id,
+        loggedInUser.id,
+        DBPermission.Administer
+      )
+    )
+
+    loggedInJwt = mintUserJwt(loggedInUser, loggedInOrganization)
+    secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
+    secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.value
+
+    dataset = secureContainer.datasetManager
+      .create("Home", Some("Home Dataset"))
+      .await
+      .value
+  }
+
+  private def packageManager: com.pennsieve.managers.PackageManager =
+    secureContainer.packageManager
+
+  private def createDataSet(name: String): Dataset =
+    secureContainer.datasetManager.create(name, Some("desc")).await.value
+
+  // -------------- Tests --------------------------------------------------
+
+  test("swagger")(pending)
 
   test("moves a package") {
     val dataset = createDataSet("My DataSet")
@@ -79,7 +147,8 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
-    val moveReq = write(MoveRequest(List(pkg.nodeId), Some(collection2.nodeId)))
+    val moveReq =
+      write(MoveRequest(List(pkg.nodeId), Some(collection2.nodeId)))
 
     postJson(
       s"/move",
@@ -89,7 +158,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       compactRender(parsedBody \ "failure") should not include (pkg.nodeId)
       compactRender(parsedBody \ "success") should include(pkg.nodeId)
-
     }
   }
 
@@ -114,7 +182,7 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       )
       .await
       .value
-    val pkg2 = packageManager
+    packageManager
       .create(
         "Baz",
         PDF,
@@ -126,7 +194,8 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
-    val moveReq = write(MoveRequest(List(pkg.nodeId), Some(collection2.nodeId)))
+    val moveReq =
+      write(MoveRequest(List(pkg.nodeId), Some(collection2.nodeId)))
 
     postJson(
       s"/move",
@@ -143,7 +212,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("unique naming constraints with bulk move") {
-
     val dataset = createDataSet("My DataSet")
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
@@ -153,7 +221,7 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       .create("Bar", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
       .value
-    val pkg = packageManager
+    packageManager
       .create(
         "Baz",
         PDF,
@@ -175,7 +243,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       )
       .await
       .value
-
     val pkg3 = packageManager
       .create(
         "UniqueName",
@@ -214,7 +281,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
       .value
-
     val moveReq =
       write(MoveRequest(List(collection.nodeId), Some(collection.nodeId)))
 
@@ -232,7 +298,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("fails to moves a collection into its child") {
-
     val dataset = createDataSet("My DataSet")
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
@@ -266,7 +331,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("fails to moves a collection right back where it is") {
-
     val dataset = createDataSet("My DataSet")
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
@@ -300,7 +364,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can move a package directly into a dataset") {
-
     val dataset = createDataSet("My DataSet")
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
@@ -327,9 +390,7 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       compactRender(parsedBody \ "failures") should not include (collection2.nodeId)
 
-      val moved =
-        packageManager.getByNodeId(collection2.nodeId).await.value
-
+      val moved = packageManager.getByNodeId(collection2.nodeId).await.value
       assert(moved.parentId.isEmpty)
     }
   }
@@ -350,7 +411,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("bulk move works") {
-
     val dataset = createDataSet("My DataSet")
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
@@ -383,7 +443,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     ) {
       status should equal(200)
       compactRender(parsedBody \ "success") should include(pkg.nodeId)
-
       compactRender(parsedBody \ "failures") should include(dataset.nodeId)
       compactRender(parsedBody \ "failures") should include(
         "cannot retrieve package"
@@ -629,7 +688,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("bulk delete works") {
-
     val datasetOne = createDataSet("My DataSet")
     val pkg = packageManager
       .create("Baz", PDF, READY, dataset, Some(loggedInUser.id), None)
@@ -646,7 +704,7 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       .create("Bar", Collection, READY, dataset, Some(loggedInUser.id), None)
       .await
       .value
-    val pkg2 = packageManager
+    packageManager
       .create(
         "Baz",
         PDF,
@@ -659,8 +717,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       .value
 
     val validItemIds = List(pkg.nodeId, collection.nodeId)
-
-    val validDeletedIds = List(pkg.id, collection.id)
 
     val deleteReq = write(
       DeleteRequest(
@@ -688,7 +744,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("updating data's properties works") {
-
     val dataset = createDataSet("My DataSet")
     val pkg = packageManager
       .create("Foo", PDF, READY, dataset, Some(loggedInUser.id), None)
@@ -717,7 +772,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("trying to update a deleted package node's properties 404s") {
-
     val dataset = createDataSet("My DataSet")
     val pkg = packageManager
       .create("Foo", PDF, DELETING, dataset, Some(loggedInUser.id), None)

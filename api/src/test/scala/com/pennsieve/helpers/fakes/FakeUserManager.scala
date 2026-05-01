@@ -150,6 +150,55 @@ class FakeUserManager(state: InMemoryState) extends UserManager {
         .sortBy(_.id)
     )
 
+  override def getByNodeIds(
+    nodeIds: Set[String]
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[User]] =
+    EitherT.rightT(
+      state.users.values.filter(u => nodeIds.contains(u.nodeId)).toList
+    )
+
+  override def getPackages(
+    user: User,
+    organization: Organization
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[com.pennsieve.models.Package]] = {
+    val datasetIdsInOrg = state.datasets.collect {
+      case ((o, did), _) if o == organization.id => did
+    }.toSet
+    EitherT.rightT(
+      state.packages
+        .collect {
+          case ((o, _), p)
+              if o == organization.id &&
+                p.ownerId.contains(user.id) &&
+                datasetIdsInOrg.contains(p.datasetId) =>
+            p
+        }
+        .toList
+        .sortBy(_.id)
+    )
+  }
+
+  override def createIntegrationUser(
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    if (user.email.nonEmpty)
+      EitherT.leftT(PredicateError("email for integration user must be blank"))
+    else if (user.cognitoId.isDefined)
+      EitherT.leftT(
+        PredicateError("cognito ID for integration user must be blank")
+      )
+    else {
+      val withId = user.copy(id = state.newId())
+      state.users.put(withId.id, withId)
+      EitherT.rightT(withId)
+    }
+
   override def createFromSelfServiceSignUp(
     cognitoId: CognitoId.UserPoolId,
     email: String,

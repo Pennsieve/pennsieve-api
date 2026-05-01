@@ -74,13 +74,15 @@ trait StorageServiceClientTrait {
 object StorageManager {
 
   /**
-    * Create a new storage container.
+    * Create a new storage container. Tests can override
+    * `DatabaseContainer.newStorageManager` to substitute an in-memory fake
+    * without touching any controller code.
     */
   def create(
     container: DatabaseContainer,
     organization: Organization
   ): StorageServiceClientTrait =
-    new StorageManager(container.db, organization)
+    container.newStorageManager(organization)
 
   def updateCache(
     organization: Organization

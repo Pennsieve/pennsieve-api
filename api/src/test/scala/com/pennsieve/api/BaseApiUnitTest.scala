@@ -46,10 +46,13 @@ import com.pennsieve.helpers.APIContainers.{
   SecureContainerBuilderType
 }
 import com.pennsieve.helpers.fakes.{
+  FakeAllDataCanvasesViewManager,
+  FakeAnnotationManager,
   FakeChangelogManager,
   FakeCollectionManager,
   FakeContributorManager,
   FakeCustomTermsOfServiceManager,
+  FakeDataCanvasManager,
   FakeDataUseAgreementManager,
   FakeDatasetAssetsManager,
   FakeDatasetManager,
@@ -59,6 +62,7 @@ import com.pennsieve.helpers.fakes.{
   FakeExternalFileManager,
   FakeExternalPublicationManager,
   FakeFileManager,
+  FakeInsecureTokenManager,
   FakeMetadataManager,
   FakePackageManager,
   FakePennsieveTermsOfServiceManager,
@@ -66,7 +70,10 @@ import com.pennsieve.helpers.fakes.{
   FakeSecureTokenManager,
   FakeStorageManager,
   FakeTeamManager,
+  FakeTimeSeriesAnnotationManager,
+  FakeTimeSeriesLayerManager,
   FakeTimeSeriesManager,
+  FakeUserInviteManager,
   FakeUserManager,
   FakeWebhookManager,
   InMemoryState
@@ -243,17 +250,38 @@ trait BaseApiUnitTest
       override val dataPostgresUseSSL = false
       override lazy val db: Database = phantomDb
       override lazy val dataDB: Database = phantomDb
+      override def newStorageManager(
+        organization: Organization
+      ): StorageServiceClientTrait =
+        new FakeStorageManager(st, organization)
+      override def newDatasetStatusManager(
+        organization: Organization
+      ): DatasetStatusManager =
+        new FakeDatasetStatusManager(st, organization)
       override lazy val userManager: UserManager = new FakeUserManager(st)
       override lazy val organizationManager: SecureOrganizationManager =
         new FakeSecureOrganizationManager(st, User.serviceUser())
-      override lazy val tokenManager: SecureTokenManager =
-        new FakeSecureTokenManager(st, User.serviceUser())
+      override lazy val tokenManager: com.pennsieve.managers.TokenManager =
+        new FakeInsecureTokenManager(st)
+      override lazy val userInviteManager: UserInviteManager =
+        new FakeUserInviteManager(st)
       override lazy val pennsieveTermsOfServiceManager
         : PennsieveTermsOfServiceManager =
         new FakePennsieveTermsOfServiceManager(st)
       override lazy val customTermsOfServiceManager
         : CustomTermsOfServiceManager =
         new FakeCustomTermsOfServiceManager(st)
+      override lazy val timeSeriesAnnotationManager
+        : com.pennsieve.managers.TimeSeriesAnnotationManager =
+        new FakeTimeSeriesAnnotationManager(st, phantomDb)
+      override lazy val layerManager
+        : com.pennsieve.managers.TimeSeriesLayerManager =
+        new FakeTimeSeriesLayerManager(
+          st,
+          phantomDb,
+          layerTableQuery,
+          timeSeriesAnnotationTableQuery
+        )
     }
   }
 
@@ -280,6 +308,14 @@ trait BaseApiUnitTest
           new FakeContributorManager(st, org, u)
         override lazy val storageManager: StorageServiceClientTrait =
           new FakeStorageManager(st, org)
+        override def newStorageManager(
+          organization: Organization
+        ): StorageServiceClientTrait =
+          new FakeStorageManager(st, organization)
+        override def newDatasetStatusManager(
+          organization: Organization
+        ): DatasetStatusManager =
+          new FakeDatasetStatusManager(st, organization)
         override lazy val pennsieveTermsOfServiceManager
           : PennsieveTermsOfServiceManager =
           new FakePennsieveTermsOfServiceManager(st)
@@ -326,6 +362,15 @@ trait BaseApiUnitTest
         override lazy val timeSeriesManager
           : com.pennsieve.managers.TimeSeriesManager =
           new FakeTimeSeriesManager(st, org, phantomDb)
+        override lazy val annotationManager
+          : com.pennsieve.managers.AnnotationManager =
+          new FakeAnnotationManager(st, org)
+        override lazy val dataCanvasManager
+          : com.pennsieve.managers.DataCanvasManager =
+          new FakeDataCanvasManager(st, org, u)
+        override lazy val allDataCanvasesViewManager
+          : com.pennsieve.managers.AllDataCanvasesViewManager =
+          new FakeAllDataCanvasesViewManager(st, u, allDataCanvasesViewMapper)
 
         // SecureCoreContainer.userRoles backs `authorizeDataset` /
         // `authorizeDatasetId`. Production hits the DB; here we synthesize from
@@ -393,6 +438,9 @@ trait BaseApiUnitTest
   }
 
   protected def parsedBody: org.json4s.JValue = parse(response.body)
+
+  protected def compactRender(json: org.json4s.JValue): String =
+    compact(render(json))
 
   protected def authorizationHeader(jwt: String): Map[String, String] =
     Map("Authorization" -> s"Bearer $jwt")

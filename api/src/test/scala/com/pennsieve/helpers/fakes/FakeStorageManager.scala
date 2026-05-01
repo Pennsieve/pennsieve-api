@@ -94,8 +94,16 @@ class FakeStorageManager(state: InMemoryState, organization: Organization)
   private def applyPackageDelta(packageId: Int, delta: Long): Unit = {
     addTo(state.packageStorage, (organization.id, packageId), delta)
     state.packages.get((organization.id, packageId)).foreach { pkg =>
+      // Walk up ancestor packages, accruing storage at each level.
+      var cur = pkg.parentId
+      while (cur.isDefined) {
+        val pid = cur.get
+        addTo(state.packageStorage, (organization.id, pid), delta)
+        cur = state.packages.get((organization.id, pid)).flatMap(_.parentId)
+      }
       addTo(state.datasetStorage, (organization.id, pkg.datasetId), delta)
       addToOrg(organization.id, delta)
+      pkg.ownerId.foreach(addToUser(_, delta))
     }
   }
 

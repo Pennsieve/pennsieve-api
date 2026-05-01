@@ -241,7 +241,7 @@ trait ManagerSpec
     new TimeSeriesManager(database, organization)
 
   def annotationManager(organization: Organization): AnnotationManager =
-    new AnnotationManager(organization, database)
+    new AnnotationManagerImpl(organization, database)
 
   def teamManager(user: User = superAdmin): TeamManager =
     TeamManager(organizationManager(user))

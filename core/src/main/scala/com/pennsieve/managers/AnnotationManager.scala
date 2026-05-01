@@ -38,11 +38,13 @@ import slick.sql.FixedSqlAction
 import scala.collection.compat._
 import scala.concurrent.{ ExecutionContext, Future }
 
-class AnnotationManager(organization: Organization, db: Database) {
+trait AnnotationManager {
+  def organization: Organization
+  def db: Database
 
-  val packages = new PackagesMapper(organization)
-  val annotations = new AnnotationsMapper(organization)
-  val annotation_layers = new AnnotationLayersMapper(organization)
+  lazy val packages = new PackagesMapper(organization)
+  lazy val annotations = new AnnotationsMapper(organization)
+  lazy val annotation_layers = new AnnotationLayersMapper(organization)
 
   def run[R](
     action: DBIOAction[R, NoStream, Nothing]
@@ -311,4 +313,12 @@ class AnnotationManager(organization: Organization, db: Database) {
       }
       .whenNone[CoreError](NotFound(s"Layer (${annotation.layerId})"))
 
+}
+
+class AnnotationManagerImpl(val organization: Organization, val db: Database)
+    extends AnnotationManager
+
+object AnnotationManager {
+  def apply(organization: Organization, db: Database): AnnotationManager =
+    new AnnotationManagerImpl(organization, db)
 }

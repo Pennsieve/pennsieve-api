@@ -69,6 +69,21 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 trait DatabaseContainer {
   self: Container =>
+
+  /** Factory hook used by `StorageManager.create`. Production builds a real
+    * `StorageManager` over `db`; tests override to return an in-memory fake. */
+  def newStorageManager(
+    organization: com.pennsieve.models.Organization
+  ): com.pennsieve.managers.StorageServiceClientTrait =
+    new com.pennsieve.managers.StorageManager(db, organization)
+
+  /** Factory hook for per-organization `DatasetStatusManager`. Tests override
+    * to return an in-memory fake; production builds a real impl over `db`. */
+  def newDatasetStatusManager(
+    organization: com.pennsieve.models.Organization
+  ): com.pennsieve.managers.DatasetStatusManager =
+    new com.pennsieve.managers.DatasetStatusManagerImpl(db, organization)
+
   val postgresHost: String = config.as[String]("postgres.host")
   val postgresPort: Int = config.as[Int]("postgres.port")
   val postgresDatabaseName: String = config.as[String]("postgres.database")
@@ -211,7 +226,7 @@ trait SecureCoreContainer
   self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
-    new AnnotationManager(self.organization, db)
+    new AnnotationManagerImpl(self.organization, db)
 
   override lazy val organizationManager: SecureOrganizationManager =
     new SecureOrganizationManagerImpl(db, user)
@@ -366,7 +381,7 @@ trait DataCanvasManagerContainer
   self: Container =>
 
   lazy val dataCanvasManager: DataCanvasManager =
-    new DataCanvasManager(db, user, dataCanvasMapper)
+    new DataCanvasManagerImpl(db, user, dataCanvasMapper)
 }
 
 trait AllDataCanvasesViewContainer {
@@ -380,7 +395,7 @@ trait AllDataCanvasesViewManagerContainer
   self: Container =>
 
   lazy val allDataCanvasesViewManager: AllDataCanvasesViewManager =
-    new AllDataCanvasesViewManager(db, user, allDataCanvasesViewMapper)
+    new AllDataCanvasesViewManagerImpl(db, user, allDataCanvasesViewMapper)
 }
 
 trait DatasetPreviewManagerContainer

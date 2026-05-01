@@ -17,26 +17,41 @@
 package com.pennsieve.api
 
 import com.pennsieve.aws.cognito.MockCognito
-import com.pennsieve.core.utilities.{ checkOrErrorT, slugify }
-import com.pennsieve.helpers.{
-  Authenticator,
-  DataSetTestMixin,
-  MockAuditLogger
-}
+import com.pennsieve.core.utilities.slugify
 import com.pennsieve.dtos.{ APITokenSecretDTO, WebhookDTO, WebhookTargetDTO }
-import com.pennsieve.models.{ IntegrationTarget, Webhook }
+import com.pennsieve.helpers.{ APIContainers, MockAuditLogger }
+import com.pennsieve.models.{
+  CognitoId,
+  DBPermission,
+  IntegrationTarget,
+  NodeCodes,
+  Organization,
+  User,
+  Webhook
+}
 import org.json4s.jackson.Serialization.write
-import org.scalatest.OptionValues._
 import org.scalatest.EitherValues._
+import org.scalatest.OptionValues._
 
-class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
+import java.util.UUID
+import scala.concurrent.ExecutionContext
+
+class TestWebhooksController extends BaseApiUnitTest {
 
   val auditLogger = new MockAuditLogger()
-  val mockCognito = new MockCognito()
+  override lazy val mockCognito: MockCognito = new MockCognito()
 
-  override def afterStart(): Unit = {
-    super.afterStart()
+  var loggedInUser: User = _
+  var colleagueUser: User = _
+  var superAdmin: User = _
+  var loggedInOrganization: Organization = _
+  var loggedInJwt: String = _
+  var colleagueJwt: String = _
+  var adminJwt: String = _
+  var secureContainer: APIContainers.SecureAPIContainer = _
 
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new WebhooksController(
         insecureContainer,
@@ -50,10 +65,187 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     )
   }
 
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    state.clear()
+    setUpFixtures()
+  }
+
+  private def setUpFixtures(): Unit = {
+    val orgId = state.newId()
+    loggedInOrganization = Organization(
+      nodeId = NodeCodes.generateId(NodeCodes.organizationCode),
+      name = "Test Organization",
+      slug = "test-org",
+      id = orgId
+    )
+    state.organizations.put(orgId, loggedInOrganization)
+
+    superAdmin = mkUser("super@a.com", isSuperAdmin = true)
+    loggedInUser = mkUser("test@test.com")
+    colleagueUser = mkUser("colleague@test.com")
+
+    addOrgMember(superAdmin, DBPermission.Administer)
+    addOrgMember(loggedInUser, DBPermission.Administer)
+    addOrgMember(colleagueUser, DBPermission.Delete)
+
+    loggedInJwt = mintUserJwt(loggedInUser, loggedInOrganization)
+    colleagueJwt = mintUserJwt(colleagueUser, loggedInOrganization)
+    adminJwt = mintUserJwt(superAdmin, loggedInOrganization)
+
+    secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
+  }
+
+  private def mkUser(email: String, isSuperAdmin: Boolean = false): User = {
+    val id = state.newId()
+    val u = User(
+      nodeId = NodeCodes.generateId(NodeCodes.userCode),
+      email = email,
+      firstName = "first",
+      middleInitial = None,
+      lastName = "last",
+      degree = None,
+      credential = "cred",
+      color = "",
+      url = "http://test.com",
+      authyId = 0,
+      isSuperAdmin = isSuperAdmin,
+      isIntegrationUser = false,
+      preferredOrganizationId = None,
+      status = true,
+      orcidAuthorization = None,
+      cognitoId = Some(CognitoId.UserPoolId(UUID.randomUUID())),
+      id = id
+    )
+    state.users.put(id, u)
+    u
+  }
+
+  private def addOrgMember(user: User, permission: DBPermission): Unit = {
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, user.id), permission)
+    state.orgUsers.put(
+      (loggedInOrganization.id, user.id),
+      com.pennsieve.models
+        .OrganizationUser(loggedInOrganization.id, user.id, permission)
+    )
+  }
+
+  /** Create a webhook through the controller's create endpoint then read it
+    * back; returns (webhook, subscribedEvents). */
+  private def createWebhook(
+    apiUrl: String = "https://www.api.com",
+    imageUrl: Option[String] = Some("https://www.image.com"),
+    description: String = "test webhook",
+    secret: String = "secretkey123",
+    displayName: String = "Test Webhook",
+    targetEvents: Option[List[String]] = Some(List("METADATA", "FILES")),
+    customTargets: Option[List[WebhookTargetDTO]] = None,
+    isPrivate: Boolean = false,
+    isDefault: Boolean = false,
+    hasAccess: Boolean = false,
+    container: APIContainers.SecureAPIContainer = null
+  )(implicit
+    ec: ExecutionContext
+  ): (Webhook, Seq[String]) = {
+    val c = if (container == null) secureContainer else container
+
+    // Replicate the controller-side create flow directly via fakes so each
+    // call gets a fresh integration user (mirrors the real createWebhook
+    // helper used by the original spec).
+    val integrationUser = c.userManager
+      .createIntegrationUser(
+        User(
+          NodeCodes.generateId(NodeCodes.userCode),
+          "",
+          firstName = "Integration",
+          middleInitial = None,
+          lastName = "User",
+          degree = None,
+          credential = "cred",
+          color = "",
+          url = "",
+          authyId = 0,
+          isSuperAdmin = false,
+          isIntegrationUser = true,
+          preferredOrganizationId = None,
+          status = true,
+          orcidAuthorization = None,
+          cognitoId = None
+        )
+      )
+      .await
+      .value
+
+    insecureContainer.organizationManager
+      .addUser(loggedInOrganization, integrationUser, DBPermission.Administer)
+      .await
+      .value
+
+    insecureContainer.tokenManager
+      .create(
+        name = "Integration-user",
+        user = integrationUser,
+        organization = loggedInOrganization,
+        cognitoClient = mockCognito
+      )
+      .await
+      .value
+
+    c.webhookManager
+      .create(
+        apiUrl = apiUrl,
+        imageUrl = imageUrl,
+        description = description,
+        secret = secret,
+        displayName = displayName,
+        isPrivate = isPrivate,
+        isDefault = isDefault,
+        hasAccess = hasAccess,
+        targetEvents = targetEvents,
+        customTargets = customTargets,
+        integrationUser = integrationUser
+      )
+      .await
+      .value
+  }
+
+  private def checkProperties(
+    webserviceResponse: WebhookDTO,
+    expectedWebhook: Webhook,
+    expectedEvents: Seq[String]
+  ): Unit = {
+    webserviceResponse.apiUrl should equal(expectedWebhook.apiUrl)
+    webserviceResponse.imageUrl should equal(expectedWebhook.imageUrl)
+    webserviceResponse.description should equal(expectedWebhook.description)
+    webserviceResponse.customTargets should equal(expectedWebhook.customTargets)
+
+    val (actualWebhook, _) = secureContainer.webhookManager
+      .getWithSubscriptions(expectedWebhook.id)
+      .await
+      .value
+    actualWebhook.secret should equal(expectedWebhook.secret)
+
+    webserviceResponse.displayName should equal(expectedWebhook.displayName)
+    webserviceResponse.name should equal(slugify(expectedWebhook.displayName))
+    webserviceResponse.isPrivate should equal(expectedWebhook.isPrivate)
+    webserviceResponse.isDisabled should equal(expectedWebhook.isDisabled)
+    webserviceResponse.isDefault should equal(expectedWebhook.isDefault)
+    webserviceResponse.id should equal(expectedWebhook.id)
+    webserviceResponse.createdAt should equal(expectedWebhook.createdAt)
+    webserviceResponse.createdBy should equal(expectedWebhook.createdBy)
+    webserviceResponse.tokenSecret shouldBe None
+
+    if (expectedEvents.isEmpty)
+      webserviceResponse.eventTargets shouldBe None
+    else
+      webserviceResponse.eventTargets.value should contain theSameElementsAs expectedEvents
+  }
+
+  // ----------- Tests -------------------------------------------------------
+
   test("get a webhook") {
-    val webhookSubscription = createWebhook()
-    val webhook = webhookSubscription._1
-    val subscriptions = webhookSubscription._2
+    val (webhook, subscriptions) = createWebhook()
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
@@ -63,22 +255,13 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("get a list of webhooks") {
-
-    // Public webhook without event subscriptions
-    val publicWebhook1 =
-      createWebhook(displayName = "Public webhook 1", targetEvents = None)
-
-    // Public webhook with event subscriptions
-    val publicWebhook2 = createWebhook(displayName = "Public webhook 2")
-
-    // Private webbhook with event subscriptions
-    val privateWebhook1 =
-      createWebhook(displayName = "Private webhook 1 ", isPrivate = true)
+    createWebhook(displayName = "Public webhook 1", targetEvents = None)
+    createWebhook(displayName = "Public webhook 2")
+    createWebhook(displayName = "Private webhook 1 ", isPrivate = true)
 
     get("", headers = authorizationHeader(loggedInJwt)) {
       status shouldBe (200)
-      val resp = parsedBody.extract[List[WebhookDTO]]
-      resp.length should equal(3)
+      parsedBody.extract[List[WebhookDTO]].length should equal(3)
     }
 
     get("", headers = authorizationHeader(colleagueJwt)) {
@@ -147,7 +330,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       webhook.apiUrl should equal("https://www.api.com")
       webhook.imageUrl should equal(Some("https://www.image.com"))
       webhook.description should equal("something something")
-      webhook.name should equal("TEST_WEBHOOK") // name = slugified display name
+      webhook.name should equal("TEST_WEBHOOK")
       webhook.displayName should equal("Test Webhook")
       webhook.isPrivate should equal(false)
       webhook.isDefault should equal(true)
@@ -162,7 +345,6 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         status should equal(200)
         parsedBody.extract[WebhookDTO].id shouldBe (webhook.id)
       }
-
     }
   }
 
@@ -202,7 +384,6 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         hasAccess = false
       )
     )
-
     postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
       body should include("api url must be between 1 and 255 characters")
@@ -229,7 +410,6 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
       status should equal(201)
       parsedBody.extract[WebhookDTO].imageUrl shouldBe None
     }
-
   }
 
   test("can't create a webhook without a secret key") {
@@ -247,7 +427,6 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         hasAccess = false
       )
     )
-
     postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
       body should include("secret must be between 1 and 255 characters")
@@ -255,37 +434,39 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("delete a webhook") {
-    val webhookSubscription = createWebhook()
-    val webhook = webhookSubscription._1
+    val (webhook, _) = createWebhook()
 
-    // check User and IntegrationToken are created
-    val integrationUser =
-      organizationManager.getUsers(loggedInOrganization).await.value
-    assert((integrationUser.map(_.id) contains webhook.integrationUserId))
+    val integrationUsers = insecureContainer.organizationManager
+      .getUsers(loggedInOrganization)
+      .await
+      .value
+    assert(integrationUsers.map(_.id) contains webhook.integrationUserId)
 
-    val integrationToken =
-      tokenManager.getByUserId(webhook.integrationUserId).await.value
-    assert((integrationToken.userId == webhook.integrationUserId))
+    val integrationToken = insecureContainer.tokenManager
+      .getByUserId(webhook.integrationUserId)
+      .await
+      .value
+    assert(integrationToken.userId == webhook.integrationUserId)
 
     delete(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val resp = parsedBody.extract[Int]
-      resp should equal(1)
+      parsedBody.extract[Int] should equal(1)
     }
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status shouldBe (404)
       body should include(s"Webhook (${webhook.id}) not found")
     }
 
-    // Check User and IntegrationToken are removed
-    val noOrgUser =
-      organizationManager.getUsers(loggedInOrganization).await.value
+    val noOrgUser = insecureContainer.organizationManager
+      .getUsers(loggedInOrganization)
+      .await
+      .value
     assert(!(noOrgUser.map(_.id) contains webhook.integrationUserId))
 
-    val noUserToken =
-      tokenManager.getByUserId(webhook.integrationUserId).await
+    val noUserToken = insecureContainer.tokenManager
+      .getByUserId(webhook.integrationUserId)
+      .await
     assert(noUserToken.isLeft)
-
   }
 
   test("can't delete a webhook that doesn't exist") {
@@ -296,8 +477,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't delete another user's webhook") {
-    val webhookSubscription = createWebhook()
-    val webhook = webhookSubscription._1
+    val (webhook, _) = createWebhook()
 
     delete(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
       status should equal(403)
@@ -309,44 +489,36 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status shouldBe (200)
     }
-
   }
 
   test("super admin can delete another user's webhook") {
-    val webhookSubscription = createWebhook()
-    val webhook = webhookSubscription._1
+    val (webhook, _) = createWebhook()
 
     delete(s"/${webhook.id}", headers = authorizationHeader(adminJwt)) {
       status should equal(200)
-      val resp = parsedBody.extract[Int]
-      resp should equal(1)
+      parsedBody.extract[Int] should equal(1)
     }
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status shouldBe (404)
     }
-
   }
 
   test("organization admin can delete another user's webhook") {
     val colleagueContainer =
       secureContainerBuilder(colleagueUser, loggedInOrganization)
-    val webhookSubscription = createWebhook(container = colleagueContainer)
-    val webhook = webhookSubscription._1
+    val (webhook, _) = createWebhook(container = colleagueContainer)
 
-    //Make sure we're really testing org admin, not super admin
     loggedInUser.isSuperAdmin should be(false)
 
     delete(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val resp = parsedBody.extract[Int]
-      resp should equal(1)
+      parsedBody.extract[Int] should equal(1)
     }
 
     get(s"/${webhook.id}", headers = authorizationHeader(colleagueJwt)) {
       status shouldBe (404)
     }
-
   }
 
   test("update api url") {
@@ -383,14 +555,18 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
         customTargets =
           Some(List(WebhookTargetDTO(IntegrationTarget.PACKAGE, None)))
       )
-    val newTarget = Some(List(WebhookTargetDTO(IntegrationTarget.RECORD, None)))
+    val newTarget =
+      Some(List(WebhookTargetDTO(IntegrationTarget.RECORD, None)))
     val req = write(UpdateWebhookRequest(customTargets = newTarget))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
       val expectedWebhook = webhook.copy(customTargets = newTarget)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
@@ -405,10 +581,13 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
       val expectedWebhook =
         webhook.copy(customTargets = Some(List.empty[WebhookTargetDTO]))
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
@@ -420,98 +599,106 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
       val expectedWebhook = webhook.copy(imageUrl = None)
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
   test("update description") {
     val (webhook, subscriptions) =
       createWebhook(description = "original description")
-    val newDescription = "a new description"
-    val req = write(UpdateWebhookRequest(description = Some(newDescription)))
+    val req =
+      write(UpdateWebhookRequest(description = Some("a new description")))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      val expectedWebhook = webhook.copy(description = newDescription)
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
+      val expectedWebhook = webhook.copy(description = "a new description")
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
   test("update secret") {
-    val (webhook, subscriptions) =
-      createWebhook(secret = "xyz123")
-    val newSecret = "123xyz"
-    val req = write(UpdateWebhookRequest(secret = Some(newSecret)))
+    val (webhook, subscriptions) = createWebhook(secret = "xyz123")
+    val req = write(UpdateWebhookRequest(secret = Some("123xyz")))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      val expectedWebhook = webhook.copy(secret = newSecret)
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
-
+      val expectedWebhook = webhook.copy(secret = "123xyz")
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
   test("update display name") {
-    val (webhook, subscriptions) =
-      createWebhook(displayName = "webhook name")
-    val newDisplayName = "new webhook name"
-    val req = write(UpdateWebhookRequest(displayName = Some(newDisplayName)))
+    val (webhook, subscriptions) = createWebhook(displayName = "webhook name")
+    val req =
+      write(UpdateWebhookRequest(displayName = Some("new webhook name")))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      val expectedWebhook = webhook.copy(displayName = newDisplayName)
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
-
+      val expectedWebhook = webhook.copy(displayName = "new webhook name")
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
   test("update isPrivate") {
-    val (webhook, subscriptions) =
-      createWebhook(isPrivate = true)
-    val newIsPrivate = !webhook.isPrivate
-    val req = write(UpdateWebhookRequest(isPrivate = Some(newIsPrivate)))
+    val (webhook, subscriptions) = createWebhook(isPrivate = true)
+    val req = write(UpdateWebhookRequest(isPrivate = Some(!webhook.isPrivate)))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      val expectedWebhook = webhook.copy(isPrivate = newIsPrivate)
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
-
+      val expectedWebhook = webhook.copy(isPrivate = !webhook.isPrivate)
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
   test("update isDefault") {
-    val (webhook, subscriptions) =
-      createWebhook(isDefault = true)
-    val newIsDefault = !webhook.isDefault
-    val req = write(UpdateWebhookRequest(isDefault = Some(newIsDefault)))
+    val (webhook, subscriptions) = createWebhook(isDefault = true)
+    val req = write(UpdateWebhookRequest(isDefault = Some(!webhook.isDefault)))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      val expectedWebhook = webhook.copy(isDefault = newIsDefault)
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
-
+      val expectedWebhook = webhook.copy(isDefault = !webhook.isDefault)
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
   test("update isDisabled") {
-    val (webhook, subscriptions) =
-      createWebhook()
-    val newIsDisabled = !webhook.isDisabled
-    val req = write(UpdateWebhookRequest(isDisabled = Some(newIsDisabled)))
+    val (webhook, subscriptions) = createWebhook()
+    val req =
+      write(UpdateWebhookRequest(isDisabled = Some(!webhook.isDisabled)))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      val expectedWebhook = webhook.copy(isDisabled = newIsDisabled)
-      checkProperties(updatedWebhook, expectedWebhook, subscriptions)
-
+      val expectedWebhook = webhook.copy(isDisabled = !webhook.isDisabled)
+      checkProperties(
+        parsedBody.extract[WebhookDTO],
+        expectedWebhook,
+        subscriptions
+      )
     }
   }
 
@@ -523,31 +710,24 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      checkProperties(updatedWebhook, webhook, newSubscriptions)
-
+      checkProperties(parsedBody.extract[WebhookDTO], webhook, newSubscriptions)
     }
   }
 
   test("remove all events") {
     val (webhook, _) =
       createWebhook(targetEvents = Some(List("METADATA", "STATUS")))
-    val newSubscriptions = List()
-    val req = write(UpdateWebhookRequest(targetEvents = Some(newSubscriptions)))
+    val req = write(UpdateWebhookRequest(targetEvents = Some(List())))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      val updatedWebhook = parsedBody.extract[WebhookDTO]
-      checkProperties(updatedWebhook, webhook, newSubscriptions)
-
+      checkProperties(parsedBody.extract[WebhookDTO], webhook, List())
     }
   }
 
   test("can't remove api url") {
-    val (webhook, _) =
-      createWebhook()
-    val newApiUrl = Some("")
-    val req = write(UpdateWebhookRequest(apiUrl = newApiUrl))
+    val (webhook, _) = createWebhook()
+    val req = write(UpdateWebhookRequest(apiUrl = Some("")))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
@@ -556,8 +736,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("get correct error if updated api url is too long") {
-    val (webhook, _) =
-      createWebhook()
+    val (webhook, _) = createWebhook()
     val newApiUrl = Some("http://" + "example" * 400 + ".com")
     val req = write(UpdateWebhookRequest(apiUrl = newApiUrl))
 
@@ -568,8 +747,7 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("get correct error if updated image url is too long") {
-    val (webhook, _) =
-      createWebhook()
+    val (webhook, _) = createWebhook()
     val newImageUrl = Some("http://" + "example" * 400 + ".com/image.jpg")
     val req = write(UpdateWebhookRequest(imageUrl = newImageUrl))
 
@@ -580,10 +758,9 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("get correct error if updated event does not exist") {
-    val (webhook, _) =
-      createWebhook()
-    val newTargetEvents = Some(List("NON-EVENT"))
-    val req = write(UpdateWebhookRequest(targetEvents = newTargetEvents))
+    val (webhook, _) = createWebhook()
+    val req =
+      write(UpdateWebhookRequest(targetEvents = Some(List("NON-EVENT"))))
 
     putJson(s"/${webhook.id}", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
@@ -598,7 +775,6 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
     putJson(s"/15", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(404)
       body should include(s"Webhook (15) not found")
-
     }
   }
 
@@ -616,49 +792,6 @@ class TestWebhooksController extends BaseApiTest with DataSetTestMixin {
 
     get(s"/${webhook.id}", headers = authorizationHeader(loggedInJwt)) {
       status shouldBe (200)
-    }
-
-  }
-
-  def checkProperties(
-    webserviceResponse: WebhookDTO,
-    expectedWebhook: Webhook,
-    expectedEvents: Seq[String]
-  ): Unit = {
-
-    webserviceResponse.apiUrl should equal(expectedWebhook.apiUrl)
-
-    webserviceResponse.imageUrl should equal(expectedWebhook.imageUrl)
-
-    webserviceResponse.description should equal(expectedWebhook.description)
-
-    webserviceResponse.customTargets should equal(expectedWebhook.customTargets)
-
-    val (actualWebhook, _) = secureContainer.webhookManager
-      .getWithSubscriptions(expectedWebhook.id)
-      .await
-      .value
-
-    actualWebhook.secret should equal(expectedWebhook.secret)
-
-    webserviceResponse.displayName should equal(expectedWebhook.displayName)
-    webserviceResponse.name should equal(slugify(expectedWebhook.displayName))
-
-    webserviceResponse.isPrivate should equal(expectedWebhook.isPrivate)
-
-    webserviceResponse.isDisabled should equal(expectedWebhook.isDisabled)
-
-    webserviceResponse.isDefault should equal(expectedWebhook.isDefault)
-
-    webserviceResponse.id should equal(expectedWebhook.id)
-    webserviceResponse.createdAt should equal(expectedWebhook.createdAt)
-    webserviceResponse.createdBy should equal(expectedWebhook.createdBy)
-    webserviceResponse.tokenSecret shouldBe None
-
-    if (expectedEvents.isEmpty) {
-      webserviceResponse.eventTargets shouldBe None
-    } else {
-      webserviceResponse.eventTargets.value should contain theSameElementsAs expectedEvents
     }
   }
 }

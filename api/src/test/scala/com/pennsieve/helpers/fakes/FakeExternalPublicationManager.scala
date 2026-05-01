@@ -16,9 +16,19 @@
 
 package com.pennsieve.helpers.fakes
 
+import cats.data.EitherT
+import com.pennsieve.domain.{ CoreError, NotFound }
 import com.pennsieve.managers.ExternalPublicationManager
-import com.pennsieve.models.Organization
+import com.pennsieve.models.{
+  Dataset,
+  Doi,
+  ExternalPublication,
+  Organization,
+  RelationshipType
+}
 import com.pennsieve.traits.PostgresProfile.api.Database
+
+import scala.concurrent.{ ExecutionContext, Future }
 
 class FakeExternalPublicationManager(
   val state: InMemoryState,
@@ -31,18 +41,69 @@ class FakeExternalPublicationManager(
         "tried to use the database. Override the method on this fake."
     )
 
+  private def key(
+    dataset: Dataset,
+    doi: Doi,
+    rel: RelationshipType
+  ): (Int, Int, String) =
+    (organization.id, dataset.id, s"${doi.value}|${rel.entryName}")
+
   override def get(
-    dataset: com.pennsieve.models.Dataset
+    dataset: Dataset
   )(implicit
-    ec: scala.concurrent.ExecutionContext
-  ): cats.data.EitherT[
-    scala.concurrent.Future,
-    com.pennsieve.domain.CoreError,
-    Seq[com.pennsieve.models.ExternalPublication]
-  ] =
-    cats.data.EitherT.rightT(state.externalPublications.collect {
-      case ((orgId, dsId, _), p)
-          if orgId == organization.id && dsId == dataset.id =>
-        p
-    }.toSeq)
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Seq[ExternalPublication]] =
+    EitherT.rightT(
+      state.externalPublications
+        .collect {
+          case ((orgId, dsId, _), p)
+              if orgId == organization.id && dsId == dataset.id =>
+            p
+        }
+        .toSeq
+        .sortBy(_.createdAt.toInstant)
+    )
+
+  override def createOrUpdate(
+    dataset: Dataset,
+    doi: Doi,
+    relationshipType: RelationshipType
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, ExternalPublication] = {
+    val k = key(dataset, doi, relationshipType)
+    val now = InMemoryState.now()
+    val updated = state.externalPublications.get(k) match {
+      case Some(existing) => existing.copy(updatedAt = now)
+      case None =>
+        ExternalPublication(
+          datasetId = dataset.id,
+          doi = doi,
+          relationshipType = relationshipType,
+          createdAt = now,
+          updatedAt = now
+        )
+    }
+    state.externalPublications.put(k, updated)
+    EitherT.rightT(updated)
+  }
+
+  override def delete(
+    dataset: Dataset,
+    doi: Doi,
+    relationshipType: RelationshipType
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
+    val k = key(dataset, doi, relationshipType)
+    state.externalPublications.remove(k) match {
+      case Some(_) => EitherT.rightT(())
+      case None =>
+        EitherT.leftT(
+          NotFound(
+            s"External publication $doi with relationship '$relationshipType' for dataset ${dataset.id}"
+          )
+        )
+    }
+  }
 }

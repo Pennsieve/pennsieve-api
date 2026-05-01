@@ -79,27 +79,33 @@ import slick.jdbc.GetResult
 
 object DataCanvasManager {
   val maxNameLength = 256
+
+  def apply(
+    db: Database,
+    actor: User,
+    datacanvasMapper: DataCanvasMapper
+  ): DataCanvasManager =
+    new DataCanvasManagerImpl(db, actor, datacanvasMapper)
 }
 
-class DataCanvasManager(
-  val db: Database,
-  val actor: User,
-  val datacanvasMapper: DataCanvasMapper
-) {
+trait DataCanvasManager {
   import DataCanvasManager._
 
-  val organization: Organization = datacanvasMapper.organization
+  def db: Database
+  def actor: User
+  def datacanvasMapper: DataCanvasMapper
 
-  implicit val dataCanvasUser: DataCanvasUserMapper = new DataCanvasUserMapper(
-    organization
-  )
-  val dataCanvasPackageMapper = new DataCanvasPackageMapper(organization)
-  val dataCanvasFolderMapper = new DataCanvasFolderMapper(organization)
+  lazy val organization: Organization = datacanvasMapper.organization
 
-  val datasetStatusManager: DatasetStatusManager =
+  implicit lazy val dataCanvasUser: DataCanvasUserMapper =
+    new DataCanvasUserMapper(organization)
+  lazy val dataCanvasPackageMapper = new DataCanvasPackageMapper(organization)
+  lazy val dataCanvasFolderMapper = new DataCanvasFolderMapper(organization)
+
+  lazy val datasetStatusManager: DatasetStatusManager =
     new DatasetStatusManagerImpl(db, organization)
 
-  val packagesMapper: PackagesMapper = new PackagesMapper(organization)
+  lazy val packagesMapper: PackagesMapper = new PackagesMapper(organization)
 
   def isLocked(
     dataCanvas: DataCanvas
@@ -574,14 +580,25 @@ class DataCanvasManager(
 
 }
 
-object AllDataCanvasesViewManager
-
-class AllDataCanvasesViewManager(
+class DataCanvasManagerImpl(
   val db: Database,
   val actor: User,
-  val allDataCanvasesViewMapper: AllDataCanvasesViewMapper
-) {
-  import AllDataCanvasesViewManager._
+  val datacanvasMapper: DataCanvasMapper
+) extends DataCanvasManager
+
+object AllDataCanvasesViewManager {
+  def apply(
+    db: Database,
+    actor: User,
+    allDataCanvasesViewMapper: AllDataCanvasesViewMapper
+  ): AllDataCanvasesViewManager =
+    new AllDataCanvasesViewManagerImpl(db, actor, allDataCanvasesViewMapper)
+}
+
+trait AllDataCanvasesViewManager {
+  def db: Database
+  def actor: User
+  def allDataCanvasesViewMapper: AllDataCanvasesViewMapper
 
   def get(
     nodeId: String
@@ -610,3 +627,9 @@ class AllDataCanvasesViewManager(
       )
       .toEitherT
 }
+
+class AllDataCanvasesViewManagerImpl(
+  val db: Database,
+  val actor: User,
+  val allDataCanvasesViewMapper: AllDataCanvasesViewMapper
+) extends AllDataCanvasesViewManager

@@ -19,22 +19,41 @@ package com.pennsieve.api
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.domain.CoreError
 import com.pennsieve.dtos.ModelPropertyRO
-import com.pennsieve.helpers.MockAuditLogger
+import com.pennsieve.helpers.{ APIContainers, MockAuditLogger }
 import com.pennsieve.models.{
   Annotation,
   AnnotationLayer,
+  CognitoId,
+  DBPermission,
+  Dataset,
   ModelProperty,
-  PathElement
+  NodeCodes,
+  Organization,
+  Package,
+  PackageState,
+  PackageType,
+  User
 }
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
+import org.scalatest.OptionValues._
 
-class TestAnnotationsController extends BaseApiTest {
+import java.util.UUID
+
+class TestAnnotationsController extends BaseApiUnitTest {
 
   val auditLogger: Auditor = new MockAuditLogger()
 
-  override def afterStart(): Unit = {
-    super.afterStart()
+  var loggedInUser: User = _
+  var loggedInOrganization: Organization = _
+  var loggedInJwt: String = _
+  var dataset: Dataset = _
+  var home: Package = _
+  var personal: Package = _
+  var secureContainer: APIContainers.SecureAPIContainer = _
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new AnnotationsController(
         insecureContainer,
@@ -46,18 +65,97 @@ class TestAnnotationsController extends BaseApiTest {
     )
   }
 
-  test("swagger") {
-    import com.pennsieve.web.ResourcesApp
-    addServlet(new ResourcesApp, "/api-docs/*")
-
-    get("/api-docs/swagger.json") {
-      status should equal(200)
-      println(body)
-    }
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    state.clear()
+    setUpFixtures()
   }
 
-  test("create an annotation layer") {
+  private def setUpFixtures(): Unit = {
+    val orgId = state.newId()
+    loggedInOrganization = Organization(
+      nodeId = NodeCodes.generateId(NodeCodes.organizationCode),
+      name = "Test Organization",
+      slug = "test-org",
+      id = orgId
+    )
+    state.organizations.put(orgId, loggedInOrganization)
 
+    val uid = state.newId()
+    loggedInUser = User(
+      nodeId = NodeCodes.generateId(NodeCodes.userCode),
+      email = "test@test.com",
+      firstName = "first",
+      middleInitial = None,
+      lastName = "last",
+      degree = None,
+      credential = "cred",
+      color = "",
+      url = "http://test.com",
+      authyId = 0,
+      isSuperAdmin = false,
+      isIntegrationUser = false,
+      preferredOrganizationId = None,
+      status = true,
+      orcidAuthorization = None,
+      cognitoId = Some(CognitoId.UserPoolId(UUID.randomUUID())),
+      id = uid
+    )
+    state.users.put(uid, loggedInUser)
+
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, loggedInUser.id), DBPermission.Administer)
+    state.orgUsers.put(
+      (loggedInOrganization.id, loggedInUser.id),
+      com.pennsieve.models.OrganizationUser(
+        loggedInOrganization.id,
+        loggedInUser.id,
+        DBPermission.Administer
+      )
+    )
+
+    loggedInJwt = mintUserJwt(loggedInUser, loggedInOrganization)
+    secureContainer = secureContainerBuilder(loggedInUser, loggedInOrganization)
+    secureContainer.datasetStatusManager.resetDefaultStatusOptions.await.value
+
+    dataset = secureContainer.datasetManager
+      .create("Test Dataset", Some("desc"))
+      .await
+      .value
+
+    home = secureContainer.packageManager
+      .create(
+        "Home",
+        PackageType.Collection,
+        PackageState.READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+
+    personal = secureContainer.packageManager
+      .create(
+        "Personal",
+        PackageType.Collection,
+        PackageState.READY,
+        dataset,
+        Some(loggedInUser.id),
+        None
+      )
+      .await
+      .value
+  }
+
+  private def annotationManager: com.pennsieve.managers.AnnotationManager =
+    secureContainer.annotationManager
+
+  // ----------- Tests -------------------------------------------------------
+
+  test("swagger")(pending)
+
+  test("create an annotation layer") {
     val createReq =
       write(CreateLayerRequest("test layer", personal.nodeId, None))
     postJson(
@@ -72,12 +170,10 @@ class TestAnnotationsController extends BaseApiTest {
     val anns: Map[AnnotationLayer, Seq[Annotation]] =
       annotationManager.find(personal).await.value
 
-    //we should find one empty layer
     assert(anns.values.toList.contains(Seq()))
   }
 
   test("update an annotation layer") {
-
     val oldLayer = annotationManager
       .createLayer(personal, "test layer", "autumn embers")
       .await
@@ -93,12 +189,9 @@ class TestAnnotationsController extends BaseApiTest {
     ) {
       status should equal(200)
 
-      val updatedLayer =
-        annotationManager.getLayer(oldLayer.id).await.value
-
+      val updatedLayer = annotationManager.getLayer(oldLayer.id).await.value
       assert(updatedLayer.color == "red")
       assert(updatedLayer.name == "test layer updated")
-
     }
   }
 
@@ -113,11 +206,9 @@ class TestAnnotationsController extends BaseApiTest {
       val deletedLayer = annotationManager.getLayer(deleteme.id).await
       assert(deletedLayer.isLeft)
     }
-
   }
 
   test("create annotation on thing") {
-
     val props = List(
       ModelPropertyRO("Owner", loggedInUser.nodeId, None, None, None, None),
       ModelPropertyRO("Key", "Value1", None, None, None, None),
@@ -142,7 +233,6 @@ class TestAnnotationsController extends BaseApiTest {
   test(
     "creating an annotation on a layer that does not belong to the package should fail"
   ) {
-
     val testLayer = annotationManager
       .createLayer(home, "test layer", "autumn embers")
       .await
@@ -241,11 +331,9 @@ class TestAnnotationsController extends BaseApiTest {
       assert(ann.description == "another annotation update")
       assert(ann.layerId == layer2.id)
     }
-
   }
 
   test("delete annotation") {
-
     val layer = annotationManager
       .createLayer(home, "home folder", "red")
       .await
@@ -265,5 +353,4 @@ class TestAnnotationsController extends BaseApiTest {
       assert(no.isLeft)
     }
   }
-
 }

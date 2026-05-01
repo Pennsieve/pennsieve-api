@@ -17,6 +17,8 @@
 package com.pennsieve.helpers.fakes
 
 import cats.data.EitherT
+import cats.implicits._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.domain.{ CoreError, NotFound }
 import com.pennsieve.managers.DatasetStatusManager
 import com.pennsieve.models.{
@@ -103,6 +105,91 @@ class FakeDatasetStatusManager(val state: InMemoryState, org: Organization)
       case Some(s) => DBIO.successful(s)
       case None => DBIO.failed(NotFound("No default dataset status found"))
     }
+
+  override def create(
+    displayName: String,
+    color: String = defaultColor,
+    originalName: Option[com.pennsieve.models.DefaultDatasetStatus] = None
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, DatasetStatus] =
+    for {
+      _ <- validateColor(color)
+        .toEitherT[Future]
+      _ <- validateDisplayName(displayName)
+        .toEitherT[Future]
+    } yield {
+      val id = state.newId()
+      val s = DatasetStatus(
+        name = slugify(displayName),
+        displayName = displayName,
+        color = color,
+        originalName = originalName,
+        id = id
+      )
+      state.datasetStatuses.put((org.id, id), s)
+      s
+    }
+
+  override def update(
+    id: Int,
+    displayName: String,
+    color: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (DatasetStatus, DatasetStatusInUse)] =
+    for {
+      _ <- validateColor(color).toEitherT[Future]
+      _ <- validateDisplayName(displayName).toEitherT[Future]
+      result <- state.datasetStatuses.get((org.id, id)) match {
+        case None =>
+          EitherT.leftT[Future, (DatasetStatus, DatasetStatusInUse)](
+            NotFound(s"Dataset status $id"): CoreError
+          )
+        case Some(existing) =>
+          val updated = existing.copy(
+            displayName = displayName,
+            name = slugify(displayName),
+            color = color
+          )
+          state.datasetStatuses.put((org.id, id), updated)
+          EitherT.rightT[Future, CoreError](
+            (updated, DatasetStatusInUse(datasetCount(id) > 0))
+          )
+      }
+    } yield result
+
+  override def delete(
+    id: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (DatasetStatus, DatasetStatusInUse)] = {
+    state.datasetStatuses.get((org.id, id)) match {
+      case None => EitherT.leftT(NotFound(s"Dataset status $id"): CoreError)
+      case Some(deleted) =>
+        if (statuses.size <= 1)
+          EitherT.leftT(
+            com.pennsieve.domain.PredicateError(
+              "Cannot delete the last dataset status"
+            ): CoreError
+          )
+        else {
+          val inUse = DatasetStatusInUse(datasetCount(id) > 0)
+          state.datasetStatuses.remove((org.id, id))
+          // Reassign datasets using this status to the next one (mirror real
+          // impl).
+          val nextDefault = statuses.headOption
+          nextDefault.foreach { next =>
+            state.datasets.foreach {
+              case (key, ds) if ds.statusId == id =>
+                state.datasets.put(key, ds.copy(statusId = next.id))
+              case _ => ()
+            }
+          }
+          EitherT.rightT((deleted, inUse))
+        }
+    }
+  }
 
   override def resetDefaultStatusOptions(
     implicit

@@ -117,6 +117,16 @@ class FakeSecureTokenManager(state: InMemoryState, val actor: User)
       EitherT.rightT(token)
     }
 
+  override def getByUserId(
+    userId: Int
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Token] =
+    state.tokens.values.find(_.userId == userId) match {
+      case Some(t) => EitherT.rightT(t)
+      case None => EitherT.leftT(NotFound(s"Token by User ID ($userId)"))
+    }
+
   override def delete(
     token: Token,
     cognitoClient: CognitoClient
