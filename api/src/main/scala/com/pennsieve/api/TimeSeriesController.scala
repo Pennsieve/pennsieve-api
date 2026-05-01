@@ -59,6 +59,7 @@ import org.scalatra.swagger.Swagger
 import org.scalatra.swagger.SwaggerSupportSyntax.OperationBuilder
 import io.circe.generic.auto._
 
+import java.util.UUID
 import scala.collection.SortedSet
 import scala.concurrent.{ ExecutionContext, Future }
 import scalikejdbc.{ AutoSession, DBSession }
@@ -86,7 +87,8 @@ case class TimeSeriesChannelWriteRequest(
   group: Option[String],
   spikeDuration: Option[Long],
   properties: List[ModelPropertyRO],
-  id: Option[String] = None
+  id: Option[String] = None,
+  viewerAssetId: Option[UUID] = None
 )
 
 case class AnnotationResults(
@@ -309,7 +311,8 @@ class TimeSeriesController(
                 c.group,
                 c.lastAnnotation,
                 c.spikeDuration,
-                properties
+                properties,
+                c.viewerAssetId
               )
               .orError()
           } yield channel
