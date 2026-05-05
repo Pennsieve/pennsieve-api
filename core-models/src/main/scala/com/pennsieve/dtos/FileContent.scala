@@ -41,7 +41,13 @@ case class FileContent(
   assetType: Option[String] = None,
   provenanceId: Option[UUID] = None,
   published: Boolean = false,
-  publishedS3VersionId: Option[String] = None
+  publishedS3VersionId: Option[String] = None,
+  // scan_status from the per-org files table (see scan-service
+  // developer.md §7). UI uses this to render badges and disable the
+  // download button for 'infected' / 'failed'. Optional so this DTO
+  // tolerates pre-migration rows; in practice the migration sets a
+  // NOT NULL DEFAULT 'pending'.
+  scanStatus: Option[String] = None
 )
 
 final case class SimpleFileContent(
@@ -53,7 +59,8 @@ final case class SimpleFileContent(
   checksum: Option[FileChecksum] = None,
   id: Int,
   filename: String,
-  size: Long
+  size: Long,
+  scanStatus: Option[String] = None
 )
 
 object FileContent {
