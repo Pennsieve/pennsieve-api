@@ -54,7 +54,8 @@ object FileDTO {
         file.assetType,
         file.provenanceId,
         file.published,
-        file.publishedS3VersionId
+        file.publishedS3VersionId,
+        file.scanStatus
       )
     )
   }
@@ -77,7 +78,8 @@ object SimpleFileDTO {
         file.checksum,
         file.id,
         file.fileName,
-        file.size
+        file.size,
+        file.scanStatus
       )
     )
 }

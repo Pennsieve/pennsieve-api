@@ -88,7 +88,10 @@ case class CreateFileRequest(
   size: Option[Long]
 )
 
-case class DownloadItemResponse(url: String)
+case class DownloadItemResponse(
+  url: String,
+  scanStatus: Option[String] = None
+)
 
 case class GetAnnotationsResponse(
   annotations: Map[Int, Seq[AnnotationDTO]],
@@ -109,6 +112,14 @@ object PackagesController {
   val FILES_LIMIT_DEFAULT: Int = 100
   val FILES_LIMIT_MAX: Int = 500
   val FILES_OFFSET_DEFAULT: Int = 0
+
+  // scan_status values that must block a presigned-URL issuance.
+  // See scan-service/docs/developer.md §12.3 (enforcement policy).
+  val ScanStatusInfected: String = "infected"
+  val ScanStatusFailed: String = "failed"
+
+  def scanStatusBlocks(scanStatus: Option[String]): Boolean =
+    scanStatus.exists(s => s == ScanStatusInfected || s == ScanStatusFailed)
 }
 
 class PackagesController(
@@ -538,44 +549,71 @@ class PackagesController(
                 Set.empty[String],
                 DownloadManifestDTO(
                   DownloadManifestHeader(0, 0L),
-                  List.empty[DownloadManifestEntry]
+                  List.empty[DownloadManifestEntry],
+                  List.empty[DownloadManifestBlockedEntry]
                 )
               )
             ) {
               case ((datasetIds, rootNodeIds, downloadResponse), p) => {
-                val newEntry: DownloadManifestEntry = DownloadManifestEntry(
-                  nodeId = p.nodeId,
-                  fileName = p.fileName,
-                  packageName = p.packageName,
-                  // append the package's own name to the path ONLY if it contains multiple files
-                  path =
-                    if (p.packageFileCount === 1)
-                      p.packageNamePath.toList
-                    else p.packageNamePath.toList :+ p.packageName,
-                  url = objectStore
-                    .getPresignedUrl(
-                      p.s3Bucket,
-                      p.s3Key,
-                      DateTime.now.plusMinutes(180).toDate,
-                      p.packageName,
-                      p.publishedS3VersionId
-                    )
-                    .toOption
-                    .get,
-                  size = p.size,
-                  fileExtension = Utilities.getFullExtension(p.s3Key)
-                )
-                (
-                  datasetIds + p.datasetId,
-                  rootNodeIds + p.nodeIdPath.headOption
-                    .getOrElse(p.nodeId),
+                // Gate on scan_status (see scan-service docs §12.3):
+                // infected/failed are routed into `blocked` with no
+                // presigned URL; anything else (clean / pending /
+                // scanning / unscanned / not_required / null) passes
+                // through to `data` with the status surfaced.
+                val newState = if (PackagesController.scanStatusBlocks(p.scanStatus)) {
+                  val blockedEntry = DownloadManifestBlockedEntry(
+                    nodeId = p.nodeId,
+                    fileName = p.fileName,
+                    packageName = p.packageName,
+                    scanStatus = p.scanStatus.getOrElse("")
+                  )
+                  DownloadManifestDTO(
+                    DownloadManifestHeader(
+                      downloadResponse.header.count,
+                      downloadResponse.header.size,
+                      Some(downloadResponse.header.blockedCount.getOrElse(0) + 1)
+                    ),
+                    downloadResponse.data,
+                    downloadResponse.blocked :+ blockedEntry
+                  )
+                } else {
+                  val newEntry: DownloadManifestEntry = DownloadManifestEntry(
+                    nodeId = p.nodeId,
+                    fileName = p.fileName,
+                    packageName = p.packageName,
+                    // append the package's own name to the path ONLY if it contains multiple files
+                    path =
+                      if (p.packageFileCount === 1)
+                        p.packageNamePath.toList
+                      else p.packageNamePath.toList :+ p.packageName,
+                    url = objectStore
+                      .getPresignedUrl(
+                        p.s3Bucket,
+                        p.s3Key,
+                        DateTime.now.plusMinutes(180).toDate,
+                        p.packageName,
+                        p.publishedS3VersionId
+                      )
+                      .toOption
+                      .get,
+                    size = p.size,
+                    fileExtension = Utilities.getFullExtension(p.s3Key),
+                    scanStatus = p.scanStatus
+                  )
                   DownloadManifestDTO(
                     DownloadManifestHeader(
                       downloadResponse.header.count + 1,
-                      downloadResponse.header.size + p.size
+                      downloadResponse.header.size + p.size,
+                      downloadResponse.header.blockedCount
                     ),
-                    downloadResponse.data :+ newEntry
+                    downloadResponse.data :+ newEntry,
+                    downloadResponse.blocked
                   )
+                }
+                (
+                  datasetIds + p.datasetId,
+                  rootNodeIds + p.nodeIdPath.headOption.getOrElse(p.nodeId),
+                  newState
                 )
               }
             }
@@ -921,7 +959,7 @@ class PackagesController(
   get("/:packageId/files/:id", operation(getFileOperation)) {
 
     new AsyncResult {
-      val s3url: EitherT[Future, ActionResult, URL] = for {
+      val result: EitherT[Future, ActionResult, DownloadItemResponse] = for {
         packageId <- paramT[String]("packageId")
         traceId <- getTraceId(request)
         fileId <- paramT[Int]("id")
@@ -939,6 +977,19 @@ class PackagesController(
 
         organization = secureContainer.organization
         file <- secureContainer.fileManager.get(fileId, pkg).orNotFound()
+
+        // Gate on scan_status: infected/failed → 403. See scan-service
+        // docs §12.3. Clean, pending, scanning, unscanned, not_required,
+        // or null (pre-migration) all fall through.
+        _ <- if (PackagesController.scanStatusBlocks(file.scanStatus))
+          EitherT.leftT[Future, Unit](
+            Forbidden(
+              Error(
+                s"file download blocked (scan_status=${file.scanStatus.getOrElse("")})"
+              )
+            ): ActionResult
+          )
+        else EitherT.rightT[Future, ActionResult](())
 
         url <- if (!short)
           objectStore
@@ -984,11 +1035,9 @@ class PackagesController(
           .toEitherT
           .coreErrorToActionResult()
 
-      } yield url
+      } yield DownloadItemResponse(url.toString, file.scanStatus)
 
-      override val is = s3url.value.map(HandleResult(_) { url =>
-        Ok(DownloadItemResponse(url.toString))
-      })
+      override val is = result.value.map(OkResult)
     }
   }
 
@@ -1037,6 +1086,19 @@ class PackagesController(
         file <- secureContainer.fileManager.get(fileIdAsInt, pkg).orNotFound()
         // TODO This is necessary since the File model no longer relies on nodeId
         // only it's ID (which is just an autoincremented int)
+
+        // Gate on scan_status: infected/failed → 403. See scan-service
+        // docs §12.3.
+        _ <- if (PackagesController.scanStatusBlocks(file.scanStatus))
+          EitherT.leftT[Future, Unit](
+            Forbidden(
+              Error(
+                s"file download blocked (scan_status=${file.scanStatus.getOrElse("")})"
+              )
+            ): ActionResult
+          )
+        else EitherT.rightT[Future, ActionResult](())
+
         _ <- auditLogger
           .message()
           .append("organization", organization.id)
