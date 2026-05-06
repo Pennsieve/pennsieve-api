@@ -50,7 +50,8 @@ class UserOrganizationManagerSpec
   }
 
   "detecting schemas" should "detect existing schemas" in {
-    val localOrgManager = new SecureOrganizationManager(database, superAdmin)
+    val localOrgManager =
+      new SecureOrganizationManagerImpl(database, superAdmin)
 
     database.run(createSchema(testOrgSchemaId.toString)).await
 
@@ -191,11 +192,11 @@ class UserOrganizationManagerSpec
     organizationThreeAdmins should not contain userOne
 
     val organizationManagerOne =
-      new SecureOrganizationManager(database, userOne)
+      new SecureOrganizationManagerImpl(database, userOne)
     val organizationManagerTwo =
-      new SecureOrganizationManager(database, userTwo)
+      new SecureOrganizationManagerImpl(database, userTwo)
     val organizationManagerThree =
-      new SecureOrganizationManager(database, userThree)
+      new SecureOrganizationManagerImpl(database, userThree)
 
     // you can't add yourself to someone else's organization
     assert(

@@ -58,7 +58,7 @@ import AwaitableImplicits._
 class InviteContainer(val config: Config)
     extends Container
     with DatabaseContainer
-    with UserManagerContainer {}
+    with DefaultUserManagerContainer {}
 
 object Main extends App {
 

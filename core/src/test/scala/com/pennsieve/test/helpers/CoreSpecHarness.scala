@@ -27,7 +27,7 @@ import org.scalatest.{
 import com.typesafe.config.{ Config, ConfigFactory, ConfigValueFactory }
 
 trait CoreSpecHarness[
-  Container <: OrganizationManagerContainer with UserManagerContainer
+  Container <: OrganizationManagerContainer with UserManagerContainer with DatabaseContainer
 ] extends SuiteMixin
     with BeforeAndAfterEach
     with BeforeAndAfterAll
