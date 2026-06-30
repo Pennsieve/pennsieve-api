@@ -372,3 +372,56 @@ resource "aws_ssm_parameter" "publishing_default_workflow" {
   type  = "String"
   value = var.publishing_default_workflow
 }
+
+// EXTERNAL PUBLISH BUCKETS CONFIGURATION
+//    SPARC
+resource "aws_ssm_parameter" "sparc_publish_50_bucket" {
+  name  = "/${var.environment_name}/${var.service_name}/sparc-publish-50-bucket"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.sparc_publish50_bucket_id
+}
+
+resource "aws_ssm_parameter" "sparc_embargo_50_bucket" {
+  name  = "/${var.environment_name}/${var.service_name}/sparc-embargo-50-bucket"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.sparc_embargo50_bucket_id
+}
+
+resource "aws_ssm_parameter" "sparc_bucket_role_arn" {
+  name  = "/${var.environment_name}/${var.service_name}/sparc-bucket-role-arn"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.sparc_bucket_role_arn
+}
+
+// RE-JOIN
+resource "aws_ssm_parameter" "rejoin_publish_50_bucket" {
+  name  = "/${var.environment_name}/${var.service_name}/rejoin-publish-50-bucket"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.rejoin_publish50_bucket_id
+}
+
+resource "aws_ssm_parameter" "rejoin_embargo_50_bucket" {
+  name  = "/${var.environment_name}/${var.service_name}/rejoin-embargo-50-bucket"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.rejoin_embargo50_bucket_id
+}
+
+resource "aws_ssm_parameter" "rejoin_bucket_role_arn" {
+  name  = "/${var.environment_name}/${var.service_name}/rejoin-bucket-role-arn"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.rejoin_bucket_role_arn
+}
+
+// PRECISION (uses RE-JOIN role ARN as they're in the same account)
+resource "aws_ssm_parameter" "precision_publish_50_bucket" {
+  name  = "/${var.environment_name}/${var.service_name}/precision-publish-50-bucket"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.precision_publish50_bucket_id
+}
+
+resource "aws_ssm_parameter" "precision_embargo_50_bucket" {
+  name  = "/${var.environment_name}/${var.service_name}/precision-embargo-50-bucket"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.precision_embargo50_bucket_id
+}
+

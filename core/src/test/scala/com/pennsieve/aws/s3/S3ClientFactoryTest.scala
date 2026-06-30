@@ -55,4 +55,44 @@ class S3ClientFactoryTest extends AnyFlatSpec with Matchers {
 
     defaultClient shouldBe expectedDefaultClient
   }
+
+  it should "return correct region for bucket based on suffix" in {
+    S3ClientFactory.getRegionForBucket("my-bucket-use1") shouldBe "us-east-1"
+    S3ClientFactory.getRegionForBucket("my-bucket-use2") shouldBe "us-east-2"
+    S3ClientFactory.getRegionForBucket("my-bucket-usw1") shouldBe "us-west-1"
+    S3ClientFactory.getRegionForBucket("my-bucket-usw2") shouldBe "us-west-2"
+    S3ClientFactory.getRegionForBucket("my-bucket-afs1") shouldBe "af-south-1"
+    S3ClientFactory.getRegionForBucket("unknown-suffix") shouldBe "us-east-1"
+  }
+
+  it should "allow configuring external buckets" in {
+    // Configure an external bucket
+    S3ClientFactory.configureExternalBuckets(
+      Map("test-external-bucket-use1" -> "arn:aws:iam::123456789:role/TestRole")
+    )
+
+    // Verify configuration was applied (we can't easily test role assumption without AWS)
+    // The test verifies that configureExternalBuckets doesn't throw
+    succeed
+  }
+
+  it should "allow reconfiguring external buckets" in {
+    // Configure initial external buckets
+    S3ClientFactory.configureExternalBuckets(
+      Map("bucket-a-use1" -> "arn:aws:iam::123456789:role/RoleA")
+    )
+
+    // Reconfigure with different buckets
+    S3ClientFactory.configureExternalBuckets(
+      Map("bucket-b-use1" -> "arn:aws:iam::987654321:role/RoleB")
+    )
+
+    // Configuration should succeed without throwing
+    succeed
+  }
+
+  it should "handle empty external bucket configuration" in {
+    S3ClientFactory.configureExternalBuckets(Map.empty)
+    succeed
+  }
 }

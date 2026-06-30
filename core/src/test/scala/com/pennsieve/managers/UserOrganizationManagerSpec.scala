@@ -39,10 +39,14 @@ class UserOrganizationManagerSpec
 
   implicit def um: UserManager = userManager
 
-  val testOrgSchemaId = 111
+  // IDs chosen above the pre-seeded ORGANIZATION_SCHEMA_COUNT (250) in the
+  // pennsievedb-seed image so the "schema doesn't exist" assertion holds.
+  val testOrgSchemaId = 9998
+  val missingOrgSchemaId = 9999
   override def beforeEach(): Unit = {
     super.beforeEach()
     database.run(dropOrganizationSchema(testOrgSchemaId.toString)).await
+    database.run(dropOrganizationSchema(missingOrgSchemaId.toString)).await
   }
 
   "detecting schemas" should "detect existing schemas" in {
@@ -61,7 +65,7 @@ class UserOrganizationManagerSpec
     )
     assert(
       localOrgManager
-        .schemaExists(organization.copy(id = 11))
+        .schemaExists(organization.copy(id = missingOrgSchemaId))
         .await == NotFound("schema").asLeft
     )
   }
@@ -124,8 +128,11 @@ class UserOrganizationManagerSpec
 
   "a user with admin on an organization " should "be able to add people to the organization" in {
 
-    val organizationOne = createOrganization()
-    val organizationTwo = createOrganization()
+    // Reuse the base harness's pre-seeded testOrganization (schema 1) /
+    // testOrganization2 (schema 2) and create one additional org for schema 3,
+    // staying within the three pre-seeded schemas in pennsievedb-seed.
+    val organizationOne = testOrganization
+    val organizationTwo = testOrganization2
     val organizationThree = createOrganization()
 
     val organizationOneDataset = createDataset(organizationOne)

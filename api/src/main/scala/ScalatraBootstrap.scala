@@ -90,17 +90,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
 
       context mount (annotationsController, "/annotations/*", "annotations")
 
-      // discussions endpoints
-      ///////////////////////////////
-      val discussionsController = new DiscussionsController(
-        bootstrapHelper.insecureContainer,
-        bootstrapHelper.secureContainerBuilder,
-        bootstrapHelper.auditLogger,
-        ec
-      )
-
-      context mount (discussionsController, "/discussions/*", "discussions")
-
       // api token endpoints
       ///////////////////////////////
       val apiTokenController = new APITokenController(
@@ -204,16 +193,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
 
       context mount (healthController, "/health/*", "health")
 
-      // imaging endpoints
-      ///////////////////////////////
-      val imagingController = new ImagingController(
-        bootstrapHelper.insecureContainer,
-        bootstrapHelper.secureContainerBuilder,
-        ec
-      )
-
-      context mount (imagingController, "/imaging/*", "imaging")
-
       // organization endpoints
       ///////////////////////////////
       val organizationsController = new OrganizationsController(
@@ -242,7 +221,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
         bootstrapHelper.secureContainerBuilder,
         bootstrapHelper.auditLogger,
         bootstrapHelper.objectStore,
-        bootstrapHelper.jobSchedulingServiceClient,
         bootstrapHelper.urlShortenerClient,
         system,
         ec

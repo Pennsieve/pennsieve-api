@@ -57,6 +57,7 @@ trait CoreSpecHarness[
       )
       .withValue("environment", ConfigValueFactory.fromAnyRef("test"))
     testDIContainer = createTestDIContainer
+    testDIContainer.db.run(refreshUnionViews).await
   }
 
   override def beforeEach(): Unit = {

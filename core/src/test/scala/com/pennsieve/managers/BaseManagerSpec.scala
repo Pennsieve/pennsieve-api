@@ -113,7 +113,7 @@ trait ManagerSpec
   override def afterEach(): Unit = {
     database.run(clearOrganizationSchema(testOrganizationId)).await
     extraOrganizationIds.foreach { organizationId =>
-      database.run(dropOrganizationSchema(organizationId.toString)).await
+      database.run(clearOrganizationSchema(organizationId)).await
     }
     extraOrganizationIds = Nil
     super.afterEach()
@@ -125,12 +125,6 @@ trait ManagerSpec
     postgresDB = postgresContainer.database
 
     database = postgresDB.forURL
-
-    // Migrate core schema
-    migrateCoreSchema(postgresDB)
-    // Migrate the schema for our universal Test Organizations (1 & 2)
-    migrateOrganizationSchema(testOrganizationId, postgresDB)
-    migrateOrganizationSchema(testOrganizationId2, postgresDB)
 
     userManager = new UserManager(database)
     userInviteManager = new UserInviteManager(database)
@@ -240,16 +234,8 @@ trait ManagerSpec
   ): TimeSeriesManager =
     new TimeSeriesManager(database, organization)
 
-  def dimensionManager(
-    organization: Organization = testOrganization
-  ): DimensionManager =
-    new DimensionManager(database, organization)
-
   def annotationManager(organization: Organization): AnnotationManager =
     new AnnotationManager(organization, database)
-
-  def discussionManager(organization: Organization): DiscussionManager =
-    new DiscussionManager(organization, database)
 
   def teamManager(user: User = superAdmin): TeamManager =
     TeamManager(organizationManager(user))
@@ -367,7 +353,6 @@ trait ManagerSpec
     om.addUser(organization, superAdmin, DBPermission.Owner).await.value
 
     if (createSchema) {
-      migrateOrganizationSchema(organization.id, postgresDB)
       extraOrganizationIds = extraOrganizationIds :+ organization.id
     }
 
@@ -453,7 +438,8 @@ trait ManagerSpec
     objectType: FileObjectType = Source,
     processingState: FileProcessingState = FileProcessingState.Unprocessed,
     size: Long = 0,
-    uploadedState: Option[FileState] = None
+    uploadedState: Option[FileState] = None,
+    publishedS3VersionId: Option[String] = None
   ): File = {
     val fm = fileManager(organization, user)
     fm.create(
@@ -465,8 +451,40 @@ trait ManagerSpec
         objectType,
         processingState,
         size,
-        uploadedState = uploadedState
+        uploadedState = uploadedState,
+        publishedS3VersionId = publishedS3VersionId
       )
+      .await match {
+      case Right(x) => x
+      case Left(e) => throw e
+    }
+  }
+
+  def publishFile(
+    organization: Organization = testOrganization,
+    user: User = superAdmin,
+    file: File,
+    publishS3Bucket: String,
+    publishS3Key: String,
+    publishS3VersionId: String
+  ): Int = {
+    fileManager(organization = organization, user = user)
+      .setFilePublished(file, publishS3Bucket, publishS3Key, publishS3VersionId)
+      .await match {
+      case Right(x) => x
+      case Left(e) => throw e
+    }
+  }
+
+  def unpublishFile(
+    organization: Organization = testOrganization,
+    user: User = superAdmin,
+    file: File,
+    storageS3Bucket: String,
+    storageS3Key: String
+  ): Int = {
+    fileManager(organization = organization, user = user)
+      .setFileUnpublished(file, storageS3Bucket, storageS3Key)
       .await match {
       case Right(x) => x
       case Left(e) => throw e

@@ -42,7 +42,6 @@ trait DataCLIDatabaseSpecHarness
   val packages = new PackagesMapper(organization)
   val datasets = new DatasetsMapper(organization)
   val channels = new ChannelsMapper(organization)
-  val dimensions = new DimensionsMapper(organization)
 
   def createDataset: Dataset = {
 

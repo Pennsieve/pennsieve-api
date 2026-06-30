@@ -72,8 +72,6 @@ lazy val circeDerivationVersion = "0.13.0-M5"
 
 lazy val ficusVersion = "1.5.2"
 
-lazy val flywayVersion = "4.2.0"
-
 lazy val json4sVersion = "3.5.5"
 
 lazy val jettyVersion = "9.1.3.v20140225"
@@ -92,7 +90,6 @@ lazy val slickCatsVersion = "0.10.4"
 
 lazy val testContainersVersion = "0.44.1"
 lazy val utilitiesVersion = "4-55953e4"
-lazy val jobSchedulingServiceClientVersion = "6-3251c91"
 lazy val serviceUtilitiesVersion = "9-b838dd9"
 lazy val discoverServiceClientVersion = "155-899ad5e"
 lazy val doiServiceClientVersion = "12-756107b"
@@ -272,7 +269,6 @@ lazy val coreSettings = Seq(
   scalacOptions ++= Seq("-language:higherKinds"),
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
-    "com.pennsieve" %% "job-scheduling-service-client" % jobSchedulingServiceClientVersion,
     "com.pennsieve" %% "service-utilities" % serviceUtilitiesVersion,
     "com.pennsieve" %% "utilities" % utilitiesVersion,
     "commons-codec" % "commons-codec" % "1.10",
@@ -294,6 +290,7 @@ lazy val coreSettings = Seq(
     "com.amazonaws" % "aws-java-sdk-s3" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-ses" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-ssm" % awsVersion,
+    "com.amazonaws" % "aws-java-sdk-sts" % awsVersion,
     "software.amazon.awssdk" % "sns" % awsV2Version,
     "software.amazon.awssdk" % "sqs" % awsV2Version,
     "software.amazon.awssdk" % "cognitoidentityprovider" % awsV2Version,
@@ -440,29 +437,6 @@ lazy val bfAkkaHttpSettings = Seq(
     "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
   )
-)
-
-lazy val migrationsSettings = Seq(
-  name := "migrations",
-  publishTo := publishToNexus.value,
-  resolvers ++= Seq("Flyway" at "https://flywaydb.org/repo"),
-  libraryDependencies ++= Seq(
-    "com.iheart" %% "ficus" % ficusVersion,
-    "org.flywaydb" % "flyway-core" % flywayVersion,
-    "org.postgresql" % "postgresql" % postgresVersion
-  ),
-  docker / dockerfile := {
-    val artifact: File = assembly.value
-    val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
-      copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      // build-postgres.sh script needs a stable JAR name to run without Cloudwrap
-      run("ln", "-s", artifactTargetPath, "/app/migrations.jar")
-      cmd("--service", "migrations", "exec", "java", "-jar", artifactTargetPath)
-    }
-  },
-  docker / imageNames := Seq(ImageName("pennsieve/migrations:latest")),
-  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
 lazy val unusedOrganizationMigrationSettings = Seq(
@@ -622,8 +596,7 @@ lazy val core = project
   .dependsOn(
     `core-models`,
     `bf-aws`,
-    `message-templates`,
-    migrations % "test->compile"
+    `message-templates`
   )
   .enablePlugins(AutomateHeaderPlugin)
 
@@ -671,11 +644,6 @@ lazy val jobs = project
   .enablePlugins(AutomateHeaderPlugin)
   .settings(commonSettings: _*)
   .settings(jobsSettings: _*)
-
-lazy val migrations = project
-  .enablePlugins(sbtdocker.DockerPlugin)
-  .enablePlugins(AutomateHeaderPlugin)
-  .settings(migrationsSettings: _*)
 
 lazy val `etl-data-cli` = project
   .dependsOn(core % "test->test;compile->compile")

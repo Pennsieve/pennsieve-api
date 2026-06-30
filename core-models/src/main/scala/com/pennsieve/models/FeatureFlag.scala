@@ -64,4 +64,5 @@ object Feature extends Enum[Feature] with CirceEnum[Feature] {
   case object DoiFeature extends Feature
   case object SandboxOrgFeature extends Feature
   case object Publishing50Feature extends Feature
+  case object ComputeNodeChat extends Feature
 }

@@ -30,11 +30,7 @@ import com.pennsieve.akka.http.{ RouteService, SwaggerDocService }
 import com.pennsieve.aws.email.EmailContainer
 import com.pennsieve.aws.cognito.{ CognitoClient, CognitoContainer }
 import com.pennsieve.aws.queue.SQSContainer
-import com.pennsieve.clients.{
-  CustomTermsOfServiceClientContainer,
-  JobSchedulingServiceContainer,
-  JobSchedulingServiceContainerImpl
-}
+import com.pennsieve.clients.{ CustomTermsOfServiceClientContainer }
 import com.pennsieve.core.utilities._
 import com.pennsieve.discover.client.publish.PublishClient
 import com.pennsieve.models.{ Organization, User }
@@ -52,14 +48,12 @@ object Router {
       with InsecureCoreContainer
       with SQSContainer
       with AdminContainer
-      with JobSchedulingServiceContainer
       with CustomTermsOfServiceClientContainer
       with CognitoContainer
   type SecureResourceContainer = ResourceContainer
     with SecureContainer
     with SecureCoreContainer
     with MessageTemplatesContainer
-    with JobSchedulingServiceContainer
     with AdminETLServiceContainer
 
   type SecureResourceContainerBuilder =
@@ -67,20 +61,6 @@ object Router {
 
   trait AdminETLServiceContainer { self: Container =>
     val jwtKey: String = config.as[String]("job_scheduling_service.jwt.key")
-    val quota: Int = config.as[Int]("job_scheduling_service.quota")
-  }
-
-  trait AdminETLServiceContainerImpl
-      extends JobSchedulingServiceContainerImpl
-      with AdminETLServiceContainer {
-    self: Container =>
-
-    override val jobSchedulingServiceHost: String =
-      config.as[String]("job_scheduling_service.host")
-    override val jobSchedulingServiceQueueSize: Int =
-      config.as[Int]("job_scheduling_service.queue_size")
-    override val jobSchedulingServiceRateLimit: Int =
-      config.as[Int]("job_scheduling_service.rate_limit")
   }
 }
 

@@ -42,10 +42,7 @@ import com.pennsieve.models.{
   TokenSecret,
   User
 }
-import com.pennsieve.clients.{
-  MockCustomTermsOfServiceClientContainer,
-  MockJobSchedulingServiceContainer
-}
+import com.pennsieve.clients.{ MockCustomTermsOfServiceClientContainer }
 import com.pennsieve.core.utilities._
 import com.pennsieve.models.DBPermission.{ Administer, Delete, Guest }
 import com.pennsieve.managers._
@@ -192,10 +189,7 @@ trait ApiSuite
     insecureContainer = new InsecureContainer(config) with TestCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer
     with TimeSeriesDBContainer with LocalSQSContainer with MockSNSContainer
-    with ApiSNSContainer with ApiSQSContainer
-    with MockJobSchedulingServiceContainer {
-      override lazy val jobSchedulingServiceConfigPath: String =
-        "pennsieve.job_scheduling_service"
+    with ApiSNSContainer with ApiSQSContainer {
       override val postgresUseSSL = false
       override val dataPostgresUseSSL = false
     }
@@ -217,15 +211,16 @@ trait ApiSuite
     userInviteManager = insecureContainer.userInviteManager
     tokenManager = insecureContainer.tokenManager
 
-    migrateCoreSchema(insecureContainer.postgresDatabase)
+    // The seeded pennsievedb image ships with local-seed.sql fixtures
+    // (users, organizations, datasets, etc). Clear them once on container
+    // startup so the first test's beforeEach sees an empty schema; afterEach
+    // handles cleanup for subsequent tests.
+    insecureContainer.db.run(clearDB).await
 
-    // Interestingly this must be "5" as the sandbox organization in some
-    // pass throughs gets created twice; once on the migration and once again
-    // within the beforeEach of this loop. TODO on figuring out a better approach.
-    1 to 5 foreach { orgId =>
-      insecureContainer.db.run(createSchema(orgId.toString)).await
-      migrateOrganizationSchema(orgId, insecureContainer.postgresDatabase)
-    }
+    // pennsieve.all_datacanvases is not pre-created by the seed image; build
+    // it here against the seeded org schemas so controllers that query the
+    // cross-org view succeed.
+    insecureContainer.db.run(refreshUnionViews).await
   }
 
   var config: Config = _
@@ -243,8 +238,6 @@ trait ApiSuite
   var timeSeriesManager: TimeSeriesManager = _
   var storageManager: StorageServiceClientTrait = _
   var annotationManager: AnnotationManager = _
-  var discussionManager: DiscussionManager = _
-  var dimensionManager: DimensionManager = _
 
   var loggedInUser: User = _
   var colleagueUser: User = _
@@ -452,10 +445,11 @@ trait ApiSuite
   override def afterEach(): Unit = {
     super.afterEach()
 
+    // clearDB now truncates pennsieve.* plus the seeded org schemas
+    // (1, 2, 3). The pre-change code also truncated schemas 4 and 5, but the
+    // new seeded image only pre-creates 1..3 — any additional schemas would
+    // need to be created dynamically.
     insecureContainer.db.run(clearDB).await
-    insecureContainer.db.run(clearOrganizationSchema(1)).await
-    insecureContainer.db.run(clearOrganizationSchema(2)).await
-    insecureContainer.db.run(clearOrganizationSchema(3)).await
   }
 
   override def beforeEach(): Unit = {
@@ -493,8 +487,6 @@ trait ApiSuite
     packageManager = secureContainer.packageManager
     externalFileManager = secureContainer.externalFileManager
     annotationManager = secureContainer.annotationManager
-    discussionManager = secureContainer.discussionManager
-    dimensionManager = secureContainer.dimensionManager
     timeSeriesManager = secureContainer.timeSeriesManager
     teamManager = secureContainer.teamManager
     storageManager = secureContainer.storageManager
@@ -694,6 +686,8 @@ trait ApiSuite
 
     sandboxUserContainer =
       secureContainerBuilder(sandboxUser, sandboxOrganization)
+
+    sandboxUserContainer.datasetStatusManager.resetDefaultStatusOptions.await.value
 
     loggedInSandboxUserJwt = Authenticator.createUserToken(
       loggedInUser,

@@ -30,7 +30,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration._
 
 class HealthCheckSpec
     extends AnyWordSpec
@@ -41,7 +41,10 @@ class HealthCheckSpec
     with PostgresDockerContainer
     with S3DockerContainer {
 
-  implicit val timeout: RouteTestTimeout = RouteTestTimeout(5.seconds)
+  // The default RouteTestTimeout is 1 second, which is too tight for the
+  // cold first GET /health: HikariCP opens its first connection lazily and
+  // Jenkins agents have intermittently blown past 1s under load.
+  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.seconds)
 
   var db: Database = _
   var s3: S3 = _

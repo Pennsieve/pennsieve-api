@@ -189,7 +189,6 @@ trait SecureCoreContainer
     with MetadataManagerContainer
     with OrganizationManagerContainer
     with TermsOfServiceManagerContainer
-    with DimensionManagerContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
     with WebhookManagerContainer
@@ -201,8 +200,6 @@ trait SecureCoreContainer
   lazy val annotationManager: AnnotationManager =
     new AnnotationManager(self.organization, db)
 
-  lazy val discussionManager: DiscussionManager =
-    new DiscussionManager(self.organization, db)
   override lazy val organizationManager: SecureOrganizationManager =
     new SecureOrganizationManager(db, user)
   lazy val tokenManager: SecureTokenManager =
@@ -525,15 +522,6 @@ trait ExternalPublicationContainer
 
   lazy val externalPublicationManager =
     new ExternalPublicationManager(db, organization)
-}
-
-trait DimensionManagerContainer
-    extends DatabaseContainer
-    with OrganizationContainer {
-  self: Container =>
-
-  lazy val dimensionManager: DimensionManager =
-    new DimensionManager(db, organization)
 }
 
 trait UserPermissionContainer {

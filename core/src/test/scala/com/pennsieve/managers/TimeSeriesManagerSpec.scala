@@ -20,6 +20,7 @@ import com.pennsieve.models.{ Channel, PackageType }
 import com.pennsieve.models.Package
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.EitherValues._
+import java.util.UUID
 import scala.collection.SortedSet
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -194,6 +195,105 @@ class TimeSeriesManagerSpec extends BaseManagerSpec {
         .await
         .isLeft
     )
+  }
+
+  "get channels by viewer asset id" should "return channels across packages in (packageId, id) order" in {
+    val user = createUser()
+    val tm = timeSeriesManager()
+
+    val dataset = createDataset(user = user)
+    val packageA = createPackage(
+      user = user,
+      dataset = dataset,
+      `type` = PackageType.TimeSeries
+    )
+    val packageB = createPackage(
+      user = user,
+      dataset = dataset,
+      `type` = PackageType.TimeSeries
+    )
+
+    val assetId = UUID.randomUUID()
+    val otherAssetId = UUID.randomUUID()
+
+    val a1 = createChannel(packageA, "a1")(tm)
+    val a2 = createChannel(packageA, "a2")(tm)
+    val b1 = createChannel(packageB, "b1")(tm)
+    val unassigned = createChannel(packageA, "unassigned")(tm)
+    val otherAssetChannel = createChannel(packageB, "other")(tm)
+
+    tm.updateChannel(a1.copy(viewerAssetId = Some(assetId)), packageA)
+      .await
+      .value
+    tm.updateChannel(a2.copy(viewerAssetId = Some(assetId)), packageA)
+      .await
+      .value
+    tm.updateChannel(b1.copy(viewerAssetId = Some(assetId)), packageB)
+      .await
+      .value
+    tm.updateChannel(
+        otherAssetChannel.copy(viewerAssetId = Some(otherAssetId)),
+        packageB
+      )
+      .await
+      .value
+
+    val result = tm.getChannelsByViewerAssetId(assetId).await.value
+
+    result.map(_.nodeId) shouldBe List(a1.nodeId, a2.nodeId, b1.nodeId)
+    result.forall(_.viewerAssetId.contains(assetId)) shouldBe true
+  }
+
+  "get channels by viewer asset id" should "return empty when no channels match" in {
+    val tm = timeSeriesManager()
+    tm.getChannelsByViewerAssetId(UUID.randomUUID()).await.value shouldBe empty
+  }
+
+  "creating a channel with viewer_asset_id" should "persist it on the new row" in {
+    val user = createUser()
+    val tm = timeSeriesManager()
+
+    val dataset = createDataset(user = user)
+    val p = createPackage(
+      user = user,
+      dataset = dataset,
+      `type` = PackageType.TimeSeries
+    )
+
+    val assetId = UUID.randomUUID()
+    val channel = tm
+      .createChannel(
+        p,
+        "linked",
+        0,
+        10,
+        "ms",
+        1.0,
+        "eeg",
+        None,
+        0,
+        viewerAssetId = Some(assetId)
+      )
+      .await
+      .value
+
+    channel.viewerAssetId shouldBe Some(assetId)
+    tm.getChannel(channel.id, p).await.value.viewerAssetId shouldBe Some(assetId)
+  }
+
+  "creating a channel without viewer_asset_id" should "leave it null" in {
+    val user = createUser()
+    val tm = timeSeriesManager()
+
+    val dataset = createDataset(user = user)
+    val p = createPackage(
+      user = user,
+      dataset = dataset,
+      `type` = PackageType.TimeSeries
+    )
+
+    val channel = createChannel(p, "unlinked")(tm)
+    channel.viewerAssetId shouldBe None
   }
 
   "a channel on a timeseries package created by a user" should "readable by another user in the same group" in {

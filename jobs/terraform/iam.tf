@@ -134,3 +134,13 @@ data "aws_iam_policy_document" "sns_iam_policy_document" {
     ]
   }
 }
+
+resource "aws_iam_role_policy_attachment" "storage_bucket_read" {
+  role       = var.ecs_task_iam_role_id
+  policy_arn = data.terraform_remote_state.account_service.outputs.storage_read_policy_arn
+}
+
+resource "aws_iam_role_policy_attachment" "storage_bucket_write" {
+  role       = var.ecs_task_iam_role_id
+  policy_arn = data.terraform_remote_state.account_service.outputs.storage_write_policy_arn
+}

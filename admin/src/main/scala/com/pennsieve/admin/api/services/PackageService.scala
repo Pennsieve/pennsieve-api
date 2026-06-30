@@ -44,7 +44,6 @@ import com.pennsieve.admin.api.dtos.{
   UserDTO
 }
 import com.pennsieve.auth.middleware.Jwt
-import com.pennsieve.clients.Quota
 import com.pennsieve.core.utilities.JwtAuthenticator
 import com.pennsieve.domain.{ CoreError, InvalidId }
 import com.pennsieve.dtos.PackageDTO

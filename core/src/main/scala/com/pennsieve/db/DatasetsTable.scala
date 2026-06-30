@@ -54,7 +54,6 @@ final class DatasetsTable(schema: String, tag: Tag)
   def etag = column[ETag]("etag")
 
   def statusId = column[Int]("status_id")
-  def publicationStatusId = column[Option[Int]]("publication_status_id")
   def license = column[Option[License]]("license")
   def tags = column[List[String]]("tags")
   def bannerId = column[Option[UUID]]("banner_id")
@@ -74,7 +73,6 @@ final class DatasetsTable(schema: String, tag: Tag)
       role,
       automaticallyProcessPackages,
       statusId,
-      publicationStatusId,
       `type`,
       license,
       tags,
@@ -115,14 +113,6 @@ class DatasetsMapper(val organization: Organization)
   def get(id: Int): Query[DatasetsTable, Dataset, Seq] =
     this.filter(_.id === id)
 
-  def getPublicationStatus(
-    dataset: Dataset
-  ): DBIO[Option[DatasetPublicationStatus]] = {
-    dataset.publicationStatusId
-      .map(datasetPublicationStatusMapper.get(_).result.headOption)
-      .getOrElse(DBIO.successful(None))
-  }
-
   /**
     * Check if the dataset is locked during publication for the given user.
     *
@@ -140,8 +130,8 @@ class DatasetsMapper(val organization: Organization)
   ): DBIO[Boolean] =
     this
       .get(dataset.id)
-      .joinLeft(datasetPublicationStatusMapper)
-      .on(_.publicationStatusId === _.id)
+      .joinLeft(datasetPublicationStatusMapper.latestByDataset)
+      .on(_.id === _.datasetId)
       .map {
         case (dataset, publicationStatus) =>
           isLockedLifted(dataset, publicationStatus, user)
@@ -207,8 +197,8 @@ class DatasetsMapper(val organization: Organization)
   ): DBIO[Boolean] =
     this
       .get(dataset.id)
-      .joinLeft(datasetPublicationStatusMapper)
-      .on(_.publicationStatusId === _.id)
+      .joinLeft(datasetPublicationStatusMapper.latestByDataset)
+      .on(_.id === _.datasetId)
       .map {
         case (_, publicationStatus) =>
           isPublisherEditable(publicationStatus, user)
@@ -299,8 +289,8 @@ class DatasetsMapper(val organization: Organization)
         .filterOpt(datasetIds)(_.id.inSet(_))
         .join(datasetStatusMapper)
         .on(_.statusId === _.id)
-        .joinLeft(datasetPublicationStatusMapper)
-        .on(_._1.publicationStatusId === _.id)
+        .joinLeft(datasetPublicationStatusMapper.latestByDataset)
+        .on(_._1.id === _.datasetId)
         .map {
           case ((dataset, datasetStatus), datasetPublicationStatus) =>
             (
@@ -346,8 +336,8 @@ class DatasetsMapper(val organization: Organization)
       // Dataset cannot already be locked for publication
       !this
         .filter(_.id === dataset.id)
-        .joinLeft(datasetPublicationStatusMapper)
-        .on(_.publicationStatusId === _.id)
+        .joinLeft(datasetPublicationStatusMapper.latestByDataset)
+        .on(_.id === _.datasetId)
         .filter(
           _._2
             .map(_.publicationStatus.inSet(PublicationStatus.lockedStatuses))

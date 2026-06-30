@@ -58,16 +58,36 @@ trait PackagesTestMixin extends DataSetTestMixin {
     processingState: FileProcessingState = FileProcessingState.Unprocessed,
     fileManager: FileManager = fileManager
   ): File = {
+    createTestDownloadFileInBucket(
+      fileName,
+      pkg,
+      "s3bucketName",
+      objectType,
+      processingState,
+      fileManager
+    )
+  }
+
+  def createTestDownloadFileInBucket(
+    fileName: String,
+    pkg: Package,
+    bucketName: String,
+    objectType: FileObjectType = FileObjectType.Source,
+    processingState: FileProcessingState = FileProcessingState.Unprocessed,
+    fileManager: FileManager = fileManager,
+    publishedS3VersionId: Option[String] = None
+  ): File = {
     fileManager
       .create(
         fileName,
         FileType.PDF,
         pkg,
-        "s3bucketName",
+        bucketName,
         fileName,
         objectType = objectType,
         processingState = processingState,
-        size = 10
+        size = 10,
+        publishedS3VersionId = publishedS3VersionId
       )
       .await match {
       case Left(error) => throw error

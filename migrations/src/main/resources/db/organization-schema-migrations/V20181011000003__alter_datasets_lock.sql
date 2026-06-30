@@ -1,1 +1,0 @@
-ALTER TABLE datasets ADD COLUMN locked BOOL NOT NULL DEFAULT false;

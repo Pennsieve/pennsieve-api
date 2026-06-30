@@ -621,22 +621,21 @@ class PackageManager(datasetManager: DatasetManager) {
       // is deleted, and the delete job removes one of the source assets before
       // it is copied to the publish bucket.
       _ <- datasetManager.assertNotLocked(pkg.datasetId)
-      _ <- db
-        .run(
-          packagesMapper
-            .get(pkg.id)
-            .map(_.state)
-            .update(PackageState.DELETING)
-        )
-        .toEitherT
-      _ <- db
-        .run(
-          packagesMapper
-            .get(pkg.id)
-            .map(_.name)
-            .update("__DELETED__" + pkg.nodeId + "_" + pkg.name)
-        )
-        .toEitherT
+      softDeleteAction = for {
+        _ <- packagesMapper
+          .get(pkg.id)
+          .map(_.state)
+          .update(PackageState.DELETING)
+        _ <- packagesMapper
+          .get(pkg.id)
+          .map(_.name)
+          .update("__DELETED__" + pkg.nodeId + "_" + pkg.name)
+        _ <- if (pkg.`type` == Collection)
+          packagesMapper.softDeleteDescendants(pkg)
+        else DBIO.successful(0)
+      } yield ()
+
+      _ <- db.run(softDeleteAction.transactionally).toEitherT
 
       amount <- storageManager
         .getStorage(PackageStorageAggregationKey, List(pkg.id))
@@ -749,8 +748,14 @@ class PackageManager(datasetManager: DatasetManager) {
           """)
       else None
 
+    // Explicit column list (not p.*) so that adding columns to the packages
+    // table in future migrations does not shift the positional reads in the
+    // GetResult[(Package, Seq[File])] extractor below. Column order must
+    // match the extractor.
     sql"""
-       SELECT p.*#${selectFiles}
+       SELECT p.id, p.name, p.type, p.state, p.dataset_id, p.parent_id,
+              p.updated_at, p.created_at, p.attributes, p.node_id,
+              p.size, p.owner_id, p.import_id#${selectFiles}
        FROM "#${organization.schemaId}".packages p
        INNER JOIN (
          SELECT p.id FROM "#${organization.schemaId}".packages p
@@ -897,7 +902,8 @@ class PackageManager(datasetManager: DatasetManager) {
     size: Long,
     fileType: FileType,
     s3Bucket: String,
-    s3Key: String
+    s3Key: String,
+    publishedS3VersionId: Option[String]
   )
 
   implicit val packageHierarchy: GetResult[PackageHierarchy] =
@@ -917,6 +923,7 @@ class PackageManager(datasetManager: DatasetManager) {
       val fileType = p.<<[String]
       val s3Bucket = p.<<[String]
       val s3Key = p.<<[String]
+      val publishedS3VersionId = p.<<?[String]
 
       PackageHierarchy(
         datasetId,
@@ -933,7 +940,8 @@ class PackageManager(datasetManager: DatasetManager) {
         size,
         FileType.withName(fileType),
         s3Bucket,
-        s3Key
+        s3Key,
+        publishedS3VersionId
       )
     }
 
@@ -995,7 +1003,8 @@ class PackageManager(datasetManager: DatasetManager) {
                 f.size,
                 f.file_type,
                 f.s3_bucket,
-                f.s3_key
+                f.s3_key,
+                f.published_s3_version_id
               FROM
                 parents
               JOIN "#${organization.schemaId}".files f ON
@@ -1081,7 +1090,8 @@ class PackageManager(datasetManager: DatasetManager) {
                 f.size,
                 f.file_type,
                 f.s3_bucket,
-                f.s3_key
+                f.s3_key,
+                f.published_s3_version_id
               FROM
                 parents
               JOIN "#${orgId}".files f ON

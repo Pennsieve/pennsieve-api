@@ -32,6 +32,7 @@ import com.pennsieve.models.{
 }
 import com.pennsieve.traits.PostgresProfile.api._
 
+import java.util.UUID
 import scala.collection.SortedSet
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -50,24 +51,26 @@ class TimeSeriesManager(db: Database, organization: Organization) {
     group: Option[String],
     lastAnnotation: Long,
     spikeDuration: Option[Long] = None,
-    properties: List[ModelProperty] = Nil
+    properties: List[ModelProperty] = Nil,
+    viewerAssetId: Option[UUID] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Channel] = {
     val nodeId = NodeCodes.generateId(NodeCodes.channelCode)
     val query = table returning table += Channel(
-      nodeId,
-      `package`.id,
-      name.trim,
-      start,
-      end,
-      unit,
-      rate,
-      `type`,
-      group,
-      lastAnnotation,
-      spikeDuration,
-      properties
+      nodeId = nodeId,
+      packageId = `package`.id,
+      name = name.trim,
+      start = start,
+      end = end,
+      unit = unit,
+      rate = rate,
+      `type` = `type`,
+      group = group,
+      lastAnnotation = lastAnnotation,
+      spikeDuration = spikeDuration,
+      properties = properties,
+      viewerAssetId = viewerAssetId
     )
     db.run(query.transactionally).toEitherT
   }
@@ -133,6 +136,20 @@ class TimeSeriesManager(db: Database, organization: Organization) {
         table
           .filter(_.packageId === `package`.id)
           .sortBy(_.id)
+          .result
+      )
+      .map(_.toList)
+      .toEitherT
+
+  def getChannelsByViewerAssetId(
+    viewerAssetId: UUID
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[Channel]] =
+    db.run(
+        table
+          .filter(_.viewerAssetId === viewerAssetId)
+          .sortBy(c => (c.packageId, c.id))
           .result
       )
       .map(_.toList)

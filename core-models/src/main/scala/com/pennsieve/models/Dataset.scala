@@ -51,7 +51,6 @@ final case class Dataset(
   role: Option[Role] = None,
   automaticallyProcessPackages: Boolean = false,
   statusId: Int,
-  publicationStatusId: Option[Int] = None,
   `type`: DatasetType = DatasetType.Research,
   license: Option[License] = None,
   tags: List[String] = List.empty,

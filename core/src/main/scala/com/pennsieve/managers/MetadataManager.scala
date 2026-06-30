@@ -46,7 +46,7 @@ class MetadataManager(
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Seq[ModelRecordCount]] = {
     val query = recordsMapper
-      .filter(r => r.datasetId === dataset.id && r.isCurrent)
+      .filter(r => r.datasetId === dataset.id && r.validTo.isEmpty)
       .join(modelsMapper)
       .on(_.modelId === _.id)
       .groupBy { case (_, model) => model.name }
@@ -56,5 +56,4 @@ class MetadataManager(
 
     db.run(query).toEitherT
   }
-
 }

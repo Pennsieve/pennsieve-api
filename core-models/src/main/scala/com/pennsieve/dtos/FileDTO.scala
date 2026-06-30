@@ -52,7 +52,9 @@ object FileDTO {
         file.checksum,
         file.properties,
         file.assetType,
-        file.provenanceId
+        file.provenanceId,
+        file.published,
+        file.publishedS3VersionId
       )
     )
   }

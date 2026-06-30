@@ -33,7 +33,6 @@ class AnnotationManagerSpec extends BaseManagerSpec {
 
   var annotationMgr: AnnotationManager = _
   var packageMgr: PackageManager = _
-  var discussionMgr: DiscussionManager = _
   var testPackage: Package = _
   var layer: AnnotationLayer = _
   var annotation: Annotation = _
@@ -46,7 +45,6 @@ class AnnotationManagerSpec extends BaseManagerSpec {
     super.beforeEach()
     annotationMgr = annotationManager(testOrganization)
     packageMgr = packageManager(testOrganization, superAdmin)
-    discussionMgr = discussionManager(testOrganization)
     testDataset = createDataset()
     testPackage = packageMgr
       .create("test package", PDF, READY, testDataset, Some(1), None)
@@ -109,18 +107,6 @@ class AnnotationManagerSpec extends BaseManagerSpec {
 
     assert(amap2.get(layer.id).get.length == 1)
 
-  }
-
-  "removing an annotation with a discussion" should "fail" in {
-    val user = createUser()
-    val annotation2 =
-      annotationMgr.create(user, layer, "and another thing").await.value
-    discussionMgr.create(testPackage, Some(annotation2)).await
-    val delete = annotationMgr.delete(annotation2).await
-    assert(delete.isLeft)
-    val delete2 =
-      annotationMgr.deleteAnnotationAndRelatedDiscussions(annotation2).await
-    assert(delete2.isRight)
   }
 
   "deleting an annotation layer" should "remove it" in {

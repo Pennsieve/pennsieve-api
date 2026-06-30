@@ -101,6 +101,8 @@ abstract class AbstractFilesTable[T](
   def properties = column[Option[Json]]("properties")
   def assetType = column[Option[String]]("asset_type")
   def provenanceId = column[Option[UUID]]("provenance_id")
+  def published = column[Boolean]("published")
+  def publishedS3VersionId = column[Option[String]]("published_s3_version_id")
 
   val filesSelect = (
     packageId,
@@ -119,6 +121,8 @@ abstract class AbstractFilesTable[T](
     properties,
     assetType,
     provenanceId,
+    published,
+    publishedS3VersionId,
     id
   )
 }
@@ -205,18 +209,79 @@ class FilesMapper(val organization: Organization)
 
   def getByS3bucketAndS3Key(
     s3bucket: String,
-    s3key: String
+    s3key: String,
+    publishedS3VersionId: Option[String] = None
   )(implicit
     executionContext: ExecutionContext
   ): DBIOAction[File, NoStream, Effect.Read] = {
     this
       .filter(_.s3bucket === s3bucket)
       .filter(_.s3key === s3key)
+      .filterOpt(publishedS3VersionId)(_.publishedS3VersionId === _)
       .result
       .headOption
       .flatMap {
         case Some(file) => DBIO.successful(file)
-        case None => DBIO.failed(NotFound(s"File s3://$s3bucket/$s3key"))
+        case None =>
+          val versionSuffix =
+            publishedS3VersionId.fold("")(versionId => s"?versionId=$versionId")
+          DBIO.failed(NotFound(s"File s3://$s3bucket/$s3key$versionSuffix"))
+      }
+  }
+
+  def setPublished(
+    packageId: Int,
+    published: Boolean,
+    s3Key: Option[String] = None
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Int, NoStream, Effect.Write] = {
+    val baseQuery = this.filter(_.packageId === packageId)
+    val filteredQuery = s3Key match {
+      case Some(key) => baseQuery.filter(_.s3key === key)
+      case None => baseQuery
+    }
+    filteredQuery.map(_.published).update(published)
+  }
+
+  def setFilePublished(
+    packageId: Int,
+    fileId: Int,
+    s3Bucket: String,
+    s3Key: String,
+    s3VersionID: String
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Int, NoStream, Effect.Write] = {
+    this
+      .filter(_.packageId === packageId)
+      .filter(_.id === fileId)
+      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId, f.published))
+      .update(s3Bucket, s3Key, Some(s3VersionID), true)
+      .flatMap {
+        case 0 =>
+          DBIO.failed(NotFound(s"File for package $packageId with id $fileId"))
+        case n => DBIO.successful(n)
+      }
+  }
+
+  def setFileUnpublished(
+    packageId: Int,
+    fileId: Int,
+    s3Bucket: String,
+    s3Key: String
+  )(implicit
+    ec: ExecutionContext
+  ): DBIOAction[Int, NoStream, Effect.Write] = {
+    this
+      .filter(_.packageId === packageId)
+      .filter(_.id === fileId)
+      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId, f.published))
+      .update(s3Bucket, s3Key, None, false)
+      .flatMap {
+        case 0 =>
+          DBIO.failed(NotFound(s"File for package $packageId with id $fileId"))
+        case n => DBIO.successful(n)
       }
   }
 

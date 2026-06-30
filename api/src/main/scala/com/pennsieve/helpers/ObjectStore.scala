@@ -23,8 +23,9 @@ import com.pennsieve.aws.s3.{ S3, S3ClientFactory }
 import com.amazonaws.services.s3.model._
 import cats.syntax.either._
 import com.amazonaws.services.s3.AmazonS3
+import com.typesafe.scalalogging.LazyLogging
 
-import java.net.URL
+import java.net.{ URL, URLEncoder }
 import org.scalatra.{ ActionResult, InternalServerError, NotFound }
 
 import scala.util.Try
@@ -41,7 +42,8 @@ trait ObjectStore {
     bucket: String,
     key: String,
     duration: Date,
-    fileName: String
+    fileName: String,
+    s3VersionId: Option[String] = None
   ): Either[ActionResult, URL]
 
   def getListing(
@@ -53,7 +55,11 @@ trait ObjectStore {
 
 }
 
-class S3ObjectStore() extends ObjectStore {
+class S3ObjectStore() extends ObjectStore with LazyLogging {
+
+  // Force Settings initialization to ensure S3ClientFactory is configured
+  // with external bucket mappings before any S3 operations
+  Settings.externalPublishBuckets
 
   def getMD5(bucket: String, key: String): Either[ActionResult, String] = {
     S3ClientFactory
@@ -66,20 +72,29 @@ class S3ObjectStore() extends ObjectStore {
     bucket: String,
     key: String,
     duration: Date,
-    fileName: String
+    fileName: String,
+    s3VersionId: Option[String] = None
   ): Either[ActionResult, URL] = {
     // Create region appropriate client
+    var request = new GeneratePresignedUrlRequest(bucket, key)
+      .withExpiration(duration)
+      .withResponseHeaders(
+        new ResponseHeaderOverrides()
+          .withContentDisposition(contentDispositionFor(fileName))
+      )
+
+    request = s3VersionId.fold(request)(request.withVersionId(_))
+
     S3ClientFactory
       .getClientForBucket(bucket)
-      .generatePresignedUrl(
-        new GeneratePresignedUrlRequest(bucket, key)
-          .withExpiration(duration)
-          .withResponseHeaders(
-            new ResponseHeaderOverrides()
-              .withContentDisposition(s"""attachment; filename="$fileName"""")
-          )
-      )
-      .leftMap(t => InternalServerError(t.getMessage))
+      .generatePresignedUrl(request)
+      .leftMap { t =>
+        logger.error(
+          s"Failed to generate presigned URL for bucket=$bucket, key=$key, versionId=$s3VersionId: ${t.getMessage}",
+          t
+        )
+        InternalServerError(t.getMessage)
+      }
   }
 
   def getListing(
@@ -92,5 +107,23 @@ class S3ObjectStore() extends ObjectStore {
       .map(_.map(obj => (obj.getKey, obj.getSize)).toMap)
       .leftMap(t => InternalServerError(t.getMessage))
 
+  }
+
+  // HTTP response headers are ISO-8859-1 (RFC 7230), but uploaded filenames
+  // routinely contain non-Latin-1 characters — macOS screenshots embed U+202F
+  // (narrow no-break space) between the time and AM/PM, and any CJK/emoji
+  // filename also fails. S3 rejects a non-Latin-1 response-content-disposition
+  // override with `InvalidArgument: Header value cannot be represented using
+  // ISO-8859-1`, which surfaces as a 400 on the presigned GET.
+  //
+  // RFC 5987 / RFC 6266 lets us send both: a Latin-1 `filename` fallback and a
+  // UTF-8 `filename*` that modern browsers prefer.
+  private def contentDispositionFor(fileName: String): String = {
+    val asciiFallback = fileName.map { c =>
+      if (c >= 0x20 && c < 0x7F && c != '"' && c != '\\') c else '_'
+    }
+    val utf8Encoded =
+      URLEncoder.encode(fileName, "UTF-8").replace("+", "%20")
+    s"""attachment; filename="$asciiFallback"; filename*=UTF-8''$utf8Encoded"""
   }
 }

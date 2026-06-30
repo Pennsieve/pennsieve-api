@@ -30,9 +30,11 @@ class MockObjectStore(fileName: String) extends ObjectStore {
     bucket: String,
     key: String,
     duration: Date,
-    fileName: String
+    fileName: String,
+    s3VersionId: Option[String] = None
   ): Either[ActionResult, URL] = {
-    Right(new URL(s"file://$bucket/$key"))
+    val versionIdSuffix = s3VersionId.fold("")(vid => s"?versionId=${vid}")
+    Right(new URL(s"file://$bucket/$key$versionIdSuffix"))
   }
 
   def getListing(

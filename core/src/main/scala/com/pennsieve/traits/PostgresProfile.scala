@@ -234,12 +234,6 @@ trait PostgresProfile
     implicit val embargoAccessMapper = MappedColumnType
       .base[EmbargoAccess, String](_.entryName, EmbargoAccess.withName)
 
-    implicit val dimensionAssignmentMapper =
-      MappedColumnType.base[DimensionAssignment, String](
-        s => s.entryName,
-        s => DimensionAssignment.withName(s)
-      )
-
     implicit val orcidAuthorizationMapper =
       MappedColumnType.base[OrcidAuthorization, Json](
         orcidAuthorization => orcidAuthorization.asJson,

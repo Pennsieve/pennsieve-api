@@ -1022,7 +1022,8 @@ class DataCanvasController(
                       p.s3Bucket,
                       p.s3Key,
                       DateTime.now.plusMinutes(180).toDate,
-                      p.packageName
+                      p.packageName,
+                      p.publishedS3VersionId
                     )
                     .toOption
                     .get,

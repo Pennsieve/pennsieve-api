@@ -40,6 +40,8 @@ final case class File(
   properties: Option[Json] = None,
   assetType: Option[String] = None,
   provenanceId: Option[UUID] = None,
+  published: Boolean = false,
+  publishedS3VersionId: Option[String] = None,
   id: Int = 0
 ) {
 
@@ -62,6 +64,8 @@ final case class File(
     * */
   def fileExtension: Option[String] =
     Utilities.getFullExtension(s3Key)
+
+  def isPublished: Boolean = publishedS3VersionId.nonEmpty
 
 }
 
