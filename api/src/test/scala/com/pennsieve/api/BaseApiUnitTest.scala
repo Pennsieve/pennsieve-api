@@ -55,10 +55,12 @@ import com.pennsieve.helpers.{
   ApiSQSContainer,
   MockSNSContainer
 }
+import com.pennsieve.test.helpers.AwaitableImplicits
 import com.pennsieve.managers.{
   CollectionManager,
   SecureOrganizationManager,
   SecureTokenManager,
+  UserInviteManager,
   UserManager
 }
 import com.pennsieve.models.{ CognitoId, Organization, Role, User }
@@ -98,6 +100,7 @@ trait BaseApiUnitTest
     extends AnyFunSuite
     with ScalatraSuite
     with TestKitBase
+    with AwaitableImplicits
     with BeforeAndAfterEach
     with BeforeAndAfterAll {
 

@@ -127,7 +127,7 @@ trait ManagerSpec
     database = postgresDB.forURL
 
     userManager = new UserManagerImpl(database)
-    userInviteManager = new UserInviteManager(database)
+    userInviteManager = new UserInviteManagerImpl(database)
     tokenManager = new TokenManagerImpl(database)
   }
 

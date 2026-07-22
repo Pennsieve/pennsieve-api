@@ -163,6 +163,17 @@ trait CoreContainer extends UserManagerContainer {
   val tokenManager: TokenManager
 }
 
+trait UserInviteManagerContainer {
+  val userInviteManager: UserInviteManager
+}
+
+trait DefaultUserInviteManagerContainer
+    extends UserInviteManagerContainer
+    with DatabaseContainer {
+  self: Container =>
+  lazy val userInviteManager: UserInviteManager = new UserInviteManagerImpl(db)
+}
+
 trait InsecureCoreContainer
     extends CoreContainer
     with DatabaseContainer
@@ -170,10 +181,9 @@ trait InsecureCoreContainer
     with DefaultOrganizationManagerContainer
     with TermsOfServiceManagerContainer
     with DefaultTokenManagerContainer
+    with DefaultUserInviteManagerContainer
     with ContextLoggingContainer {
   self: Container =>
-
-  lazy val userInviteManager: UserInviteManager = new UserInviteManager(db)
 }
 
 trait SecureCoreContainer
@@ -196,7 +206,8 @@ trait SecureCoreContainer
     with WebhookManagerContainer
     with DatasetAssetsContainer
     with DataCanvasManagerContainer
-    with AllDataCanvasesViewManagerContainer {
+    with AllDataCanvasesViewManagerContainer
+    with DefaultUserInviteManagerContainer {
   self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
@@ -207,7 +218,6 @@ trait SecureCoreContainer
   lazy val tokenManager: SecureTokenManager =
     new SecureTokenManagerImpl(user, db)
   lazy val teamManager: TeamManager = TeamManager(organizationManager)
-  lazy val userInviteManager: UserInviteManager = new UserInviteManager(db)
 
   lazy val datasetStatusManager: DatasetStatusManager =
     new DatasetStatusManager(db, self.organization)

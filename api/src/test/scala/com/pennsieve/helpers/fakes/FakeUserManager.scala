@@ -17,9 +17,19 @@
 package com.pennsieve.helpers.fakes
 
 import cats.data.EitherT
-import com.pennsieve.domain.{ CoreError, NotFound }
-import com.pennsieve.managers.UserManager
-import com.pennsieve.models.User
+import cats.implicits._
+import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
+import com.pennsieve.core.utilities.checkAndNormalizeInitial
+import com.pennsieve.domain.{ CoreError, NotFound, PredicateError }
+import com.pennsieve.managers.{ OrganizationManager, UserManager }
+import com.pennsieve.models.{
+  CognitoId,
+  DBPermission,
+  Degree,
+  NodeCodes,
+  Organization,
+  User
+}
 import com.pennsieve.traits.PostgresProfile.api.Database
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -51,4 +61,91 @@ class FakeUserManager(state: InMemoryState) extends UserManager {
       case Some(u) => EitherT.rightT(u)
       case None => EitherT.leftT(NotFound(s"User ($email)"))
     }
+
+  override def emailExists(
+    email: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Boolean] =
+    EitherT.rightT(state.users.values.exists(_.email.equalsIgnoreCase(email)))
+
+  override def create(
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    if (user.email.nonEmpty &&
+      state.users.values.exists(_.email.equalsIgnoreCase(user.email)))
+      EitherT.leftT(PredicateError("email must be unique or empty"))
+    else {
+      val withId = user.copy(id = state.newId())
+      state.users.put(withId.id, withId)
+      EitherT.rightT(withId)
+    }
+
+  override def update(
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    state.users.get(user.id) match {
+      case Some(_) =>
+        state.users.put(user.id, user)
+        EitherT.rightT(user)
+      case None => EitherT.leftT(NotFound(s"User (${user.id})"))
+    }
+
+  override def getByCognitoId(
+    cognitoId: CognitoId.UserPoolId
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    state.users.values.find(_.cognitoId.contains(cognitoId)) match {
+      case Some(u) => EitherT.rightT(u)
+      case None => EitherT.leftT(NotFound(s"Cognito User ($cognitoId)"))
+    }
+
+  override def getOrganizations(
+    user: User
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, List[Organization]] =
+    EitherT.rightT(
+      state.orgUserPermissions
+        .collect { case ((orgId, uid), _) if uid == user.id => orgId }
+        .flatMap(state.organizations.get)
+        .toList
+        .sortBy(_.id)
+    )
+
+  override def createFromSelfServiceSignUp(
+    cognitoId: CognitoId.UserPoolId,
+    email: String,
+    firstName: String,
+    middleInitial: Option[String],
+    lastName: String,
+    degree: Option[Degree],
+    title: String
+  )(implicit
+    organizationManager: OrganizationManager,
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, User] =
+    for {
+      middleInit <- checkAndNormalizeInitial(middleInitial).toEitherT[Future]
+      welcomeOrg <- organizationManager.getBySlug("welcome_to_pennsieve")
+      newUser <- create(
+        User(
+          NodeCodes.generateId(NodeCodes.userCode),
+          email.trim.toLowerCase,
+          firstName,
+          middleInit,
+          lastName,
+          degree,
+          credential = title,
+          cognitoId = Some(cognitoId),
+          preferredOrganizationId = Some(welcomeOrg.id)
+        )
+      )
+      _ <- organizationManager.addUser(welcomeOrg, newUser, DBPermission.Guest)
+    } yield newUser
 }
