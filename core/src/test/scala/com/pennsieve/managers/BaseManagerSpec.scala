@@ -126,9 +126,9 @@ trait ManagerSpec
 
     database = postgresDB.forURL
 
-    userManager = new UserManager(database)
+    userManager = new UserManagerImpl(database)
     userInviteManager = new UserInviteManager(database)
-    tokenManager = new TokenManager(database)
+    tokenManager = new TokenManagerImpl(database)
   }
 
   override def afterAll(): Unit = {
@@ -143,7 +143,7 @@ trait ManagerSpec
     new TestableOrganizationManager(false, database, user)
 
   def secureTokenManager(user: User = superAdmin): SecureTokenManager =
-    new SecureTokenManager(user, database)
+    new SecureTokenManagerImpl(user, database)
 
   def changelogManager(
     organization: Organization = testOrganization,
@@ -199,7 +199,7 @@ trait ManagerSpec
       database,
       user,
       contributorsMapper,
-      new UserManager(database)
+      new UserManagerImpl(database)
     )
   }
 

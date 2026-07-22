@@ -40,7 +40,13 @@ import com.pennsieve.traits.PostgresProfile.api._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random
 
-class UserManager(db: Database) {
+object UserManager {
+  def apply(db: Database): UserManager = new UserManagerImpl(db)
+}
+
+trait UserManager {
+
+  def db: Database
 
   private def randomColor: String = {
     val colors = List(
@@ -487,3 +493,5 @@ class UserManager(db: Database) {
   }
 
 }
+
+class UserManagerImpl(val db: Database) extends UserManager

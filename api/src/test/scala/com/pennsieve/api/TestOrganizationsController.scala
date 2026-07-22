@@ -24,7 +24,7 @@ import com.pennsieve.db.UserInvitesMapper
 import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
 import com.pennsieve.managers.{
   DatasetStatusManager,
-  SecureOrganizationManager,
+  SecureOrganizationManagerImpl,
   UpdateOrganization
 }
 import com.pennsieve.models.DBPermission.{ Administer, Delete, Owner }
@@ -613,7 +613,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       // make sure user has permission
-      new SecureOrganizationManager(secureContainer.db, colleagueUser)
+      new SecureOrganizationManagerImpl(secureContainer.db, colleagueUser)
         .hasPermission(loggedInOrganization, Administer)
         .await
         .value
@@ -631,7 +631,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       // make sure user has permission
-      new SecureOrganizationManager(secureContainer.db, integrationUser)
+      new SecureOrganizationManagerImpl(secureContainer.db, integrationUser)
         .hasPermission(loggedInOrganization, Administer)
         .await
         .value

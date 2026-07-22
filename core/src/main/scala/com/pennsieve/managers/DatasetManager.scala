@@ -111,7 +111,7 @@ class DatasetManager(
   val contributor: ContributorMapper = new ContributorMapper(organization)
 
   val contributorManager: ContributorManager =
-    new ContributorManager(db, actor, contributor, new UserManager(db))
+    new ContributorManager(db, actor, contributor, new UserManagerImpl(db))
 
   val datasetStatusManager: DatasetStatusManager =
     new DatasetStatusManager(db, organization)
@@ -152,7 +152,7 @@ class DatasetManager(
     new DatasetIgnoreFilesMapper(organization)
 
   val organizationManager: OrganizationManager =
-    new OrganizationManager(db)
+    new OrganizationManagerImpl(db)
 
   val datasetRegistrationMapper: DatasetRegistrationMapper =
     new DatasetRegistrationMapper(organization)
