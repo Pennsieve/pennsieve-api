@@ -182,7 +182,7 @@ trait SecureCoreContainer
     with DatasetManagerContainer
     with DatasetPreviewManagerContainer
     with ContributorManagerContainer
-    with CollectionManagerContainer
+    with DefaultCollectionManagerContainer
     with StorageContainer
     with PackagesMapperContainer
     with DataDBContainer
@@ -412,8 +412,13 @@ trait ContributorManagerContainer
 
 }
 
-trait CollectionManagerContainer
-    extends OrganizationContainer
+trait CollectionManagerContainer {
+  val collectionManager: CollectionManager
+}
+
+trait DefaultCollectionManagerContainer
+    extends CollectionManagerContainer
+    with OrganizationContainer
     with DatabaseContainer
     with RequestContextContainer {
   self: Container =>
@@ -422,7 +427,7 @@ trait CollectionManagerContainer
     new CollectionMapper(self.organization)
 
   lazy val collectionManager: CollectionManager =
-    new CollectionManager(db, collectionMapper)
+    new CollectionManagerImpl(db, collectionMapper)
 
 }
 

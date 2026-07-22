@@ -167,7 +167,7 @@ trait ManagerSpec
   ): CollectionManager = {
     val collectionMapper = new CollectionMapper(organization)
 
-    new CollectionManager(database, collectionMapper)
+    new CollectionManagerImpl(database, collectionMapper)
   }
 
   def datasetPublicationStatusManager(
