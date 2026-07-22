@@ -29,7 +29,15 @@ import com.pennsieve.models.DateVersion._
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class CustomTermsOfServiceManager(db: Database) {
+object CustomTermsOfServiceManager {
+  def apply(db: Database): CustomTermsOfServiceManager =
+    new CustomTermsOfServiceManagerImpl(db)
+}
+
+trait CustomTermsOfServiceManager {
+
+  def db: Database
+
   def get(
     userId: Int,
     organizationId: Int
@@ -79,3 +87,6 @@ class CustomTermsOfServiceManager(db: Database) {
         .toEitherT
     } yield acceptedCustomToS
 }
+
+class CustomTermsOfServiceManagerImpl(val db: Database)
+    extends CustomTermsOfServiceManager

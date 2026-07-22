@@ -179,7 +179,7 @@ trait InsecureCoreContainer
     with DatabaseContainer
     with DefaultUserManagerContainer
     with DefaultOrganizationManagerContainer
-    with TermsOfServiceManagerContainer
+    with DefaultTermsOfServiceManagerContainer
     with DefaultTokenManagerContainer
     with DefaultUserInviteManagerContainer
     with ContextLoggingContainer {
@@ -193,14 +193,14 @@ trait SecureCoreContainer
     with DatasetPreviewManagerContainer
     with DefaultContributorManagerContainer
     with DefaultCollectionManagerContainer
-    with StorageContainer
+    with DefaultStorageContainer
     with PackagesMapperContainer
     with DataDBContainer
     with TimeSeriesManagerContainer
     with FilesManagerContainer
     with MetadataManagerContainer
     with DefaultOrganizationManagerContainer
-    with TermsOfServiceManagerContainer
+    with DefaultTermsOfServiceManagerContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
     with WebhookManagerContainer
@@ -293,9 +293,14 @@ object ContainerTypes {
 }
 
 trait StorageContainer {
+  val storageManager: StorageServiceClientTrait
+}
+
+trait DefaultStorageContainer extends StorageContainer {
   self: Container with DatabaseContainer with OrganizationContainer =>
 
-  lazy val storageManager = StorageManager.create(self, organization)
+  lazy val storageManager: StorageServiceClientTrait =
+    StorageManager.create(self, organization)
 }
 
 trait DatasetPublicationStatusContainer {
@@ -494,11 +499,17 @@ trait DefaultTokenManagerContainer extends TokenManagerContainer {
 }
 
 trait TermsOfServiceManagerContainer {
+  val pennsieveTermsOfServiceManager: PennsieveTermsOfServiceManager
+  val customTermsOfServiceManager: CustomTermsOfServiceManager
+}
+
+trait DefaultTermsOfServiceManagerContainer
+    extends TermsOfServiceManagerContainer {
   self: DatabaseContainer =>
   lazy val pennsieveTermsOfServiceManager: PennsieveTermsOfServiceManager =
-    new PennsieveTermsOfServiceManager(db)
+    new PennsieveTermsOfServiceManagerImpl(db)
   lazy val customTermsOfServiceManager: CustomTermsOfServiceManager =
-    new CustomTermsOfServiceManager(db)
+    new CustomTermsOfServiceManagerImpl(db)
 }
 
 trait UserManagerContainer {
