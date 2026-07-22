@@ -29,8 +29,10 @@ import com.pennsieve.auth.middleware.{
   Jwt,
   OrganizationId,
   OrganizationNodeId,
+  ServiceClaim,
   UserClaim,
-  UserId
+  UserId,
+  Wildcard
 }
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import com.pennsieve.core.utilities.{
@@ -297,6 +299,28 @@ trait BaseApiUnitTest
 
   protected def authorizationHeader(jwt: String): Map[String, String] =
     Map("Authorization" -> s"Bearer $jwt")
+
+  /** Mint a service-claim JWT (wildcard organization role). Mirrors
+    * BaseApiTest.createJwtServiceToken. */
+  protected def mintServiceJwt(
+    role: Role = Role.Owner,
+    duration: FiniteDuration = 60.seconds
+  ): String = {
+    val orgRole = Jwt.OrganizationRole(
+      id = Wildcard.inject[Jwt.Role.RoleIdentifier[OrganizationId]],
+      role
+    )
+    val claim = Jwt.generateClaim(ServiceClaim(List(orgRole)), duration)
+    Jwt.generateToken(claim).value
+  }
+
+  /** Service-JWT auth header pinned to a specific organization via
+    * X-ORGANIZATION-ID. */
+  protected def jwtServiceAuthorizationHeader(
+    organization: Organization
+  ): Map[String, String] =
+    authorizationHeader(mintServiceJwt()) +
+      ("X-ORGANIZATION-ID" -> organization.nodeId)
 
   protected def traceIdHeader(
     id: String = java.util.UUID.randomUUID.toString
