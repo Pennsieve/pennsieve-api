@@ -195,7 +195,7 @@ trait ManagerSpec
     user: User = superAdmin
   ): ContributorManager = {
     val contributorsMapper = new ContributorMapper(organization)
-    new ContributorManager(
+    new ContributorManagerImpl(
       database,
       user,
       contributorsMapper,

@@ -96,7 +96,9 @@ class FakeSecureOrganizationManager(state: InMemoryState, val actor: User)
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, Boolean] =
-    EitherT.rightT(false)
+    EitherT.rightT(
+      state.featureFlags.getOrElse((organizationId, feature), false)
+    )
 
   override def getBySlug(
     slug: String
@@ -118,6 +120,18 @@ class FakeSecureOrganizationManager(state: InMemoryState, val actor: User)
     val ou = OrganizationUser(organization.id, user.id, permission)
     state.orgUsers.put((organization.id, user.id), ou)
     state.orgUserPermissions.put((organization.id, user.id), permission)
+    // Mirror the real manager's side effect: when a user is added to an
+    // organization, upgrade any contributor with the same email to point at
+    // this user. (See OrganizationManager.upgradeContributor.)
+    if (user.email.nonEmpty) {
+      state.contributors.foreach {
+        case (key @ (orgId, _), c)
+            if orgId == organization.id &&
+              c.email.exists(_.equalsIgnoreCase(user.email)) =>
+          state.contributors.put(key, c.copy(userId = Some(user.id)))
+        case _ => ()
+      }
+    }
     EitherT.rightT(ou)
   }
 }

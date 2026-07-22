@@ -191,7 +191,7 @@ trait SecureCoreContainer
     with DefaultUserManagerContainer
     with DatasetManagerContainer
     with DatasetPreviewManagerContainer
-    with ContributorManagerContainer
+    with DefaultContributorManagerContainer
     with DefaultCollectionManagerContainer
     with StorageContainer
     with PackagesMapperContainer
@@ -406,8 +406,13 @@ trait AllDataCanvasesViewMapperContainer {
     new AllDataCanvasesViewMapper()
 }
 
-trait ContributorManagerContainer
-    extends OrganizationContainer
+trait ContributorManagerContainer {
+  val contributorsManager: ContributorManager
+}
+
+trait DefaultContributorManagerContainer
+    extends ContributorManagerContainer
+    with OrganizationContainer
     with UserManagerContainer
     with DatabaseContainer
     with RequestContextContainer {
@@ -418,7 +423,7 @@ trait ContributorManagerContainer
   )
 
   lazy val contributorsManager: ContributorManager =
-    new ContributorManager(db, user, contributorsMapper, userManager)
+    new ContributorManagerImpl(db, user, contributorsMapper, userManager)
 
 }
 

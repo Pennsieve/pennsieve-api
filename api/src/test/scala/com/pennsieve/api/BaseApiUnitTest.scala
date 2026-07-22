@@ -45,6 +45,7 @@ import com.pennsieve.helpers.APIContainers.{
 }
 import com.pennsieve.helpers.fakes.{
   FakeCollectionManager,
+  FakeContributorManager,
   FakeSecureOrganizationManager,
   FakeSecureTokenManager,
   FakeUserManager,
@@ -58,6 +59,7 @@ import com.pennsieve.helpers.{
 import com.pennsieve.test.helpers.AwaitableImplicits
 import com.pennsieve.managers.{
   CollectionManager,
+  ContributorManager,
   SecureOrganizationManager,
   SecureTokenManager,
   UserInviteManager,
@@ -111,9 +113,11 @@ trait BaseApiUnitTest
     override def key = "testkey"
   }
 
-  implicit val swagger: Swagger = new com.pennsieve.web.SwaggerApp
+  implicit val swagger: com.pennsieve.web.SwaggerApp =
+    new com.pennsieve.web.SwaggerApp
 
-  protected implicit val jsonFormats: Formats = DefaultFormats
+  protected implicit val jsonFormats: Formats =
+    DefaultFormats ++ com.pennsieve.helpers.ModelSerializers.serializers
 
   protected val state: InMemoryState = new InMemoryState
 
@@ -232,6 +236,8 @@ trait BaseApiUnitTest
           new FakeSecureTokenManager(st, u)
         override lazy val collectionManager: CollectionManager =
           new FakeCollectionManager(st, org)
+        override lazy val contributorsManager: ContributorManager =
+          new FakeContributorManager(st, org, u)
       }
   }
 

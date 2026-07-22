@@ -18,7 +18,9 @@ package com.pennsieve.helpers.fakes
 
 import com.pennsieve.models.{
   Collection,
+  Contributor,
   DBPermission,
+  Feature,
   Organization,
   OrganizationUser,
   Token,
@@ -44,6 +46,13 @@ class InMemoryState {
 
   // Collections are scoped to an organization; keyed by (orgId, collectionId).
   val collections: TrieMap[(Int, Int), Collection] = new TrieMap()
+
+  // Contributors are scoped to an organization; keyed by (orgId, contributorId).
+  val contributors: TrieMap[(Int, Int), Contributor] = new TrieMap()
+
+  // Active feature flags per organization. `(orgId, feature) -> true` means
+  // the flag is enabled. Tests configure as needed.
+  val featureFlags: TrieMap[(Int, Feature), Boolean] = new TrieMap()
 
   private val ids = new AtomicInteger(1)
   def newId(): Int = ids.getAndIncrement()
