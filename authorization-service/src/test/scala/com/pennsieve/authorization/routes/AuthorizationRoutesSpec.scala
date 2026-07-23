@@ -683,7 +683,7 @@ class AuthorizationRoutesSpec
       // org and scope BOTH the org role and the dataset role to it -- this is
       // the fix for the intermittent cross-org 401.
       val datasetsMapper = new DatasetsMapper(organizationOne)
-      val datasetManager = new DatasetManager(db, admin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager.create("Cross-org dataset").await.value
 
       // Share at org level so any organizationOne member (incl. nonAdmin) has a
@@ -725,7 +725,7 @@ class AuthorizationRoutesSpec
       // resolved correctly from the map, then membership/role gating denies
       // cleanly -- it must not surface as a 500.
       val datasetsMapper = new DatasetsMapper(organizationOne)
-      val datasetManager = new DatasetManager(db, admin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager.create("Cross-org, no role").await.value
 
       testRequest(
@@ -759,7 +759,7 @@ class AuthorizationRoutesSpec
       // Dataset in organizationTwo == the session org. Re-scoping must be a
       // no-op: the org role stays organizationTwo.
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, nonAdmin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
       val dataset = datasetManager.create("Same-org dataset").await.value
 
       testRequest(
@@ -785,7 +785,7 @@ class AuthorizationRoutesSpec
       // organizationOne -- the API key's org boundary holds. (The dataset is
       // shared at org level, so re-scoping WOULD have authorized it.)
       val datasetsMapper = new DatasetsMapper(organizationOne)
-      val datasetManager = new DatasetManager(db, admin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager.create("Cross-org for API key").await.value
       datasetManager
         .setOrganizationCollaboratorRole(dataset, Some(Role.Manager))
@@ -820,7 +820,7 @@ class AuthorizationRoutesSpec
       // URL also names an org, it must match the dataset's resolved org (D_org),
       // not the session org.
       val datasetsMapper = new DatasetsMapper(organizationOne)
-      val datasetManager = new DatasetManager(db, admin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager.create("Cross-org with url org").await.value
       datasetManager
         .setOrganizationCollaboratorRole(dataset, Some(Role.Manager))
