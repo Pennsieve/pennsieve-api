@@ -36,14 +36,13 @@ object DatasetAssetsManager {
   def defaultChangelogText = "initial dataset creation"
 }
 
-class DatasetAssetsManager(
-  val db: Database,
-  val datasetsMapper: DatasetsMapper
-) {
+trait DatasetAssetsManager {
+  def db: Database
+  def datasetsMapper: DatasetsMapper
 
-  val organization = datasetsMapper.organization
+  lazy val organization = datasetsMapper.organization
 
-  val datasetAssetsMapper: DatasetAssetsMapper = new DatasetAssetsMapper(
+  lazy val datasetAssetsMapper: DatasetAssetsMapper = new DatasetAssetsMapper(
     organization
   )
 
@@ -394,3 +393,8 @@ class DatasetAssetsManager(
       )
       .toEitherT
 }
+
+class DatasetAssetsManagerImpl(
+  val db: Database,
+  val datasetsMapper: DatasetsMapper
+) extends DatasetAssetsManager

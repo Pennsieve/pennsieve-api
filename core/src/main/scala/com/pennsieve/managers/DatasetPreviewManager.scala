@@ -32,14 +32,13 @@ import com.pennsieve.traits.PostgresProfile.api._
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class DatasetPreviewManager(
-  val db: Database,
-  val datasetsMapper: DatasetsMapper
-) {
+trait DatasetPreviewManager {
+  def db: Database
+  def datasetsMapper: DatasetsMapper
 
-  val organization: Organization = datasetsMapper.organization
+  lazy val organization: Organization = datasetsMapper.organization
 
-  val previewer: DatasetPreviewerMapper = new DatasetPreviewerMapper(
+  lazy val previewer: DatasetPreviewerMapper = new DatasetPreviewerMapper(
     organization
   )
 
@@ -139,3 +138,8 @@ class DatasetPreviewManager(
     db.run(query.transactionally).toEitherT
   }
 }
+
+class DatasetPreviewManagerImpl(
+  val db: Database,
+  val datasetsMapper: DatasetsMapper
+) extends DatasetPreviewManager

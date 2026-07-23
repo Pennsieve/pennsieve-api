@@ -39,7 +39,12 @@ import com.pennsieve.helpers.{
   MockUrlShortenerClient,
   PackagesTestMixin
 }
-import com.pennsieve.managers.{ FileManager, PackageManager }
+import com.pennsieve.managers.{
+  FileManager,
+  FileManagerImpl,
+  PackageManager,
+  PackageManagerImpl
+}
 import com.pennsieve.models.PackageState.{
   namesToValuesMap,
   PROCESSING,
@@ -933,7 +938,7 @@ class TestPackagesController
       .await
       .value
 
-    val filesManager = new FileManager(packageManager, loggedInOrganization)
+    val filesManager = new FileManagerImpl(packageManager, loggedInOrganization)
     val testFile = (1 to 2).toList.map { idx =>
       filesManager
         .create(
@@ -980,7 +985,7 @@ class TestPackagesController
       .await
       .value
 
-    val filesManager = new FileManager(packageManager, loggedInOrganization)
+    val filesManager = new FileManagerImpl(packageManager, loggedInOrganization)
     val testFile = filesManager
       .create(
         name = oldName,
@@ -1113,7 +1118,7 @@ class TestPackagesController
 
     val fileSize = 10
     val numberOfFiles = 5
-    val filesManager = new FileManager(packageManager, loggedInOrganization)
+    val filesManager = new FileManagerImpl(packageManager, loggedInOrganization)
     val bftsFiles = (1 to numberOfFiles).toList.map { idx =>
       filesManager
         .create(

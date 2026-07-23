@@ -18,14 +18,26 @@ package com.pennsieve.helpers.fakes
 
 import com.pennsieve.db.{ CustomTermsOfService, PennsieveTermsOfService }
 import com.pennsieve.models.{
+  ChangelogEventAndType,
   Collection,
   Contributor,
   DBPermission,
+  DataUseAgreement,
+  Dataset,
+  DatasetAsset,
+  DatasetPreviewer,
+  DatasetPublicationStatus,
+  DatasetStatus,
+  ExternalPublication,
   Feature,
+  File,
   Organization,
   OrganizationUser,
+  Package,
   Token,
-  User
+  User,
+  Webhook,
+  WebhookEventSubcription
 }
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -60,6 +72,24 @@ class InMemoryState {
 
   // Custom ToS acceptance per (userId, organizationId).
   val customTos: TrieMap[(Int, Int), CustomTermsOfService] = new TrieMap()
+
+  // ---- Dataset surface (used by TestDataSetsController) ----
+  // Everything below is scoped to an organization unless noted.
+  val datasets: TrieMap[(Int, Int), Dataset] = new TrieMap()
+  val packages: TrieMap[(Int, Int), Package] = new TrieMap()
+  val files: TrieMap[(Int, Int), File] = new TrieMap()
+  val datasetStatuses: TrieMap[(Int, Int), DatasetStatus] = new TrieMap()
+  val datasetPublicationStatuses
+    : TrieMap[(Int, Int), DatasetPublicationStatus] = new TrieMap()
+  val datasetPreviewers: TrieMap[(Int, Int, Int), DatasetPreviewer] =
+    new TrieMap() // (orgId, datasetId, userId)
+  val dataUseAgreements: TrieMap[(Int, Int), DataUseAgreement] = new TrieMap()
+  val datasetAssets: TrieMap[(Int, Int), DatasetAsset] = new TrieMap()
+  val externalPublications: TrieMap[(Int, Int, String), ExternalPublication] =
+    new TrieMap() // (orgId, datasetId, doi+rel)
+  val webhooks: TrieMap[(Int, Int), Webhook] = new TrieMap()
+  val changelogEvents: TrieMap[(Int, Int), ChangelogEventAndType] =
+    new TrieMap()
 
   private val ids = new AtomicInteger(1)
   def newId(): Int = ids.getAndIncrement()

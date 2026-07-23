@@ -30,12 +30,11 @@ import slick.lifted.ColumnOrdered
 import scala.concurrent.{ ExecutionContext, Future }
 import java.time.LocalDate
 
-class DatasetPublicationStatusManager(
-  val db: Database,
-  val actor: User,
-  val datasetPublicationStatusMapper: DatasetPublicationStatusMapper,
-  val changelogEventMapper: ChangelogEventMapper
-) {
+trait DatasetPublicationStatusManager {
+  def db: Database
+  def actor: User
+  def datasetPublicationStatusMapper: DatasetPublicationStatusMapper
+  def changelogEventMapper: ChangelogEventMapper
 
   def create(
     dataset: Dataset,
@@ -99,3 +98,10 @@ class DatasetPublicationStatusManager(
   }
 
 }
+
+class DatasetPublicationStatusManagerImpl(
+  val db: Database,
+  val actor: User,
+  val datasetPublicationStatusMapper: DatasetPublicationStatusMapper,
+  val changelogEventMapper: ChangelogEventMapper
+) extends DatasetPublicationStatusManager

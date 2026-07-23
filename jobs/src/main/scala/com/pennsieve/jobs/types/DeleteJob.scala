@@ -762,7 +762,7 @@ class DeleteJob(
       datasetTable = new DatasetsMapper(organization)
       assetTable = new DatasetAssetsMapper(organization)
 
-      datasetAssetsManager = new DatasetAssetsManager(
+      datasetAssetsManager = new DatasetAssetsManagerImpl(
         container.db,
         datasetTable
       )

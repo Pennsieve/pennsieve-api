@@ -58,13 +58,12 @@ import java.time.{ LocalDate, ZonedDateTime }
   *
   * https://blackfynn.atlassian.net/wiki/spaces/PM/pages/1861976109/Dataset+Changelog
   */
-class ChangelogManager(
-  val db: Database,
-  val organization: Organization,
-  val actor: User,
-  val snsTopic: SnsTopic,
-  val sns: SNSClient
-) extends LazyLogging {
+trait ChangelogManager extends LazyLogging {
+  def db: Database
+  def organization: Organization
+  def actor: User
+  def snsTopic: SnsTopic
+  def sns: SNSClient
 
   lazy val changelogEventMapper = new ChangelogEventMapper(organization)
 
@@ -493,7 +492,7 @@ class ChangelogManager(
       .toEitherT
   }
 
-  implicit val getEventGroupResult
+  implicit lazy val getEventGroupResult
     : GetResult[(ChangelogEventGroup, ChangelogEventAndType)] = {
     GetResult { p =>
       val datasetId = p.<<[Int]
@@ -540,20 +539,28 @@ class ChangelogManager(
     }
   }
 
-  implicit val setChangelogEventNameParameter
+  implicit lazy val setChangelogEventNameParameter
     : SetParameter[ChangelogEventName] =
     new SetParameter[ChangelogEventName] {
       def apply(e: ChangelogEventName, pp: PositionedParameters) =
         pp.setString(e.entryName)
     }
 
-  implicit val getChangelogEventNameResult: GetResult[ChangelogEventName] =
+  implicit lazy val getChangelogEventNameResult: GetResult[ChangelogEventName] =
     GetResult { p =>
       ChangelogEventName.withName(p.<<[String])
     }
 
-  implicit val getEventGroupPeriodResult: GetResult[EventGroupPeriod] =
+  implicit lazy val getEventGroupPeriodResult: GetResult[EventGroupPeriod] =
     GetResult { p =>
       EventGroupPeriod.withName(p.<<[String])
     }
 }
+
+class ChangelogManagerImpl(
+  val db: Database,
+  val organization: Organization,
+  val actor: User,
+  val snsTopic: SnsTopic,
+  val sns: SNSClient
+) extends ChangelogManager
