@@ -89,11 +89,24 @@ class AuthorizationRoutes(
         .? // Either a dataset ID (integer) or a node ID ("N:dataset:123-456...")
     )) { (organizationId, datasetId) =>
       val result: Future[Jwt.Token] = for {
-        _ <- organizationId.traverse(
-          assertOrganizationIdMatches(user, organization, _)
+        // Resolve the org a dataset-scoped request should be authorized against
+        // from the dataset itself. See resolveEffectiveOrganization: for a
+        // user-pool session this replaces the user-mutable session org; other
+        // session types keep their session org. Either way a no-op unless the
+        // dataset lives in a different org than the session.
+        effectiveOrganization <- resolveEffectiveOrganization(
+          user,
+          organization,
+          cognitoPayload,
+          datasetId
         )
-        organizationRole <- getOrganizationRole(user, organization)
-        datasetRole <- datasetId.traverse(getDatasetRole(user, organization, _))
+        _ <- organizationId.traverse(
+          assertOrganizationIdMatches(user, effectiveOrganization, _)
+        )
+        organizationRole <- getOrganizationRole(user, effectiveOrganization)
+        datasetRole <- datasetId.traverse(
+          getDatasetRole(user, effectiveOrganization, _)
+        )
       } yield {
         val roles =
           List(organizationRole.some, datasetRole).flatten
@@ -320,6 +333,68 @@ private[routes] object AuthorizationQueries {
     */
   private def parseId(idOrNodeId: String): Either[String, Int] =
     Try(idOrNodeId.toInt).toEither.leftMap(_ => idOrNodeId)
+
+  /**
+    * Determine the organization whose schema a dataset-scoped request should be
+    * authorized against.
+    *
+    * Dataset tables live in per-organization numbered schemas, so the dataset
+    * lookup can only find a dataset when it runs against the schema of that
+    * dataset's owning organization. For a user-pool (interactive-login) token,
+    * the session organization is the user's `preferred_org_id`, which the user
+    * can change independently of which dataset they are acting on — so it is not
+    * a reliable indicator of a given dataset's organization. This resolves the
+    * organization from the dataset itself, via the global
+    * `pennsieve.dataset_organization` map, so a dataset resolves in its own
+    * schema regardless of the caller's currently-active organization. Access is
+    * still gated downstream by the caller's membership and role in the resolved
+    * organization, so this changes only *which schema* is queried, never
+    * *whether* the caller is entitled.
+    *
+    * Re-scoping applies only when BOTH:
+    *   - the token is a user-pool token, whose organization is the user-mutable
+    *     `preferred_org_id`. Token-pool (API-key) tokens are intentionally bound
+    *     to a single organization and must not reach datasets outside it, and
+    *     internal JWTs carry their organization in their claims; both keep their
+    *     session organization unchanged.
+    *   - the dataset is identified by a (globally-unique) node id. Integer
+    *     dataset ids are only unique within a single schema, so they cannot be
+    *     resolved to an organization from the id alone and keep the session
+    *     organization.
+    *
+    * A map miss (no dataset with that node id exists) fails with
+    * `InvalidDatasetId` — a clean deny. A DB failure talking to the map is left
+    * to propagate (→ 500, retryable); it is deliberately NOT collapsed into a
+    * deny, so a transient failure is not mistaken for "no access".
+    */
+  def resolveEffectiveOrganization(
+    user: User,
+    sessionOrg: Organization,
+    cognitoPayload: Option[CognitoPayload],
+    datasetId: Option[String]
+  )(implicit
+    container: ResourceContainer,
+    executionContext: ExecutionContext
+  ): Future[Organization] = {
+
+    val isUserPool: Boolean =
+      cognitoPayload.exists(_.id.asUserPoolId.isRight)
+
+    val datasetNodeId: Option[String] =
+      datasetId.flatMap(id => parseId(id).left.toOption)
+
+    (isUserPool, datasetNodeId) match {
+      case (true, Some(nodeId)) =>
+        container.db
+          .run(DatasetOrganizationMapper.getOrganization(nodeId))
+          .flatMap {
+            case Some(organization) => Future.successful(organization)
+            case None => Future.failed(new InvalidDatasetId(user, nodeId))
+          }
+
+      case _ => Future.successful(sessionOrg)
+    }
+  }
 
   def getOrganizationRole(
     user: User,

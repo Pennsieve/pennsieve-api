@@ -278,7 +278,9 @@ class TimeSeriesManagerSpec extends BaseManagerSpec {
       .value
 
     channel.viewerAssetId shouldBe Some(assetId)
-    tm.getChannel(channel.id, p).await.value.viewerAssetId shouldBe Some(assetId)
+    tm.getChannel(channel.id, p).await.value.viewerAssetId shouldBe Some(
+      assetId
+    )
   }
 
   "creating a channel without viewer_asset_id" should "leave it null" in {
