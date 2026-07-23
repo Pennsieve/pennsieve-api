@@ -126,9 +126,9 @@ trait ManagerSpec
 
     database = postgresDB.forURL
 
-    userManager = new UserManager(database)
-    userInviteManager = new UserInviteManager(database)
-    tokenManager = new TokenManager(database)
+    userManager = new UserManagerImpl(database)
+    userInviteManager = new UserInviteManagerImpl(database)
+    tokenManager = new TokenManagerImpl(database)
   }
 
   override def afterAll(): Unit = {
@@ -143,7 +143,7 @@ trait ManagerSpec
     new TestableOrganizationManager(false, database, user)
 
   def secureTokenManager(user: User = superAdmin): SecureTokenManager =
-    new SecureTokenManager(user, database)
+    new SecureTokenManagerImpl(user, database)
 
   def changelogManager(
     organization: Organization = testOrganization,
@@ -167,7 +167,7 @@ trait ManagerSpec
   ): CollectionManager = {
     val collectionMapper = new CollectionMapper(organization)
 
-    new CollectionManager(database, collectionMapper)
+    new CollectionManagerImpl(database, collectionMapper)
   }
 
   def datasetPublicationStatusManager(
@@ -195,11 +195,11 @@ trait ManagerSpec
     user: User = superAdmin
   ): ContributorManager = {
     val contributorsMapper = new ContributorMapper(organization)
-    new ContributorManager(
+    new ContributorManagerImpl(
       database,
       user,
       contributorsMapper,
-      new UserManager(database)
+      new UserManagerImpl(database)
     )
   }
 

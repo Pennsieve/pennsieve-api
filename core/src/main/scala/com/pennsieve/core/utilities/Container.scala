@@ -163,49 +163,61 @@ trait CoreContainer extends UserManagerContainer {
   val tokenManager: TokenManager
 }
 
+trait UserInviteManagerContainer {
+  val userInviteManager: UserInviteManager
+}
+
+trait DefaultUserInviteManagerContainer
+    extends UserInviteManagerContainer
+    with DatabaseContainer {
+  self: Container =>
+  lazy val userInviteManager: UserInviteManager = new UserInviteManagerImpl(db)
+}
+
 trait InsecureCoreContainer
     extends CoreContainer
     with DatabaseContainer
-    with OrganizationManagerContainer
-    with TermsOfServiceManagerContainer
-    with TokenManagerContainer
+    with DefaultUserManagerContainer
+    with DefaultOrganizationManagerContainer
+    with DefaultTermsOfServiceManagerContainer
+    with DefaultTokenManagerContainer
+    with DefaultUserInviteManagerContainer
     with ContextLoggingContainer {
   self: Container =>
-
-  lazy val userInviteManager: UserInviteManager = new UserInviteManager(db)
 }
 
 trait SecureCoreContainer
     extends CoreContainer
+    with DefaultUserManagerContainer
     with DatasetManagerContainer
     with DatasetPreviewManagerContainer
-    with ContributorManagerContainer
-    with CollectionManagerContainer
-    with StorageContainer
+    with DefaultContributorManagerContainer
+    with DefaultCollectionManagerContainer
+    with DefaultStorageContainer
     with PackagesMapperContainer
     with DataDBContainer
     with TimeSeriesManagerContainer
     with FilesManagerContainer
     with MetadataManagerContainer
-    with OrganizationManagerContainer
-    with TermsOfServiceManagerContainer
+    with DefaultOrganizationManagerContainer
+    with DefaultTermsOfServiceManagerContainer
     with ExternalFilesContainer
     with ExternalPublicationContainer
     with WebhookManagerContainer
     with DatasetAssetsContainer
     with DataCanvasManagerContainer
-    with AllDataCanvasesViewManagerContainer {
+    with AllDataCanvasesViewManagerContainer
+    with DefaultUserInviteManagerContainer {
   self: SecureContainer =>
 
   lazy val annotationManager: AnnotationManager =
     new AnnotationManager(self.organization, db)
 
   override lazy val organizationManager: SecureOrganizationManager =
-    new SecureOrganizationManager(db, user)
+    new SecureOrganizationManagerImpl(db, user)
   lazy val tokenManager: SecureTokenManager =
-    new SecureTokenManager(user, db)
+    new SecureTokenManagerImpl(user, db)
   lazy val teamManager: TeamManager = TeamManager(organizationManager)
-  lazy val userInviteManager: UserInviteManager = new UserInviteManager(db)
 
   lazy val datasetStatusManager: DatasetStatusManager =
     new DatasetStatusManager(db, self.organization)
@@ -281,9 +293,14 @@ object ContainerTypes {
 }
 
 trait StorageContainer {
+  val storageManager: StorageServiceClientTrait
+}
+
+trait DefaultStorageContainer extends StorageContainer {
   self: Container with DatabaseContainer with OrganizationContainer =>
 
-  lazy val storageManager = StorageManager.create(self, organization)
+  lazy val storageManager: StorageServiceClientTrait =
+    StorageManager.create(self, organization)
 }
 
 trait DatasetPublicationStatusContainer {
@@ -394,8 +411,13 @@ trait AllDataCanvasesViewMapperContainer {
     new AllDataCanvasesViewMapper()
 }
 
-trait ContributorManagerContainer
-    extends OrganizationContainer
+trait ContributorManagerContainer {
+  val contributorsManager: ContributorManager
+}
+
+trait DefaultContributorManagerContainer
+    extends ContributorManagerContainer
+    with OrganizationContainer
     with UserManagerContainer
     with DatabaseContainer
     with RequestContextContainer {
@@ -406,12 +428,17 @@ trait ContributorManagerContainer
   )
 
   lazy val contributorsManager: ContributorManager =
-    new ContributorManager(db, user, contributorsMapper, userManager)
+    new ContributorManagerImpl(db, user, contributorsMapper, userManager)
 
 }
 
-trait CollectionManagerContainer
-    extends OrganizationContainer
+trait CollectionManagerContainer {
+  val collectionManager: CollectionManager
+}
+
+trait DefaultCollectionManagerContainer
+    extends CollectionManagerContainer
+    with OrganizationContainer
     with DatabaseContainer
     with RequestContextContainer {
   self: Container =>
@@ -420,7 +447,7 @@ trait CollectionManagerContainer
     new CollectionMapper(self.organization)
 
   lazy val collectionManager: CollectionManager =
-    new CollectionManager(db, collectionMapper)
+    new CollectionManagerImpl(db, collectionMapper)
 
 }
 
@@ -453,28 +480,47 @@ trait PackageContainer {
 }
 
 trait OrganizationManagerContainer {
+  val organizationManager: OrganizationManager
+}
+
+trait DefaultOrganizationManagerContainer extends OrganizationManagerContainer {
   self: DatabaseContainer =>
-  lazy val organizationManager: OrganizationManager = new OrganizationManager(
-    db
-  )
+  lazy val organizationManager: OrganizationManager =
+    new OrganizationManagerImpl(db)
 }
 
 trait TokenManagerContainer {
+  val tokenManager: TokenManager
+}
+
+trait DefaultTokenManagerContainer extends TokenManagerContainer {
   self: DatabaseContainer =>
-  lazy val tokenManager: TokenManager = new TokenManager(db)
+  lazy val tokenManager: TokenManager = new TokenManagerImpl(db)
 }
 
 trait TermsOfServiceManagerContainer {
-  self: DatabaseContainer =>
-  lazy val pennsieveTermsOfServiceManager: PennsieveTermsOfServiceManager =
-    new PennsieveTermsOfServiceManager(db)
-  lazy val customTermsOfServiceManager: CustomTermsOfServiceManager =
-    new CustomTermsOfServiceManager(db)
+  val pennsieveTermsOfServiceManager: PennsieveTermsOfServiceManager
+  val customTermsOfServiceManager: CustomTermsOfServiceManager
 }
 
-trait UserManagerContainer extends DatabaseContainer {
+trait DefaultTermsOfServiceManagerContainer
+    extends TermsOfServiceManagerContainer {
+  self: DatabaseContainer =>
+  lazy val pennsieveTermsOfServiceManager: PennsieveTermsOfServiceManager =
+    new PennsieveTermsOfServiceManagerImpl(db)
+  lazy val customTermsOfServiceManager: CustomTermsOfServiceManager =
+    new CustomTermsOfServiceManagerImpl(db)
+}
+
+trait UserManagerContainer {
+  val userManager: UserManager
+}
+
+trait DefaultUserManagerContainer
+    extends UserManagerContainer
+    with DatabaseContainer {
   self: Container =>
-  lazy val userManager = new UserManager(db)
+  lazy val userManager: UserManager = new UserManagerImpl(db)
 }
 
 trait TimeSeriesManagerContainer

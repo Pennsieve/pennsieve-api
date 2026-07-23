@@ -39,6 +39,7 @@ import scala.concurrent.ExecutionContext
 
 object Router {
   type ResourceContainer = Container
+    with DatabaseContainer
     with AuthorizationContainer
     with JwtContainer
     with TermsOfServiceManagerContainer

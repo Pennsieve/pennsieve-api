@@ -54,9 +54,9 @@ trait AuthorizationServiceSpec
 
     val diContainer =
       new InsecureContainer(authorizationConfig) with DatabaseContainer
-      with UserManagerContainer with OrganizationManagerContainer
-      with JwtContainer with TermsOfServiceManagerContainer
-      with TokenManagerContainer {
+      with DefaultUserManagerContainer with DefaultOrganizationManagerContainer
+      with JwtContainer with DefaultTermsOfServiceManagerContainer
+      with DefaultTokenManagerContainer {
         override val postgresUseSSL = false
       }
 

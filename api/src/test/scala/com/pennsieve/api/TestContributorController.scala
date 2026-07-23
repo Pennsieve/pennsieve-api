@@ -16,27 +16,25 @@
 
 package com.pennsieve.api
 
-import akka.util.Helpers.Requiring
-import com.pennsieve.models.{ Degree, Organization, PackageType }
 import com.pennsieve.domain.PredicateError
 import com.pennsieve.dtos.ContributorDTO
 import com.pennsieve.helpers._
-import io.circe.{ Decoder, Encoder }
-import org.json4s._
-import org.json4s.jackson.JsonMethods._
-import cats.implicits._
-import org.json4s.jackson.Serialization.write
 import com.pennsieve.models.{
+  Contributor,
   DBPermission,
+  Degree,
+  Feature,
   NodeCodes,
   OrcidAuthorization,
+  Organization,
   User
 }
-import com.typesafe.scalalogging.Logger
+import org.json4s.jackson.JsonMethods._
+import org.json4s.jackson.Serialization.write
 
 import scala.concurrent.Future
 
-class TestContributorController extends BaseApiTest with DataSetTestMixin {
+class TestContributorController extends BaseApiUnitTest {
 
   val testOrcid = "0000-0001-1234-5678"
 
@@ -54,8 +52,7 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
     override def verifyOrcid(orcid: Option[String]): Future[Boolean] =
       orcid match {
         case None => Future.successful(true)
-        case Some(orcid) if (orcid == testOrcid) =>
-          Future.successful(true)
+        case Some(o) if o == testOrcid => Future.successful(true)
         case _ => Future.failed(PredicateError("ORCID not found"))
       }
 
@@ -66,15 +63,78 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
 
     override def publishWork(
       work: OrcidWorkPublishing
-    ): Future[Option[String]] = Future.successful(Some("1234567"))
+    ): Future[Option[String]] =
+      Future.successful(Some("1234567"))
 
     override def unpublishWork(work: OrcidWorkUnpublishing): Future[Boolean] =
       Future.successful(true)
   }
 
-  override def afterStart(): Unit = {
-    super.afterStart()
+  private val loggedInUser: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000001",
+    email = "loggedin@test.com",
+    firstName = "LoggedIn",
+    middleInitial = None,
+    lastName = "User",
+    degree = None,
+    credential = "",
+    color = "",
+    url = "",
+    isSuperAdmin = false,
+    id = 1
+  )
 
+  private val colleagueUser: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000002",
+    email = "colleague@test.com",
+    firstName = "Colleague",
+    middleInitial = None,
+    lastName = "User",
+    degree = None,
+    credential = "",
+    color = "",
+    url = "",
+    isSuperAdmin = false,
+    id = 2
+  )
+
+  private val sandboxUser: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000003",
+    email = "sandbox@test.com",
+    firstName = "Sandbox",
+    middleInitial = None,
+    lastName = "User",
+    degree = None,
+    credential = "",
+    color = "",
+    url = "",
+    isSuperAdmin = false,
+    id = 3
+  )
+
+  private val loggedInOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-000000000001",
+    name = "Test Organization",
+    slug = "test-organization",
+    encryptionKeyId = Some("test-key"),
+    id = 1
+  )
+
+  private val sandboxOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-000000000002",
+    name = "Sandbox Organization",
+    slug = "sandbox-organization",
+    encryptionKeyId = Some("sandbox-key"),
+    id = 2
+  )
+
+  private var loggedInJwt: String = _
+  private var sandboxUserJwt: String = _
+
+  private var preexistingContributorId: Int = _
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new ContributorsController(
         insecureContainer,
@@ -86,38 +146,150 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
     )
   }
 
-  override def afterEach(): Unit = {
-    super.afterEach()
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    state.users.clear()
+    state.organizations.clear()
+    state.orgUsers.clear()
+    state.orgUserPermissions.clear()
+    state.contributors.clear()
+    state.featureFlags.clear()
+
+    state.users.put(loggedInUser.id, loggedInUser)
+    state.users.put(colleagueUser.id, colleagueUser)
+    state.users.put(sandboxUser.id, sandboxUser)
+    state.organizations.put(loggedInOrganization.id, loggedInOrganization)
+    state.organizations.put(sandboxOrganization.id, sandboxOrganization)
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, loggedInUser.id), DBPermission.Owner)
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, colleagueUser.id), DBPermission.Delete)
+    state.orgUserPermissions
+      .put((sandboxOrganization.id, sandboxUser.id), DBPermission.Owner)
+    state.featureFlags
+      .put((sandboxOrganization.id, Feature.SandboxOrgFeature), true)
+
+    // Mirrors the BaseApiTest baseline: there's already one contributor in
+    // the org from the seeded dataset's creation flow ("first"/"last"/"test@test.com").
+    val pre = Contributor(
+      firstName = Some("first"),
+      lastName = Some("last"),
+      email = Some("test@test.com"),
+      middleInitial = None,
+      degree = None,
+      orcid = None,
+      userId = None,
+      id = 1
+    )
+    state.contributors.put((loggedInOrganization.id, pre.id), pre)
+    preexistingContributorId = pre.id
+    // bump the id sequence so subsequent newId() values don't collide
+    while (state.newId() < 100) ()
+
+    loggedInJwt = mintUserJwt(loggedInUser, loggedInOrganization)
+    sandboxUserJwt = mintUserJwt(sandboxUser, sandboxOrganization)
   }
 
-  test("swagger") {
-    import com.pennsieve.web.ResourcesApp
-    addServlet(new ResourcesApp, "/api-docs/*")
+  /** Seed a contributor directly in state (replaces DataSetTestMixin.createContributor). */
+  private def createContributor(
+    firstName: String,
+    lastName: String,
+    email: String,
+    middleInitial: Option[String] = None,
+    degree: Option[Degree] = None,
+    orcid: Option[String] = None,
+    userId: Option[Int] = None
+  ): ContributorDTO = {
+    val checked = com.pennsieve.core.utilities
+      .checkAndNormalizeInitial(middleInitial)
+      .toOption
+      .getOrElse(throw new IllegalArgumentException("middle initial too long"))
+    val c = Contributor(
+      firstName = if (firstName.trim.isEmpty) None else Some(firstName.trim),
+      lastName = if (lastName.trim.isEmpty) None else Some(lastName.trim),
+      email = if (email.trim.isEmpty) None else Some(email.trim),
+      middleInitial = checked,
+      degree = degree,
+      orcid = orcid,
+      userId = userId,
+      id = state.newId()
+    )
+    state.contributors.put((loggedInOrganization.id, c.id), c)
+    val u = c.userId.flatMap(state.users.get)
+    ContributorDTO((c, u))
+  }
 
-    get("/api-docs/swagger.json") {
-      status should equal(200)
-      println(body)
+  /** Seeds a user into the org, mirroring DataSetTestMixin.createUser. Returns an
+    * OrganizationUser-shaped pair (userId, nodeId) that tests use. */
+  private def createUser(
+    firstName: String,
+    lastName: String,
+    email: String,
+    nodeId: Option[String] = None,
+    orcid: Option[String] = None
+  ): OrganizationUserView = {
+    val orcidAuth = orcid.map(
+      o =>
+        OrcidAuthorization(
+          "name",
+          "accessToken",
+          10000,
+          "tokenType",
+          o,
+          "scope",
+          "refreshToken"
+        )
+    )
+    val newId = state.newId()
+    val user = User(
+      nodeId = nodeId.getOrElse(NodeCodes.generateId(NodeCodes.userCode)),
+      // Match the Postgres `lowercase_email_on_insert_trigger`.
+      email = email.toLowerCase,
+      firstName = firstName,
+      middleInitial = None,
+      lastName = lastName,
+      degree = None,
+      credential = "cred",
+      color = "",
+      url = "http://blind.com",
+      isSuperAdmin = false,
+      orcidAuthorization = orcidAuth,
+      id = newId
+    )
+    state.users.put(user.id, user)
+    state.orgUserPermissions
+      .put((loggedInOrganization.id, user.id), DBPermission.Delete)
+    // Side-effect: upgrade any contributor with matching email (mirrors
+    // OrganizationManager.addUser → upgradeContributor).
+    if (user.email.nonEmpty) {
+      state.contributors.foreach {
+        case (key @ (orgId, _), c)
+            if orgId == loggedInOrganization.id &&
+              c.email.exists(_.equalsIgnoreCase(user.email)) =>
+          state.contributors.put(key, c.copy(userId = Some(user.id)))
+        case _ => ()
+      }
     }
+    OrganizationUserView(userId = user.id, nodeId = user.nodeId)
   }
+
+  case class OrganizationUserView(userId: Int, nodeId: String)
 
   test("get a contributor") {
-    val ct1 =
-      createContributor(
-        firstName = "Test",
-        lastName = "Contributor",
-        email = "test-contributor@bf.com",
-        middleInitial = Some("Q"),
-        degree = Some(Degree.PhD)
-      )
-
-    val ct2 =
-      createContributor(
-        firstName = "Test 2",
-        lastName = "Contributor 2",
-        email = "test-contributor-2@bf.com",
-        middleInitial = Some(""),
-        degree = Some(Degree.PhD)
-      )
+    val ct1 = createContributor(
+      firstName = "Test",
+      lastName = "Contributor",
+      email = "test-contributor@bf.com",
+      middleInitial = Some("Q"),
+      degree = Some(Degree.PhD)
+    )
+    val ct2 = createContributor(
+      firstName = "Test 2",
+      lastName = "Contributor 2",
+      email = "test-contributor-2@bf.com",
+      middleInitial = Some(""),
+      degree = Some(Degree.PhD)
+    )
 
     get(s"/${ct1.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
@@ -137,7 +309,7 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       (parsedBody \ "middleInitial").extractOpt[String] should equal(None)
     }
 
-    val ct3 = Either.catchNonFatal {
+    val ct3 = scala.util.Try {
       createContributor(
         firstName = "Test 3",
         lastName = "Contributor 3",
@@ -146,29 +318,24 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
         degree = Some(Degree.PhD)
       )
     }
-    assert(ct3.isLeft)
+    assert(ct3.isFailure)
   }
 
   test(
     "create and get a contributor who is also a user - validating user/contributor merging rules"
   ) {
-    val ct2 =
-      createContributor(
-        firstName = "John",
-        lastName = "Doe",
-        email = "j.doe@bf.com",
-        degree = Some(Degree.PhD),
-        middleInitial = Some("K"),
-        orcid = Some("Fake-Orcid"),
-        userId = Some(colleagueUser.id)
-      )
+    val ct2 = createContributor(
+      firstName = "John",
+      lastName = "Doe",
+      email = "j.doe@bf.com",
+      degree = Some(Degree.PhD),
+      middleInitial = Some("K"),
+      orcid = Some("Fake-Orcid"),
+      userId = Some(colleagueUser.id)
+    )
 
     get(s"/${ct2.id}", headers = authorizationHeader(loggedInJwt)) {
       status should equal(200)
-      //merging rules:
-      //first name, last name and email comes from the user if userId is provided, from the contributor otherwise and cannot be None
-      //orcid, middle Initial and degree come from the user if userId is provided and they are defined at the user level, otherwise, from the contributor but can be None
-
       (parsedBody \ "firstName").extract[String] should equal(
         colleagueUser.firstName
       )
@@ -188,27 +355,22 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       val contributors = parsedBody.extract[List[ContributorDTO]]
 
-      //we get 1 contributor since baseApiTest also creates a dataset before the beginning of this test
       contributors.length should equal(1)
       contributors(0).firstName should equal("first")
       contributors(0).lastName should equal("last")
       contributors(0).email should equal("test@test.com")
-      contributors(0).id should equal(1)
+      contributors(0).id should equal(preexistingContributorId)
     }
   }
 
   test("can't get any contributors if the current org is the demo org") {
-
     val b1 =
       write(CreateContributorRequest("test", "testerson", "test@gmail.com"))
-
     postJson(s"/", body = b1, headers = authorizationHeader(sandboxUserJwt)) {
       status should equal(201)
     }
-
     val b2 =
       write(CreateContributorRequest("test2", "testerson2", "test2@gmail.com"))
-
     postJson(s"/", body = b2, headers = authorizationHeader(sandboxUserJwt)) {
       status should equal(201)
     }
@@ -221,8 +383,7 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("can't create a contributor with incorrect ORCID") {
-
-    val contributorRequest = write(
+    val req = write(
       CreateContributorRequest(
         firstName = "Troye",
         lastName = "Sivan",
@@ -230,20 +391,14 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
         orcid = Some("plop")
       )
     )
-
-    postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(404)
       body should include("ORCID not found")
     }
   }
 
   test("can create a contributor with empty ORCID (treated as no ORCID)") {
-
-    val contributorRequest = write(
+    val req = write(
       CreateContributorRequest(
         firstName = "Troye",
         lastName = "Sivan",
@@ -251,51 +406,34 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
         orcid = Some("")
       )
     )
-
-    postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(201)
     }
   }
 
   test("can't create a contributor with incorrect email") {
-
-    val contributorRequest = write(
+    val req = write(
       CreateContributorRequest(
         firstName = "Troye",
         lastName = "Sivan",
         email = "incorrectEmail"
       )
     )
-
-    postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
       body should include("improper email format")
     }
   }
 
   test("first name is mandatory if no userId") {
-
-    val contributorRequest = write(
+    val req = write(
       CreateContributorRequest(
         firstName = "",
         lastName = "Sivan",
         email = "troye.sivan@pennsieve.org"
       )
     )
-
-    postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
       body should include(
         "first name of contributor must not be empty if not already a user"
@@ -304,20 +442,14 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("last name is mandatory if no userId") {
-
-    val contributorRequest = write(
+    val req = write(
       CreateContributorRequest(
         firstName = "Troye",
         lastName = "",
         email = "troye.sivan@pennsieve.org"
       )
     )
-
-    postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
       body should include(
         "last name of contributor must not be empty if not already a user"
@@ -326,20 +458,14 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("email is mandatory if no userId") {
-
-    val contributorRequest = write(
+    val req = write(
       CreateContributorRequest(
         firstName = "Troye",
         lastName = "Sivan",
         email = ""
       )
     )
-
-    postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
       body should include(
         "email of contributor must not be empty if not already a user"
@@ -350,22 +476,16 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   test(
     "can't create contributor if email is already used by another contributor"
   ) {
-    //the set-up of the test creates a contributor with test@test.com email
-    //also test case insensitivity of email lookup
-    val contributorRequest =
-      write(
-        CreateContributorRequest(
-          firstName = "Troye",
-          lastName = "Sivan",
-          email = "TEST@TesT.COM"
-        )
+    // The set-up of the test seeds a contributor with test@test.com email.
+    // Also tests case-insensitivity of email lookup.
+    val req = write(
+      CreateContributorRequest(
+        firstName = "Troye",
+        lastName = "Sivan",
+        email = "TEST@TesT.COM"
       )
-
-    postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    )
+    postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
       body should include("email must be unique")
     }
@@ -374,8 +494,7 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   test(
     "can't create contributor if email is already used by another contributor who is also a User"
   ) {
-    //create new contributor/user by passing only its nodeId
-    val contributorRequest = write(
+    val first = write(
       CreateContributorRequest(
         firstName = "",
         lastName = "",
@@ -383,30 +502,18 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
         userId = Some(colleagueUser.id)
       )
     )
-
-    postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    postJson(s"/", first, headers = authorizationHeader(loggedInJwt)) {
       status should equal(201)
     }
 
-    //this time we try to create a contributor with the same email
-    val contributorRequest2 =
-      write(
-        CreateContributorRequest(
-          firstName = "",
-          lastName = "",
-          email = colleagueUser.email
-        )
+    val second = write(
+      CreateContributorRequest(
+        firstName = "",
+        lastName = "",
+        email = colleagueUser.email
       )
-
-    postJson(
-      s"/",
-      contributorRequest2,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    )
+    postJson(s"/", second, headers = authorizationHeader(loggedInJwt)) {
       status should equal(400)
       body should include("email must be unique")
     }
@@ -415,25 +522,20 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
   test(
     "can create contributor then the same email is used to create a User: contributor automatically get linked to the user"
   ) {
-    //create new contributor/user by passing only its nodeId
-    val contributorRequest = write(
+    val req = write(
       CreateContributorRequest(
         firstName = "Pol",
         lastName = "Jon",
         email = "m.urie@star.com"
       )
     )
-
-    val ct1 = postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    val ct1 = postJson(s"/", req, headers = authorizationHeader(loggedInJwt)) {
       status should equal(201)
       parsedBody.extract[ContributorDTO]
     }
 
-    //we then register the User with the same Organization
+    // Register a User with the same email — this triggers contributor auto-link
+    // via the addUser side effect in FakeSecureOrganizationManager.
     val newUser = createUser("Michael", "Urie", "m.urie@star.com")
 
     get(s"/${ct1.id}", headers = authorizationHeader(loggedInJwt)) {
@@ -444,17 +546,14 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       contributor.email should equal("m.urie@star.com")
       contributor.orcid should equal(None)
       contributor.userId should equal(Some(newUser.userId))
-
     }
   }
 
   test("edit contributor") {
-    //the test removes the users between each test, which messes up with the userId number, In order to get this test working,
-    //we need to add the user from the previous test back
-    val newUser = createUser("Michael", "Urie", "m.urie@star.com")
+    // Re-add Michael from previous test
+    createUser("Michael", "Urie", "m.urie@star.com")
 
     val userWithNoOrcidNodeId = NodeCodes.generateId(NodeCodes.userCode)
-
     val userWithNoOrcid = createUser(
       "Ben",
       "Platt",
@@ -463,49 +562,39 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
     )
 
     val userWithOrcidNodeId = NodeCodes.generateId(NodeCodes.userCode)
-
     val userWithOrcid = createUser(
       "Noah",
       "Galvin",
       "userOrcid@test.com",
       nodeId = Some(userWithOrcidNodeId),
-      orcid = Some("0000-0001-1234-5678")
+      orcid = Some(testOrcid)
     )
 
-    //create new contributor/user by passing only its nodeId
-    val contributorRequest =
-      write(
-        CreateContributorRequest(
-          firstName = "",
-          lastName = "",
-          email = "",
-          userId = Some(userWithNoOrcid.userId)
-        )
+    val req1 = write(
+      CreateContributorRequest(
+        firstName = "",
+        lastName = "",
+        email = "",
+        userId = Some(userWithNoOrcid.userId)
       )
-
-    val ct1 = postJson(
-      s"/",
-      contributorRequest,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    )
+    val ct1 = postJson(s"/", req1, headers = authorizationHeader(loggedInJwt)) {
       status should equal(201)
       parsedBody.extract[ContributorDTO]
     }
 
-    val updateContributorRequest =
-      write(
-        UpdateContributorRequest(
-          firstName = Some("First Name"),
-          lastName = None,
-          middleInitial = None,
-          degree = None,
-          orcid = None
-        )
+    val updateFirstName = write(
+      UpdateContributorRequest(
+        firstName = Some("First Name"),
+        lastName = None,
+        middleInitial = None,
+        degree = None,
+        orcid = None
       )
-
+    )
     putJson(
       s"/${ct1.id}",
-      updateContributorRequest,
+      updateFirstName,
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(400)
@@ -514,20 +603,18 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       )
     }
 
-    val updateContributorRequest2 =
-      write(
-        UpdateContributorRequest(
-          firstName = None,
-          lastName = Some("Last Name"),
-          middleInitial = None,
-          degree = None,
-          orcid = None
-        )
+    val updateLastName = write(
+      UpdateContributorRequest(
+        firstName = None,
+        lastName = Some("Last Name"),
+        middleInitial = None,
+        degree = None,
+        orcid = None
       )
-
+    )
     putJson(
       s"/${ct1.id}",
-      updateContributorRequest2,
+      updateLastName,
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(400)
@@ -536,20 +623,18 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       )
     }
 
-    val updateContributorRequest4 =
-      write(
-        UpdateContributorRequest(
-          firstName = None,
-          lastName = None,
-          middleInitial = None,
-          degree = None,
-          orcid = Some("0000-0001-1234-5678")
-        )
+    val updateOrcid = write(
+      UpdateContributorRequest(
+        firstName = None,
+        lastName = None,
+        middleInitial = None,
+        degree = None,
+        orcid = Some(testOrcid)
       )
-
+    )
     putJson(
       s"/${ct1.id}",
-      updateContributorRequest4,
+      updateOrcid,
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
@@ -557,7 +642,7 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       contributor.firstName should equal("Ben")
       contributor.lastName should equal("Platt")
       contributor.email should equal("usernoorcid@test.com")
-      contributor.orcid should equal(Some("0000-0001-1234-5678"))
+      contributor.orcid should equal(Some(testOrcid))
       contributor.id should equal(ct1.id)
     }
 
@@ -576,39 +661,31 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       contributor.orcid should equal(None)
     }
 
-    val contributorRequest2 =
-      write(
-        CreateContributorRequest(
-          firstName = "",
-          lastName = "",
-          email = "",
-          userId = Some(userWithOrcid.userId)
-        )
+    val req2 = write(
+      CreateContributorRequest(
+        firstName = "",
+        lastName = "",
+        email = "",
+        userId = Some(userWithOrcid.userId)
       )
-
-    val ct2 = postJson(
-      s"/",
-      contributorRequest2,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    )
+    val ct2 = postJson(s"/", req2, headers = authorizationHeader(loggedInJwt)) {
       status should equal(201)
       parsedBody.extract[ContributorDTO]
     }
 
-    val updateContributorRequest5 =
-      write(
-        UpdateContributorRequest(
-          firstName = None,
-          lastName = None,
-          middleInitial = None,
-          degree = None,
-          orcid = Some("0000-0001-1234-5678")
-        )
+    val updateOrcidUserHas = write(
+      UpdateContributorRequest(
+        firstName = None,
+        lastName = None,
+        middleInitial = None,
+        degree = None,
+        orcid = Some(testOrcid)
       )
-
+    )
     putJson(
       s"/${ct2.id}",
-      updateContributorRequest5,
+      updateOrcidUserHas,
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(400)
@@ -617,38 +694,30 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       )
     }
 
-    val contributorRequest3 =
-      write(
-        CreateContributorRequest(
-          firstName = "john",
-          lastName = "paul",
-          email = "ian.mckellen@lotr.com"
-        )
+    val req3 = write(
+      CreateContributorRequest(
+        firstName = "john",
+        lastName = "paul",
+        email = "ian.mckellen@lotr.com"
       )
-
-    val ct3 = postJson(
-      s"/",
-      contributorRequest3,
-      headers = authorizationHeader(loggedInJwt)
-    ) {
+    )
+    val ct3 = postJson(s"/", req3, headers = authorizationHeader(loggedInJwt)) {
       status should equal(201)
       parsedBody.extract[ContributorDTO]
     }
 
-    val updateContributorRequest6 =
-      write(
-        UpdateContributorRequest(
-          firstName = Some("Ian"),
-          lastName = Some("McKellen"),
-          orcid = Some("0000-0001-1234-5678"),
-          middleInitial = None,
-          degree = None
-        )
+    val updateNonUser = write(
+      UpdateContributorRequest(
+        firstName = Some("Ian"),
+        lastName = Some("McKellen"),
+        orcid = Some(testOrcid),
+        middleInitial = None,
+        degree = None
       )
-
+    )
     putJson(
       s"/${ct3.id}",
-      updateContributorRequest6,
+      updateNonUser,
       headers = authorizationHeader(loggedInJwt)
     ) {
       status should equal(200)
@@ -656,8 +725,17 @@ class TestContributorController extends BaseApiTest with DataSetTestMixin {
       contributor.firstName should equal("Ian")
       contributor.lastName should equal("McKellen")
       contributor.email should equal("ian.mckellen@lotr.com")
-      contributor.orcid should equal(Some("0000-0001-1234-5678"))
+      contributor.orcid should equal(Some(testOrcid))
       contributor.id should equal(ct3.id)
+    }
+  }
+
+  test("swagger") {
+    import com.pennsieve.web.ResourcesApp
+    addServlet(new ResourcesApp, "/api-docs/*")
+
+    get("/api-docs/swagger.json") {
+      status should equal(200)
     }
   }
 }

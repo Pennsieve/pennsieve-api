@@ -16,10 +16,36 @@
 
 package com.pennsieve.api
 
-class TestOnboardingController extends BaseApiTest {
+import com.pennsieve.models.{ Organization, User }
 
-  override def afterStart(): Unit = {
-    super.afterStart()
+class TestOnboardingController extends BaseApiUnitTest {
+
+  private val loggedInUser: User = User(
+    nodeId = "N:user:00000000-0000-0000-0000-000000000001",
+    email = "user@test.com",
+    firstName = "Test",
+    middleInitial = None,
+    lastName = "User",
+    degree = None,
+    credential = "",
+    color = "",
+    url = "",
+    isSuperAdmin = false,
+    id = 1
+  )
+
+  private val loggedInOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-000000000001",
+    name = "Test Organization",
+    slug = "test-organization",
+    encryptionKeyId = Some("test-key"),
+    id = 1
+  )
+
+  private var loggedInJwt: String = _
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new OnboardingController(
         insecureContainer,
@@ -28,6 +54,15 @@ class TestOnboardingController extends BaseApiTest {
       ),
       "/*"
     )
+  }
+
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    state.users.clear()
+    state.organizations.clear()
+    state.users.put(loggedInUser.id, loggedInUser)
+    state.organizations.put(loggedInOrganization.id, loggedInOrganization)
+    loggedInJwt = mintUserJwt(loggedInUser, loggedInOrganization)
   }
 
   test("swagger should not contain documentation for '/events'") {
@@ -39,7 +74,6 @@ class TestOnboardingController extends BaseApiTest {
 
       val pathsDoc = (parsedBody \ "paths").extract[Map[String, _]]
       pathsDoc should not contain key("/events")
-
     }
   }
 
@@ -58,5 +92,4 @@ class TestOnboardingController extends BaseApiTest {
       status should equal(410)
     }
   }
-
 }

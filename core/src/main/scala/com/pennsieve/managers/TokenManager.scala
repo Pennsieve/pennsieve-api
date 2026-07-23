@@ -36,7 +36,13 @@ import com.pennsieve.models.DBPermission.{ Read, Write }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class TokenManager(db: Database) {
+object TokenManager {
+  def apply(db: Database): TokenManager = new TokenManagerImpl(db)
+}
+
+trait TokenManager {
+
+  def db: Database
 
   def create(
     name: String,
@@ -143,7 +149,11 @@ class TokenManager(db: Database) {
       .whenNone[CoreError](NotFound(s"Organization ${token.organizationId}"))
 }
 
-class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
+class TokenManagerImpl(val db: Database) extends TokenManager
+
+trait SecureTokenManager extends TokenManager {
+
+  def actor: User
 
   override def create(
     name: String,
@@ -211,3 +221,6 @@ class SecureTokenManager(actor: User, db: Database) extends TokenManager(db) {
   }
 
 }
+
+class SecureTokenManagerImpl(val actor: User, val db: Database)
+    extends SecureTokenManager

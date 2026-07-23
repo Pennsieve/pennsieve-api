@@ -43,11 +43,17 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 import java.util.UUID
 
+object UserInviteManager {
+  def apply(db: Database): UserInviteManager = new UserInviteManagerImpl(db)
+}
+
 /**
   * TODO: this class does not clean up invites that are never use and are
   * expired. That will need to be handled in the future.
   */
-class UserInviteManager(db: Database) {
+trait UserInviteManager {
+
+  def db: Database
 
   def generateInviteTokenData(ttl: Duration): (String, ZonedDateTime) =
     (UUID.randomUUID().toString, ZonedDateTime.now().plus(ttl))
@@ -212,3 +218,5 @@ class UserInviteManager(db: Database) {
       .toEitherT
       .map(_ => userInvite)
 }
+
+class UserInviteManagerImpl(val db: Database) extends UserInviteManager

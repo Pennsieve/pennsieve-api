@@ -48,7 +48,7 @@ object OrganizationManager {
   )
 
   def apply(db: Database): OrganizationManager =
-    new OrganizationManager(db)
+    new OrganizationManagerImpl(db)
 
   /**
     * Result of inviting a user to an organization. Either a new user is
@@ -66,7 +66,9 @@ object OrganizationManager {
   }
 }
 
-class OrganizationManager(db: Database) {
+trait OrganizationManager {
+
+  def db: Database
 
   def get(
     id: Int
@@ -449,14 +451,17 @@ class OrganizationManager(db: Database) {
   }
 }
 
+class OrganizationManagerImpl(val db: Database) extends OrganizationManager
+
 case class UpdateOrganization(
   name: Option[String],
   subscription: Option[Subscription],
   colorTheme: Option[ColorTheme]
 )
 
-class SecureOrganizationManager(val db: Database, val actor: User)
-    extends OrganizationManager(db) {
+trait SecureOrganizationManager extends OrganizationManager {
+
+  def actor: User
 
   import OrganizationManager.AddEmailResult
 
@@ -1005,3 +1010,6 @@ class SecureOrganizationManager(val db: Database, val actor: User)
   ): EitherT[Future, CoreError, Boolean] =
     hasFeatureFlagEnabled(id, Feature.SandboxOrgFeature)
 }
+
+class SecureOrganizationManagerImpl(val db: Database, val actor: User)
+    extends SecureOrganizationManager

@@ -17,8 +17,14 @@
 package com.pennsieve.api
 
 import com.blackfynn.clients.AntiSpamChallengeClient
-import com.pennsieve.aws.cognito.{ CognitoPoolConfig, MockCognito, _ }
+import com.pennsieve.aws.cognito.{
+  CognitoConfig,
+  CognitoPoolConfig,
+  MockCognito,
+  MockJwkProvider
+}
 import com.pennsieve.models.{ CognitoId, DBPermission, Organization, User }
+import com.pennsieve.test.helpers.AwaitableImplicits._
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
 import pdi.jwt.{ JwtAlgorithm, JwtCirce }
@@ -33,14 +39,11 @@ class MockRecaptchaClient extends AntiSpamChallengeClient {
     Future.successful(true)
 }
 
-class TestAccountController extends BaseApiTest {
+class TestAccountController extends BaseApiUnitTest {
 
   val pennsieveUserId: String = "0f14d0ab-9605-4a62-a9e4-5ed26688389b"
   val cognitoPoolId: String = "12345"
   val cognitoAppClientId: String = "67890"
-  val cognitoPoolId2: String = "abcdef"
-  val cognitoAppClientId2: String = "ghijkl"
-  val cognitoIdentityPoolId: String = "vbnm"
 
   val jwkProvider = new MockJwkProvider()
 
@@ -70,14 +73,31 @@ class TestAccountController extends BaseApiTest {
     algorithm = JwtAlgorithm.RS256
   )
 
-  val recaptchaClient: AntiSpamChallengeClient =
-    new MockRecaptchaClient()
+  val recaptchaClient: AntiSpamChallengeClient = new MockRecaptchaClient()
 
-  val mockCognito = new MockCognito()
+  // Fields referenced by the (currently `ignore`d) Cognito-JWT and
+  // user-update tests. They compile-only here; the active tests don't use
+  // them.
+  protected lazy val loggedInOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-000000000001",
+    name = "Test Organization",
+    slug = "test-organization",
+    encryptionKeyId = Some("test-key"),
+    id = 1
+  )
+  protected lazy val userManager = insecureContainer.userManager
+  protected lazy val userInviteManager = insecureContainer.userInviteManager
 
-  override def afterStart(): Unit = {
-    super.afterStart()
+  protected lazy val welcomeOrganization: Organization = Organization(
+    nodeId = "N:organization:00000000-0000-0000-0000-0000000000ff",
+    name = "Welcome",
+    slug = "welcome_to_pennsieve",
+    encryptionKeyId = Some("welcome-key"),
+    id = 99
+  )
 
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     addServlet(
       new AccountController(
         insecureContainer,
@@ -92,7 +112,14 @@ class TestAccountController extends BaseApiTest {
 
   override def beforeEach(): Unit = {
     super.beforeEach()
+    state.users.clear()
+    state.organizations.clear()
+    state.orgUsers.clear()
+    state.orgUserPermissions.clear()
     mockCognito.reset()
+
+    state.organizations.put(welcomeOrganization.id, welcomeOrganization)
+    state.organizations.put(loggedInOrganization.id, loggedInOrganization)
   }
 
   test("swagger") {
@@ -101,7 +128,6 @@ class TestAccountController extends BaseApiTest {
 
     get("/api-docs/swagger.json") {
       status should equal(200)
-      println(body)
     }
   }
 
@@ -162,9 +188,7 @@ class TestAccountController extends BaseApiTest {
     }
   }
 
-  // TODO update this
   test("create new account without an organization") {
-
     val newUserRequest = CreateUserWithRecaptchaRequest(
       firstName = "test",
       middleInitial = None,
@@ -182,7 +206,6 @@ class TestAccountController extends BaseApiTest {
   }
 
   ignore("update an external user invite") {
-    // create a User
     val cognitoId = UUID.fromString(pennsieveUserId)
     val user = User(
       nodeId = "N:user:1",
@@ -204,7 +227,6 @@ class TestAccountController extends BaseApiTest {
     )
     val newUser = userManager.create(user).await.value
 
-    // create a CreateUserRequest
     val updateUserRequest = CreateUserRequest(
       firstName = "john",
       middleInitial = Some("andrew"),
@@ -213,7 +235,6 @@ class TestAccountController extends BaseApiTest {
       title = "chief"
     )
 
-    // PUT request to /account
     putJson(
       uri = "/",
       headers = Map("Authorization" -> s"Bearer ${validToken}"),
@@ -221,6 +242,5 @@ class TestAccountController extends BaseApiTest {
     ) {
       status should be(200)
     }
-
   }
 }
