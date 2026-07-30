@@ -214,8 +214,10 @@ trait ApiSuite
     // The seeded pennsievedb image ships with local-seed.sql fixtures
     // (users, organizations, datasets, etc). Clear them once on container
     // startup so the first test's beforeEach sees an empty schema; afterEach
-    // handles cleanup for subsequent tests.
-    insecureContainer.db.run(clearDB).await
+    // handles cleanup for subsequent tests. The TRUNCATE-based deep variant
+    // also compacts bloat left by the per-test DELETE-based clearDB when
+    // several suites share this JVM's container.
+    insecureContainer.db.run(deepClearDB).await
 
     // pennsieve.all_datacanvases is not pre-created by the seed image; build
     // it here against the seeded org schemas so controllers that query the

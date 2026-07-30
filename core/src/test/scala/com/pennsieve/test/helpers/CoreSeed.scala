@@ -64,9 +64,9 @@ trait CoreSeed[
   }
 
   def clearSchemas: DBIO[Unit] = {
-    val queries = schemas.toList.map(clearOrganizationSchema)
+    val ids = schemas.toList
     schemas = Set()
-    DBIO.seq(queries: _*)
+    clearOrganizationSchemas(ids)
   }
 
   def seed(container: SeedContainer): Unit = {

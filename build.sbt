@@ -51,6 +51,35 @@ ThisBuild / scalafmtOnCompile := true
 // Run tests in a separate JVM to prevent resource leaks.
 ThisBuild / Test / fork := true
 
+// Cap forked test JVM memory so several test JVMs can run concurrently
+// (without -Xmx a forked JVM defaults to 25% of physical RAM).
+ThisBuild / Test / javaOptions ++= Seq(
+  "-Xms256m",
+  "-Xmx2g",
+  "-XX:MaxMetaspaceSize=768m",
+  "-XX:ReservedCodeCacheSize=128m"
+)
+
+// sbt's default concurrentRestrictions includes Tags.limit(Tags.ForkedTestGroup, 1),
+// which runs forked test JVMs strictly one-at-a-time across the whole build,
+// making `sbt test` wall time the SUM of every subproject's tests. Allow
+// several forked test JVMs at once: each JVM starts its own Docker test
+// containers (DockerContainers is a per-JVM singleton), so concurrent JVMs
+// never share a database and suite isolation is unchanged. Tune with
+// -Dtest.jvms=N (e.g. lower it on small CI executors).
+Global / concurrentRestrictions := {
+  val procs = java.lang.Runtime.getRuntime.availableProcessors
+  val testJvms = sys.props
+    .get("test.jvms")
+    .map(_.toInt)
+    .getOrElse(math.min(5, math.max(2, procs / 2)))
+  Seq(
+    Tags.limitAll(procs),
+    Tags.limit(Tags.ForkedTestGroup, testJvms),
+    Tags.exclusive(Tags.Clean)
+  )
+}
+
 lazy val akkaVersion = "2.6.19"
 lazy val akkaCirceVersion = "1.39.2"
 lazy val akkaHttpVersion = "10.2.9"
@@ -201,6 +230,34 @@ lazy val coreApiSharedSettings = Seq(
 lazy val apiSettings = Seq(
   name := "pennsieve-api",
   containerPort := 5000,
+  // Shard the api test suites across several forked JVMs so the largest
+  // suites run concurrently (they dominate `sbt test` wall time). Grouping
+  // only changes scheduling: every suite keeps its exact contents, suites
+  // within a group still run sequentially in their JVM, and each JVM starts
+  // its own Docker containers (per-JVM DockerContainers singleton), so no
+  // two concurrently-running suites ever share a database. Shard weights are
+  // balanced by suite test counts; unlisted suites (including the fast
+  // mocked BaseApiUnitTest suites) fall into the last shard.
+  Test / testGrouping := {
+    val shardBySuite: Map[String, Int] = Map(
+      "com.pennsieve.api.TestDataSetsController" -> 0,
+      "com.pennsieve.api.TestPackagesController" -> 1,
+      "com.pennsieve.api.TestOrganizationsController" -> 1,
+      "com.pennsieve.api.TestDataCanvasController" -> 2,
+      "com.pennsieve.api.TestWebhooksController" -> 2,
+      "com.pennsieve.api.TimeSeriesControllerAnnotationSpecs" -> 2,
+      "com.pennsieve.api.TestDataController" -> 2
+    )
+    val forkOpts = (Test / forkOptions).value
+    (Test / definedTests).value
+      .groupBy(test => shardBySuite.getOrElse(test.name, 3))
+      .toSeq
+      .sortBy { case (shard, _) => shard }
+      .map {
+        case (shard, tests) =>
+          Tests.Group(s"api-tests-$shard", tests, Tests.SubProcess(forkOpts))
+      }
+  },
   Jetty / javaOptions ++= Seq(
     "-Xdebug",
     "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8000"
