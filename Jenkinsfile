@@ -7,7 +7,7 @@ timestamps {
         passwordVariable: 'PENNSIEVE_NEXUS_PW'
     )
 
-    node('executor') {
+    node('executor-new') {
         checkout scm
 
         def commitHash  = sh(returnStdout: true, script: 'git rev-parse HEAD | cut -c-7').trim()
