@@ -27,7 +27,7 @@ import com.pennsieve.traits.PostgresProfile.api._
 import scala.concurrent.{ ExecutionContext, Future }
 
 class TestableSecureOrganizationManager(user: User, db: Database)
-    extends SecureOrganizationManager(db, user) {
+    extends SecureOrganizationManagerImpl(db, user) {
 
   override def schemaExists(
     organization: Organization
@@ -42,6 +42,6 @@ class TestableSecureOrganizationManager(user: User, db: Database)
 }
 
 trait TestCoreContainer extends InsecureCoreContainer { self: Container =>
-  override lazy val userManager: UserManager = new UserManager(db)
-  override lazy val tokenManager: TokenManager = new TokenManager(db)
+  override lazy val userManager: UserManager = new UserManagerImpl(db)
+  override lazy val tokenManager: TokenManager = new TokenManagerImpl(db)
 }

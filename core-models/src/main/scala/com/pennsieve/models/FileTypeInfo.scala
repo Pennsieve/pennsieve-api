@@ -997,13 +997,13 @@ object FileTypeInfo {
     case NeuroDataWithoutBorders =>
       FileTypeInfo(
         fileType = NeuroDataWithoutBorders,
-        packageType = PackageType.HDF5,
-        packageSubtype = "Data Container",
+        packageType = PackageType.TimeSeries,
+        packageSubtype = "Timeseries",
         masterExtension = None,
         grouping = Individual,
         validate = false,
         hasWorkflow = true,
-        icon = NWB
+        icon = Timeseries
       )
     case Neuron =>
       FileTypeInfo(

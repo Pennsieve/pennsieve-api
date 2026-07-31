@@ -126,9 +126,9 @@ trait ManagerSpec
 
     database = postgresDB.forURL
 
-    userManager = new UserManager(database)
-    userInviteManager = new UserInviteManager(database)
-    tokenManager = new TokenManager(database)
+    userManager = new UserManagerImpl(database)
+    userInviteManager = new UserInviteManagerImpl(database)
+    tokenManager = new TokenManagerImpl(database)
   }
 
   override def afterAll(): Unit = {
@@ -143,14 +143,20 @@ trait ManagerSpec
     new TestableOrganizationManager(false, database, user)
 
   def secureTokenManager(user: User = superAdmin): SecureTokenManager =
-    new SecureTokenManager(user, database)
+    new SecureTokenManagerImpl(user, database)
 
   def changelogManager(
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): ChangelogManager = {
     val sns: SNSClient = new MockSNS
-    new ChangelogManager(database, organization, user, "test-topic", sns = sns)
+    new ChangelogManagerImpl(
+      database,
+      organization,
+      user,
+      "test-topic",
+      sns = sns
+    )
   }
 
   def datasetManager(
@@ -159,7 +165,7 @@ trait ManagerSpec
   ): DatasetManager = {
     val datasetsMapper = new DatasetsMapper(organization)
 
-    new DatasetManager(database, user, datasetsMapper)
+    new DatasetManagerImpl(database, user, datasetsMapper)
   }
 
   def datasetCollectionManager(
@@ -167,7 +173,7 @@ trait ManagerSpec
   ): CollectionManager = {
     val collectionMapper = new CollectionMapper(organization)
 
-    new CollectionManager(database, collectionMapper)
+    new CollectionManagerImpl(database, collectionMapper)
   }
 
   def datasetPublicationStatusManager(
@@ -178,7 +184,7 @@ trait ManagerSpec
       organization
     )
 
-    new DatasetPublicationStatusManager(
+    new DatasetPublicationStatusManagerImpl(
       database,
       user,
       datasetPublicationStatusMapper,
@@ -188,18 +194,18 @@ trait ManagerSpec
 
   def datasetStatusManager(
     organization: Organization = testOrganization
-  ): DatasetStatusManager = new DatasetStatusManager(database, organization)
+  ): DatasetStatusManager = new DatasetStatusManagerImpl(database, organization)
 
   def contributorsManager(
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): ContributorManager = {
     val contributorsMapper = new ContributorMapper(organization)
-    new ContributorManager(
+    new ContributorManagerImpl(
       database,
       user,
       contributorsMapper,
-      new UserManager(database)
+      new UserManagerImpl(database)
     )
   }
 
@@ -207,7 +213,7 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): FileManager =
-    new FileManager(packageManager(organization, user), organization)
+    new FileManagerImpl(packageManager(organization, user), organization)
 
   def externalFileManager(
     organization: Organization = testOrganization,
@@ -227,7 +233,7 @@ trait ManagerSpec
     organization: Organization = testOrganization,
     user: User = superAdmin
   ): PackageManager =
-    new PackageManager(datasetManager(organization, user))
+    new PackageManagerImpl(datasetManager(organization, user))
 
   def timeSeriesManager(
     organization: Organization = testOrganization
@@ -272,7 +278,7 @@ trait ManagerSpec
     val datasetIntegrationsMapper: DatasetIntegrationsMapper =
       new DatasetIntegrationsMapper(organization)
 
-    new WebhookManager(
+    new WebhookManagerImpl(
       db = database,
       actor = user,
       webhooksMapper = webhooksMapper,

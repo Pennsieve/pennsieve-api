@@ -64,19 +64,20 @@ import scala.collection.compat._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success }
 
-class PackageManager(datasetManager: DatasetManager) {
+trait PackageManager {
+  def datasetManager: DatasetManager
 
-  val organization: Organization = datasetManager.organization
+  lazy val organization: Organization = datasetManager.organization
 
-  val actor: User = datasetManager.actor
-  val db: Database = datasetManager.db
+  lazy val actor: User = datasetManager.actor
+  lazy val db: Database = datasetManager.db
 
-  val packagesMapper: PackagesMapper = new PackagesMapper(organization)
-  val externalFilesMapper = new ExternalFilesMapper(organization)
-  val datasetsMapper: DatasetsMapper = datasetManager.datasetsMapper
-  val filesMapper = new FilesMapper(organization)
+  lazy val packagesMapper: PackagesMapper = new PackagesMapper(organization)
+  lazy val externalFilesMapper = new ExternalFilesMapper(organization)
+  lazy val datasetsMapper: DatasetsMapper = datasetManager.datasetsMapper
+  lazy val filesMapper = new FilesMapper(organization)
 
-  val externalFileManager =
+  lazy val externalFileManager =
     new ExternalFileManager(externalFilesMapper, this)
 
   /**
@@ -771,7 +772,7 @@ class PackageManager(datasetManager: DatasetManager) {
        """
   }
 
-  implicit val packageWithFiles: GetResult[(Package, Seq[File])] =
+  implicit lazy val packageWithFiles: GetResult[(Package, Seq[File])] =
     GetResult { p =>
       val id = p.<<[Int]
       val name = p.<<[String]
@@ -906,7 +907,7 @@ class PackageManager(datasetManager: DatasetManager) {
     publishedS3VersionId: Option[String]
   )
 
-  implicit val packageHierarchy: GetResult[PackageHierarchy] =
+  implicit lazy val packageHierarchy: GetResult[PackageHierarchy] =
     GetResult { p =>
       val datasetId = p.<<[Int]
       val nodeIdPath = p.<<[Seq[String]]
@@ -1120,7 +1121,7 @@ class PackageManager(datasetManager: DatasetManager) {
 
   type PackagePath = (Package, Seq[String])
 
-  implicit val packageList: GetResult[PackagePath] =
+  implicit lazy val packageList: GetResult[PackagePath] =
     GetResult { p =>
       val datasetId = p.<<[Int]
       val parentId = p.<<[Int]
@@ -1199,3 +1200,6 @@ class PackageManager(datasetManager: DatasetManager) {
       .map(_.to(Seq))
       .toEitherT
 }
+
+class PackageManagerImpl(val datasetManager: DatasetManager)
+    extends PackageManager

@@ -18,6 +18,7 @@ package com.pennsieve.test.helpers
 
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.core.utilities.{
+  DatabaseContainer,
   OrganizationManagerContainer,
   PostgresDatabase,
   UserManagerContainer
@@ -30,7 +31,7 @@ import org.scalatest.EitherValues._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 trait CoreSeed[
-  SeedContainer <: OrganizationManagerContainer with UserManagerContainer
+  SeedContainer <: OrganizationManagerContainer with UserManagerContainer with DatabaseContainer
 ] extends TestDatabase {
 
   var userManager: UserManager = _
@@ -63,9 +64,9 @@ trait CoreSeed[
   }
 
   def clearSchemas: DBIO[Unit] = {
-    val queries = schemas.toList.map(clearOrganizationSchema)
+    val ids = schemas.toList
     schemas = Set()
-    DBIO.seq(queries: _*)
+    clearOrganizationSchemas(ids)
   }
 
   def seed(container: SeedContainer): Unit = {

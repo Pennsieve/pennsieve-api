@@ -63,14 +63,17 @@ object FileManager {
   *  @param packageManager A package manager.
   *  @param organization The organization that the file is associated with.
   */
-class FileManager(packageManager: PackageManager, organization: Organization) {
+trait FileManager {
+  def packageManager: PackageManager
+  def organization: Organization
+
   import FileManager._
 
-  val packages: PackagesMapper = packageManager.packagesMapper
-  val files: FilesMapper = new FilesMapper(organization)
+  lazy val packages: PackagesMapper = packageManager.packagesMapper
+  lazy val files: FilesMapper = new FilesMapper(organization)
 
-  val db: Database = packageManager.db
-  val actor: User = packageManager.actor
+  lazy val db: Database = packageManager.db
+  lazy val actor: User = packageManager.actor
 
   /** Creates a new file with the given values.
     *
@@ -614,3 +617,8 @@ class FileManager(packageManager: PackageManager, organization: Organization) {
   }
 
 }
+
+class FileManagerImpl(
+  val packageManager: PackageManager,
+  val organization: Organization
+) extends FileManager

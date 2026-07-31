@@ -29,11 +29,10 @@ import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import scala.concurrent.{ ExecutionContext, Future }
 
-class DataUseAgreementManager(
-  val db: Database,
-  val organization: Organization
-) {
-  val dataUseAgreementMapper = new DataUseAgreementMapper(organization)
+trait DataUseAgreementManager {
+  def db: Database
+  def organization: Organization
+  lazy val dataUseAgreementMapper = new DataUseAgreementMapper(organization)
 
   def get(
     agreementId: Int
@@ -179,3 +178,8 @@ class DataUseAgreementManager(
         case _ => Right(())
       }
 }
+
+class DataUseAgreementManagerImpl(
+  val db: Database,
+  val organization: Organization
+) extends DataUseAgreementManager

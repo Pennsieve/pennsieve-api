@@ -31,7 +31,15 @@ import com.pennsieve.domain.CoreError
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class PennsieveTermsOfServiceManager(db: Database) {
+object PennsieveTermsOfServiceManager {
+  def apply(db: Database): PennsieveTermsOfServiceManager =
+    new PennsieveTermsOfServiceManagerImpl(db)
+}
+
+trait PennsieveTermsOfServiceManager {
+
+  def db: Database
+
   def get(
     userId: Int
   )(implicit
@@ -64,3 +72,6 @@ class PennsieveTermsOfServiceManager(db: Database) {
       .toEitherT
   }
 }
+
+class PennsieveTermsOfServiceManagerImpl(val db: Database)
+    extends PennsieveTermsOfServiceManager

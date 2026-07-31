@@ -55,8 +55,10 @@ import com.pennsieve.dtos.UserDTO
 import com.pennsieve.managers.{
   ContributorManager,
   DatasetManager,
+  DatasetManagerImpl,
   DatasetPreviewManager,
   DatasetPublicationStatusManager,
+  DatasetPublicationStatusManagerImpl,
   TeamManager,
   UserManager
 }
@@ -118,7 +120,7 @@ class AuthorizationRoutesSpec
 
     "return a JWT for an authorized user with a dataset claim" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, nonAdmin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
       val dataset = datasetManager.create("Test Dataset").await.value
 
       testRequest(
@@ -139,7 +141,7 @@ class AuthorizationRoutesSpec
 
     "return a JWT for resolving a valid dataset by node ID" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, nonAdmin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset (from node ID)")
         .await
@@ -172,13 +174,14 @@ class AuthorizationRoutesSpec
 
     "return a JWT with locked = true for datasets with the right publication status" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, nonAdmin, datasetsMapper)
-      val datasetPublicationStatusManager = new DatasetPublicationStatusManager(
-        db,
-        nonAdmin,
-        new DatasetPublicationStatusMapper(organizationTwo),
-        new ChangelogEventMapper(organizationTwo)
-      )
+      val datasetManager = new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
+      val datasetPublicationStatusManager =
+        new DatasetPublicationStatusManagerImpl(
+          db,
+          nonAdmin,
+          new DatasetPublicationStatusMapper(organizationTwo),
+          new ChangelogEventMapper(organizationTwo)
+        )
 
       val dataset = datasetManager
         .create("Test Dataset (from node ID)")
@@ -404,14 +407,15 @@ class AuthorizationRoutesSpec
     "return a JWT with locked = false if the dataset is being published and the user is a publisher" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, nonAdmin, datasetsMapper)
+        new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
 
-      val datasetPublicationStatusManager = new DatasetPublicationStatusManager(
-        db,
-        nonAdmin,
-        new DatasetPublicationStatusMapper(organizationTwo),
-        new ChangelogEventMapper(organizationTwo)
-      )
+      val datasetPublicationStatusManager =
+        new DatasetPublicationStatusManagerImpl(
+          db,
+          nonAdmin,
+          new DatasetPublicationStatusMapper(organizationTwo),
+          new ChangelogEventMapper(organizationTwo)
+        )
 
       val teamManager = TeamManager(organizationManager)
 
@@ -525,14 +529,15 @@ class AuthorizationRoutesSpec
     "return a JWT with locked = false and role = Editor if the dataset is in review (requested) and the user is a publisher" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, admin, datasetsMapper) // not dataset owner
+        new DatasetManagerImpl(db, admin, datasetsMapper) // not dataset owner
 
-      val datasetPublicationStatusManager = new DatasetPublicationStatusManager(
-        db,
-        nonAdmin,
-        new DatasetPublicationStatusMapper(organizationTwo),
-        new ChangelogEventMapper(organizationTwo)
-      )
+      val datasetPublicationStatusManager =
+        new DatasetPublicationStatusManagerImpl(
+          db,
+          nonAdmin,
+          new DatasetPublicationStatusMapper(organizationTwo),
+          new ChangelogEventMapper(organizationTwo)
+        )
 
       val teamManager = TeamManager(organizationManager)
 
@@ -620,7 +625,7 @@ class AuthorizationRoutesSpec
     "return a JWT for an authorized user with a dataset claim if the dataset is shared with the organization" in {
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, admin, datasetsMapper)
+        new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
@@ -649,7 +654,7 @@ class AuthorizationRoutesSpec
     "return a 404 Not Found for a user requesting a dataset shared in another organization" in {
       val datasetsMapper = new DatasetsMapper(organizationOne)
       val datasetManager =
-        new DatasetManager(db, admin, datasetsMapper)
+        new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
@@ -665,6 +670,179 @@ class AuthorizationRoutesSpec
         s"/authorization?dataset_id=${dataset.id}",
         session = nonAdminCognitoJwt,
         headers = withXOriginalURI(s"/model-schema/dataset/${dataset.id}")
+      ) ~>
+        routes ~> check {
+        status shouldEqual Unauthorized
+      }
+    }
+
+    "resolve a dataset in a different organization than the session by node id" in {
+      // nonAdmin's session org (preferred_org_id) is organizationTwo, but this
+      // dataset lives in organizationOne, of which nonAdmin is also a member.
+      // Requesting by (globally-unique) node id must resolve the dataset's real
+      // org and scope BOTH the org role and the dataset role to it -- this is
+      // the fix for the intermittent cross-org 401.
+      val datasetsMapper = new DatasetsMapper(organizationOne)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
+      val dataset = datasetManager.create("Cross-org dataset").await.value
+
+      // Share at org level so any organizationOne member (incl. nonAdmin) has a
+      // dataset role.
+      datasetManager
+        .setOrganizationCollaboratorRole(dataset, Some(Role.Manager))
+        .await
+
+      testRequest(
+        GET,
+        s"/authorization?dataset_id=${dataset.nodeId}",
+        session = nonAdminCognitoJwt,
+        headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
+      ) ~>
+        routes ~> check {
+        status shouldEqual OK
+
+        val claim: Jwt.Claim = getClaim()
+        claim.content shouldBe a[UserClaim]
+        claim.content.roles should have length 2
+
+        // The org role moved to organizationOne (the dataset's org), not the
+        // session org (organizationTwo).
+        claim.content.roles.collect {
+          case Jwt.OrganizationRole(Inl(OrganizationId(id)), _, _, _, _) => id
+        } shouldBe List(organizationOne.id)
+
+        // The dataset role resolved (only possible against organizationOne's
+        // schema, where the dataset actually lives).
+        claim.content.roles.collect {
+          case Jwt.DatasetRole(_, _, Some(DatasetNodeId(nodeId)), _) => nodeId
+        } shouldBe List(dataset.nodeId)
+      }
+    }
+
+    "clean-deny (401, not 500) a cross-org node-id request when the user has no role on the dataset" in {
+      // Dataset in organizationOne with no collaborator role. nonAdmin is an
+      // organizationOne member but has no role on this dataset. The org is
+      // resolved correctly from the map, then membership/role gating denies
+      // cleanly -- it must not surface as a 500.
+      val datasetsMapper = new DatasetsMapper(organizationOne)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
+      val dataset = datasetManager.create("Cross-org, no role").await.value
+
+      testRequest(
+        GET,
+        s"/authorization?dataset_id=${dataset.nodeId}",
+        session = nonAdminCognitoJwt,
+        headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
+      ) ~>
+        routes ~> check {
+        status shouldEqual Unauthorized
+        header("Authorization") shouldBe None
+      }
+    }
+
+    "clean-deny (401) a request for a node id that does not exist in the map" in {
+      val missingNodeId = s"N:dataset:${UUID.randomUUID.toString}"
+
+      testRequest(
+        GET,
+        s"/authorization?dataset_id=$missingNodeId",
+        session = nonAdminCognitoJwt,
+        headers = withXOriginalURI(s"/model-schema/dataset/$missingNodeId")
+      ) ~>
+        routes ~> check {
+        status shouldEqual Unauthorized
+        header("Authorization") shouldBe None
+      }
+    }
+
+    "keep the org role on the session org for a same-org node-id request (resolver no-op)" in {
+      // Dataset in organizationTwo == the session org. Re-scoping must be a
+      // no-op: the org role stays organizationTwo.
+      val datasetsMapper = new DatasetsMapper(organizationTwo)
+      val datasetManager = new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
+      val dataset = datasetManager.create("Same-org dataset").await.value
+
+      testRequest(
+        GET,
+        s"/authorization?dataset_id=${dataset.nodeId}",
+        session = nonAdminCognitoJwt,
+        headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
+      ) ~>
+        routes ~> check {
+        status shouldEqual OK
+
+        val claim: Jwt.Claim = getClaim()
+        claim.content.roles should have length 2
+        claim.content.roles.collect {
+          case Jwt.OrganizationRole(Inl(OrganizationId(id)), _, _, _, _) => id
+        } shouldBe List(organizationTwo.id)
+      }
+    }
+
+    "not re-scope an API-key (token-pool) session across organizations" in {
+      // A token-pool session bound to organizationTwo must NOT reach a dataset
+      // in organizationOne even though its user (nonAdmin) is a member of
+      // organizationOne -- the API key's org boundary holds. (The dataset is
+      // shared at org level, so re-scoping WOULD have authorized it.)
+      val datasetsMapper = new DatasetsMapper(organizationOne)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
+      val dataset = datasetManager.create("Cross-org for API key").await.value
+      datasetManager
+        .setOrganizationCollaboratorRole(dataset, Some(Role.Manager))
+        .await
+
+      val token = testDIContainer.tokenManager
+        .create(
+          "cross-org-api-key-test",
+          nonAdmin,
+          organizationTwo,
+          mockCognito
+        )
+        .await
+        .value
+        ._1
+      val apiJwt = createCognitoJwtFromToken(token)
+
+      testRequest(
+        GET,
+        s"/authorization?dataset_id=${dataset.nodeId}",
+        session = Some(apiJwt),
+        headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
+      ) ~>
+        routes ~> check {
+        status shouldEqual Unauthorized
+        header("Authorization") shouldBe None
+      }
+    }
+
+    "assert the URL organization_id against the resolved dataset org for a cross-org node-id request" in {
+      // Session org is organizationTwo; dataset is in organizationOne. When the
+      // URL also names an org, it must match the dataset's resolved org (D_org),
+      // not the session org.
+      val datasetsMapper = new DatasetsMapper(organizationOne)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
+      val dataset = datasetManager.create("Cross-org with url org").await.value
+      datasetManager
+        .setOrganizationCollaboratorRole(dataset, Some(Role.Manager))
+        .await
+
+      // URL org == organizationOne (== D_org): authorized.
+      testRequest(
+        GET,
+        s"/authorization?organization_id=${organizationOne.id}&dataset_id=${dataset.nodeId}",
+        session = nonAdminCognitoJwt,
+        headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
+      ) ~>
+        routes ~> check {
+        status shouldEqual OK
+      }
+
+      // URL org == organizationTwo (the session org, != D_org): rejected.
+      testRequest(
+        GET,
+        s"/authorization?organization_id=${organizationTwo.id}&dataset_id=${dataset.nodeId}",
+        session = nonAdminCognitoJwt,
+        headers = withXOriginalURI(s"/model-schema/dataset/${dataset.nodeId}")
       ) ~>
         routes ~> check {
         status shouldEqual Unauthorized

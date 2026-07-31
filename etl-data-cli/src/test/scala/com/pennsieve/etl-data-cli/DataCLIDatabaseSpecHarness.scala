@@ -18,7 +18,7 @@ package com.pennsieve.etl.`data-cli`
 
 import java.util.UUID
 import com.pennsieve.db._
-import com.pennsieve.managers.DatasetStatusManager
+import com.pennsieve.managers.{ DatasetStatusManager, DatasetStatusManagerImpl }
 import com.pennsieve.models.{
   Dataset,
   File,
@@ -45,7 +45,7 @@ trait DataCLIDatabaseSpecHarness
 
   def createDataset: Dataset = {
 
-    val status = new DatasetStatusManager(dataCLIContainer.db, organization)
+    val status = new DatasetStatusManagerImpl(dataCLIContainer.db, organization)
       .create("Test")
       .await
       .toOption

@@ -32,7 +32,9 @@ import org.scalatest.EitherValues._
 import com.pennsieve.db.DatasetsMapper
 import com.pennsieve.managers.{
   DatasetManager,
+  DatasetManagerImpl,
   DatasetPreviewManager,
+  DatasetPreviewManagerImpl,
   UserManager
 }
 import com.pennsieve.models.{
@@ -77,7 +79,7 @@ class DiscoverAuthorizationRoutesSpec
 
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, nonAdmin, datasetsMapper)
+        new DatasetManagerImpl(db, nonAdmin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
@@ -97,7 +99,7 @@ class DiscoverAuthorizationRoutesSpec
 
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, admin, datasetsMapper)
+        new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
@@ -117,7 +119,7 @@ class DiscoverAuthorizationRoutesSpec
 
       val datasetsMapper = new DatasetsMapper(organizationTwo)
       val datasetManager =
-        new DatasetManager(db, admin, datasetsMapper)
+        new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
@@ -141,14 +143,14 @@ class DiscoverAuthorizationRoutesSpec
     "return 200 if user is a dataset previewer" in {
 
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, admin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
         .value
 
       val datasetPreviewManager =
-        new DatasetPreviewManager(db, datasetsMapper)
+        new DatasetPreviewManagerImpl(db, datasetsMapper)
       datasetPreviewManager.grantAccess(dataset, nonAdmin).await.value
 
       organizationManager.removeUser(organizationOne, nonAdmin).await.value
@@ -165,14 +167,14 @@ class DiscoverAuthorizationRoutesSpec
 
     "return 200 if user is authorized to preview, even if he is logged on the DM platform in another organization" in {
       val datasetsMapper = new DatasetsMapper(organizationOne)
-      val datasetManager = new DatasetManager(db, admin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
         .value
 
       val datasetPreviewManager =
-        new DatasetPreviewManager(db, datasetsMapper)
+        new DatasetPreviewManagerImpl(db, datasetsMapper)
 
       val preview =
         datasetPreviewManager.grantAccess(dataset, nonAdmin).await.value
@@ -191,14 +193,14 @@ class DiscoverAuthorizationRoutesSpec
     "return 403 Forbidden if preview access is requested but not accepted" in {
 
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, admin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
         .value
 
       val datasetPreviewManager =
-        new DatasetPreviewManager(db, datasetsMapper)
+        new DatasetPreviewManagerImpl(db, datasetsMapper)
 
       db.run(
           datasetPreviewManager.previewer.insertOrUpdate(
@@ -225,14 +227,14 @@ class DiscoverAuthorizationRoutesSpec
     "return 403 if preview access is rejected" in {
 
       val datasetsMapper = new DatasetsMapper(organizationTwo)
-      val datasetManager = new DatasetManager(db, admin, datasetsMapper)
+      val datasetManager = new DatasetManagerImpl(db, admin, datasetsMapper)
       val dataset = datasetManager
         .create("Test Dataset")
         .await
         .value
 
       val datasetPreviewManager =
-        new DatasetPreviewManager(db, datasetsMapper)
+        new DatasetPreviewManagerImpl(db, datasetsMapper)
 
       db.run(
           datasetPreviewManager.previewer.insertOrUpdate(
