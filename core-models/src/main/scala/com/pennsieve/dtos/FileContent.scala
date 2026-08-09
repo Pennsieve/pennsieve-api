@@ -42,12 +42,23 @@ case class FileContent(
   provenanceId: Option[UUID] = None,
   published: Boolean = false,
   publishedS3VersionId: Option[String] = None,
-  // scan_status from the per-org files table (see scan-service
-  // developer.md §7). UI uses this to render badges and disable the
-  // download button for 'infected' / 'failed'. Optional so this DTO
-  // tolerates pre-migration rows; in practice the migration sets a
-  // NOT NULL DEFAULT 'pending'.
-  scanStatus: Option[String] = None
+  // Malware-scan state from the per-org files table (see scan-service
+  // developer.md §7). Flattened here on purpose: the model groups these
+  // as File.scan to stay inside Slick's projection ceiling, but the wire
+  // format keeps them as sibling fields so existing clients reading
+  // `scanStatus` are unaffected.
+  //
+  // The UI renders scanStatus as a badge and disables download for
+  // 'infected' / 'failed'; scannedAt and scanEngine back the positive
+  // "we scanned this on X with Y" confirmation; scanSkipReason explains
+  // an 'unscanned' or 'failed' verdict.
+  //
+  // Optional so this DTO tolerates pre-migration rows; in practice the
+  // migration sets scan_status NOT NULL DEFAULT 'pending'.
+  scanStatus: Option[String] = None,
+  scannedAt: Option[ZonedDateTime] = None,
+  scanEngine: Option[String] = None,
+  scanSkipReason: Option[String] = None
 )
 
 final case class SimpleFileContent(
@@ -60,7 +71,11 @@ final case class SimpleFileContent(
   id: Int,
   filename: String,
   size: Long,
-  scanStatus: Option[String] = None
+  // See FileContent above for why these are flat on the wire.
+  scanStatus: Option[String] = None,
+  scannedAt: Option[ZonedDateTime] = None,
+  scanEngine: Option[String] = None,
+  scanSkipReason: Option[String] = None
 )
 
 object FileContent {

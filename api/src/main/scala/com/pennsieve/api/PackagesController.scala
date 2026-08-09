@@ -981,11 +981,11 @@ class PackagesController(
         // Gate on scan_status: infected/failed → 403. See scan-service
         // docs §12.3. Clean, pending, scanning, unscanned, not_required,
         // or null (pre-migration) all fall through.
-        _ <- if (PackagesController.scanStatusBlocks(file.scanStatus))
+        _ <- if (PackagesController.scanStatusBlocks(file.scan.status))
           EitherT.leftT[Future, Unit](
             Forbidden(
               Error(
-                s"file download blocked (scan_status=${file.scanStatus.getOrElse("")})"
+                s"file download blocked (scan_status=${file.scan.status.getOrElse("")})"
               )
             ): ActionResult
           )
@@ -1035,7 +1035,7 @@ class PackagesController(
           .toEitherT
           .coreErrorToActionResult()
 
-      } yield DownloadItemResponse(url.toString, file.scanStatus)
+      } yield DownloadItemResponse(url.toString, file.scan.status)
 
       override val is = result.value.map(OkResult)
     }
@@ -1089,11 +1089,11 @@ class PackagesController(
 
         // Gate on scan_status: infected/failed → 403. See scan-service
         // docs §12.3.
-        _ <- if (PackagesController.scanStatusBlocks(file.scanStatus))
+        _ <- if (PackagesController.scanStatusBlocks(file.scan.status))
           EitherT.leftT[Future, Unit](
             Forbidden(
               Error(
-                s"file download blocked (scan_status=${file.scanStatus.getOrElse("")})"
+                s"file download blocked (scan_status=${file.scan.status.getOrElse("")})"
               )
             ): ActionResult
           )

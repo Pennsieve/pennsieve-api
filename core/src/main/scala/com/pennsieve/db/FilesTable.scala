@@ -23,6 +23,7 @@ import com.pennsieve.models.{
   FileChecksum,
   FileObjectType,
   FileProcessingState,
+  FileScanInfo,
   FileState,
   FileType,
   Organization,
@@ -103,10 +104,19 @@ abstract class AbstractFilesTable[T](
   def provenanceId = column[Option[UUID]]("provenance_id")
   def published = column[Boolean]("published")
   def publishedS3VersionId = column[Option[String]]("published_s3_version_id")
-  // Read as Option to tolerate pre-migration rows / older DB images.
-  // DB default is 'pending'; see pennsieve-db-migrations
+  // Malware-scan columns, written by scan-service. Read as Option to
+  // tolerate pre-migration rows / older DB images. DB default for
+  // scan_status is 'pending'; see pennsieve-db-migrations
   // V20260420120100__add_scan_status_to_files.sql.
   def scanStatus = column[Option[String]]("scan_status")
+  def scannedAt = column[Option[ZonedDateTime]]("scanned_at")
+  def scanEngine = column[Option[String]]("scan_engine")
+  def scanSkipReason = column[Option[String]]("scan_skip_reason")
+
+  // Projected as a nested tuple so it occupies a single slot in
+  // filesSelect — see FileScanInfo for why that matters.
+  def scan = (scanStatus, scannedAt, scanEngine, scanSkipReason)
+    .mapTo[FileScanInfo]
 
   val filesSelect = (
     packageId,
@@ -127,7 +137,7 @@ abstract class AbstractFilesTable[T](
     provenanceId,
     published,
     publishedS3VersionId,
-    scanStatus,
+    scan,
     id
   )
 }

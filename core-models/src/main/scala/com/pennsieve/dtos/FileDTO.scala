@@ -55,7 +55,10 @@ object FileDTO {
         file.provenanceId,
         file.published,
         file.publishedS3VersionId,
-        file.scanStatus
+        file.scan.status,
+        file.scan.scannedAt,
+        file.scan.engine,
+        file.scan.skipReason
       )
     )
   }
@@ -79,7 +82,10 @@ object SimpleFileDTO {
         file.id,
         file.fileName,
         file.size,
-        file.scanStatus
+        file.scan.status,
+        file.scan.scannedAt,
+        file.scan.engine,
+        file.scan.skipReason
       )
     )
 }

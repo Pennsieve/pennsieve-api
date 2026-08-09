@@ -23,6 +23,42 @@ import java.util.UUID
 import io.circe.derivation._
 import io.circe.{ derivation, Decoder, Json }
 
+/**
+  * Malware-scan state for a file, written by scan-service directly to the
+  * per-organization `files` table.
+  *
+  * These four columns are grouped rather than flattened onto `File` for a
+  * mechanical reason: Slick projects a nested tuple as a single element, so
+  * `filesSelect` stays within the 22-element ceiling and `File.tupled` keeps
+  * working. Flattening all four would push `File` to 23 params, where
+  * `(this.apply _).tupled` no longer compiles (there is no Function23).
+  * Grouping also leaves room for further scan columns.
+  *
+  * `status` vocabulary: pending / scanning / clean / format_validated /
+  * unscanned / infected / failed / not_required. See
+  * scan-service/docs/developer.md §7.
+  *
+  * All fields are Option to tolerate pre-migration rows; the DB defines
+  * scan_status as NOT NULL DEFAULT 'pending', and the default here matches
+  * so inserts through filesSelect don't violate the constraint.
+  *
+  * `skipReason` is free text — it carries policy reasons ("size") but also
+  * raw scanner error strings, so it is not safe to switch on.
+  */
+final case class FileScanInfo(
+  status: Option[String] = Some("pending"),
+  scannedAt: Option[ZonedDateTime] = None,
+  engine: Option[String] = None,
+  skipReason: Option[String] = None
+)
+
+object FileScanInfo {
+  import File.zonedDateTimeDecoder
+
+  implicit val decoder: Decoder[FileScanInfo] =
+    deriveDecoder[FileScanInfo](derivation.renaming.snakeCase)
+}
+
 final case class File(
   packageId: Int,
   name: String,
@@ -42,13 +78,9 @@ final case class File(
   provenanceId: Option[UUID] = None,
   published: Boolean = false,
   publishedS3VersionId: Option[String] = None,
-  // scan_status TEXT NOT NULL DEFAULT 'pending' at the DB level.
-  // Option-typed because older read paths / older DB images may still
-  // surface NULL. Default matches the DB default so File() insertions
-  // via Slick's filesSelect projection don't violate the NOT NULL
-  // constraint. Vocabulary: pending / scanning / clean /
-  // format_validated / unscanned / infected / failed / not_required.
-  scanStatus: Option[String] = Some("pending"),
+  // Malware-scan state (scan_status, scanned_at, scan_engine,
+  // scan_skip_reason). See FileScanInfo for why these are grouped.
+  scan: FileScanInfo = FileScanInfo(),
   id: Int = 0
 ) {
 
