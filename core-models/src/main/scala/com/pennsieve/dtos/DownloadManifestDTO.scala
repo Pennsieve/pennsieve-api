@@ -25,10 +25,30 @@ case class DownloadManifestEntry(
   path: List[String] = List.empty,
   url: URL,
   size: Long,
-  fileExtension: Option[String] = None
+  fileExtension: Option[String] = None,
+  // scanStatus surfaces the per-file malware-scan verdict so clients
+  // can render an in-progress indicator (pending/scanning) or pass-
+  // through label (clean/unscanned/not_required). Files with
+  // infected/failed status never appear here — they are routed into
+  // DownloadManifestDTO.blocked instead (see scan-service docs §12.3).
+  scanStatus: Option[String] = None
 )
 
-case class DownloadManifestHeader(count: Int, size: Long)
+// DownloadManifestBlockedEntry is returned for files that were
+// excluded from `data` because of a blocking scan_status. It omits
+// the presigned URL — the client should not attempt download.
+case class DownloadManifestBlockedEntry(
+  nodeId: String,
+  fileName: String,
+  packageName: String,
+  scanStatus: String
+)
+
+case class DownloadManifestHeader(
+  count: Int,
+  size: Long,
+  blockedCount: Option[Int] = None
+)
 
 case class DownloadRequest(
   nodeIds: List[String],
@@ -36,5 +56,6 @@ case class DownloadRequest(
 )
 case class DownloadManifestDTO(
   header: DownloadManifestHeader,
-  data: List[DownloadManifestEntry]
+  data: List[DownloadManifestEntry],
+  blocked: List[DownloadManifestBlockedEntry] = List.empty
 )

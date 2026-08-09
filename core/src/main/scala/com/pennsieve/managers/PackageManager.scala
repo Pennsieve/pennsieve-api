@@ -904,7 +904,8 @@ trait PackageManager {
     fileType: FileType,
     s3Bucket: String,
     s3Key: String,
-    publishedS3VersionId: Option[String]
+    publishedS3VersionId: Option[String],
+    scanStatus: Option[String]
   )
 
   implicit lazy val packageHierarchy: GetResult[PackageHierarchy] =
@@ -925,6 +926,7 @@ trait PackageManager {
       val s3Bucket = p.<<[String]
       val s3Key = p.<<[String]
       val publishedS3VersionId = p.<<?[String]
+      val scanStatus = p.<<?[String]
 
       PackageHierarchy(
         datasetId,
@@ -942,7 +944,8 @@ trait PackageManager {
         FileType.withName(fileType),
         s3Bucket,
         s3Key,
-        publishedS3VersionId
+        publishedS3VersionId,
+        scanStatus
       )
     }
 
@@ -1005,7 +1008,8 @@ trait PackageManager {
                 f.file_type,
                 f.s3_bucket,
                 f.s3_key,
-                f.published_s3_version_id
+                f.published_s3_version_id,
+                f.scan_status
               FROM
                 parents
               JOIN "#${organization.schemaId}".files f ON
@@ -1092,7 +1096,8 @@ trait PackageManager {
                 f.file_type,
                 f.s3_bucket,
                 f.s3_key,
-                f.published_s3_version_id
+                f.published_s3_version_id,
+                f.scan_status
               FROM
                 parents
               JOIN "#${orgId}".files f ON

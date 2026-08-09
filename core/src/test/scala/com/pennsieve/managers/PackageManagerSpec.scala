@@ -1521,7 +1521,9 @@ class PackageManagerSpec extends BaseManagerSpec {
         fileType = rootFile.fileType,
         s3Bucket = rootFile.s3Bucket,
         s3Key = rootFile.s3Key,
-        publishedS3VersionId = rootFile.publishedS3VersionId
+        publishedS3VersionId = rootFile.publishedS3VersionId,
+        // files.scan_status DB default is 'pending' (migration V20260420120100)
+        scanStatus = Some("pending")
       ),
       pm.PackageHierarchy(
         datasetId = dataset.id,
@@ -1539,7 +1541,8 @@ class PackageManagerSpec extends BaseManagerSpec {
         fileType = unpublishedChildFile.fileType,
         s3Bucket = unpublishedChildFile.s3Bucket,
         s3Key = unpublishedChildFile.s3Key,
-        publishedS3VersionId = unpublishedChildFile.publishedS3VersionId
+        publishedS3VersionId = unpublishedChildFile.publishedS3VersionId,
+        scanStatus = Some("pending")
       ),
       pm.PackageHierarchy(
         datasetId = dataset.id,
@@ -1557,7 +1560,8 @@ class PackageManagerSpec extends BaseManagerSpec {
         fileType = publishedChildFile.fileType,
         s3Bucket = publishedChildFile.s3Bucket,
         s3Key = publishedChildFile.s3Key,
-        publishedS3VersionId = publishedChildFile.publishedS3VersionId
+        publishedS3VersionId = publishedChildFile.publishedS3VersionId,
+        scanStatus = Some("pending")
       )
     )
 
