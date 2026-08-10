@@ -1067,9 +1067,60 @@ class PackageManagerSpec extends BaseManagerSpec {
     val otherFile = createFile(p)
 
     val result1 =
-      pm.getPackagesPageWithFiles(dataset, None, 5, None, None).await
+      pm.getPackagesPageWithFiles(dataset, None, 5, None, None, None).await
 
     result1.value.map(_._2) shouldBe Vector(Seq(file, otherFile))
+  }
+
+  "getPackagesPageWithFiles" should "return no packages for an empty state set" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+
+    val dataset = createDataset(user = user)
+    createPackage(user = user, dataset = dataset)
+
+    val result =
+      pm.getPackagesPageWithFiles(dataset, None, 5, None, Some(Set.empty), None)
+        .await
+
+    result.value shouldBe empty
+  }
+
+  "getPackagesPage" should "return only packages in the given states" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+
+    val dataset = createDataset(user = user)
+    val ready =
+      createPackage(user = user, dataset = dataset, state = PackageState.READY)
+    val uploaded = createPackage(
+      user = user,
+      dataset = dataset,
+      state = PackageState.UPLOADED
+    )
+    createPackage(user = user, dataset = dataset, state = PackageState.DELETED)
+
+    val filtered = pm
+      .getPackagesPage(
+        dataset,
+        None,
+        10,
+        None,
+        Some(Set(PackageState.READY, PackageState.UPLOADED)),
+        None
+      )
+      .await
+      .value
+
+    filtered.map(_.id) should contain theSameElementsAs Seq(
+      ready.id,
+      uploaded.id
+    )
+
+    val unfiltered =
+      pm.getPackagesPage(dataset, None, 10, None, None, None).await.value
+
+    unfiltered should have size 3
   }
 
   behavior of "package export"
