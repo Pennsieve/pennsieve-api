@@ -293,8 +293,8 @@ object DataSetsController {
   val DatasetChildrenMaxLimit: Int = 500
   val DatasetChildrenDefaultOffset: Int = 0
 
-  // Package states excluded by default from the packages endpoint unless the
-  // caller explicitly requests them via the `state` query parameter.
+  // Package states excluded by default from the getPackages endpoint unless
+  // the caller explicitly requests them via the `state` query parameter.
   val DefaultExcludedPackageStates: Set[PackageState] =
     Set(PackageState.DELETING, PackageState.DELETED, PackageState.RESTORING)
 }
