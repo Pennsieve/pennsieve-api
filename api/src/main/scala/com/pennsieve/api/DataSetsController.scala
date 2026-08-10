@@ -295,7 +295,7 @@ object DataSetsController {
 
   // Package states excluded by default from the packages endpoint unless the
   // caller explicitly requests them via the `state` query parameter.
-  val DefaultExcludedStates: Set[PackageState] =
+  val DefaultExcludedPackageStates: Set[PackageState] =
     Set(PackageState.DELETING, PackageState.DELETED, PackageState.RESTORING)
 }
 
@@ -2668,7 +2668,7 @@ class DataSetsController(
           .description(
             "optional; repeat to return only packages in the given states. " +
               "If omitted, packages in the following states are excluded: " +
-              DataSetsController.DefaultExcludedStates.toList
+              DataSetsController.DefaultExcludedPackageStates.toList
                 .map(_.entryName)
                 .sorted
                 .mkString(", ")
@@ -2750,7 +2750,7 @@ class DataSetsController(
 
           includedStates <- listParamT[PackageState]("state").map {
             case Nil =>
-              PackageState.values.toSet -- DataSetsController.DefaultExcludedStates
+              PackageState.values.toSet -- DataSetsController.DefaultExcludedPackageStates
             case requestedStates => requestedStates.toSet
           }
 
