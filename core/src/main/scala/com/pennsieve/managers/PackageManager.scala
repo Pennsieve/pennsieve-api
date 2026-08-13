@@ -705,6 +705,7 @@ trait PackageManager {
     startAtId: Option[Int],
     pageSize: Int,
     filterType: Option[Set[PackageType]],
+    filterState: Option[Set[PackageState]],
     filename: Option[String],
     withSourceFiles: Boolean
   ): SQLActionBuilder = {
@@ -717,6 +718,9 @@ trait PackageManager {
 
     val stringFilterTypes: Option[List[String]] =
       filterType.map(_.toList.map(_.entryName))
+
+    val stringFilterStates: Option[List[String]] =
+      filterState.map(_.toList.map(_.entryName))
 
     // If we are filtering by filename we need to use an inner join to exclude
     // other packages.
@@ -763,7 +767,9 @@ trait PackageManager {
        """.opt(filterFiles)(q => q) ++ sql"""
          WHERE p.id >= ${startAtId.getOrElse(0)}
          AND p.dataset_id = ${dataset.id}
-       """.opt(stringFilterTypes)(t => sql"AND p.type = any($t)") ++ sql"""
+       """
+      .opt(stringFilterStates)(s => sql"AND p.state = any($s)")
+      .opt(stringFilterTypes)(t => sql"AND p.type = any($t)") ++ sql"""
          ORDER BY p.id
          LIMIT ${pageSize + 1}
        ) page ON p.id = page.id
@@ -816,6 +822,7 @@ trait PackageManager {
     startAtId: Option[Int],
     pageSize: Int,
     filterType: Option[Set[PackageType]],
+    filterState: Option[Set[PackageState]],
     filename: Option[String]
   )(implicit
     ec: ExecutionContext
@@ -826,6 +833,7 @@ trait PackageManager {
           startAtId,
           pageSize,
           filterType,
+          filterState,
           filename,
           withSourceFiles = true
         ).as[(Package, Seq[File])]
@@ -869,6 +877,7 @@ trait PackageManager {
     startAtId: Option[Int],
     pageSize: Int,
     filterType: Option[Set[PackageType]],
+    filterState: Option[Set[PackageState]],
     filename: Option[String]
   )(implicit
     ec: ExecutionContext
@@ -879,6 +888,7 @@ trait PackageManager {
           startAtId,
           pageSize,
           filterType,
+          filterState,
           filename,
           withSourceFiles = false
         ).as[(Package, Seq[File])]

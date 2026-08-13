@@ -4542,6 +4542,133 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("exclude deleting, deleted, and restoring packages by default") {
+    val dataset = createDataSet("dataset-with-mixed-state-packages")
+    val readyPackage = createPackage(dataset, "ready-package")
+
+    createPackage(dataset, "deleting-package", state = PackageState.DELETING)
+    createPackage(dataset, "deleted-package", state = PackageState.DELETED)
+    createPackage(dataset, "restoring-package", state = PackageState.RESTORING)
+
+    val expectedPackagesPage: PackagesPage =
+      PackagesPage(
+        packages = List(ExtendedPackageDTO.simple(readyPackage, dataset)),
+        cursor = None
+      )
+
+    get(
+      s"/${dataset.nodeId}/packages",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+      parsedBody.extract[PackagesPage] shouldBe expectedPackagesPage
+    }
+  }
+
+  test("return only packages in the requested state") {
+    val dataset = createDataSet("dataset-with-a-deleted-package")
+    createPackage(dataset, "ready-package")
+    val deletedPackage =
+      createPackage(dataset, "deleted-package", state = PackageState.DELETED)
+
+    val expectedPackagesPage: PackagesPage =
+      PackagesPage(
+        packages = List(ExtendedPackageDTO.simple(deletedPackage, dataset)),
+        cursor = None
+      )
+
+    get(
+      s"/${dataset.nodeId}/packages?state=DELETED",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+      parsedBody.extract[PackagesPage] shouldBe expectedPackagesPage
+    }
+  }
+
+  test("return packages matching any of multiple requested states") {
+    val dataset = createDataSet("dataset-with-multiple-states")
+    val readyPackage = createPackage(dataset, "ready-package")
+    val uploadedPackage =
+      createPackage(dataset, "uploaded-package", state = PackageState.UPLOADED)
+
+    // Should be excluded by the requested states
+    createPackage(dataset, "deleted-package", state = PackageState.DELETED)
+
+    val expectedPackagesPage: PackagesPage =
+      PackagesPage(
+        packages = List(
+          ExtendedPackageDTO.simple(readyPackage, dataset),
+          ExtendedPackageDTO.simple(uploadedPackage, dataset)
+        ),
+        cursor = None
+      )
+
+    get(
+      s"/${dataset.nodeId}/packages?state=READY&state=UPLOADED&pageSize=5",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+      parsedBody.extract[PackagesPage] shouldBe expectedPackagesPage
+    }
+  }
+
+  test("return packages for a requested state ignoring case") {
+    val dataset = createDataSet("dataset-with-a-lowercase-state-filter")
+    createPackage(dataset, "ready-package")
+    val deletedPackage =
+      createPackage(dataset, "deleted-package", state = PackageState.DELETED)
+
+    val expectedPackagesPage: PackagesPage =
+      PackagesPage(
+        packages = List(ExtendedPackageDTO.simple(deletedPackage, dataset)),
+        cursor = None
+      )
+
+    get(
+      s"/${dataset.nodeId}/packages?state=deleted",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+      parsedBody.extract[PackagesPage] shouldBe expectedPackagesPage
+    }
+  }
+
+  test("return a package in a requested state including source files") {
+    val dataset = createDataSet("dataset-deleted-with-sources")
+    createPackage(dataset, "ready-package")
+    val deletedPackage =
+      createPackage(dataset, "deleted-package", state = PackageState.DELETED)
+
+    val expectedPackage = ExtendedPackageDTO.simple(
+      deletedPackage,
+      dataset,
+      objects = createObjects(deletedPackage)
+    )
+
+    val expectedPackagesPage: PackagesPage =
+      PackagesPage(packages = List(expectedPackage), cursor = None)
+
+    get(
+      s"/${dataset.nodeId}/packages?state=DELETED&includeSourceFiles=true",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+      parsedBody.extract[PackagesPage] shouldBe expectedPackagesPage
+    }
+  }
+
+  test("return bad request for an invalid package state") {
+    get(
+      s"/unused-dataset-id/packages?state=fakestate",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 400
+      (parsedBody \ "message")
+        .extract[String] should include("invalid parameter state")
+    }
+  }
+
   test("get multiple packages by id and node id") {
     val dataset = createDataSet("My Dataset")
 

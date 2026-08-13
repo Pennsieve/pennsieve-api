@@ -292,6 +292,11 @@ object DataSetsController {
   val DatasetChildrenDefaultLimit: Int = 100
   val DatasetChildrenMaxLimit: Int = 500
   val DatasetChildrenDefaultOffset: Int = 0
+
+  // Package states excluded by default from the getPackages endpoint unless
+  // the caller explicitly requests them via the `state` query parameter.
+  val DefaultExcludedPackageStates: Set[PackageState] =
+    Set(PackageState.DELETING, PackageState.DELETED, PackageState.RESTORING)
 }
 
 class DataSetsController(
@@ -350,6 +355,9 @@ class DataSetsController(
 
   implicit val roleParam: Param[Role] =
     Param.enumParam(Role)
+
+  implicit val packageStateParam: Param[PackageState] =
+    Param.enumParam(PackageState)
 
   implicit val localDateParam: Param[LocalDate] =
     Param[String]
@@ -2655,7 +2663,17 @@ class DataSetsController(
             "returns only the packages that have a file matching the filename"
           ),
         queryParam[Option[Set[String]]]("types")
-          .description("optional flag to include only packages of this type")
+          .description("optional flag to include only packages of this type"),
+        queryParam[String]("state").optional
+          .description(
+            "optional; repeat to return only packages in the given states. " +
+              "If omitted, packages in the following states are excluded: " +
+              DataSetsController.DefaultExcludedPackageStates.toList
+                .map(_.entryName)
+                .sorted
+                .mkString(", ")
+          )
+          .allowableValues(PackageState.values.map(_.entryName))
     ))
   }
 
@@ -2730,6 +2748,12 @@ class DataSetsController(
 
           maybePackageTypes <- optParamT[Set[PackageType]]("types")
 
+          includedStates <- listParamT[PackageState]("state").map {
+            case Nil =>
+              PackageState.values.toSet -- DataSetsController.DefaultExcludedPackageStates
+            case requestedStates => requestedStates.toSet
+          }
+
           pageSize <- {
             paramT[Int]("pageSize", default = DefaultPageSize)
               .subflatMap { size =>
@@ -2773,6 +2797,7 @@ class DataSetsController(
                   startAtId,
                   pageSize,
                   maybePackageTypes,
+                  Some(includedStates),
                   filename
                 )
             } else {
@@ -2782,6 +2807,7 @@ class DataSetsController(
                   startAtId,
                   pageSize,
                   maybePackageTypes,
+                  Some(includedStates),
                   filename
                 )
                 .map(_.toSeq)
