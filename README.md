@@ -89,4 +89,13 @@ Individual services are deployed to production via Jenkins service-deploy jobs. 
 job to deploy _all_ services to production and (optionally) run the Postgres
 migrations.
 
-rev. 2024/07/31
+## Update documentation
+
+We have an API Reference section on https://docs.pennsieve.io, managed by https://readme.io. This service's API reference is mantained manually rather than automatically.
+The steps to update the API Reference are:
+1. Open https://api.pennsieve.io/api-docs/swagger.json and download the file to a scratch directory as `swagger.json`.
+2. This generated file will have some validation errors that readme.io will not accept. In your scratch directory run `./<path-to-this-repo>/fix-swagger.py swagger.json`
+By default this will output `swagger.fixed.json` with those validation errors fixed. See `fix-swagger.py -h` for other options.
+3. Go to readme.io > Api Reference and upload the fixed file to replace the current documentation.
+
+rev. 2026/08/13
