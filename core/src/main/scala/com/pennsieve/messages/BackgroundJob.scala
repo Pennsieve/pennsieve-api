@@ -17,7 +17,7 @@
 package com.pennsieve.messages
 
 import com.pennsieve.audit.middleware.TraceId
-import com.pennsieve.models.ChangelogEventName
+import com.pennsieve.models.{ ChangelogEventName, PackageState }
 import io.circe.generic.extras.semiauto.{
   deriveUnwrappedDecoder,
   deriveUnwrappedEncoder
@@ -61,7 +61,11 @@ case class DeletePackageJob(
   organizationId: Int,
   userId: String,
   traceId: TraceId,
-  id: String = UUID.randomUUID().toString
+  id: String = UUID.randomUUID().toString,
+  // state of the package before it was marked DELETING; storage is only
+  // decremented by the delete job when this is READY. None for messages
+  // enqueued before storage decrements moved into the job.
+  originalState: Option[PackageState] = None
 ) extends CatalogDeleteJob
 
 case class DeleteDatasetJob(
