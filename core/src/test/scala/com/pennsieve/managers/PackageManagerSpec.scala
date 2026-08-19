@@ -1314,6 +1314,18 @@ class PackageManagerSpec extends BaseManagerSpec {
 
     deletePackage(user = user, pkg = rootFolder)
 
+    // The delete endpoint only marks the root package; descendants are soft
+    // deleted in batches by the delete job. Run that step here.
+    val descendantIds =
+      database.run(packagesMapper.descendantIdsForDeletion(rootFolder)).await
+    descendantIds.toSet shouldBe Set(
+      childFolder.id,
+      grandChildFile.id,
+      grandChildFile2.id,
+      childFile.id
+    )
+    database.run(packagesMapper.softDeletePackages(descendantIds)).await
+
     // Fetch all packages directly (bypassing the DELETING filter)
     val allPackages = database
       .run(
@@ -1406,8 +1418,12 @@ class PackageManagerSpec extends BaseManagerSpec {
       .await
     val childFirstDeletedName = childAfterFirstDelete.name
 
-    // Now delete the parent folder
+    // Now delete the parent folder and run the delete job's descendant
+    // soft-delete step; the batch update must skip the already-DELETING child
     deletePackage(user = user, pkg = folder)
+    val descendantIds =
+      database.run(packagesMapper.descendantIdsForDeletion(folder)).await
+    database.run(packagesMapper.softDeletePackages(descendantIds)).await
 
     // The independently-deleted child should NOT be double-renamed
     val childAfterParentDelete = database
