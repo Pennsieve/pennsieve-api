@@ -28,6 +28,7 @@ import com.pennsieve.messages.DeletePackageJob
 import com.pennsieve.models.PackageState.{ DELETING, READY }
 import com.pennsieve.models.PackageType.{ Collection, PDF }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
+import com.pennsieve.traits.PostgresProfile.api._
 import org.apache.http.impl.client.HttpClients
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
