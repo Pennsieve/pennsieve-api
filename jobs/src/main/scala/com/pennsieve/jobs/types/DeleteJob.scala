@@ -210,6 +210,8 @@ class DeleteJob(
 
   implicit val tier: Tier[DeleteJob] = Tier[DeleteJob]
 
+  val SoftDeleteBatchSize: Int = 500
+
   // var so we can override in tests
   implicit var autoSession: DBSession = AutoSession
 
@@ -217,7 +219,7 @@ class DeleteJob(
     packageTable: PackagesMapper
   ): Flow[CatalogDeleteJob, Either[CoreError, Set[Int]], NotUsed] =
     Flow[CatalogDeleteJob].mapAsync(1) {
-      case DeletePackageJob(packageId, organizationId, userId, traceId, _) =>
+      case DeletePackageJob(packageId, organizationId, userId, traceId, _, _) =>
         log.tierContext.info(s"Attempting to delete package")(
           PackageDeleteContext(
             organizationId = organizationId,
@@ -238,8 +240,22 @@ class DeleteJob(
             )
             .whenNone[CoreError](NotFound(s"Package ($packageId)"))
 
-          descendants <- packageTable.descendants(pkg, db).toEitherT
-        } yield descendants + pkg.id
+          descendants <- db
+            .run(packageTable.descendantIdsForDeletion(pkg))
+            .toEitherT
+
+          // Soft delete descendants in small transactions so locks are held
+          // briefly, instead of one transaction over the whole subtree.
+          // Re-running is a no-op for packages already marked DELETING.
+          _ <- descendants
+            .grouped(SoftDeleteBatchSize)
+            .toList
+            .traverse(
+              batch =>
+                db.run(packageTable.softDeletePackages(batch).transactionally)
+                  .toEitherT
+            )
+        } yield descendants.toSet + pkg.id
 
         result.value
       case DeleteDatasetJob(datasetId, organizationId, userId, traceId, _) =>
@@ -624,13 +640,57 @@ class DeleteJob(
     packageTable: PackagesMapper
   ): Future[DeleteResult] =
     job match {
-      case DeletePackageJob(packageId, _, _, traceId, _) =>
-        db.run(
-            packageTable
-              .filter(_.id === packageId)
-              .map(_.state)
-              .update(PackageState.DELETED)
-          )
+      case DeletePackageJob(packageId, _, _, traceId, _, originalState) =>
+        val organization = packageTable.organization
+        val packageStorageMapper = new PackageStorageMapper(organization)
+        val datasetStorageMapper = new DatasetStorageMapper(organization)
+
+        def decrementStorage(pkg: Package): DBIO[Unit] =
+          for {
+            size <- packageStorageMapper
+              .filter(_.packageId === pkg.id)
+              .map(_.size)
+              .result
+              .headOption
+              .map(_.flatten.getOrElse(0L))
+
+            _ <- if (size == 0L) DBIO.successful(())
+            else
+              for {
+                _ <- packageStorageMapper.incrementPackage(pkg.id, -size)
+                _ <- packageStorageMapper.incrementPackageAncestors(pkg, -size)
+                _ <- datasetStorageMapper
+                  .incrementDataset(pkg.datasetId, -size)
+                _ <- OrganizationStorageMapper
+                  .incrementOrganization(organization.id, -size)
+              } yield ()
+          } yield ()
+
+        // Flipping DELETING -> DELETED is guarded on the current state so a
+        // re-delivered job cannot decrement storage a second time. Storage is
+        // only decremented for packages that were READY when the delete was
+        // requested (legacy messages without originalState were already
+        // decremented by the API).
+        val action = for {
+          maybePkg <- packageTable
+            .filter(_.id === packageId)
+            .result
+            .headOption
+
+          flipped <- packageTable
+            .filter(_.id === packageId)
+            .filter(_.state === (PackageState.DELETING: PackageState))
+            .map(_.state)
+            .update(PackageState.DELETED)
+
+          _ <- (maybePkg, originalState) match {
+            case (Some(pkg), Some(PackageState.READY)) if flipped == 1 =>
+              decrementStorage(pkg)
+            case _ => DBIO.successful(())
+          }
+        } yield flipped
+
+        db.run(action.transactionally)
           .map {
             case 1 =>
               PackageDeleteResult(

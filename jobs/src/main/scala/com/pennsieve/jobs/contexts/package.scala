@@ -54,7 +54,7 @@ package object contexts {
           traceId = traceId
         )
 
-      case DeletePackageJob(packageId, orgId, userId, traceId, _) =>
+      case DeletePackageJob(packageId, orgId, userId, traceId, _, _) =>
         PackageDeleteContext(
           organizationId = orgId,
           userId = userId,

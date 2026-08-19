@@ -23,10 +23,12 @@ import com.pennsieve.helpers.{
   MockAuditLogger,
   MockSQSClient
 }
+import com.pennsieve.db.PackagesMapper
 import com.pennsieve.messages.DeletePackageJob
 import com.pennsieve.models.PackageState.{ DELETING, READY }
 import com.pennsieve.models.PackageType.{ Collection, PDF }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
+import com.pennsieve.traits.PostgresProfile.api._
 import org.apache.http.impl.client.HttpClients
 import org.json4s.jackson.Serialization.write
 import org.scalatest.EitherValues._
@@ -595,6 +597,124 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
       compactRender(parsedBody \ "success") should include(collection.nodeId)
     }
+  }
+
+  test("deleting a package twice is idempotent and enqueues a single job") {
+    val dataset = createDataSet("My DataSet")
+    val pkg = packageManager
+      .create("Foo", PDF, READY, dataset, Some(loggedInUser.id), None)
+      .await
+      .value
+    val deleteReq = write(DeleteRequest(List(pkg.nodeId)))
+
+    val queue = insecureContainer.sqs_queue_v2
+    val messagesBefore =
+      MockSQSClient.sentMessages.getOrElse(queue, List.empty).size
+
+    postJson(
+      s"/delete",
+      deleteReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      compactRender(parsedBody \ "success") should include(pkg.nodeId)
+    }
+
+    val packagesMapper = new PackagesMapper(loggedInOrganization)
+    val renamedAfterFirst = insecureContainer.db
+      .run(packagesMapper.get(pkg.id).result.head)
+      .await
+      .name
+
+    postJson(
+      s"/delete",
+      deleteReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      compactRender(parsedBody \ "success") should include(pkg.nodeId)
+      compactRender(parsedBody \ "failures") should not include (pkg.nodeId)
+    }
+
+    val afterSecond = insecureContainer.db
+      .run(packagesMapper.get(pkg.id).result.head)
+      .await
+    afterSecond.state should equal(DELETING)
+    afterSecond.name should equal(renamedAfterFirst)
+
+    val messages = MockSQSClient.sentMessages.getOrElse(queue, List.empty)
+    (messages.size - messagesBefore) should equal(1)
+    messages.head should include("originalState")
+    messages.head should include("READY")
+  }
+
+  test("deleting a collection defers soft deleting descendants to the job") {
+    val dataset = createDataSet("My DataSet")
+    val collection = packageManager
+      .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
+      .await
+      .value
+    val child = packageManager
+      .create(
+        "Bar",
+        PDF,
+        READY,
+        dataset,
+        Some(loggedInUser.id),
+        Some(collection)
+      )
+      .await
+      .value
+
+    val deleteReq = write(DeleteRequest(List(collection.nodeId)))
+
+    postJson(
+      s"/delete",
+      deleteReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      compactRender(parsedBody \ "success") should include(collection.nodeId)
+    }
+
+    val packagesMapper = new PackagesMapper(loggedInOrganization)
+    insecureContainer.db
+      .run(packagesMapper.get(collection.id).result.head)
+      .await
+      .state should equal(DELETING)
+    insecureContainer.db
+      .run(packagesMapper.get(child.id).result.head)
+      .await
+      .state should equal(READY)
+  }
+
+  test("deleting a package does not synchronously decrement storage") {
+    val dataset = createDataSet("My DataSet")
+    val pkg = packageManager
+      .create("Foo", PDF, READY, dataset, Some(loggedInUser.id), None)
+      .await
+      .value
+    secureContainer.storageManager
+      .incrementStorage(spackages, 1000, pkg.id)
+      .await
+
+    val deleteReq = write(DeleteRequest(List(pkg.nodeId)))
+
+    postJson(
+      s"/delete",
+      deleteReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    val datasetStorage = secureContainer.storageManager
+      .getStorage(sdatasets, List(dataset.id))
+      .await
+      .value
+      .get(dataset.id)
+      .flatten
+    datasetStorage should equal(Some(1000))
   }
 
   test("fails to delete a dataset") {

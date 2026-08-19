@@ -21,6 +21,7 @@ import cats.implicits._
 import com.pennsieve.db.PackagesMapper
 import com.pennsieve.domain.{ NameCheckError, NotFound, PredicateError }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
+import com.pennsieve.messages.DeletePackageJob
 import com.pennsieve.models.{
   CollectionUpload,
   FileType,
@@ -669,7 +670,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     result should contain noneOf (childTwo, childThree, childFour, grandChildTwo, grandChildThree, grandChildFour, parentTwo)
   }
 
-  "deleting a package" should "decrement storage" in {
+  "deleting a package" should "mark it DELETING and defer storage decrements to the delete job" in {
     val user = createUser()
     val pm = packageManager(user = user)
     val dataset = createDataset(user = user)
@@ -677,23 +678,22 @@ class PackageManagerSpec extends BaseManagerSpec {
     val file = createFile(container = p, user = user, size = 12345)
     val storageMnger = storageManager(testOrganization)
     storageMnger.incrementStorage(spackages, file.size, p.id).await
-    val packageStorageBefore = storageMnger
-      .getStorage(spackages, List(p.id))
-      .await
-      .value
-      .get(p.id)
-      .flatten
-    val datasetStorageBefore = storageMnger
-      .getStorage(sdatasets, List(dataset.id))
-      .await
-      .value
-      .get(dataset.id)
-      .flatten
-    assert(packageStorageBefore == Some(file.size))
-    assert(datasetStorageBefore == Some(file.size))
 
-    pm.delete(TraceId("ds"), p)(storageMnger).await
+    val job = pm.delete(TraceId("ds"), p).await.value
 
+    job match {
+      case deleteJob: DeletePackageJob =>
+        assert(deleteJob.packageId == p.id)
+        assert(deleteJob.originalState == Some(PackageState.READY))
+      case other => fail(s"expected DeletePackageJob, got $other")
+    }
+
+    val packagesMapper = new PackagesMapper(testOrganization)
+    val updated = database.run(packagesMapper.get(p.id).result.head).await
+    assert(updated.state == PackageState.DELETING)
+    assert(updated.name == "__DELETED__" + p.nodeId + "_" + p.name)
+
+    // storage decrements now happen in the delete job, not here
     val packageStorageAfter = storageMnger
       .getStorage(spackages, List(p.id))
       .await
@@ -706,89 +706,54 @@ class PackageManagerSpec extends BaseManagerSpec {
       .value
       .get(dataset.id)
       .flatten
-    assert(packageStorageAfter == Some(0))
-    assert(datasetStorageAfter == Some(0))
+    assert(packageStorageAfter == Some(file.size))
+    assert(datasetStorageAfter == Some(file.size))
   }
 
-  "deleting a package" should "decrement storage from nested packages" in {
+  "deleting a package" should "not rename it twice when already DELETING" in {
     val user = createUser()
     val pm = packageManager(user = user)
     val dataset = createDataset(user = user)
-    val storageMnger = storageManager(testOrganization)
+    val p = createPackage(user = user, dataset = dataset, `type` = Slide)
 
-    /**
-      * Package structure looks like:
-      *
-      * ├── parent (155B)
-      * |   ├── childOne (155B)
-      * |   |   ├── grandChildOne (55B)
-      * |   |   └── grandChildTwo (100B)
-      * └── sibling (1000B)
-      */
+    val packagesMapper = new PackagesMapper(testOrganization)
+
+    pm.delete(TraceId("ds"), p).await.value
+    val afterFirst = database.run(packagesMapper.get(p.id).result.head).await
+
+    pm.delete(TraceId("ds"), p).await.value
+    val afterSecond = database.run(packagesMapper.get(p.id).result.head).await
+
+    assert(afterFirst.state == PackageState.DELETING)
+    assert(afterSecond.name == afterFirst.name)
+  }
+
+  "deleting a collection" should "not synchronously soft delete its descendants" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+    val dataset = createDataset(user = user)
+
     val parent = createPackage(user = user, dataset = dataset)
-
-    val childOne =
+    val child =
       createPackage(user = user, parent = Some(parent), dataset = dataset)
-
-    val grandChildOne =
+    val grandChild =
       createPackage(
         user = user,
-        parent = Some(childOne),
+        parent = Some(child),
         dataset = dataset,
         `type` = Slide
       )
-    val grandChildOneFile =
-      createFile(container = grandChildOne, user = user, size = 55)
 
-    val grandChildTwo =
-      createPackage(
-        user = user,
-        parent = Some(childOne),
-        dataset = dataset,
-        `type` = Slide
-      )
-    val grandChildTwoFile =
-      createFile(container = grandChildTwo, user = user, size = 100)
+    pm.delete(TraceId("ds"), parent).await.value
 
-    val sibling = createPackage(user = user, dataset = dataset, `type` = Slide)
-    val siblingFile = createFile(container = sibling, user = user, size = 1000)
+    val packagesMapper = new PackagesMapper(testOrganization)
+    def stateOf(id: Int): PackageState =
+      database.run(packagesMapper.get(id).result.head).await.state
 
-    List(parent, childOne, grandChildOne, grandChildTwo, sibling)
-      .traverse(storageMnger.setPackageStorage)
-      .value
-      .await
-
-    val packageStorageBefore = storageMnger
-      .getStorage(spackages, List(parent.id))
-      .await
-      .value
-      .get(parent.id)
-      .flatten
-    val datasetStorageBefore = storageMnger
-      .getStorage(sdatasets, List(dataset.id))
-      .await
-      .value
-      .get(dataset.id)
-      .flatten
-    assert(packageStorageBefore == Some(155))
-    assert(datasetStorageBefore == Some(1155))
-
-    pm.delete(TraceId("ds"), childOne)(storageMnger).await
-
-    val packageStorageAfter = storageMnger
-      .getStorage(spackages, List(parent.id))
-      .await
-      .value
-      .get(parent.id)
-      .flatten
-    val datasetStorageAfter = storageMnger
-      .getStorage(sdatasets, List(dataset.id))
-      .await
-      .value
-      .get(dataset.id)
-      .flatten
-    assert(packageStorageAfter == Some(0))
-    assert(datasetStorageAfter == Some(1000))
+    assert(stateOf(parent.id) == PackageState.DELETING)
+    // descendants are flipped by the async delete job in small batches
+    assert(stateOf(child.id) == PackageState.READY)
+    assert(stateOf(grandChild.id) == PackageState.READY)
   }
 
   "creating packages with duplicate node ids" should "fail" in {
@@ -1349,6 +1314,18 @@ class PackageManagerSpec extends BaseManagerSpec {
 
     deletePackage(user = user, pkg = rootFolder)
 
+    // The delete endpoint only marks the root package; descendants are soft
+    // deleted in batches by the delete job. Run that step here.
+    val descendantIds =
+      database.run(packagesMapper.descendantIdsForDeletion(rootFolder)).await
+    descendantIds.toSet shouldBe Set(
+      childFolder.id,
+      grandChildFile.id,
+      grandChildFile2.id,
+      childFile.id
+    )
+    database.run(packagesMapper.softDeletePackages(descendantIds)).await
+
     // Fetch all packages directly (bypassing the DELETING filter)
     val allPackages = database
       .run(
@@ -1441,8 +1418,12 @@ class PackageManagerSpec extends BaseManagerSpec {
       .await
     val childFirstDeletedName = childAfterFirstDelete.name
 
-    // Now delete the parent folder
+    // Now delete the parent folder and run the delete job's descendant
+    // soft-delete step; the batch update must skip the already-DELETING child
     deletePackage(user = user, pkg = folder)
+    val descendantIds =
+      database.run(packagesMapper.descendantIdsForDeletion(folder)).await
+    database.run(packagesMapper.softDeletePackages(descendantIds)).await
 
     // The independently-deleted child should NOT be double-renamed
     val childAfterParentDelete = database

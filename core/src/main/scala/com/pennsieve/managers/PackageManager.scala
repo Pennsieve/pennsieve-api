@@ -28,12 +28,8 @@ import com.pennsieve.core.utilities.{ checkOrErrorT, FutureEitherHelpers }
 import com.pennsieve.models.Utilities.isNameValid
 import com.pennsieve.db._
 import com.pennsieve.domain._
-import com.pennsieve.domain.StorageAggregation.{
-  spackages => PackageStorageAggregationKey
-}
 import com.pennsieve.messages.{ BackgroundJob, DeletePackageJob }
 import com.pennsieve.models.FileObjectType.Source
-import com.pennsieve.models.PackageState.READY
 import com.pennsieve.models.PackageType.Collection
 import com.pennsieve.models.{
   CollectionUpload,
@@ -366,6 +362,27 @@ trait PackageManager {
     db.run(query).whenNone(NotFound(s"Package ($nodeId)"))
   }
 
+  /**
+    * Fetch a package and its dataset by node id, including packages already
+    * marked DELETING. Used by the delete endpoint so that client retries of
+    * an in-flight delete can be treated as idempotent successes instead of
+    * stacking competing delete transactions.
+    */
+  def getPackageAndDatasetByNodeIdForDeletion(
+    nodeId: String
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, (Package, Dataset)] = {
+    val query = packagesMapper
+      .filter(_.state =!= (PackageState.DELETED: PackageState))
+      .filter(_.nodeId === nodeId)
+      .join(datasetsMapper)
+      .on(_.datasetId === _.id)
+      .result
+      .headOption
+    db.run(query).whenNone(NotFound(s"Package ($nodeId)"))
+  }
+
   def getByImportId(
     dataset: Dataset,
     importId: UUID
@@ -595,23 +612,16 @@ trait PackageManager {
   }
 
   /**
-    * Soft delete a package. Returns a DeleteJob to be scheduled that will
-    * hard-delete the package and all assets.
+    * Soft delete a package: mark it DELETING in a single small transaction.
+    * Returns a DeleteJob to be scheduled that will soft delete descendants,
+    * decrement storage counts, and hard-delete the package and all assets.
     *
     * @param traceId The trace ID from the endpoint that initiated the deletion
-    * @param p The Package to delete
-    * @param storageManager An StorageManager instance used to immediately
-    *   decrement storage counts for the package.  This is passed directly
-    *   (instead of living on the class) so that the the PackageManager can, in
-    *   general, be used without a dependency on the storage manager (eg for
-    *   discover-publish). TODO: this separation may no longer be required now
-    *   that storage lives in Postgres, not Redis
+    * @param pkg The Package to delete
     */
   def delete(
     traceId: TraceId,
     pkg: Package
-  )(
-    storageManager: StorageServiceClientTrait
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, BackgroundJob] = {
@@ -622,42 +632,31 @@ trait PackageManager {
       // is deleted, and the delete job removes one of the source assets before
       // it is copied to the publish bucket.
       _ <- datasetManager.assertNotLocked(pkg.datasetId)
-      softDeleteAction = for {
-        _ <- packagesMapper
-          .get(pkg.id)
-          .map(_.state)
-          .update(PackageState.DELETING)
-        _ <- packagesMapper
-          .get(pkg.id)
-          .map(_.name)
-          .update("__DELETED__" + pkg.nodeId + "_" + pkg.name)
-        _ <- if (pkg.`type` == Collection)
-          packagesMapper.softDeleteDescendants(pkg)
-        else DBIO.successful(0)
-      } yield ()
 
-      _ <- db.run(softDeleteAction.transactionally).toEitherT
-
-      amount <- storageManager
-        .getStorage(PackageStorageAggregationKey, List(pkg.id))
-        .map(_.get(pkg.id).flatten)
-
-      _ <- amount.traverse { a =>
-        // TODO: this state check is wrong. Should be allowed for all states after UPLOADED?
-        if (pkg.state == READY) {
-          storageManager.incrementStorage(
-            PackageStorageAggregationKey,
-            -a,
-            pkg.id
-          )
-        } else {
-          Either
-            .right[CoreError, Map[String, Long]](Map.empty)
-            .toEitherT[Future]
-        }
-      }
+      // Guarded on state so a concurrent delete of the same package cannot
+      // rename it twice
+      _ <- db
+        .run(
+          packagesMapper
+            .get(pkg.id)
+            .filter(_.state =!= (PackageState.DELETING: PackageState))
+            .map(p => (p.state, p.name))
+            .update(
+              (
+                PackageState.DELETING,
+                "__DELETED__" + pkg.nodeId + "_" + pkg.name
+              )
+            )
+        )
+        .toEitherT
     } yield
-      DeletePackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId): BackgroundJob
+      DeletePackageJob(
+        pkg.id,
+        organization.id,
+        actor.nodeId,
+        traceId = traceId,
+        originalState = Some(pkg.state)
+      ): BackgroundJob
 
   }
 
