@@ -333,6 +333,9 @@ class PackagesMapper(val organization: Organization)
 
   // Set a batch of packages to DELETING. Packages already in the DELETING or
   // DELETED state are left untouched so re-running is a no-op.
+  // `ids` is interpolated raw (#$) rather than bound: they are trusted Ints
+  // read back from descendantIdsForDeletion, never user input, and binding
+  // each id would cost one parameter per package.
   def softDeletePackages(ids: Seq[Int]): DBIO[Int] =
     if (ids.isEmpty) DBIO.successful(0)
     else
