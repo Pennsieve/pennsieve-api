@@ -451,6 +451,78 @@ class DeleteJobSpec
       storageOf(sdatasets, dataset.id) should be(Some(1000))
   }
 
+  it should "treat a re-delivered job for an already DELETED package as success" in {
+    _ =>
+      val user = createUser(email = "deleter@test.com")
+      val dataset = createDataset(user = user)
+      val pkg = createPackage(
+        user = user,
+        dataset = dataset,
+        state = PackageState.DELETED,
+        `type` = Slide
+      )
+
+      val msg: CatalogDeleteJob =
+        DeletePackageJob(
+          packageId = pkg.id,
+          organizationId = testOrganization.id,
+          userId = user.nodeId,
+          traceId = traceId,
+          originalState = Some(PackageState.READY)
+        )
+
+      assert(deleteJob.creditDeleteJob(msg).await.isRight)
+
+      database
+        .run(packageTable.get(pkg.id).result.head)
+        .await
+        .state should be(PackageState.DELETED)
+  }
+
+  it should "fail the job when the package is not in the DELETING state" in {
+    _ =>
+      val user = createUser(email = "deleter@test.com")
+      val dataset = createDataset(user = user)
+      val pkg = createPackage(
+        user = user,
+        dataset = dataset,
+        state = PackageState.READY,
+        `type` = Slide
+      )
+
+      val msg: CatalogDeleteJob =
+        DeletePackageJob(
+          packageId = pkg.id,
+          organizationId = testOrganization.id,
+          userId = user.nodeId,
+          traceId = traceId,
+          originalState = Some(PackageState.READY)
+        )
+
+      val result = deleteJob.creditDeleteJob(msg).await
+      assert(result.isLeft)
+      result.swap.toOption.get shouldBe an[InvalidJob]
+
+      database
+        .run(packageTable.get(pkg.id).result.head)
+        .await
+        .state should be(PackageState.READY)
+  }
+
+  it should "fail the job when the package does not exist" in { _ =>
+    val user = createUser(email = "deleter@test.com")
+
+    val msg: CatalogDeleteJob =
+      DeletePackageJob(
+        packageId = 999999,
+        organizationId = testOrganization.id,
+        userId = user.nodeId,
+        traceId = traceId
+      )
+
+    assert(deleteJob.creditDeleteJob(msg).await.isLeft)
+  }
+
   it should "handle external files" in { _ =>
     // create package
     val user = createUser(email = "deleter@test.com")
