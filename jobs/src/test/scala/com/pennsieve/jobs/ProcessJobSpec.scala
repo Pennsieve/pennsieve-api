@@ -45,16 +45,6 @@ class ProcessJobSpec extends AnyFlatSpec with Matchers {
     assert(Processor.parse(message).value._2 == job)
   }
 
-  it should "parse a legacy DeletePackageJob without originalState" in {
-    val body =
-      """{"DeletePackageJob":{"packageId":2,"organizationId":12,"userId":"321","traceId":"1234","id":"abc"}}"""
-    val message = SQSMessage.builder().body(body).build()
-
-    val parsed = Processor.parse(message).value._2
-    parsed shouldBe a[DeletePackageJob]
-    parsed.asInstanceOf[DeletePackageJob].originalState shouldBe None
-  }
-
   it should "be able to parse a DeleteDatasetJob" in {
     val job: BackgroundJob = DeleteDatasetJob(
       datasetId = 2,

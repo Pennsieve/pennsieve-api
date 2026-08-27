@@ -684,7 +684,6 @@ class PackageManagerSpec extends BaseManagerSpec {
     job match {
       case deleteJob: DeletePackageJob =>
         assert(deleteJob.packageId == p.id)
-        assert(deleteJob.originalState == Some(PackageState.READY))
       case other => fail(s"expected DeletePackageJob, got $other")
     }
 
@@ -1263,7 +1262,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     afterDeletePackageNodeIds.contains(subject2FilePackage.nodeId) shouldBe false
   }
 
-  "deleting a collection" should "set all descendants to DELETING with __DELETED__ prefix" in {
+  "deleting a collection" should "only mark the root DELETING and leave descendants to the delete job" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val packagesMapper = new PackagesMapper(testOrganization)
@@ -1314,25 +1313,20 @@ class PackageManagerSpec extends BaseManagerSpec {
 
     deletePackage(user = user, pkg = rootFolder)
 
-    // The delete endpoint only marks the root package; descendants are soft
-    // deleted in batches by the delete job. Run that step here.
-    val descendantIds =
-      database.run(packagesMapper.descendantIdsForDeletion(rootFolder)).await
-    descendantIds.toSet shouldBe Set(
-      childFolder.id,
-      grandChildFile.id,
-      grandChildFile2.id,
-      childFile.id
-    )
-    database.run(packagesMapper.softDeletePackages(descendantIds)).await
+    // Fetch the root directly (bypassing the DELETING filter)
+    val root = database
+      .run(packagesMapper.filter(_.id === rootFolder.id).result.head)
+      .await
+    root.state shouldBe PackageState.DELETING
+    root.name should startWith("__DELETED__")
 
-    // Fetch all packages directly (bypassing the DELETING filter)
-    val allPackages = database
+    // The delete endpoint only marks the root package; descendants are soft
+    // deleted downstream by the consumer of the delete job.
+    val descendants = database
       .run(
         packagesMapper
           .filter(
             _.id inSet Set(
-              rootFolder.id,
               childFolder.id,
               grandChildFile.id,
               grandChildFile2.id,
@@ -1343,9 +1337,10 @@ class PackageManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    allPackages.foreach { pkg =>
-      pkg.state shouldBe PackageState.DELETING
-      pkg.name should startWith("__DELETED__")
+    descendants.size shouldBe 4
+    descendants.foreach { pkg =>
+      pkg.state shouldBe PackageState.READY
+      pkg.name should not startWith "__DELETED__"
     }
   }
 
@@ -1384,7 +1379,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     sibling.name shouldBe "siblingFile"
   }
 
-  "deleting a collection" should "skip already-deleted descendants" in {
+  "deleting a collection" should "not touch an already-DELETING descendant" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val packagesMapper = new PackagesMapper(testOrganization)
@@ -1418,25 +1413,22 @@ class PackageManagerSpec extends BaseManagerSpec {
       .await
     val childFirstDeletedName = childAfterFirstDelete.name
 
-    // Now delete the parent folder and run the delete job's descendant
-    // soft-delete step; the batch update must skip the already-DELETING child
+    // Now delete the parent folder; only the folder itself is touched
     deletePackage(user = user, pkg = folder)
-    val descendantIds =
-      database.run(packagesMapper.descendantIdsForDeletion(folder)).await
-    database.run(packagesMapper.softDeletePackages(descendantIds)).await
 
     // The independently-deleted child should NOT be double-renamed
     val childAfterParentDelete = database
       .run(packagesMapper.filter(_.id === childFile.id).result.head)
       .await
+    childAfterParentDelete.state shouldBe PackageState.DELETING
     childAfterParentDelete.name shouldBe childFirstDeletedName
 
-    // The other child should be marked DELETING
+    // The other child is left for the delete job
     val child2 = database
       .run(packagesMapper.filter(_.id === childFile2.id).result.head)
       .await
-    child2.state shouldBe PackageState.DELETING
-    child2.name should startWith("__DELETED__")
+    child2.state shouldBe PackageState.READY
+    child2.name shouldBe "childFile2"
   }
 
   "deleting an empty collection" should "succeed without errors" in {

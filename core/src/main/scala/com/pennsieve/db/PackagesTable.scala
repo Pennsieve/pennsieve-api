@@ -310,42 +310,28 @@ class PackagesMapper(val organization: Organization)
       .map(_.to(Set))
   }
 
-  // Collect the ids of all descendants of a package that have not been
-  // hard-deleted, so they can be soft-deleted in small batches and their
-  // assets cleaned up. Includes descendants already in the DELETING state so
-  // that a re-delivered delete job can finish a partially processed subtree.
-  def descendantIdsForDeletion(p: Package): DBIO[Seq[Int]] = {
-    sql"""
+  // Set all descendants of a collection to DELETING
+  // Excludes descendats in DELETING or DELETED state
+  def softDeleteDescendants(p: Package) = {
+    sqlu"""
       WITH RECURSIVE descendants AS (
         SELECT id
         FROM "#${organization.schemaId}".packages
         WHERE parent_id = ${p.id}
-          AND state != ${PackageState.DELETED.entryName}
+          AND state NOT IN (${PackageState.DELETING.entryName}, ${PackageState.DELETED.entryName})
         UNION ALL
         SELECT child.id
         FROM "#${organization.schemaId}".packages child
         INNER JOIN descendants ON descendants.id = child.parent_id
-        WHERE child.state != ${PackageState.DELETED.entryName}
+        WHERE child.state NOT IN (${PackageState.DELETING.entryName}, ${PackageState.DELETED.entryName})
       )
-      SELECT id FROM descendants
-    """.as[Int]
+      UPDATE "#${organization.schemaId}".packages target
+      SET state = ${PackageState.DELETING.entryName},
+          name = '__DELETED__' || target.node_id || '_' || target.name
+      FROM descendants
+      WHERE target.id = descendants.id
+    """
   }
-
-  // Set a batch of packages to DELETING. Packages already in the DELETING or
-  // DELETED state are left untouched so re-running is a no-op.
-  // `ids` is interpolated raw (#$) rather than bound: they are trusted Ints
-  // read back from descendantIdsForDeletion, never user input, and binding
-  // each id would cost one parameter per package.
-  def softDeletePackages(ids: Seq[Int]): DBIO[Int] =
-    if (ids.isEmpty) DBIO.successful(0)
-    else
-      sqlu"""
-        UPDATE "#${organization.schemaId}".packages
-        SET state = ${PackageState.DELETING.entryName},
-            name = '__DELETED__' || node_id || '_' || name
-        WHERE id IN (#${ids.mkString(",")})
-          AND state NOT IN (${PackageState.DELETING.entryName}, ${PackageState.DELETED.entryName})
-      """
 
   type PackagesSeen = Set[Int]
   type AncestorsResult = Either[CoreError, List[Package]]

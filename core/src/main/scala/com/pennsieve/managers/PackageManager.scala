@@ -650,13 +650,7 @@ trait PackageManager {
         )
         .toEitherT
     } yield
-      DeletePackageJob(
-        pkg.id,
-        organization.id,
-        actor.nodeId,
-        traceId = traceId,
-        originalState = Some(pkg.state)
-      ): BackgroundJob
+      DeletePackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId): BackgroundJob
 
   }
 

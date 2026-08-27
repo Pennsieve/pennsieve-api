@@ -210,8 +210,6 @@ class DeleteJob(
 
   implicit val tier: Tier[DeleteJob] = Tier[DeleteJob]
 
-  val SoftDeleteBatchSize: Int = 500
-
   // var so we can override in tests
   implicit var autoSession: DBSession = AutoSession
 
@@ -219,7 +217,7 @@ class DeleteJob(
     packageTable: PackagesMapper
   ): Flow[CatalogDeleteJob, Either[CoreError, Set[Int]], NotUsed] =
     Flow[CatalogDeleteJob].mapAsync(1) {
-      case DeletePackageJob(packageId, organizationId, userId, traceId, _, _) =>
+      case DeletePackageJob(packageId, organizationId, userId, traceId, _) =>
         log.tierContext.info(s"Attempting to delete package")(
           PackageDeleteContext(
             organizationId = organizationId,
@@ -240,22 +238,8 @@ class DeleteJob(
             )
             .whenNone[CoreError](NotFound(s"Package ($packageId)"))
 
-          descendants <- db
-            .run(packageTable.descendantIdsForDeletion(pkg))
-            .toEitherT
-
-          // Soft delete descendants in small transactions so locks are held
-          // briefly, instead of one transaction over the whole subtree.
-          // Re-running is a no-op for packages already marked DELETING.
-          _ <- descendants
-            .grouped(SoftDeleteBatchSize)
-            .toList
-            .traverse(
-              batch =>
-                db.run(packageTable.softDeletePackages(batch).transactionally)
-                  .toEitherT
-            )
-        } yield descendants.toSet + pkg.id
+          descendants <- packageTable.descendants(pkg, db).toEitherT
+        } yield descendants + pkg.id
 
         result.value
       case DeleteDatasetJob(datasetId, organizationId, userId, traceId, _) =>
@@ -640,59 +624,15 @@ class DeleteJob(
     packageTable: PackagesMapper
   ): Future[DeleteResult] =
     job match {
-      case DeletePackageJob(packageId, _, _, traceId, _, originalState) =>
-        val organization = packageTable.organization
-        val packageStorageMapper = new PackageStorageMapper(organization)
-        val datasetStorageMapper = new DatasetStorageMapper(organization)
-
-        def decrementStorage(pkg: Package): DBIO[Unit] =
-          for {
-            size <- packageStorageMapper
-              .filter(_.packageId === pkg.id)
-              .map(_.size)
-              .result
-              .headOption
-              .map(_.flatten.getOrElse(0L))
-
-            _ <- if (size == 0L) DBIO.successful(())
-            else
-              for {
-                _ <- packageStorageMapper.incrementPackage(pkg.id, -size)
-                _ <- packageStorageMapper.incrementPackageAncestors(pkg, -size)
-                _ <- datasetStorageMapper
-                  .incrementDataset(pkg.datasetId, -size)
-                _ <- OrganizationStorageMapper
-                  .incrementOrganization(organization.id, -size)
-              } yield ()
-          } yield ()
-
-        // Flipping DELETING -> DELETED is guarded on the current state so a
-        // re-delivered job cannot decrement storage a second time. Storage is
-        // only decremented for packages that were READY when the delete was
-        // requested (legacy messages without originalState were already
-        // decremented by the API).
-        val action = for {
-          maybePkg <- packageTable
-            .filter(_.id === packageId)
-            .result
-            .headOption
-
-          flipped <- packageTable
-            .filter(_.id === packageId)
-            .filter(_.state === (PackageState.DELETING: PackageState))
-            .map(_.state)
-            .update(PackageState.DELETED)
-
-          _ <- (maybePkg, originalState) match {
-            case (Some(pkg), Some(PackageState.READY)) if flipped == 1 =>
-              decrementStorage(pkg)
-            case _ => DBIO.successful(())
-          }
-        } yield (maybePkg, flipped)
-
-        db.run(action.transactionally)
+      case DeletePackageJob(packageId, _, _, traceId, _) =>
+        db.run(
+            packageTable
+              .filter(_.id === packageId)
+              .map(_.state)
+              .update(PackageState.DELETED)
+          )
           .map {
-            case (_, 1) =>
+            case 1 =>
               PackageDeleteResult(
                 success = true,
                 message =
@@ -700,24 +640,11 @@ class DeleteJob(
                 packageNodeId = "no node ID available",
                 traceId = traceId
               )
-            // Re-delivered message for a package that was already finalized.
-            case (Some(pkg), _) if pkg.state == PackageState.DELETED =>
-              PackageDeleteResult(
-                success = true,
-                message =
-                  s"Package ($packageId) was already deleted from Postgres",
-                packageNodeId = pkg.nodeId,
-                traceId = traceId
-              )
-            case (maybePkg, _) =>
+            case _ =>
               PackageDeleteResult(
                 success = false,
-                message = s"Failed to delete package ($packageId) from Postgres: " +
-                  maybePkg.fold("package not found")(
-                    pkg => s"expected state DELETING but was ${pkg.state}"
-                  ),
-                packageNodeId =
-                  maybePkg.map(_.nodeId).getOrElse("no node ID available"),
+                message = s"Failed to delete package ($packageId) from Postgres",
+                packageNodeId = "no node ID available",
                 traceId = traceId
               )
           }
@@ -761,17 +688,7 @@ class DeleteJob(
         }
         .runWith(Sink.ignore)
         .flatMap(_ => deletePackageFromPostgres(job, packageTable))
-        .flatMap { result =>
-          record(job, result).map { _ =>
-            result match {
-              // Surface a failed finalization so the message is retried
-              // instead of being silently dropped.
-              case r: PackageDeleteResult if !r.success =>
-                Left(InvalidJob(r.message)): Either[JobException, Unit]
-              case _ => Right(()): Either[JobException, Unit]
-            }
-          }
-        }
+        .map(result => Right(record(job, result)): Either[JobException, Unit])
         .toEitherT(ExceptionError)
     } yield result
   }

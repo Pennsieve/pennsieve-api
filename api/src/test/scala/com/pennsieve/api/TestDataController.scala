@@ -644,8 +644,6 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
 
     val messages = MockSQSClient.sentMessages.getOrElse(queue, List.empty)
     (messages.size - messagesBefore) should equal(1)
-    messages.head should include("originalState")
-    messages.head should include("READY")
   }
 
   test("deleting a collection defers soft deleting descendants to the job") {
