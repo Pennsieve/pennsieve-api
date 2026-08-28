@@ -76,6 +76,11 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   val mockSqsClient = MockSQSClient
 
+  val mockStepFunctionsClient = new MockStepFunctionsClient()
+
+  val restoreStateMachineArn =
+    "arn:aws:states:us-east-1:000000000000:stateMachine:mock-restore"
+
   val maxFileUploadSize = 1 * 1024 * 1024
 
   var mockPublishClient: MockPublishClient = _
@@ -142,7 +147,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         new MockCognito,
         mockOrcidClient,
         maxFileUploadSize,
-        system.dispatcher
+        system.dispatcher,
+        mockStepFunctionsClient,
+        restoreStateMachineArn
       ),
       "/*"
     )
@@ -162,6 +169,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     mockSqsClient.sentMessages.clear()
     mockPublishClient.clear()
     mockSearchClient.clear
+    mockStepFunctionsClient.clear()
   }
 
   test("swagger") {

@@ -24,7 +24,9 @@ import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.S3ClientOptions
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import software.amazon.awssdk.services.sfn.SfnAsyncClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import com.pennsieve.aws.stepfunctions.{ StepFunctions, StepFunctionsClient }
 import com.pennsieve.aws.cognito.{ CognitoClient, CognitoConfig }
 import com.pennsieve.aws.s3.AWSS3Container
 import com.pennsieve.aws.s3.LocalS3Container
@@ -145,6 +147,20 @@ trait BaseBootstrapHelper {
 
   lazy val sqsClient: SQSClient = new SQS(awsSQSClient)
   lazy val snsClient: SNSClient = new SNS(awsSNSClient)
+
+  lazy val awsStepFunctionsClient: SfnAsyncClient =
+    SfnAsyncClient
+      .builder()
+      .region(Settings.regionV2)
+      .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+      .build()
+
+  lazy val stepFunctionsClient: StepFunctionsClient = new StepFunctions(
+    awsStepFunctionsClient
+  )
+
+  lazy val restoreStateMachineArn: String =
+    config.as[String]("pennsieve.publishing.restore_state_machine_arn")
 
   lazy val cognitoConfig: CognitoConfig = CognitoConfig(config)
   lazy val cognitoClient: CognitoClient = Cognito(cognitoConfig)
