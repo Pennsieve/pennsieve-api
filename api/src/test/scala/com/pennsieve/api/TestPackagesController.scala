@@ -2681,6 +2681,256 @@ class TestPackagesController
     }
   }
 
+  // The delete endpoint now marks only the requested package DELETING;
+  // descendants stay READY until the delete job soft deletes them. These
+  // tests document endpoint behavior inside that window.
+
+  test(
+    "get package returns 404 for a DELETING collection and its direct children"
+  ) {
+    val folder = createTestDownloadPackage("deleting-folder-get")
+    val child = createTestDownloadPackage(
+      "child-of-deleting-get",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    get(
+      s"/${folder.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
+    }
+
+    // the child itself is READY, but building its DTO looks up the parent
+    // with a query that excludes DELETING, so the request fails
+    get(
+      s"/${child.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
+    }
+  }
+
+  test(
+    "get package returns a READY package two levels under a DELETING collection until the delete job soft deletes descendants"
+  ) {
+    val folder = createTestDownloadPackage("deleting-folder-get-deep")
+    val mid =
+      createTestDownloadPackage("mid-of-deleting-get", parent = Some(folder))
+    val leaf = createTestDownloadPackage(
+      "leaf-of-deleting-get",
+      parent = Some(mid),
+      packageType = PackageType.PDF
+    )
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    get(
+      s"/${leaf.nodeId}?includeAncestors=true",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      compact(render(parse(response.body) \ "content" \ "id")) should include(
+        leaf.nodeId
+      )
+      // the ancestors query does not filter state: the DELETING folder is listed
+      compact(render(parse(response.body) \ "ancestors")) should include(
+        folder.nodeId
+      )
+    }
+  }
+
+  test(
+    "update package on a direct child of a DELETING collection persists the update but responds 404"
+  ) {
+    val folder = createTestDownloadPackage("deleting-folder-put")
+    val child = createTestDownloadPackage(
+      "child-of-deleting-put",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    val request = """{"name":"renamed-under-deleting-parent"}"""
+
+    // the rename is committed before the handler fails looking up the
+    // DELETING parent for the changelog event
+    putJson(
+      s"/${child.nodeId}",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
+    }
+
+    secureContainer.packageManager
+      .get(child.id)
+      .await
+      .value
+      .name should equal("renamed-under-deleting-parent")
+  }
+
+  test(
+    "update package succeeds for a READY package two levels under a DELETING collection until the delete job soft deletes descendants"
+  ) {
+    val folder = createTestDownloadPackage("deleting-folder-put-deep")
+    val mid =
+      createTestDownloadPackage("mid-of-deleting-put", parent = Some(folder))
+    val leaf = createTestDownloadPackage(
+      "leaf-of-deleting-put",
+      parent = Some(mid),
+      packageType = PackageType.PDF
+    )
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    val request = """{"name":"renamed-under-deleting-ancestor"}"""
+
+    putJson(
+      s"/${leaf.nodeId}",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      response.body should include("renamed-under-deleting-ancestor")
+    }
+  }
+
+  test(
+    "download-manifest includes files under a DELETING collection until the delete job soft deletes descendants"
+  ) {
+    val folder = createTestDownloadPackage("deleting-folder-manifest")
+    val child = createTestDownloadPackage(
+      "child-of-deleting-manifest",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+    createTestDownloadFile("orphaned.pdf", child)
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    val request = s"""{"nodeIds": ["${folder.nodeId}"]}"""
+
+    postJson(
+      s"/download-manifest",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val payload = parsedBody.extract[DownloadManifestDTO]
+      payload.header.count shouldBe 1
+      payload.data.map(_.fileName) should contain("orphaned.pdf")
+    }
+  }
+
+  test(
+    "download-manifest includes a READY package requested directly while an ancestor is DELETING"
+  ) {
+    val folder = createTestDownloadPackage("deleting-folder-manifest-direct")
+    val child = createTestDownloadPackage(
+      "child-of-deleting-manifest-direct",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+    createTestDownloadFile("orphaned-direct.pdf", child)
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    val request = s"""{"nodeIds": ["${child.nodeId}"]}"""
+
+    postJson(
+      s"/download-manifest",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      val payload = parsedBody.extract[DownloadManifestDTO]
+      payload.data.map(_.fileName) should contain("orphaned-direct.pdf")
+    }
+  }
+
+  test(
+    "download-manifest excludes a deleted branch after the delete job soft deletes descendants"
+  ) {
+    val folder = createTestDownloadPackage("deleted-folder-manifest")
+    val child = createTestDownloadPackage(
+      "child-of-deleted-manifest",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+    createTestDownloadFile("gone.pdf", child)
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+    secureContainer.packageManager
+      .update(child.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    val request = s"""{"nodeIds": ["${folder.nodeId}"]}"""
+
+    postJson(
+      s"/download-manifest",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(400)
+      response.body should include("not found")
+    }
+  }
+
+  test(
+    "get package sources succeeds for a direct child of a DELETING collection until the delete job soft deletes descendants"
+  ) {
+    val folder = createTestDownloadPackage("deleting-folder-sources")
+    val child = createTestDownloadPackage(
+      "child-of-deleting-sources",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+    createTestDownloadFile("still-visible.pdf", child)
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    // unlike GET /packages/{id}, this endpoint never looks at the parent
+    get(
+      s"/${child.nodeId}/sources",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      response.body should include("still-visible.pdf")
+    }
+  }
+
   test("download-manifest only returns source files") {
     val rootPackage =
       createTestDownloadPackage("root", packageType = PackageType.Image)

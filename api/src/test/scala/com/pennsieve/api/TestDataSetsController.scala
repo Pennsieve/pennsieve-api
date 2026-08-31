@@ -4669,6 +4669,68 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  // The delete endpoint now marks only the requested package DELETING;
+  // descendants stay READY until the delete job soft deletes them. These
+  // tests document endpoint behavior inside that window.
+
+  test(
+    "getPackages lists READY children of a DELETING collection until the delete job soft deletes descendants"
+  ) {
+    val dataset = createDataSet("dataset-with-deleting-folder")
+    val folder = createPackage(dataset, "deleting-folder")
+    val child = createPackage(
+      dataset,
+      "child-of-deleting-folder",
+      `type` = PackageType.PDF,
+      parent = Some(folder)
+    )
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    get(
+      s"/${dataset.nodeId}/packages",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+      val ids =
+        (parsedBody \ "packages" \ "content" \ "id").extract[List[Int]]
+      ids should contain(child.id)
+      ids should not contain folder.id
+    }
+  }
+
+  test(
+    "batch packages returns a READY child of a DELETING collection until the delete job soft deletes descendants"
+  ) {
+    val dataset = createDataSet("dataset-batch-deleting-folder")
+    val folder = createPackage(dataset, "deleting-folder-batch")
+    val child = createPackage(
+      dataset,
+      "child-of-deleting-folder-batch",
+      `type` = PackageType.PDF,
+      parent = Some(folder)
+    )
+
+    secureContainer.packageManager
+      .update(folder.copy(state = PackageState.DELETING))
+      .await
+      .value
+
+    get(
+      s"/${dataset.nodeId}/packages/batch?packageId=${folder.nodeId}&packageId=${child.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      (parsedBody \ "packages" \ "content" \ "id")
+        .extract[List[Int]] should equal(List(child.id))
+      compactRender(parsedBody \ "failures") should include(folder.nodeId)
+    }
+  }
+
   test("get multiple packages by id and node id") {
     val dataset = createDataSet("My Dataset")
 
