@@ -3473,6 +3473,18 @@ class DataSetsController(
                   .countPublishedFiles(validated.dataset)
                   .coreErrorToActionResult()
 
+                // Every removal starts with an Accepted row, same as every
+                // other publication type -- whether it finalizes immediately
+                // below (fast path) or only after a restore completes.
+                pending <- secureContainer.datasetPublicationStatusManager
+                  .create(
+                    dataset = validated.dataset,
+                    publicationStatus = validated.publicationStatus,
+                    publicationType = validated.publicationType,
+                    comments = comments
+                  )
+                  .coreErrorToActionResult()
+
                 // Fast path: nothing lives only in the publish bucket (e.g. an
                 // embargoed dataset that never triggered dedup, or a dataset
                 // that was already restored) -- finalize synchronously in this
@@ -3481,7 +3493,6 @@ class DataSetsController(
                   finalizeRemoval(
                     secureContainer,
                     validated.dataset,
-                    comments,
                     restoreSucceeded = true
                   ).coreErrorToActionResult()
                 } else {
@@ -3493,15 +3504,6 @@ class DataSetsController(
                   // signal (or the admin reconcile endpoint) confirms the
                   // restore is done and the gate is clear.
                   for {
-                    pending <- secureContainer.datasetPublicationStatusManager
-                      .create(
-                        dataset = validated.dataset,
-                        publicationStatus = validated.publicationStatus,
-                        publicationType = validated.publicationType,
-                        comments = None
-                      )
-                      .coreErrorToActionResult()
-
                     publicDatasetId <- EitherT
                       .fromEither[Future](
                         currentPublicationStatus.publishedDatasetId.toRight(
@@ -3801,12 +3803,16 @@ class DataSetsController(
   def finalizeRemoval(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
-    comments: Option[String],
     restoreSucceeded: Boolean
   ): EitherT[Future, CoreError, DatasetPublicationStatus] =
     for {
       latest <- secureContainer.datasetPublicationStatusManager
         .getLatestByDataset(dataset.id)
+
+      // Carried forward from the triggering Accepted row, since the caller
+      // (an external completion signal, or the admin reconcile endpoint) has
+      // no comment of its own to supply.
+      comments = latest.flatMap(_.comments)
 
       alreadyCompleted = latest.exists(
         status =>
