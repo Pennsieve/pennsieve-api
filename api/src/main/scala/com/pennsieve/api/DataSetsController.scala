@@ -198,6 +198,12 @@ object RestoreExecutionInput {
     )
 }
 
+/**
+  * Body of the internal `/publication/removal/complete` callback, sent by
+  * whatever consumes publish-storage-sync's restore-completion signal.
+  */
+case class RemovalCompleteRequest(success: Boolean)
+
 case class DatasetReadmeDTO(readme: String)
 //changelog Data transfer object
 case class DatasetChangelogDTO(changelog: String)
@@ -4058,6 +4064,43 @@ class DataSetsController(
           else EitherT.rightT[Future, ActionResult](())
 
         } yield ()
+
+      val is = result.value.map(OkResult)
+    }
+  }
+
+  val removalComplete
+    : OperationBuilder = (apiOperation[DatasetPublicationStatus](
+    "removalComplete"
+  )
+    summary "internal use only: notify API that a dataset removal's restore has completed"
+    parameters (pathParam[Int]("id").required.description("dataset id"),
+    bodyParam[RemovalCompleteRequest]("body")
+      .description("whether the restore that preceded this removal succeeded")))
+
+  put("/:id/publication/removal/complete", operation(removalComplete)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, DatasetPublicationStatus] =
+        for {
+          secureContainer <- getSecureContainer()
+          datasetId <- paramT[Int]("id")
+
+          _ <- checkOrErrorT(isServiceClaim(request))(
+            Forbidden("Internal use only")
+          )
+
+          dataset <- secureContainer.datasetManager
+            .get(datasetId)
+            .coreErrorToActionResult()
+
+          body <- extractOrErrorT[RemovalCompleteRequest](parsedBody)
+
+          response <- finalizeRemoval(
+            secureContainer,
+            dataset,
+            restoreSucceeded = body.success
+          ).coreErrorToActionResult()
+        } yield response
 
       val is = result.value.map(OkResult)
     }

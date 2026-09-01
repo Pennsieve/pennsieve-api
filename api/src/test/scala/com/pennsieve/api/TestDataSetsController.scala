@@ -5740,6 +5740,135 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test("removal complete - success signal finalizes the removal") {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    // Simulate accept(removal)'s restore-needed path having already run:
+    // an Accepted row exists and a restore is (nominally) in flight.
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .await
+      .value
+
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      write(RemovalCompleteRequest(success = true)),
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    mockPublishClient.unpublishRequests should contain(
+      (loggedInOrganization.id, dataset.id)
+    )
+  }
+
+  test("removal complete - failure signal marks it Failed without unpublishing") {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .await
+      .value
+
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      write(RemovalCompleteRequest(success = false)),
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Failed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    mockPublishClient.unpublishRequests should not contain (
+      (
+        loggedInOrganization.id,
+        dataset.id
+      )
+    )
+  }
+
+  test("removal complete - is idempotent on a duplicate success signal") {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .await
+      .value
+
+    val request = write(RemovalCompleteRequest(success = true))
+
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    mockPublishClient.unpublishRequests
+      .count(_ == ((loggedInOrganization.id, dataset.id))) shouldBe 1
+  }
+
+  test("removal complete - a non-service caller is forbidden") {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .await
+      .value
+
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      write(RemovalCompleteRequest(success = true)),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 403
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+  }
+
   test("2 step publishing - service user can release dataset with one request") {
 
     implicit val dataset: Dataset =
