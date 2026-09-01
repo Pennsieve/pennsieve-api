@@ -168,7 +168,6 @@ case class PublishCompleteRequest(
 case class RestoreExecutionInput(
   organizationId: Int,
   datasetId: Int,
-  workspaceId: Int,
   publicDatasetId: Int,
   destinationStorageBucket: String,
   publishedVersion: Int,
@@ -179,10 +178,9 @@ case class RestoreExecutionInput(
 
 object RestoreExecutionInput {
   implicit val encoder: io.circe.Encoder[RestoreExecutionInput] =
-    io.circe.Encoder.forProduct7(
+    io.circe.Encoder.forProduct6(
       "organizationId",
       "datasetId",
-      "workspaceId",
       "publicDatasetId",
       "destinationStorageBucket",
       "publishedVersion",
@@ -192,7 +190,6 @@ object RestoreExecutionInput {
         (
           input.organizationId,
           input.datasetId,
-          input.workspaceId,
           input.publicDatasetId,
           input.destinationStorageBucket,
           input.publishedVersion,
@@ -3526,7 +3523,6 @@ class DataSetsController(
                     input = RestoreExecutionInput(
                       organizationId = secureContainer.organization.id,
                       datasetId = validated.dataset.id,
-                      workspaceId = secureContainer.organization.id,
                       publicDatasetId = publicDatasetId,
                       destinationStorageBucket = destinationStorageBucket,
                       publishedVersion =
