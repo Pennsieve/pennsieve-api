@@ -2686,7 +2686,7 @@ class TestPackagesController
   // tests document endpoint behavior inside that window.
 
   test(
-    "get package returns 404 for a DELETING collection and its direct children"
+    "get package returns 404 for a DELETING collection and 500 for its direct children"
   ) {
     val folder = createTestDownloadPackage("deleting-folder-get")
     val child = createTestDownloadPackage(
@@ -2708,12 +2708,13 @@ class TestPackagesController
     }
 
     // the child itself is READY, but building its DTO looks up the parent
-    // with a query that excludes DELETING, so the request fails
+    // with a query that excludes DELETING; the handler maps that failure
+    // to an internal server error
     get(
       s"/${child.nodeId}",
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
-      status should equal(404)
+      status should equal(500)
     }
   }
 
@@ -2750,7 +2751,7 @@ class TestPackagesController
   }
 
   test(
-    "update package on a direct child of a DELETING collection persists the update but responds 404"
+    "update package on a direct child of a DELETING collection fails without persisting the update"
   ) {
     val folder = createTestDownloadPackage("deleting-folder-put")
     val child = createTestDownloadPackage(
@@ -2766,8 +2767,8 @@ class TestPackagesController
 
     val request = """{"name":"renamed-under-deleting-parent"}"""
 
-    // the rename is committed before the handler fails looking up the
-    // DELETING parent for the changelog event
+    // PackageManager.update fetches the parent with a query that excludes
+    // DELETING, so the update fails before anything is written
     putJson(
       s"/${child.nodeId}",
       request,
@@ -2780,7 +2781,7 @@ class TestPackagesController
       .get(child.id)
       .await
       .value
-      .name should equal("renamed-under-deleting-parent")
+      .name should equal("child-of-deleting-put")
   }
 
   test(
@@ -2884,12 +2885,13 @@ class TestPackagesController
     )
     createTestDownloadFile("gone.pdf", child)
 
+    // child first: updating a package fails if its parent is already DELETING
     secureContainer.packageManager
-      .update(folder.copy(state = PackageState.DELETING))
+      .update(child.copy(state = PackageState.DELETING))
       .await
       .value
     secureContainer.packageManager
-      .update(child.copy(state = PackageState.DELETING))
+      .update(folder.copy(state = PackageState.DELETING))
       .await
       .value
 
