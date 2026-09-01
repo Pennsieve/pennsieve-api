@@ -18,7 +18,6 @@ package com.pennsieve.test
 
 import org.scalatest._
 import com.dimafeng.testcontainers._
-import org.junit.runner.Description
 
 /**
   * Adapted from `ForAllTestContainers`:`
@@ -34,9 +33,6 @@ import org.junit.runner.Description
   */
 trait PersistantTestContainers extends SuiteMixin {
   self: Suite with StackedDockerContainer =>
-
-  implicit private val suiteDescription =
-    Description.createSuiteDescription(self.getClass)
 
   def container: Container =
     MultipleContainers(stackedContainers.toSeq.map(new LazyContainer(_)): _*)

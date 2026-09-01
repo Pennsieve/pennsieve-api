@@ -4,7 +4,7 @@ Global / cancelable := true
 ThisBuild / resolvers ++= Seq(
   "Pennsieve Releases" at "https://nexus.pennsieve.cc/repository/maven-releases",
   "Pennsieve Snapshots" at "https://nexus.pennsieve.cc/repository/maven-snapshots",
-  Resolver.sonatypeRepo("snapshots")
+  Resolver.sonatypeCentralSnapshots
 )
 
 ThisBuild / credentials += Credentials(
@@ -117,7 +117,7 @@ lazy val slickPgVersion = "0.20.3"
 
 lazy val slickCatsVersion = "0.10.4"
 
-lazy val testContainersVersion = "0.40.1"
+lazy val testContainersVersion = "0.44.1"
 lazy val utilitiesVersion = "4-55953e4"
 lazy val serviceUtilitiesVersion = "9-b838dd9"
 lazy val discoverServiceClientVersion = "155-899ad5e"
@@ -200,8 +200,7 @@ lazy val commonSettings = Seq(
 lazy val coreApiSharedSettings = Seq(
   resolvers ++= Seq(
     "Local Maven Repository" at "file://" + Path.userHome.absolutePath + "/.m2/repository",
-    Resolver.sonatypeRepo("snapshots"),
-    Resolver.sonatypeRepo("releases")
+    Resolver.sonatypeCentralSnapshots,
   ),
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "audit-middleware" % auditMiddlewareVersion,
