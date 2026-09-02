@@ -18,7 +18,7 @@ package com.pennsieve.managers
 
 import com.pennsieve.domain.{ LockedDatasetError, PredicateError, ServiceError }
 import com.pennsieve.models.FileType.GenericData
-import com.pennsieve.models.PackageType.CSV
+import com.pennsieve.models.PackageType.{ CSV, Text }
 import com.pennsieve.models._
 import com.pennsieve.models.FileObjectType.Source
 import org.scalatest.EitherValues._
@@ -409,16 +409,27 @@ class FileManagerSpec extends BaseManagerSpec {
     val datasetA = createDataset(name = "CPFilesA")
     val datasetB = createDataset(name = "CPFilesB")
 
-    val pkgA = createPackage(dataset = datasetA, user = user, `type` = CSV)
-    createFile(container = pkgA, user = user, publishedS3VersionId = Some("v1"))
-    createFile(container = pkgA, user = user, publishedS3VersionId = None)
+    val pkgA1 = createPackage(dataset = datasetA, user = user, `type` = CSV)
+    createFile(
+      container = pkgA1,
+      user = user,
+      publishedS3VersionId = Some("v1")
+    )
+    val pkgA2 = createPackage(dataset = datasetA, user = user, `type` = Text)
+    createFile(
+      container = pkgA2,
+      user = user,
+      publishedS3VersionId = Some("v3")
+    )
+    val pkgA3 = createPackage(dataset = datasetA, user = user, `type` = Text)
+    createFile(container = pkgA3, user = user, publishedS3VersionId = None)
 
     val pkgB = createPackage(dataset = datasetB, user = user, `type` = CSV)
     createFile(container = pkgB, user = user, publishedS3VersionId = Some("v2"))
 
     val fm = fileManager(organization = testOrganization, user = user)
 
-    assert(fm.countPublishedFiles(datasetA).await.value == 1)
+    assert(fm.countPublishedFiles(datasetA).await.value == 2)
     assert(fm.countPublishedFiles(datasetB).await.value == 1)
   }
 

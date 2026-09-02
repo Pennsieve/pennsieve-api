@@ -5867,6 +5867,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
 
     currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    mockPublishClient.unpublishRequests shouldBe empty
   }
 
   test(

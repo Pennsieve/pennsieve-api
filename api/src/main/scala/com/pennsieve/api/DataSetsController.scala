@@ -3799,12 +3799,11 @@ class DataSetsController(
     * Finalizes a dataset removal (unpublish) once a restore has either
     * succeeded or failed. This is the only place that ever calls
     * `sendUnpublishRequest` -- the destructive publish-bucket teardown -- and
-    * it never does so without first independently re-verifying the data-loss
-    * gate itself, regardless of what the caller claims. Idempotent: calling
-    * this again after a `Completed` row already exists is a no-op, since the
-    * signal that triggers this (an external completion call, or the
-    * reconcile endpoint) may be delivered more than once for the same
-    * removal.
+    * it never does so without first independently re-verifying that no files
+    * are still live-only in the publish bucket, regardless of what the
+    * caller claims. Idempotent: calling this again after a `Completed` row
+    * already exists is a no-op, since the caller (an external completion
+    * signal) may deliver it more than once for the same removal.
     */
   def finalizeRemoval(
     secureContainer: SecureAPIContainer,
@@ -3816,8 +3815,7 @@ class DataSetsController(
         .getLatestByDataset(dataset.id)
 
       // Carried forward from the triggering Accepted row, since the caller
-      // (an external completion signal, or the admin reconcile endpoint) has
-      // no comment of its own to supply.
+      // (an external completion signal) has no comment of its own to supply.
       comments = latest.flatMap(_.comments)
 
       alreadyCompleted = latest.exists(
@@ -3830,7 +3828,7 @@ class DataSetsController(
         EitherT.fromEither[Future](
           latest.toRight(
             ServiceError(
-              s"no publication status found for dataset ${dataset.id}"
+              s"publication removal already completed for dataset ${dataset.id}"
             ): CoreError
           )
         )
