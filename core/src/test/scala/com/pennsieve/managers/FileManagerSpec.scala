@@ -402,6 +402,37 @@ class FileManagerSpec extends BaseManagerSpec {
       )
     )
   }
+
+  "countPublishedFiles" should "count only files with a non-null publishedS3VersionId, scoped to the dataset" in {
+    val user = createUser()
+
+    val datasetA = createDataset(name = "CPFilesA")
+    val datasetB = createDataset(name = "CPFilesB")
+
+    val pkgA = createPackage(dataset = datasetA, user = user, `type` = CSV)
+    createFile(container = pkgA, user = user, publishedS3VersionId = Some("v1"))
+    createFile(container = pkgA, user = user, publishedS3VersionId = None)
+
+    val pkgB = createPackage(dataset = datasetB, user = user, `type` = CSV)
+    createFile(container = pkgB, user = user, publishedS3VersionId = Some("v2"))
+
+    val fm = fileManager(organization = testOrganization, user = user)
+
+    assert(fm.countPublishedFiles(datasetA).await.value == 1)
+    assert(fm.countPublishedFiles(datasetB).await.value == 1)
+  }
+
+  "countPublishedFiles" should "return 0 for a dataset with no published-only files" in {
+    val user = createUser()
+    val dataset = createDataset(name = "CPFilesNone")
+    val pkg = createPackage(dataset = dataset, user = user, `type` = CSV)
+    createFile(container = pkg, user = user, publishedS3VersionId = None)
+
+    val fm = fileManager(organization = testOrganization, user = user)
+
+    assert(fm.countPublishedFiles(dataset).await.value == 0)
+  }
+
   //  "files" should "not be created if it does not follow naming conventions" in {
 //
 //    val user = createUser()
