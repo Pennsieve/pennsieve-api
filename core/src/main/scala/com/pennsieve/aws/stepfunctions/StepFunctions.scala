@@ -19,8 +19,6 @@ package com.pennsieve.aws.stepfunctions
 import cats.data.EitherT
 import software.amazon.awssdk.services.sfn.SfnAsyncClient
 import software.amazon.awssdk.services.sfn.model.{
-  DescribeExecutionRequest,
-  DescribeExecutionResponse,
   ExecutionAlreadyExistsException,
   StartExecutionRequest,
   StartExecutionResponse
@@ -44,12 +42,6 @@ trait StepFunctionsClient {
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, StartExecutionResponse]
-
-  def describeExecution(
-    executionArn: String
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, DescribeExecutionResponse]
 }
 
 /**
@@ -79,16 +71,5 @@ class StepFunctions(val client: SfnAsyncClient) extends StepFunctionsClient {
           ExecutionAlreadyExists(executionName)
         case e: Exception => ExceptionError(e)
       }
-  }
-
-  override def describeExecution(
-    executionArn: String
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, DescribeExecutionResponse] = {
-    val request =
-      DescribeExecutionRequest.builder().executionArn(executionArn).build()
-
-    client.describeExecution(request).toScala.toEitherT
   }
 }

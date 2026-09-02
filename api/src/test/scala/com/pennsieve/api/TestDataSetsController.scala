@@ -5844,7 +5844,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .count(_ == ((loggedInOrganization.id, dataset.id))) shouldBe 1
   }
 
-  test("removal complete - a non-service caller is forbidden") {
+  test("removal complete - a non-superadmin caller is forbidden") {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
@@ -5867,6 +5867,34 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
 
     currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+  }
+
+  test(
+    "removal complete - a superadmin user can call it manually, not just a service claim"
+  ) {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .await
+      .value
+
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      write(RemovalCompleteRequest(success = true)),
+      headers = authorizationHeader(adminJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
   }
 
   test("2 step publishing - service user can release dataset with one request") {

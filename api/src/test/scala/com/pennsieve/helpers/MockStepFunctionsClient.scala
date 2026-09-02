@@ -19,11 +19,7 @@ package com.pennsieve.helpers
 import cats.data.EitherT
 import com.pennsieve.aws.stepfunctions.StepFunctionsClient
 import com.pennsieve.domain.{ CoreError, ExecutionAlreadyExists }
-import software.amazon.awssdk.services.sfn.model.{
-  DescribeExecutionResponse,
-  ExecutionStatus,
-  StartExecutionResponse
-}
+import software.amazon.awssdk.services.sfn.model.StartExecutionResponse
 
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
@@ -35,12 +31,10 @@ class MockStepFunctionsClient extends StepFunctionsClient {
     mutable.ArrayBuffer.empty
 
   private var duplicateExecutionNames: Set[String] = Set.empty
-  private var nextDescribeStatus: ExecutionStatus = ExecutionStatus.RUNNING
 
   def clear(): Unit = {
     startedExecutions.clear()
     duplicateExecutionNames = Set.empty
-    nextDescribeStatus = ExecutionStatus.RUNNING
   }
 
   /** The next call to `startExecution` with this name fails as if a Step
@@ -48,9 +42,6 @@ class MockStepFunctionsClient extends StepFunctionsClient {
     */
   def failNextStartWithDuplicateName(executionName: String): Unit =
     duplicateExecutionNames += executionName
-
-  def withNextDescribeExecutionStatus(status: ExecutionStatus): Unit =
-    nextDescribeStatus = status
 
   override def startExecution(
     stateMachineArn: String,
@@ -73,17 +64,4 @@ class MockStepFunctionsClient extends StepFunctionsClient {
       )
     }
   }
-
-  override def describeExecution(
-    executionArn: String
-  )(implicit
-    ec: ExecutionContext
-  ): EitherT[Future, CoreError, DescribeExecutionResponse] =
-    EitherT.rightT[Future, CoreError](
-      DescribeExecutionResponse
-        .builder()
-        .executionArn(executionArn)
-        .status(nextDescribeStatus)
-        .build()
-    )
 }

@@ -4085,8 +4085,8 @@ class DataSetsController(
           secureContainer <- getSecureContainer()
           datasetId <- paramT[Int]("id")
 
-          _ <- checkOrErrorT(isServiceClaim(request))(
-            Forbidden("Internal use only")
+          _ <- checkOrErrorT(secureContainer.user.isSuperAdmin)(
+            Forbidden("Must be superadmin to complete a removal")
           )
 
           dataset <- secureContainer.datasetManager
