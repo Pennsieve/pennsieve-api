@@ -373,6 +373,18 @@ resource "aws_ssm_parameter" "publishing_default_workflow" {
   value = var.publishing_default_workflow
 }
 
+resource "aws_ssm_parameter" "restore_state_machine_arn" {
+  name  = "/${var.environment_name}/${var.service_name}/restore-state-machine-arn"
+  type  = "String"
+  value = data.terraform_remote_state.publish_storage_sync.outputs.publish_storage_sync_restore_state_machine_arn
+}
+
+resource "aws_ssm_parameter" "default_storage_bucket" {
+  name  = "/${var.environment_name}/${var.service_name}/default-storage-bucket"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.storage_bucket_id
+}
+
 // EXTERNAL PUBLISH BUCKETS CONFIGURATION
 //    SPARC
 resource "aws_ssm_parameter" "sparc_publish_50_bucket" {
