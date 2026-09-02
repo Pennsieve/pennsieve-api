@@ -5897,6 +5897,189 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     currentPublicationType() shouldBe Some(PublicationType.Removal)
   }
 
+  test(
+    "2 step publishing - removing a dataset with a deduped file starts a restore, and stays locked until it's completed"
+  ) {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    // accept(removal)'s restore-needed path requires a published Discover id.
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    // A file that lives only in the publish bucket -- the gate that forces
+    // accept(removal) onto the restore-needed path instead of the fast path.
+    val dedupedPackage = createPackage(dataset, "deduped-package", `type` = CSV)
+    val dedupedFile = secureContainer.fileManager
+      .create(
+        name = "deduped-file",
+        `type` = FileType.CSV,
+        `package` = dedupedPackage,
+        s3Bucket = "publish-bucket",
+        s3Key = "some-key",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Processed,
+        publishedS3VersionId = Some("v1")
+      )
+      .await
+      .value
+
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=removal",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    // Locked, waiting on the restore -- not finalized yet.
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    mockPublishClient.unpublishRequests should not contain (
+      (
+        loggedInOrganization.id,
+        dataset.id
+      )
+    )
+
+    val pending = secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .get
+
+    val executionArn = pending.removalMetadata.flatMap(_.executionArn)
+    executionArn shouldBe defined
+
+    mockStepFunctionsClient.startedExecutions
+      .map(_._2) should contain(s"restore-${dataset.id}-${pending.id}")
+
+    // Simulate the restore itself: the file gets copied back to storage and
+    // its published_s3_version_id is cleared, which is what the gate
+    // re-check inside finalizeRemoval independently verifies -- the "success"
+    // signal alone is never trusted.
+    secureContainer.fileManager
+      .setFileUnpublished(dedupedFile, "storage-bucket", "restored-key")
+      .await
+      .value
+
+    // Simulate the restore-completion signal arriving.
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      write(RemovalCompleteRequest(success = true)),
+      headers = authorizationHeader(adminJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    mockPublishClient.unpublishRequests should contain(
+      (loggedInOrganization.id, dataset.id)
+    )
+  }
+
+  test("2 step publishing - a failed removal can be retried by re-accepting") {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    val dedupedPackage = createPackage(dataset, "deduped-package", `type` = CSV)
+    secureContainer.fileManager
+      .create(
+        name = "deduped-file",
+        `type` = FileType.CSV,
+        `package` = dedupedPackage,
+        s3Bucket = "publish-bucket",
+        s3Key = "some-key",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Processed,
+        publishedS3VersionId = Some("v1")
+      )
+      .await
+      .value
+
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=removal",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    val firstAttempt = secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .get
+    val firstExecutionName = s"restore-${dataset.id}-${firstAttempt.id}"
+    mockStepFunctionsClient.startedExecutions
+      .map(_._2) should contain(firstExecutionName)
+
+    // The restore fails.
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      write(RemovalCompleteRequest(success = false)),
+      headers = authorizationHeader(adminJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Failed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    // Retry by simply re-accepting -- no dedicated retry endpoint exists.
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    val secondAttempt = secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .get
+    val secondExecutionName = s"restore-${dataset.id}-${secondAttempt.id}"
+
+    secondExecutionName should not equal firstExecutionName
+    mockStepFunctionsClient.startedExecutions
+      .map(_._2) should contain(secondExecutionName)
+  }
+
   test("2 step publishing - service user can release dataset with one request") {
 
     implicit val dataset: Dataset =
