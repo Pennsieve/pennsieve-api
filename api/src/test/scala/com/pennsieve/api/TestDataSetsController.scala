@@ -23,6 +23,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import com.pennsieve.audit.middleware.TraceId
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.aws.cognito.MockCognito
@@ -4669,13 +4670,11 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
-  // The delete endpoint now marks only the requested package DELETING;
-  // descendants stay READY until the delete job soft deletes them. These
-  // tests document endpoint behavior inside that window.
+  // Deleting a collection marks the entire subtree DELETING in the endpoint
+  // transaction, so listings exclude descendants of a deleted folder
+  // immediately. These tests guard against that gap reopening.
 
-  test(
-    "getPackages lists READY children of a DELETING collection until the delete job soft deletes descendants"
-  ) {
+  test("getPackages excludes a deleted collection and its descendants") {
     val dataset = createDataSet("dataset-with-deleting-folder")
     val folder = createPackage(dataset, "deleting-folder")
     val child = createPackage(
@@ -4684,9 +4683,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       `type` = PackageType.PDF,
       parent = Some(folder)
     )
+    val sibling = createPackage(dataset, "sibling", `type` = PackageType.PDF)
 
     secureContainer.packageManager
-      .update(folder.copy(state = PackageState.DELETING))
+      .delete(TraceId("test"), folder)
       .await
       .value
 
@@ -4697,14 +4697,13 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 200
       val ids =
         (parsedBody \ "packages" \ "content" \ "id").extract[List[Int]]
-      ids should contain(child.id)
+      ids should contain(sibling.id)
       ids should not contain folder.id
+      ids should not contain child.id
     }
   }
 
-  test(
-    "batch packages returns a READY child of a DELETING collection until the delete job soft deletes descendants"
-  ) {
+  test("batch packages fails a deleted collection and its descendants") {
     val dataset = createDataSet("dataset-batch-deleting-folder")
     val folder = createPackage(dataset, "deleting-folder-batch")
     val child = createPackage(
@@ -4715,7 +4714,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     )
 
     secureContainer.packageManager
-      .update(folder.copy(state = PackageState.DELETING))
+      .delete(TraceId("test"), folder)
       .await
       .value
 
@@ -4726,8 +4725,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status should equal(200)
 
       (parsedBody \ "packages" \ "content" \ "id")
-        .extract[List[Int]] should equal(List(child.id))
+        .extract[List[Int]] shouldBe empty
       compactRender(parsedBody \ "failures") should include(folder.nodeId)
+      compactRender(parsedBody \ "failures") should include(child.nodeId)
     }
   }
 

@@ -646,7 +646,7 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
     (messages.size - messagesBefore) should equal(1)
   }
 
-  test("deleting a collection defers soft deleting descendants to the job") {
+  test("deleting a collection marks descendants DELETING without renaming") {
     val dataset = createDataSet("My DataSet")
     val collection = packageManager
       .create("Foo", Collection, READY, dataset, Some(loggedInUser.id), None)
@@ -680,10 +680,11 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       .run(packagesMapper.get(collection.id).result.head)
       .await
       .state should equal(DELETING)
-    insecureContainer.db
+    val childAfter = insecureContainer.db
       .run(packagesMapper.get(child.id).result.head)
       .await
-      .state should equal(READY)
+    childAfter.state should equal(DELETING)
+    childAfter.name should equal("Bar")
   }
 
   test("deleting a package does not synchronously decrement storage") {

@@ -727,7 +727,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     assert(afterSecond.name == afterFirst.name)
   }
 
-  "deleting a collection" should "not synchronously soft delete its descendants" in {
+  "deleting a collection" should "synchronously mark its descendants DELETING" in {
     val user = createUser()
     val pm = packageManager(user = user)
     val dataset = createDataset(user = user)
@@ -750,9 +750,8 @@ class PackageManagerSpec extends BaseManagerSpec {
       database.run(packagesMapper.get(id).result.head).await.state
 
     assert(stateOf(parent.id) == PackageState.DELETING)
-    // descendants are flipped by the async delete job in small batches
-    assert(stateOf(child.id) == PackageState.READY)
-    assert(stateOf(grandChild.id) == PackageState.READY)
+    assert(stateOf(child.id) == PackageState.DELETING)
+    assert(stateOf(grandChild.id) == PackageState.DELETING)
   }
 
   "creating packages with duplicate node ids" should "fail" in {
@@ -1262,7 +1261,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     afterDeletePackageNodeIds.contains(subject2FilePackage.nodeId) shouldBe false
   }
 
-  "deleting a collection" should "only mark the root DELETING and leave descendants to the delete job" in {
+  "deleting a collection" should "mark descendants DELETING without renaming them" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val packagesMapper = new PackagesMapper(testOrganization)
@@ -1320,8 +1319,9 @@ class PackageManagerSpec extends BaseManagerSpec {
     root.state shouldBe PackageState.DELETING
     root.name should startWith("__DELETED__")
 
-    // The delete endpoint only marks the root package; descendants are soft
-    // deleted downstream by the consumer of the delete job.
+    // Descendants are marked DELETING in the same transaction, but only the
+    // root is renamed: name uniqueness is scoped by parent_id, so descendant
+    // names never conflict with anything created after the delete.
     val descendants = database
       .run(
         packagesMapper
@@ -1339,7 +1339,7 @@ class PackageManagerSpec extends BaseManagerSpec {
 
     descendants.size shouldBe 4
     descendants.foreach { pkg =>
-      pkg.state shouldBe PackageState.READY
+      pkg.state shouldBe PackageState.DELETING
       pkg.name should not startWith "__DELETED__"
     }
   }
@@ -1413,7 +1413,7 @@ class PackageManagerSpec extends BaseManagerSpec {
       .await
     val childFirstDeletedName = childAfterFirstDelete.name
 
-    // Now delete the parent folder; only the folder itself is touched
+    // Now delete the parent folder
     deletePackage(user = user, pkg = folder)
 
     // The independently-deleted child should NOT be double-renamed
@@ -1423,11 +1423,11 @@ class PackageManagerSpec extends BaseManagerSpec {
     childAfterParentDelete.state shouldBe PackageState.DELETING
     childAfterParentDelete.name shouldBe childFirstDeletedName
 
-    // The other child is left for the delete job
+    // The other child is marked DELETING but keeps its name
     val child2 = database
       .run(packagesMapper.filter(_.id === childFile2.id).result.head)
       .await
-    child2.state shouldBe PackageState.READY
+    child2.state shouldBe PackageState.DELETING
     child2.name shouldBe "childFile2"
   }
 

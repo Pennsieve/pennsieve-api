@@ -612,9 +612,11 @@ trait PackageManager {
   }
 
   /**
-    * Soft delete a package: mark it DELETING in a single small transaction.
-    * Returns a DeleteJob to be scheduled that will soft delete descendants,
-    * decrement storage counts, and hard-delete the package and all assets.
+    * Soft delete a package: mark it and all descendants DELETING in a single
+    * transaction. Only the root package is renamed (to free its name for
+    * immediate reuse); descendants keep their names. Returns a DeleteJob to
+    * be scheduled that will decrement storage counts and hard-delete the
+    * package and all assets.
     *
     * @param traceId The trace ID from the endpoint that initiated the deletion
     * @param pkg The Package to delete
@@ -633,22 +635,22 @@ trait PackageManager {
       // it is copied to the publish bucket.
       _ <- datasetManager.assertNotLocked(pkg.datasetId)
 
-      // Guarded on state so a concurrent delete of the same package cannot
-      // rename it twice
-      _ <- db
-        .run(
-          packagesMapper
-            .get(pkg.id)
-            .filter(_.state =!= (PackageState.DELETING: PackageState))
-            .map(p => (p.state, p.name))
-            .update(
-              (
-                PackageState.DELETING,
-                "__DELETED__" + pkg.nodeId + "_" + pkg.name
-              )
-            )
-        )
-        .toEitherT
+      softDeleteAction = for {
+        // Guarded on state so a concurrent delete of the same package cannot
+        // rename it twice
+        _ <- packagesMapper
+          .get(pkg.id)
+          .filter(_.state =!= (PackageState.DELETING: PackageState))
+          .map(p => (p.state, p.name))
+          .update(
+            (PackageState.DELETING, "__DELETED__" + pkg.nodeId + "_" + pkg.name)
+          )
+        _ <- if (pkg.`type` == Collection)
+          packagesMapper.softDeleteDescendants(pkg)
+        else DBIO.successful(0)
+      } yield ()
+
+      _ <- db.run(softDeleteAction.transactionally).toEitherT
     } yield
       DeletePackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId): BackgroundJob
 
