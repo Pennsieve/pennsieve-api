@@ -400,9 +400,8 @@ trait ManagerSpec
     pkg: Package
   ): Unit = {
     val pm = packageManager(organization, user)
-    val sm = storageManager(organization)
     val traceId = TraceId("n/a")
-    val _ = pm.delete(traceId, pkg)(sm).await.value
+    val _ = pm.delete(traceId, pkg).await.value
   }
 
   def createDataset(

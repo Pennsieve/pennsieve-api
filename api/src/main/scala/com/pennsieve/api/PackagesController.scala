@@ -88,10 +88,7 @@ case class CreateFileRequest(
   size: Option[Long]
 )
 
-case class DownloadItemResponse(
-  url: String,
-  scanStatus: Option[String] = None
-)
+case class DownloadItemResponse(url: String, scanStatus: Option[String] = None)
 
 case class GetAnnotationsResponse(
   annotations: Map[Int, Seq[AnnotationDTO]],
@@ -560,56 +557,59 @@ class PackagesController(
                 // presigned URL; anything else (clean / pending /
                 // scanning / unscanned / not_required / null) passes
                 // through to `data` with the status surfaced.
-                val newState = if (PackagesController.scanStatusBlocks(p.scanStatus)) {
-                  val blockedEntry = DownloadManifestBlockedEntry(
-                    nodeId = p.nodeId,
-                    fileName = p.fileName,
-                    packageName = p.packageName,
-                    scanStatus = p.scanStatus.getOrElse("")
-                  )
-                  DownloadManifestDTO(
-                    DownloadManifestHeader(
-                      downloadResponse.header.count,
-                      downloadResponse.header.size,
-                      Some(downloadResponse.header.blockedCount.getOrElse(0) + 1)
-                    ),
-                    downloadResponse.data,
-                    downloadResponse.blocked :+ blockedEntry
-                  )
-                } else {
-                  val newEntry: DownloadManifestEntry = DownloadManifestEntry(
-                    nodeId = p.nodeId,
-                    fileName = p.fileName,
-                    packageName = p.packageName,
-                    // append the package's own name to the path ONLY if it contains multiple files
-                    path =
-                      if (p.packageFileCount === 1)
-                        p.packageNamePath.toList
-                      else p.packageNamePath.toList :+ p.packageName,
-                    url = objectStore
-                      .getPresignedUrl(
-                        p.s3Bucket,
-                        p.s3Key,
-                        DateTime.now.plusMinutes(180).toDate,
-                        p.packageName,
-                        p.publishedS3VersionId
-                      )
-                      .toOption
-                      .get,
-                    size = p.size,
-                    fileExtension = Utilities.getFullExtension(p.s3Key),
-                    scanStatus = p.scanStatus
-                  )
-                  DownloadManifestDTO(
-                    DownloadManifestHeader(
-                      downloadResponse.header.count + 1,
-                      downloadResponse.header.size + p.size,
-                      downloadResponse.header.blockedCount
-                    ),
-                    downloadResponse.data :+ newEntry,
-                    downloadResponse.blocked
-                  )
-                }
+                val newState =
+                  if (PackagesController.scanStatusBlocks(p.scanStatus)) {
+                    val blockedEntry = DownloadManifestBlockedEntry(
+                      nodeId = p.nodeId,
+                      fileName = p.fileName,
+                      packageName = p.packageName,
+                      scanStatus = p.scanStatus.getOrElse("")
+                    )
+                    DownloadManifestDTO(
+                      DownloadManifestHeader(
+                        downloadResponse.header.count,
+                        downloadResponse.header.size,
+                        Some(
+                          downloadResponse.header.blockedCount.getOrElse(0) + 1
+                        )
+                      ),
+                      downloadResponse.data,
+                      downloadResponse.blocked :+ blockedEntry
+                    )
+                  } else {
+                    val newEntry: DownloadManifestEntry = DownloadManifestEntry(
+                      nodeId = p.nodeId,
+                      fileName = p.fileName,
+                      packageName = p.packageName,
+                      // append the package's own name to the path ONLY if it contains multiple files
+                      path =
+                        if (p.packageFileCount === 1)
+                          p.packageNamePath.toList
+                        else p.packageNamePath.toList :+ p.packageName,
+                      url = objectStore
+                        .getPresignedUrl(
+                          p.s3Bucket,
+                          p.s3Key,
+                          DateTime.now.plusMinutes(180).toDate,
+                          p.packageName,
+                          p.publishedS3VersionId
+                        )
+                        .toOption
+                        .get,
+                      size = p.size,
+                      fileExtension = Utilities.getFullExtension(p.s3Key),
+                      scanStatus = p.scanStatus
+                    )
+                    DownloadManifestDTO(
+                      DownloadManifestHeader(
+                        downloadResponse.header.count + 1,
+                        downloadResponse.header.size + p.size,
+                        downloadResponse.header.blockedCount
+                      ),
+                      downloadResponse.data :+ newEntry,
+                      downloadResponse.blocked
+                    )
+                  }
                 (
                   datasetIds + p.datasetId,
                   rootNodeIds + p.nodeIdPath.headOption.getOrElse(p.nodeId),

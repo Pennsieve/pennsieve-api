@@ -21,6 +21,7 @@ import cats.implicits._
 import com.pennsieve.db.PackagesMapper
 import com.pennsieve.domain.{ NameCheckError, NotFound, PredicateError }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
+import com.pennsieve.messages.DeletePackageJob
 import com.pennsieve.models.{
   CollectionUpload,
   FileType,
@@ -669,7 +670,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     result should contain noneOf (childTwo, childThree, childFour, grandChildTwo, grandChildThree, grandChildFour, parentTwo)
   }
 
-  "deleting a package" should "decrement storage" in {
+  "deleting a package" should "mark it DELETING and defer storage decrements to the delete job" in {
     val user = createUser()
     val pm = packageManager(user = user)
     val dataset = createDataset(user = user)
@@ -677,23 +678,21 @@ class PackageManagerSpec extends BaseManagerSpec {
     val file = createFile(container = p, user = user, size = 12345)
     val storageMnger = storageManager(testOrganization)
     storageMnger.incrementStorage(spackages, file.size, p.id).await
-    val packageStorageBefore = storageMnger
-      .getStorage(spackages, List(p.id))
-      .await
-      .value
-      .get(p.id)
-      .flatten
-    val datasetStorageBefore = storageMnger
-      .getStorage(sdatasets, List(dataset.id))
-      .await
-      .value
-      .get(dataset.id)
-      .flatten
-    assert(packageStorageBefore == Some(file.size))
-    assert(datasetStorageBefore == Some(file.size))
 
-    pm.delete(TraceId("ds"), p)(storageMnger).await
+    val job = pm.delete(TraceId("ds"), p).await.value
 
+    job match {
+      case deleteJob: DeletePackageJob =>
+        assert(deleteJob.packageId == p.id)
+      case other => fail(s"expected DeletePackageJob, got $other")
+    }
+
+    val packagesMapper = new PackagesMapper(testOrganization)
+    val updated = database.run(packagesMapper.get(p.id).result.head).await
+    assert(updated.state == PackageState.DELETING)
+    assert(updated.name == "__DELETED__" + p.nodeId + "_" + p.name)
+
+    // storage decrements now happen in the delete job, not here
     val packageStorageAfter = storageMnger
       .getStorage(spackages, List(p.id))
       .await
@@ -706,89 +705,53 @@ class PackageManagerSpec extends BaseManagerSpec {
       .value
       .get(dataset.id)
       .flatten
-    assert(packageStorageAfter == Some(0))
-    assert(datasetStorageAfter == Some(0))
+    assert(packageStorageAfter == Some(file.size))
+    assert(datasetStorageAfter == Some(file.size))
   }
 
-  "deleting a package" should "decrement storage from nested packages" in {
+  "deleting a package" should "not rename it twice when already DELETING" in {
     val user = createUser()
     val pm = packageManager(user = user)
     val dataset = createDataset(user = user)
-    val storageMnger = storageManager(testOrganization)
+    val p = createPackage(user = user, dataset = dataset, `type` = Slide)
 
-    /**
-      * Package structure looks like:
-      *
-      * ├── parent (155B)
-      * |   ├── childOne (155B)
-      * |   |   ├── grandChildOne (55B)
-      * |   |   └── grandChildTwo (100B)
-      * └── sibling (1000B)
-      */
+    val packagesMapper = new PackagesMapper(testOrganization)
+
+    pm.delete(TraceId("ds"), p).await.value
+    val afterFirst = database.run(packagesMapper.get(p.id).result.head).await
+
+    pm.delete(TraceId("ds"), p).await.value
+    val afterSecond = database.run(packagesMapper.get(p.id).result.head).await
+
+    assert(afterFirst.state == PackageState.DELETING)
+    assert(afterSecond.name == afterFirst.name)
+  }
+
+  "deleting a collection" should "synchronously mark its descendants DELETING" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+    val dataset = createDataset(user = user)
+
     val parent = createPackage(user = user, dataset = dataset)
-
-    val childOne =
+    val child =
       createPackage(user = user, parent = Some(parent), dataset = dataset)
-
-    val grandChildOne =
+    val grandChild =
       createPackage(
         user = user,
-        parent = Some(childOne),
+        parent = Some(child),
         dataset = dataset,
         `type` = Slide
       )
-    val grandChildOneFile =
-      createFile(container = grandChildOne, user = user, size = 55)
 
-    val grandChildTwo =
-      createPackage(
-        user = user,
-        parent = Some(childOne),
-        dataset = dataset,
-        `type` = Slide
-      )
-    val grandChildTwoFile =
-      createFile(container = grandChildTwo, user = user, size = 100)
+    pm.delete(TraceId("ds"), parent).await.value
 
-    val sibling = createPackage(user = user, dataset = dataset, `type` = Slide)
-    val siblingFile = createFile(container = sibling, user = user, size = 1000)
+    val packagesMapper = new PackagesMapper(testOrganization)
+    def stateOf(id: Int): PackageState =
+      database.run(packagesMapper.get(id).result.head).await.state
 
-    List(parent, childOne, grandChildOne, grandChildTwo, sibling)
-      .traverse(storageMnger.setPackageStorage)
-      .value
-      .await
-
-    val packageStorageBefore = storageMnger
-      .getStorage(spackages, List(parent.id))
-      .await
-      .value
-      .get(parent.id)
-      .flatten
-    val datasetStorageBefore = storageMnger
-      .getStorage(sdatasets, List(dataset.id))
-      .await
-      .value
-      .get(dataset.id)
-      .flatten
-    assert(packageStorageBefore == Some(155))
-    assert(datasetStorageBefore == Some(1155))
-
-    pm.delete(TraceId("ds"), childOne)(storageMnger).await
-
-    val packageStorageAfter = storageMnger
-      .getStorage(spackages, List(parent.id))
-      .await
-      .value
-      .get(parent.id)
-      .flatten
-    val datasetStorageAfter = storageMnger
-      .getStorage(sdatasets, List(dataset.id))
-      .await
-      .value
-      .get(dataset.id)
-      .flatten
-    assert(packageStorageAfter == Some(0))
-    assert(datasetStorageAfter == Some(1000))
+    assert(stateOf(parent.id) == PackageState.DELETING)
+    assert(stateOf(child.id) == PackageState.DELETING)
+    assert(stateOf(grandChild.id) == PackageState.DELETING)
   }
 
   "creating packages with duplicate node ids" should "fail" in {
@@ -1298,7 +1261,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     afterDeletePackageNodeIds.contains(subject2FilePackage.nodeId) shouldBe false
   }
 
-  "deleting a collection" should "set all descendants to DELETING with __DELETED__ prefix" in {
+  "deleting a collection" should "mark and rename descendants in the same transaction" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val packagesMapper = new PackagesMapper(testOrganization)
@@ -1349,13 +1312,20 @@ class PackageManagerSpec extends BaseManagerSpec {
 
     deletePackage(user = user, pkg = rootFolder)
 
-    // Fetch all packages directly (bypassing the DELETING filter)
-    val allPackages = database
+    // Fetch the root directly (bypassing the DELETING filter)
+    val root = database
+      .run(packagesMapper.filter(_.id === rootFolder.id).result.head)
+      .await
+    root.state shouldBe PackageState.DELETING
+    root.name should startWith("__DELETED__")
+
+    // Descendants are marked DELETING and renamed in the same transaction,
+    // preserving the __DELETED__ prefix contract the restore flow depends on
+    val descendants = database
       .run(
         packagesMapper
           .filter(
             _.id inSet Set(
-              rootFolder.id,
               childFolder.id,
               grandChildFile.id,
               grandChildFile2.id,
@@ -1366,7 +1336,8 @@ class PackageManagerSpec extends BaseManagerSpec {
       )
       .await
 
-    allPackages.foreach { pkg =>
+    descendants.size shouldBe 4
+    descendants.foreach { pkg =>
       pkg.state shouldBe PackageState.DELETING
       pkg.name should startWith("__DELETED__")
     }
@@ -1407,7 +1378,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     sibling.name shouldBe "siblingFile"
   }
 
-  "deleting a collection" should "skip already-deleted descendants" in {
+  "deleting a collection" should "not touch an already-DELETING descendant" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val packagesMapper = new PackagesMapper(testOrganization)
@@ -1448,14 +1419,15 @@ class PackageManagerSpec extends BaseManagerSpec {
     val childAfterParentDelete = database
       .run(packagesMapper.filter(_.id === childFile.id).result.head)
       .await
+    childAfterParentDelete.state shouldBe PackageState.DELETING
     childAfterParentDelete.name shouldBe childFirstDeletedName
 
-    // The other child should be marked DELETING
+    // The other child is marked DELETING and renamed exactly once
     val child2 = database
       .run(packagesMapper.filter(_.id === childFile2.id).result.head)
       .await
     child2.state shouldBe PackageState.DELETING
-    child2.name should startWith("__DELETED__")
+    child2.name shouldBe "__DELETED__" + childFile2.nodeId + "_childFile2"
   }
 
   "deleting an empty collection" should "succeed without errors" in {

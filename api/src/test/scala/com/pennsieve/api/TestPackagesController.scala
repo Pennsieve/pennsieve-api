@@ -20,6 +20,7 @@ import java.net.URL
 import java.time.ZonedDateTime
 import java.util.UUID
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import com.pennsieve.audit.middleware.TraceId
 import com.pennsieve.domain.StorageAggregation.{
   sdatasets,
   sorganizations,
@@ -2678,6 +2679,123 @@ class TestPackagesController
       val fileNames = payload.data.map(_.fileName)
       fileNames.contains("file1.pdf") shouldBe false
       fileNames.contains("file2") shouldBe true
+    }
+  }
+
+  // Deleting a collection marks the entire subtree DELETING in the endpoint
+  // transaction, so there is no window where
+  // descendants of a deleted folder are still visible. These tests guard
+  // against that gap reopening.
+
+  test("get package returns 404 for a deleted collection and its descendants") {
+    val folder = createTestDownloadPackage("deleted-folder-get")
+    val child =
+      createTestDownloadPackage("child-of-deleted-get", parent = Some(folder))
+    val leaf = createTestDownloadPackage(
+      "leaf-of-deleted-get",
+      parent = Some(child),
+      packageType = PackageType.PDF
+    )
+
+    secureContainer.packageManager
+      .delete(TraceId("test"), folder)
+      .await
+      .value
+
+    List(folder, child, leaf).foreach { pkg =>
+      get(
+        s"/${pkg.nodeId}",
+        headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+      ) {
+        status should equal(404)
+      }
+    }
+  }
+
+  test(
+    "update package returns 404 for a descendant of a deleted collection without persisting changes"
+  ) {
+    val folder = createTestDownloadPackage("deleted-folder-put")
+    val child = createTestDownloadPackage(
+      "child-of-deleted-put",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+
+    secureContainer.packageManager
+      .delete(TraceId("test"), folder)
+      .await
+      .value
+
+    val request = """{"name":"renamed-under-deleted-folder"}"""
+
+    putJson(
+      s"/${child.nodeId}",
+      request,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
+    }
+
+    // fetch bypassing the DELETING filter: the update was not applied
+    secureContainer.packageManager
+      .getPackageAndDatasetByNodeIdForDeletion(child.nodeId)
+      .await
+      .value
+      ._1
+      .name should equal("__DELETED__" + child.nodeId + "_child-of-deleted-put")
+  }
+
+  test(
+    "download-manifest returns 400 for a deleted collection and its descendants"
+  ) {
+    val folder = createTestDownloadPackage("deleted-folder-manifest")
+    val child = createTestDownloadPackage(
+      "child-of-deleted-manifest",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+    createTestDownloadFile("gone.pdf", child)
+
+    secureContainer.packageManager
+      .delete(TraceId("test"), folder)
+      .await
+      .value
+
+    List(folder, child).foreach { pkg =>
+      val request = s"""{"nodeIds": ["${pkg.nodeId}"]}"""
+      postJson(
+        s"/download-manifest",
+        request,
+        headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+      ) {
+        status should equal(400)
+        response.body should include("not found")
+      }
+    }
+  }
+
+  test(
+    "get package sources returns 404 for a descendant of a deleted collection"
+  ) {
+    val folder = createTestDownloadPackage("deleted-folder-sources")
+    val child = createTestDownloadPackage(
+      "child-of-deleted-sources",
+      parent = Some(folder),
+      packageType = PackageType.PDF
+    )
+    createTestDownloadFile("no-longer-visible.pdf", child)
+
+    secureContainer.packageManager
+      .delete(TraceId("test"), folder)
+      .await
+      .value
+
+    get(
+      s"/${child.nodeId}/sources",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(404)
     }
   }
 
