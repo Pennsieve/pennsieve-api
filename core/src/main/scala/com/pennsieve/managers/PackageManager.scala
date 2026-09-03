@@ -612,11 +612,11 @@ trait PackageManager {
   }
 
   /**
-    * Soft delete a package: mark it and all descendants DELETING in a single
-    * transaction. Only the root package is renamed (to free its name for
-    * immediate reuse); descendants keep their names. Returns a DeleteJob to
-    * be scheduled that will decrement storage counts and hard-delete the
-    * package and all assets.
+    * Soft delete a package: mark it and all descendants DELETING and rename
+    * them in a single transaction, freeing the root's name for immediate
+    * reuse and preserving the __DELETED__ prefix contract that the restore
+    * flow depends on. Returns a DeleteJob to be scheduled that will decrement
+    * storage counts and hard-delete the package and all assets.
     *
     * @param traceId The trace ID from the endpoint that initiated the deletion
     * @param pkg The Package to delete

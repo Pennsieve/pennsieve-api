@@ -1261,7 +1261,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     afterDeletePackageNodeIds.contains(subject2FilePackage.nodeId) shouldBe false
   }
 
-  "deleting a collection" should "mark descendants DELETING without renaming them" in {
+  "deleting a collection" should "mark and rename descendants in the same transaction" in {
     val user = createUser()
     val dataset = createDataset(user = user)
     val packagesMapper = new PackagesMapper(testOrganization)
@@ -1319,9 +1319,8 @@ class PackageManagerSpec extends BaseManagerSpec {
     root.state shouldBe PackageState.DELETING
     root.name should startWith("__DELETED__")
 
-    // Descendants are marked DELETING in the same transaction, but only the
-    // root is renamed: name uniqueness is scoped by parent_id, so descendant
-    // names never conflict with anything created after the delete.
+    // Descendants are marked DELETING and renamed in the same transaction,
+    // preserving the __DELETED__ prefix contract the restore flow depends on
     val descendants = database
       .run(
         packagesMapper
@@ -1340,7 +1339,7 @@ class PackageManagerSpec extends BaseManagerSpec {
     descendants.size shouldBe 4
     descendants.foreach { pkg =>
       pkg.state shouldBe PackageState.DELETING
-      pkg.name should not startWith "__DELETED__"
+      pkg.name should startWith("__DELETED__")
     }
   }
 
@@ -1423,12 +1422,12 @@ class PackageManagerSpec extends BaseManagerSpec {
     childAfterParentDelete.state shouldBe PackageState.DELETING
     childAfterParentDelete.name shouldBe childFirstDeletedName
 
-    // The other child is marked DELETING but keeps its name
+    // The other child is marked DELETING and renamed exactly once
     val child2 = database
       .run(packagesMapper.filter(_.id === childFile2.id).result.head)
       .await
     child2.state shouldBe PackageState.DELETING
-    child2.name shouldBe "childFile2"
+    child2.name shouldBe "__DELETED__" + childFile2.nodeId + "_childFile2"
   }
 
   "deleting an empty collection" should "succeed without errors" in {

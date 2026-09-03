@@ -2683,7 +2683,7 @@ class TestPackagesController
   }
 
   // Deleting a collection marks the entire subtree DELETING in the endpoint
-  // transaction (only the root is renamed), so there is no window where
+  // transaction, so there is no window where
   // descendants of a deleted folder are still visible. These tests guard
   // against that gap reopening.
 
@@ -2737,13 +2737,13 @@ class TestPackagesController
       status should equal(404)
     }
 
-    // fetch bypassing the DELETING filter: the descendant keeps its name
+    // fetch bypassing the DELETING filter: the update was not applied
     secureContainer.packageManager
       .getPackageAndDatasetByNodeIdForDeletion(child.nodeId)
       .await
       .value
       ._1
-      .name should equal("child-of-deleted-put")
+      .name should equal("__DELETED__" + child.nodeId + "_child-of-deleted-put")
   }
 
   test(

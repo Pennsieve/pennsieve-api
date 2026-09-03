@@ -310,14 +310,13 @@ class PackagesMapper(val organization: Organization)
       .map(_.to(Set))
   }
 
-  // Set all descendants of a collection to DELETING.
-  // Excludes descendants already in DELETING or DELETED state.
+  // Set all descendants of a collection to DELETING and rename them.
+  // Excludes descendants already in DELETING or DELETED state, so an
+  // independently-deleted descendant is never renamed twice.
   //
-  // State-only on purpose: descendant names are left untouched. Name
-  // uniqueness is scoped by parent_id, so only the deleted root's rename
-  // frees a name for reuse; skipping the rename here avoids unique-index
-  // maintenance on (name, dataset_id, parent_id) for every descendant row,
-  // keeping this affordable inside the delete endpoint's transaction.
+  // The __DELETED__ prefix is a contract with the packages-service restore
+  // flow (GetOriginalName requires it on every DELETED package), so the
+  // rename must stay until restore is made tolerant of unprefixed names.
   def softDeleteDescendants(p: Package) = {
     sqlu"""
       WITH RECURSIVE descendants AS (
@@ -332,7 +331,8 @@ class PackagesMapper(val organization: Organization)
         WHERE child.state NOT IN (${PackageState.DELETING.entryName}, ${PackageState.DELETED.entryName})
       )
       UPDATE "#${organization.schemaId}".packages target
-      SET state = ${PackageState.DELETING.entryName}
+      SET state = ${PackageState.DELETING.entryName},
+          name = '__DELETED__' || target.node_id || '_' || target.name
       FROM descendants
       WHERE target.id = descendants.id
     """
