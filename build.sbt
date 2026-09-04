@@ -351,6 +351,7 @@ lazy val coreSettings = Seq(
     "com.amazonaws" % "aws-java-sdk-sts" % awsVersion,
     "software.amazon.awssdk" % "sns" % awsV2Version,
     "software.amazon.awssdk" % "sqs" % awsV2Version,
+    "software.amazon.awssdk" % "sfn" % awsV2Version,
     "software.amazon.awssdk" % "cognitoidentityprovider" % awsV2Version,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,

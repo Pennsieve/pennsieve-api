@@ -27,6 +27,7 @@ import com.pennsieve.models.FileObjectType.{ Source, View, File => FileT }
 import com.pennsieve.models.FileProcessingState.{ Processed, Unprocessed }
 import com.pennsieve.models.Utilities.isNameValid
 import com.pennsieve.models.{
+  Dataset,
   File,
   FileChecksum,
   FileObjectType,
@@ -308,6 +309,30 @@ trait FileManager {
             f =>
               f.objectType === (FileObjectType.Source: FileObjectType) && f.packageId === `package`.id
           )
+          .length
+          .result
+      )
+      .toEitherT
+
+  /**
+    * Counts files in the dataset that still live only in the publish bucket
+    * (i.e. have not been copied back to storage). This is the data-loss safety
+    * gate for unpublish: the publish bucket must not be deleted while this is
+    * non-zero.
+    */
+  def countPublishedFiles(
+    dataset: Dataset
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Int] =
+    db.run(
+        files
+          .join(packages)
+          .on(_.packageId === _.id)
+          .filter {
+            case (f, p) =>
+              p.datasetId === dataset.id && f.publishedS3VersionId.isDefined
+          }
           .length
           .result
       )

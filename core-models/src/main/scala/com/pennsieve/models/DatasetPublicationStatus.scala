@@ -29,7 +29,8 @@ final case class DatasetPublicationStatus(
   comments: Option[String] = None,
   embargoReleaseDate: Option[LocalDate] = None,
   createdAt: ZonedDateTime = ZonedDateTime.now,
-  id: Int = 0
+  id: Int = 0,
+  removalMetadata: Option[RemovalRestoreMetadata] = None
 )
 
 object DatasetPublicationStatus {
