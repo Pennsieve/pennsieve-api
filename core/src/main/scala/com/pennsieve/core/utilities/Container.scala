@@ -311,7 +311,8 @@ trait DatasetPublicationStatusContainer {
       db,
       user,
       datasetPublicationStatusMapper,
-      changelogManager.changelogEventMapper
+      changelogManager.changelogEventMapper,
+      changelogManager
     )
 }
 

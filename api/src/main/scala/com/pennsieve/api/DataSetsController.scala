@@ -157,7 +157,9 @@ case class PublishCompleteRequest(
   lastPublishedDate: Option[OffsetDateTime],
   status: PublishStatus,
   success: Boolean,
-  error: Option[String]
+  error: Option[String],
+  publishedVersion: Option[Int] = None,
+  doi: Option[String] = None
 )
 
 case class DatasetReadmeDTO(readme: String)
@@ -3774,7 +3776,15 @@ class DataSetsController(
                 else PublicationStatus.Failed,
               publicationType = publicationStatus.publicationType,
               comments = publicationStatus.comments,
-              embargoReleaseDate = publicationStatus.embargoReleaseDate
+              embargoReleaseDate = publicationStatus.embargoReleaseDate,
+              publicationArtifact =
+                if (body.success)
+                  ChangelogEventDetail.PublicationArtifact(
+                    publishedDatasetId = body.publishedDatasetId,
+                    publishedVersion = body.publishedVersion,
+                    doi = body.doi
+                  )
+                else ChangelogEventDetail.PublicationArtifact()
             )
             .coreErrorToActionResult()
 

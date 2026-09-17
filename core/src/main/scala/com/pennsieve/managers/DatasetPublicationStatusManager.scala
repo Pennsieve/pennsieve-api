@@ -21,6 +21,7 @@ import cats.implicits._
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.db._
 import com.pennsieve.models._
+import com.pennsieve.models.ChangelogEventDetail.PublicationArtifact
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.domain.{ CoreError, NotFound }
 import com.rms.miu.slickcats.DBIOInstances._
@@ -35,13 +36,15 @@ trait DatasetPublicationStatusManager {
   def actor: User
   def datasetPublicationStatusMapper: DatasetPublicationStatusMapper
   def changelogEventMapper: ChangelogEventMapper
+  def changelogManager: ChangelogManager
 
   def create(
     dataset: Dataset,
     publicationStatus: PublicationStatus,
     publicationType: PublicationType,
     comments: Option[String] = None,
-    embargoReleaseDate: Option[LocalDate] = None
+    embargoReleaseDate: Option[LocalDate] = None,
+    publicationArtifact: PublicationArtifact = PublicationArtifact()
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, DatasetPublicationStatus] = {
@@ -55,16 +58,21 @@ trait DatasetPublicationStatusManager {
       embargoReleaseDate
     )
 
-    val query = for {
+    for {
+      status <- db
+        .run(
+          ((datasetPublicationStatusMapper returning datasetPublicationStatusMapper) += row).transactionally
+        )
+        .toEitherT
 
-      status <- (datasetPublicationStatusMapper returning datasetPublicationStatusMapper) += row
-
+      // Writes the changelog row and publishes to SNS, mirroring every
+      // other changelog-producing action (see ChangelogManager.logEvent).
+      // Runs after the status row commits since SNS can't participate in
+      // the same Postgres transaction.
       _ <- ChangelogEventDetail
-        .fromPublicationStatus(status)
-        .traverse(changelogEventMapper.logEvent(dataset, _, actor))
+        .fromPublicationStatus(status, publicationArtifact)
+        .traverse(changelogManager.logEvent(dataset, _))
     } yield status
-
-    db.run(query.transactionally).toEitherT
 
   }
 
@@ -103,5 +111,6 @@ class DatasetPublicationStatusManagerImpl(
   val db: Database,
   val actor: User,
   val datasetPublicationStatusMapper: DatasetPublicationStatusMapper,
-  val changelogEventMapper: ChangelogEventMapper
+  val changelogEventMapper: ChangelogEventMapper,
+  val changelogManager: ChangelogManager
 ) extends DatasetPublicationStatusManager

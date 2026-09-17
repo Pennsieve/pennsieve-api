@@ -78,19 +78,27 @@ object ChangelogEventDetail {
       case d: AcceptPublication => d.asJson
       case d: RejectPublication => d.asJson
       case d: CancelPublication => d.asJson
+      case d: CompletePublication => d.asJson
+      case d: FailPublication => d.asJson
       case d: RequestEmbargo => d.asJson
       case d: AcceptEmbargo => d.asJson
       case d: RejectEmbargo => d.asJson
       case d: CancelEmbargo => d.asJson
       case d: ReleaseEmbargo => d.asJson
+      case d: CompleteEmbargo => d.asJson
+      case d: FailEmbargo => d.asJson
       case d: RequestRemoval => d.asJson
       case d: AcceptRemoval => d.asJson
       case d: RejectRemoval => d.asJson
       case d: CancelRemoval => d.asJson
+      case d: CompleteRemoval => d.asJson
+      case d: FailRemoval => d.asJson
       case d: RequestRevision => d.asJson
       case d: AcceptRevision => d.asJson
       case d: RejectRevision => d.asJson
       case d: CancelRevision => d.asJson
+      case d: CompleteRevision => d.asJson
+      case d: FailRevision => d.asJson
       case d: CustomEvent => d.asJson
       case d: UpdateChangelog => d.asJson
     }
@@ -137,25 +145,46 @@ object ChangelogEventDetail {
       case ACCEPT_PUBLICATION => AcceptPublication.decoder.widen
       case REJECT_PUBLICATION => RejectPublication.decoder.widen
       case CANCEL_PUBLICATION => CancelPublication.decoder.widen
+      case COMPLETE_PUBLICATION => CompletePublication.decoder.widen
+      case FAIL_PUBLICATION => FailPublication.decoder.widen
       case REQUEST_EMBARGO => RequestEmbargo.decoder.widen
       case ACCEPT_EMBARGO => AcceptEmbargo.decoder.widen
       case REJECT_EMBARGO => RejectEmbargo.decoder.widen
       case CANCEL_EMBARGO => CancelEmbargo.decoder.widen
       case RELEASE_EMBARGO => ReleaseEmbargo.decoder.widen
+      case COMPLETE_EMBARGO => CompleteEmbargo.decoder.widen
+      case FAIL_EMBARGO => FailEmbargo.decoder.widen
       case REQUEST_REMOVAL => RequestRemoval.decoder.widen
       case ACCEPT_REMOVAL => AcceptRemoval.decoder.widen
       case REJECT_REMOVAL => RejectRemoval.decoder.widen
       case CANCEL_REMOVAL => CancelRemoval.decoder.widen
+      case COMPLETE_REMOVAL => CompleteRemoval.decoder.widen
+      case FAIL_REMOVAL => FailRemoval.decoder.widen
       case REQUEST_REVISION => RequestRevision.decoder.widen
       case ACCEPT_REVISION => AcceptRevision.decoder.widen
       case REJECT_REVISION => RejectRevision.decoder.widen
       case CANCEL_REVISION => CancelRevision.decoder.widen
+      case COMPLETE_REVISION => CompleteRevision.decoder.widen
+      case FAIL_REVISION => FailRevision.decoder.widen
       case CUSTOM_EVENT => CustomEvent.decoder.widen
       case UPDATE_CHANGELOG => UpdateChangelog.decoder.widen
     }
 
+  /**
+    * Discover-supplied detail about the publication artifact, known only
+    * once the (async) publish job has reached a terminal state. Populated
+    * on success; left as None on failure since these fields aren't yet
+    * knowable in that case.
+    */
+  case class PublicationArtifact(
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  )
+
   def fromPublicationStatus(
-    status: DatasetPublicationStatus
+    status: DatasetPublicationStatus,
+    artifact: PublicationArtifact = PublicationArtifact()
   ): Option[ChangelogEventDetail] = {
     import PublicationStatus._
     import PublicationType._
@@ -166,22 +195,94 @@ object ChangelogEventDetail {
       case (Accepted, Publication) => Some(AcceptPublication(status.id))
       case (Rejected, Publication) => Some(RejectPublication(status.id))
       case (Cancelled, Publication) => Some(CancelPublication(status.id))
+      case (Completed, Publication) =>
+        Some(
+          CompletePublication(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
+      case (Failed, Publication) =>
+        Some(
+          FailPublication(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
 
       case (Requested, Embargo) => Some(RequestEmbargo(status.id))
       case (Accepted, Embargo) => Some(AcceptEmbargo(status.id))
       case (Rejected, Embargo) => Some(RejectEmbargo(status.id))
       case (Cancelled, Embargo) => Some(CancelEmbargo(status.id))
       case (Completed, Release) => Some(ReleaseEmbargo(status.id))
+      case (Completed, Embargo) =>
+        Some(
+          CompleteEmbargo(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
+      case (Failed, Embargo) =>
+        Some(
+          FailEmbargo(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
 
       case (Requested, Removal) => Some(RequestRemoval(status.id))
       case (Accepted, Removal) => Some(AcceptRemoval(status.id))
       case (Rejected, Removal) => Some(RejectRemoval(status.id))
       case (Cancelled, Removal) => Some(CancelRemoval(status.id))
+      case (Completed, Removal) =>
+        Some(
+          CompleteRemoval(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
+      case (Failed, Removal) =>
+        Some(
+          FailRemoval(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
 
       case (Requested, Revision) => Some(RequestRevision(status.id))
       case (Accepted, Revision) => Some(AcceptRevision(status.id))
       case (Rejected, Revision) => Some(RejectRevision(status.id))
       case (Cancelled, Revision) => Some(CancelRevision(status.id))
+      case (Completed, Revision) =>
+        Some(
+          CompleteRevision(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
+      case (Failed, Revision) =>
+        Some(
+          FailRevision(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
 
       case _ => None
     }
@@ -794,6 +895,38 @@ object ChangelogEventDetail {
       deriveDecoder[CancelPublication]
   }
 
+  case class CompletePublication(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = COMPLETE_PUBLICATION
+  }
+
+  object CompletePublication {
+    implicit val encoder: Encoder[CompletePublication] =
+      deriveEncoder[CompletePublication]
+    implicit val decoder: Decoder[CompletePublication] =
+      deriveDecoder[CompletePublication]
+  }
+
+  case class FailPublication(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = FAIL_PUBLICATION
+  }
+
+  object FailPublication {
+    implicit val encoder: Encoder[FailPublication] =
+      deriveEncoder[FailPublication]
+    implicit val decoder: Decoder[FailPublication] =
+      deriveDecoder[FailPublication]
+  }
+
   case class RequestEmbargo(publicationStatusId: Int)
       extends ChangelogEventDetail {
     val eventType = REQUEST_EMBARGO
@@ -848,6 +981,36 @@ object ChangelogEventDetail {
     implicit val decoder: Decoder[CancelEmbargo] = deriveDecoder[CancelEmbargo]
   }
 
+  case class CompleteEmbargo(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = COMPLETE_EMBARGO
+  }
+
+  object CompleteEmbargo {
+    implicit val encoder: Encoder[CompleteEmbargo] =
+      deriveEncoder[CompleteEmbargo]
+    implicit val decoder: Decoder[CompleteEmbargo] =
+      deriveDecoder[CompleteEmbargo]
+  }
+
+  case class FailEmbargo(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = FAIL_EMBARGO
+  }
+
+  object FailEmbargo {
+    implicit val encoder: Encoder[FailEmbargo] = deriveEncoder[FailEmbargo]
+    implicit val decoder: Decoder[FailEmbargo] = deriveDecoder[FailEmbargo]
+  }
+
   case class RequestRemoval(publicationStatusId: Int)
       extends ChangelogEventDetail {
     val eventType = REQUEST_REMOVAL
@@ -888,6 +1051,36 @@ object ChangelogEventDetail {
   object CancelRemoval {
     implicit val encoder: Encoder[CancelRemoval] = deriveEncoder[CancelRemoval]
     implicit val decoder: Decoder[CancelRemoval] = deriveDecoder[CancelRemoval]
+  }
+
+  case class CompleteRemoval(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = COMPLETE_REMOVAL
+  }
+
+  object CompleteRemoval {
+    implicit val encoder: Encoder[CompleteRemoval] =
+      deriveEncoder[CompleteRemoval]
+    implicit val decoder: Decoder[CompleteRemoval] =
+      deriveDecoder[CompleteRemoval]
+  }
+
+  case class FailRemoval(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = FAIL_REMOVAL
+  }
+
+  object FailRemoval {
+    implicit val encoder: Encoder[FailRemoval] = deriveEncoder[FailRemoval]
+    implicit val decoder: Decoder[FailRemoval] = deriveDecoder[FailRemoval]
   }
 
   case class RequestRevision(publicationStatusId: Int)
@@ -936,6 +1129,36 @@ object ChangelogEventDetail {
       deriveEncoder[CancelRevision]
     implicit val decoder: Decoder[CancelRevision] =
       deriveDecoder[CancelRevision]
+  }
+
+  case class CompleteRevision(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = COMPLETE_REVISION
+  }
+
+  object CompleteRevision {
+    implicit val encoder: Encoder[CompleteRevision] =
+      deriveEncoder[CompleteRevision]
+    implicit val decoder: Decoder[CompleteRevision] =
+      deriveDecoder[CompleteRevision]
+  }
+
+  case class FailRevision(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = FAIL_REVISION
+  }
+
+  object FailRevision {
+    implicit val encoder: Encoder[FailRevision] = deriveEncoder[FailRevision]
+    implicit val decoder: Decoder[FailRevision] = deriveDecoder[FailRevision]
   }
 
   case class UpdateChangelog(
