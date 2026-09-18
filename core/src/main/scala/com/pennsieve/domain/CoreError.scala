@@ -198,3 +198,8 @@ case class UsernameExistsError(exception: Exception) extends CoreError {
 
   this.initCause(exception)
 }
+
+case class ExecutionAlreadyExists(executionName: String) extends CoreError {
+  final override def getMessage: String =
+    s"A Step Functions execution named $executionName is already running"
+}

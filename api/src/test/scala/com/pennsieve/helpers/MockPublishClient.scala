@@ -51,6 +51,7 @@ class MockPublishClient(
 
   def clear(): Unit = {
     nextGetStatusValue = None
+    getStatusPublishedDatasetId = None
     publishRequests.clear()
     releaseRequests.clear()
     reviseRequests.clear()
@@ -66,6 +67,15 @@ class MockPublishClient(
 
   def withNextGetStatusValue(nextStatusValue: PublishStatus): Unit = {
     nextGetStatusValue = Some(nextStatusValue)
+  }
+
+  // Unlike nextGetStatusValue, this isn't consumed on read -- a published
+  // dataset's Discover id doesn't change from one getStatus call to the next
+  // within a single test.
+  private var getStatusPublishedDatasetId: Option[Int] = None
+
+  def withGetStatusPublishedDatasetId(publishedDatasetId: Int): Unit = {
+    getStatusPublishedDatasetId = Some(publishedDatasetId)
   }
 
   // (organization, dataset) -> (embargo, request)
@@ -216,7 +226,7 @@ class MockPublishClient(
           name = "PPMI",
           sourceOrganizationId = organizationId,
           sourceDatasetId = datasetId,
-          publishedDatasetId = None,
+          publishedDatasetId = getStatusPublishedDatasetId,
           publishedVersionCount = 0,
           status = nextStatus(),
           lastPublishedDate = None,
