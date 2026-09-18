@@ -17,7 +17,10 @@
 package com.pennsieve.helpers.fakes
 
 import com.pennsieve.db.{ ChangelogEventMapper, DatasetPublicationStatusMapper }
-import com.pennsieve.managers.DatasetPublicationStatusManager
+import com.pennsieve.managers.{
+  ChangelogManager,
+  DatasetPublicationStatusManager
+}
 import com.pennsieve.models.{ Organization, User }
 import com.pennsieve.traits.PostgresProfile.api.Database
 
@@ -40,4 +43,10 @@ class FakeDatasetPublicationStatusManager(
     new DatasetPublicationStatusMapper(organization)
   override lazy val changelogEventMapper: ChangelogEventMapper =
     new ChangelogEventMapper(organization)
+
+  override lazy val changelogManager: ChangelogManager =
+    sys.error(
+      "FakeDatasetPublicationStatusManager: a method not yet stubbed by " +
+        "your test tried to log a changelog event/publish to SNS. Override the method on this fake."
+    )
 }

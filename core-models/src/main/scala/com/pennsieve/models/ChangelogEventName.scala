@@ -166,6 +166,12 @@ object ChangelogEventName
   case object CANCEL_PUBLICATION extends ChangelogEventName {
     val category = PUBLISHING
   }
+  case object COMPLETE_PUBLICATION extends ChangelogEventName {
+    val category = PUBLISHING
+  }
+  case object FAIL_PUBLICATION extends ChangelogEventName {
+    val category = PUBLISHING
+  }
 
   case object REQUEST_EMBARGO extends ChangelogEventName {
     val category = PUBLISHING
@@ -182,6 +188,12 @@ object ChangelogEventName
   case object RELEASE_EMBARGO extends ChangelogEventName {
     val category = PUBLISHING
   }
+  case object COMPLETE_EMBARGO extends ChangelogEventName {
+    val category = PUBLISHING
+  }
+  case object FAIL_EMBARGO extends ChangelogEventName {
+    val category = PUBLISHING
+  }
 
   case object REQUEST_REMOVAL extends ChangelogEventName {
     val category = PUBLISHING
@@ -195,6 +207,12 @@ object ChangelogEventName
   case object CANCEL_REMOVAL extends ChangelogEventName {
     val category = PUBLISHING
   }
+  case object COMPLETE_REMOVAL extends ChangelogEventName {
+    val category = PUBLISHING
+  }
+  case object FAIL_REMOVAL extends ChangelogEventName {
+    val category = PUBLISHING
+  }
 
   case object REQUEST_REVISION extends ChangelogEventName {
     val category = PUBLISHING
@@ -206,6 +224,12 @@ object ChangelogEventName
     val category = PUBLISHING
   }
   case object CANCEL_REVISION extends ChangelogEventName {
+    val category = PUBLISHING
+  }
+  case object COMPLETE_REVISION extends ChangelogEventName {
+    val category = PUBLISHING
+  }
+  case object FAIL_REVISION extends ChangelogEventName {
     val category = PUBLISHING
   }
   case object UPDATE_CHANGELOG extends ChangelogEventName {
