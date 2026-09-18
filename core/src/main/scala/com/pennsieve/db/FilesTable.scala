@@ -115,8 +115,9 @@ abstract class AbstractFilesTable[T](
 
   // Projected as a nested tuple so it occupies a single slot in
   // filesSelect — see FileScanInfo for why that matters.
-  def scan = (scanStatus, scannedAt, scanEngine, scanSkipReason)
-    .mapTo[FileScanInfo]
+  def scan =
+    (scanStatus, scannedAt, scanEngine, scanSkipReason)
+      .mapTo[FileScanInfo]
 
   val filesSelect = (
     packageId,

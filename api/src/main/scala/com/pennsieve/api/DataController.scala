@@ -38,6 +38,7 @@ import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.models.PackageState.DELETING
 import com.pennsieve.models.{
   ChangelogEventDetail,
+  Dataset,
   ModelProperty,
   Package,
   User
@@ -315,11 +316,13 @@ class DataController(
     user: User
   )(implicit
     secureContainer: SecureAPIContainer
-  ): List[EitherT[Future, Failure, String]] = {
-    def deleteItem(item: String): EitherT[Future, Failure, String] = {
+  ): List[EitherT[Future, Failure, (String, Option[Dataset])]] = {
+    def deleteItem(
+      item: String
+    ): EitherT[Future, Failure, (String, Option[Dataset])] = {
       for {
         packageAndDataset <- secureContainer.packageManager
-          .getPackageAndDatasetByNodeId(item)
+          .getPackageAndDatasetByNodeIdForDeletion(item)
           .leftMap(error => Failure(item, error.getMessage))
         (pkg, dataset) = packageAndDataset
 
@@ -346,23 +349,33 @@ class DataController(
           .toEitherT
           .leftMap(error => Failure(item, error.getMessage))
 
-        deleteMessage <- secureContainer.packageManager
-          .delete(traceId, pkg)(secureContainer.storageManager)
-          .leftMap(error => Failure(item, error.getMessage))
+        // A package already marked DELETING has a delete job in flight:
+        // treat the retry as an immediate success instead of stacking
+        // another set of competing transactions.
+        touchedDataset <- if (pkg.state == DELETING)
+          EitherT.rightT[Future, Failure](Option.empty[Dataset])
+        else
+          for {
+            deleteMessage <- secureContainer.packageManager
+              .delete(traceId, pkg)
+              .leftMap(error => Failure(item, error.getMessage))
 
-        _ <- secureContainer.changelogManager
-          .logEvent(dataset, ChangelogEventDetail.DeletePackage(pkg, parent))
-          .leftMap(error => Failure(item, error.getMessage))
+            _ <- secureContainer.changelogManager
+              .logEvent(
+                dataset,
+                ChangelogEventDetail.DeletePackage(pkg, parent)
+              )
+              .leftMap(error => Failure(item, error.getMessage))
 
-        _ <- secureContainer.datasetManager
-          .touchUpdatedAtTimestamp(dataset)
-          .leftMap(error => Failure(item, error.getMessage))
+            _ <- sqsClient
+              .send(
+                insecureContainer.sqs_queue_v2,
+                deleteMessage.asJson.noSpaces
+              )
+              .leftMap(error => Failure(item, error.getMessage))
+          } yield Option(dataset)
 
-        _ <- sqsClient
-          .send(insecureContainer.sqs_queue_v2, deleteMessage.asJson.noSpaces)
-          .leftMap(error => Failure(item, error.getMessage))
-
-      } yield item
+      } yield (item, touchedDataset)
     }
 
     items.toList.map(deleteItem)
@@ -388,12 +401,20 @@ class DataController(
         failsAndSuccesses <- EitherT.liftF(
           Future.sequence(results.map(_.value))
         )
+        (fails, successes) = failsAndSuccesses.separate
 
-      } yield {
-        val (fails, successes) = failsAndSuccesses.separate
+        // Touch each affected dataset once per request instead of once per
+        // deleted item
+        _ <- successes
+          .flatMap(_._2)
+          .distinctBy(_.id)
+          .traverse(
+            dataset =>
+              secureContainer.datasetManager.touchUpdatedAtTimestamp(dataset)
+          )
+          .coreErrorToActionResult()
 
-        DeleteResponse(successes, fails)
-      }
+      } yield DeleteResponse(successes.map(_._1), fails)
 
       override val is = result.value.map(OkResult)
     }
