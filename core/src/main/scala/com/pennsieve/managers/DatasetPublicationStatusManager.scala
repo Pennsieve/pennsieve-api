@@ -44,7 +44,7 @@ trait DatasetPublicationStatusManager {
     publicationType: PublicationType,
     comments: Option[String] = None,
     embargoReleaseDate: Option[LocalDate] = None,
-    publicationArtifact: PublicationArtifact = PublicationArtifact()
+    publicationArtifact: PublicationArtifact = PublicationArtifact(),
     removalMetadata: Option[RemovalRestoreMetadata] = None
   )(implicit
     ec: ExecutionContext
