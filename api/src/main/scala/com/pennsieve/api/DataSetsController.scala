@@ -152,13 +152,24 @@ case class OrganizationRoleDTO(
 
 case class DatasetRoleResponse(userId: Int, datasetId: Int, role: Role)
 
+// TODO: this case class is hand-duplicated in discover-service's
+// BlackfynnApiClient.scala with no shared contract enforcing they stay in
+// sync. Revisit the API contract between the two services — consider a
+// generated/shared schema, and reconsider whether publishedVersionCount
+// (a count of successful versions for the dataset) and publishedVersion
+// (the specific version number of the publish job that just completed)
+// both need to travel on this request, or whether the signature could be
+// simplified (e.g. passing the actual PublicDatasetVersion instead of an
+// aggregate DatasetPublishStatus plus bolted-on extra fields).
 case class PublishCompleteRequest(
   publishedDatasetId: Option[Int],
   publishedVersionCount: Int,
   lastPublishedDate: Option[OffsetDateTime],
   status: PublishStatus,
   success: Boolean,
-  error: Option[String]
+  error: Option[String],
+  publishedVersion: Option[Int] = None,
+  doi: Option[String] = None
 )
 
 /**
@@ -3956,7 +3967,15 @@ class DataSetsController(
                 else PublicationStatus.Failed,
               publicationType = publicationStatus.publicationType,
               comments = publicationStatus.comments,
-              embargoReleaseDate = publicationStatus.embargoReleaseDate
+              embargoReleaseDate = publicationStatus.embargoReleaseDate,
+              publicationArtifact =
+                if (body.success)
+                  ChangelogEventDetail.PublicationArtifact(
+                    publishedDatasetId = body.publishedDatasetId,
+                    publishedVersion = body.publishedVersion,
+                    doi = body.doi
+                  )
+                else ChangelogEventDetail.PublicationArtifact()
             )
             .coreErrorToActionResult()
 

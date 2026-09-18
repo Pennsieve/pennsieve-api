@@ -183,12 +183,14 @@ trait ManagerSpec
     val datasetPublicationStatusMapper = new DatasetPublicationStatusMapper(
       organization
     )
+    val changelog = changelogManager(organization, user)
 
     new DatasetPublicationStatusManagerImpl(
       database,
       user,
       datasetPublicationStatusMapper,
-      changelogManager(organization, user).changelogEventMapper
+      changelog.changelogEventMapper,
+      changelog
     )
   }
 

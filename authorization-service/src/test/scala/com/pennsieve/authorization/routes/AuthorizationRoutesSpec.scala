@@ -53,6 +53,7 @@ import com.pennsieve.db.{
 }
 import com.pennsieve.dtos.UserDTO
 import com.pennsieve.managers.{
+  ChangelogManagerImpl,
   ContributorManager,
   DatasetManager,
   DatasetManagerImpl,
@@ -62,6 +63,7 @@ import com.pennsieve.managers.{
   TeamManager,
   UserManager
 }
+import com.pennsieve.aws.sns.MockSNS
 import com.pennsieve.models.{
   DBPermission,
   DatasetPreviewer,
@@ -180,7 +182,14 @@ class AuthorizationRoutesSpec
           db,
           nonAdmin,
           new DatasetPublicationStatusMapper(organizationTwo),
-          new ChangelogEventMapper(organizationTwo)
+          new ChangelogEventMapper(organizationTwo),
+          new ChangelogManagerImpl(
+            db,
+            organizationTwo,
+            nonAdmin,
+            "test-topic",
+            new MockSNS
+          )
         )
 
       val dataset = datasetManager
@@ -414,7 +423,14 @@ class AuthorizationRoutesSpec
           db,
           nonAdmin,
           new DatasetPublicationStatusMapper(organizationTwo),
-          new ChangelogEventMapper(organizationTwo)
+          new ChangelogEventMapper(organizationTwo),
+          new ChangelogManagerImpl(
+            db,
+            organizationTwo,
+            nonAdmin,
+            "test-topic",
+            new MockSNS
+          )
         )
 
       val teamManager = TeamManager(organizationManager)
@@ -536,7 +552,14 @@ class AuthorizationRoutesSpec
           db,
           nonAdmin,
           new DatasetPublicationStatusMapper(organizationTwo),
-          new ChangelogEventMapper(organizationTwo)
+          new ChangelogEventMapper(organizationTwo),
+          new ChangelogManagerImpl(
+            db,
+            organizationTwo,
+            nonAdmin,
+            "test-topic",
+            new MockSNS
+          )
         )
 
       val teamManager = TeamManager(organizationManager)
