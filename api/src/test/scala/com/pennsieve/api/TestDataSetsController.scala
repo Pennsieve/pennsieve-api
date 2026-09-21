@@ -23,6 +23,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.{ LocalDate, OffsetDateTime, ZoneOffset }
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import com.pennsieve.audit.middleware.TraceId
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.aws.cognito.MockCognito
@@ -4666,6 +4667,67 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 400
       (parsedBody \ "message")
         .extract[String] should include("invalid parameter state")
+    }
+  }
+
+  // Deleting a collection marks the entire subtree DELETING in the endpoint
+  // transaction, so listings exclude descendants of a deleted folder
+  // immediately. These tests guard against that gap reopening.
+
+  test("getPackages excludes a deleted collection and its descendants") {
+    val dataset = createDataSet("dataset-with-deleting-folder")
+    val folder = createPackage(dataset, "deleting-folder")
+    val child = createPackage(
+      dataset,
+      "child-of-deleting-folder",
+      `type` = PackageType.PDF,
+      parent = Some(folder)
+    )
+    val sibling = createPackage(dataset, "sibling", `type` = PackageType.PDF)
+
+    secureContainer.packageManager
+      .delete(TraceId("test"), folder)
+      .await
+      .value
+
+    get(
+      s"/${dataset.nodeId}/packages",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+      val ids =
+        (parsedBody \ "packages" \ "content" \ "id").extract[List[Int]]
+      ids should contain(sibling.id)
+      ids should not contain folder.id
+      ids should not contain child.id
+    }
+  }
+
+  test("batch packages fails a deleted collection and its descendants") {
+    val dataset = createDataSet("dataset-batch-deleting-folder")
+    val folder = createPackage(dataset, "deleting-folder-batch")
+    val child = createPackage(
+      dataset,
+      "child-of-deleting-folder-batch",
+      `type` = PackageType.PDF,
+      parent = Some(folder)
+    )
+
+    secureContainer.packageManager
+      .delete(TraceId("test"), folder)
+      .await
+      .value
+
+    get(
+      s"/${dataset.nodeId}/packages/batch?packageId=${folder.nodeId}&packageId=${child.nodeId}",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+
+      (parsedBody \ "packages" \ "content" \ "id")
+        .extract[List[Int]] shouldBe empty
+      compactRender(parsedBody \ "failures") should include(folder.nodeId)
+      compactRender(parsedBody \ "failures") should include(child.nodeId)
     }
   }
 

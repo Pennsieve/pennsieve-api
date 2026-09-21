@@ -310,8 +310,13 @@ class PackagesMapper(val organization: Organization)
       .map(_.to(Set))
   }
 
-  // Set all descendants of a collection to DELETING
-  // Excludes descendats in DELETING or DELETED state
+  // Set all descendants of a collection to DELETING and rename them.
+  // Excludes descendants already in DELETING or DELETED state, so an
+  // independently-deleted descendant is never renamed twice.
+  //
+  // The __DELETED__ prefix is a contract with the packages-service restore
+  // flow (GetOriginalName requires it on every DELETED package), so the
+  // rename must stay until restore is made tolerant of unprefixed names.
   def softDeleteDescendants(p: Package) = {
     sqlu"""
       WITH RECURSIVE descendants AS (
