@@ -87,6 +87,9 @@ object ChangelogEventDetail {
       case d: ReleaseEmbargo => d.asJson
       case d: CompleteEmbargo => d.asJson
       case d: FailEmbargo => d.asJson
+      case d: RequestRelease => d.asJson
+      case d: AcceptRelease => d.asJson
+      case d: FailRelease => d.asJson
       case d: RequestRemoval => d.asJson
       case d: AcceptRemoval => d.asJson
       case d: RejectRemoval => d.asJson
@@ -154,6 +157,9 @@ object ChangelogEventDetail {
       case RELEASE_EMBARGO => ReleaseEmbargo.decoder.widen
       case COMPLETE_EMBARGO => CompleteEmbargo.decoder.widen
       case FAIL_EMBARGO => FailEmbargo.decoder.widen
+      case REQUEST_RELEASE => RequestRelease.decoder.widen
+      case ACCEPT_RELEASE => AcceptRelease.decoder.widen
+      case FAIL_RELEASE => FailRelease.decoder.widen
       case REQUEST_REMOVAL => RequestRemoval.decoder.widen
       case ACCEPT_REMOVAL => AcceptRemoval.decoder.widen
       case REJECT_REMOVAL => RejectRemoval.decoder.widen
@@ -231,6 +237,18 @@ object ChangelogEventDetail {
       case (Failed, Embargo) =>
         Some(
           FailEmbargo(
+            status.id,
+            artifact.publishedDatasetId,
+            artifact.publishedVersion,
+            artifact.doi
+          )
+        )
+
+      case (Requested, Release) => Some(RequestRelease(status.id))
+      case (Accepted, Release) => Some(AcceptRelease(status.id))
+      case (Failed, Release) =>
+        Some(
+          FailRelease(
             status.id,
             artifact.publishedDatasetId,
             artifact.publishedVersion,
@@ -1009,6 +1027,44 @@ object ChangelogEventDetail {
   object FailEmbargo {
     implicit val encoder: Encoder[FailEmbargo] = deriveEncoder[FailEmbargo]
     implicit val decoder: Decoder[FailEmbargo] = deriveDecoder[FailEmbargo]
+  }
+
+  case class RequestRelease(publicationStatusId: Int)
+      extends ChangelogEventDetail {
+    val eventType = REQUEST_RELEASE
+  }
+
+  object RequestRelease {
+    implicit val encoder: Encoder[RequestRelease] =
+      deriveEncoder[RequestRelease]
+    implicit val decoder: Decoder[RequestRelease] =
+      deriveDecoder[RequestRelease]
+  }
+
+  case class AcceptRelease(publicationStatusId: Int)
+      extends ChangelogEventDetail {
+    val eventType = ACCEPT_RELEASE
+  }
+
+  object AcceptRelease {
+    implicit val encoder: Encoder[AcceptRelease] =
+      deriveEncoder[AcceptRelease]
+    implicit val decoder: Decoder[AcceptRelease] =
+      deriveDecoder[AcceptRelease]
+  }
+
+  case class FailRelease(
+    publicationStatusId: Int,
+    publishedDatasetId: Option[Int] = None,
+    publishedVersion: Option[Int] = None,
+    doi: Option[String] = None
+  ) extends ChangelogEventDetail {
+    val eventType = FAIL_RELEASE
+  }
+
+  object FailRelease {
+    implicit val encoder: Encoder[FailRelease] = deriveEncoder[FailRelease]
+    implicit val decoder: Decoder[FailRelease] = deriveDecoder[FailRelease]
   }
 
   case class RequestRemoval(publicationStatusId: Int)
