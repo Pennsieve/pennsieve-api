@@ -195,6 +195,16 @@ object ChangelogEventName
     val category = PUBLISHING
   }
 
+  case object REQUEST_RELEASE extends ChangelogEventName {
+    val category = PUBLISHING
+  }
+  case object ACCEPT_RELEASE extends ChangelogEventName {
+    val category = PUBLISHING
+  }
+  case object FAIL_RELEASE extends ChangelogEventName {
+    val category = PUBLISHING
+  }
+
   case object REQUEST_REMOVAL extends ChangelogEventName {
     val category = PUBLISHING
   }
