@@ -52,6 +52,7 @@ class MockPublishClient(
   def clear(): Unit = {
     nextGetStatusValue = None
     getStatusPublishedDatasetId = None
+    failNextUnpublish = false
     publishRequests.clear()
     releaseRequests.clear()
     reviseRequests.clear()
@@ -190,6 +191,12 @@ class MockPublishClient(
   var unpublishRequests: mutable.ArrayBuffer[(Int, Int)] =
     mutable.ArrayBuffer.empty[(Int, Int)]
 
+  private var failNextUnpublish: Boolean = false
+
+  def withNextUnpublishFailing(): Unit = {
+    failNextUnpublish = true
+  }
+
   override def unpublish(
     organizationId: Int,
     datasetId: Int,
@@ -198,21 +205,28 @@ class MockPublishClient(
   ): EitherT[Future, Either[Throwable, HttpResponse], UnpublishResponse] = {
     unpublishRequests += ((organizationId, datasetId))
 
-    EitherT.rightT[Future, Either[Throwable, HttpResponse]](
-      UnpublishResponse.OK(
-        DatasetPublishStatus(
-          name = "PPMI",
-          sourceOrganizationId = organizationId,
-          sourceDatasetId = datasetId,
-          publishedDatasetId = None,
-          publishedVersionCount = 0,
-          status = PublishStatus.NotPublished,
-          lastPublishedDate = None,
-          sponsorship = None,
-          workflowId = 4
+    if (failNextUnpublish) {
+      failNextUnpublish = false
+      EitherT.rightT[Future, Either[Throwable, HttpResponse]](
+        UnpublishResponse.InternalServerError("mock error")
+      )
+    } else {
+      EitherT.rightT[Future, Either[Throwable, HttpResponse]](
+        UnpublishResponse.OK(
+          DatasetPublishStatus(
+            name = "PPMI",
+            sourceOrganizationId = organizationId,
+            sourceDatasetId = datasetId,
+            publishedDatasetId = None,
+            publishedVersionCount = 0,
+            status = PublishStatus.NotPublished,
+            lastPublishedDate = None,
+            sponsorship = None,
+            workflowId = 4
+          )
         )
       )
-    )
+    }
   }
 
   override def getStatus(

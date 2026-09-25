@@ -19,16 +19,11 @@ package com.pennsieve.aws.stepfunctions
 import cats.data.EitherT
 import software.amazon.awssdk.services.sfn.SfnAsyncClient
 import software.amazon.awssdk.services.sfn.model.{
-  ExecutionAlreadyExistsException,
   StartExecutionRequest,
   StartExecutionResponse
 }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
-import com.pennsieve.domain.{
-  CoreError,
-  ExceptionError,
-  ExecutionAlreadyExists
-}
+import com.pennsieve.domain.{ CoreError, ExceptionError }
 
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
@@ -67,8 +62,6 @@ class StepFunctions(val client: SfnAsyncClient) extends StepFunctionsClient {
       .startExecution(request)
       .toScala
       .toEitherT[CoreError] {
-        case _: ExecutionAlreadyExistsException =>
-          ExecutionAlreadyExists(executionName)
         case e: Exception => ExceptionError(e)
       }
   }

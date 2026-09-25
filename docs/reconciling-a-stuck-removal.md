@@ -10,6 +10,8 @@ lost, the removal can be stuck indefinitely.
 This is a manual runbook, not an automated tool: the common failure mode (the restore
 itself fails) already produces a completion signal, so removals don't silently strand
 on their own. This only covers the rarer case where the signal itself never arrives.
+A removal whose restore fails to start is marked `Failed` right away, so every stuck
+`Accepted` removal has an execution ARN to check.
 
 ## Steps
 
@@ -39,8 +41,8 @@ on their own. This only covers the rarer case where the signal itself never arri
    ```
    This is safe even if the execution's true state is uncertain: the endpoint
    independently re-verifies that no files are still live-only in the publish bucket
-   before it will ever delete the publish bucket, and it's a no-op if the removal is
-   already `Completed`.
+   before it will ever delete from the publish bucket, and it's a no-op unless the latest row
+   is still an `Accepted` removal.
 
 4. **Confirm the result** -- the dataset's latest publication log row should now read
    `Completed` (teardown finished) or `Failed` (ready for the publisher to retry by

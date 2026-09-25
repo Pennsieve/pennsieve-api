@@ -16,17 +16,12 @@
 
 package com.pennsieve.aws.stepfunctions
 
-import com.pennsieve.domain.{
-  CoreError,
-  ExceptionError,
-  ExecutionAlreadyExists
-}
+import com.pennsieve.domain.ExceptionError
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.sfn.SfnAsyncClient
 import software.amazon.awssdk.services.sfn.model.{
-  ExecutionAlreadyExistsException,
   StartExecutionRequest,
   StartExecutionResponse
 }
@@ -52,25 +47,7 @@ class StepFunctionsSpec extends AnyFlatSpec with Matchers {
       }
     }
 
-  "startExecution" should "translate ExecutionAlreadyExistsException into ExecutionAlreadyExists" in {
-    val client = new StepFunctions(
-      clientFailingWith(
-        ExecutionAlreadyExistsException
-          .builder()
-          .message("Execution already exists")
-          .build()
-      )
-    )
-
-    val result = Await.result(
-      client.startExecution("arn:state-machine", "restore-1-1", "{}").value,
-      5.seconds
-    )
-
-    result shouldBe Left(ExecutionAlreadyExists("restore-1-1"))
-  }
-
-  "startExecution" should "wrap other exceptions as a generic CoreError, not fail silently" in {
+  "startExecution" should "wrap exceptions as a generic CoreError, not fail silently" in {
     val client =
       new StepFunctions(clientFailingWith(new RuntimeException("boom")))
 

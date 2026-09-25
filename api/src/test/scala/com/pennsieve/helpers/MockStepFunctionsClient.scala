@@ -18,7 +18,7 @@ package com.pennsieve.helpers
 
 import cats.data.EitherT
 import com.pennsieve.aws.stepfunctions.StepFunctionsClient
-import com.pennsieve.domain.{ CoreError, ExecutionAlreadyExists }
+import com.pennsieve.domain.{ CoreError, ServiceError }
 import software.amazon.awssdk.services.sfn.model.StartExecutionResponse
 
 import scala.collection.mutable
@@ -30,18 +30,18 @@ class MockStepFunctionsClient extends StepFunctionsClient {
   val startedExecutions: mutable.ArrayBuffer[(String, String, String)] =
     mutable.ArrayBuffer.empty
 
-  private var duplicateExecutionNames: Set[String] = Set.empty
+  private var failNextStart: Boolean = false
 
   def clear(): Unit = {
     startedExecutions.clear()
-    duplicateExecutionNames = Set.empty
+    failNextStart = false
   }
 
-  /** The next call to `startExecution` with this name fails as if a Step
-    * Functions execution with that name were already running.
+  /** The next call to `startExecution` fails, as if Step Functions rejected
+    * it (e.g. throttling or a missing IAM grant).
     */
-  def failNextStartWithDuplicateName(executionName: String): Unit =
-    duplicateExecutionNames += executionName
+  def failNextStartExecution(): Unit =
+    failNextStart = true
 
   override def startExecution(
     stateMachineArn: String,
@@ -50,9 +50,10 @@ class MockStepFunctionsClient extends StepFunctionsClient {
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, StartExecutionResponse] = {
-    if (duplicateExecutionNames.contains(executionName)) {
+    if (failNextStart) {
+      failNextStart = false
       EitherT.leftT[Future, StartExecutionResponse](
-        ExecutionAlreadyExists(executionName): CoreError
+        ServiceError("mock StartExecution failure"): CoreError
       )
     } else {
       startedExecutions += ((stateMachineArn, executionName, input))
