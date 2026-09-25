@@ -34,7 +34,7 @@ object S3DockerContainer {
 final class S3DockerContainerImpl
     extends DockerContainer(
       // minio/minio was removed from Docker Hub; images now live on Quay.
-      dockerImage = s"quay.io/minio/minio:RELEASE.2022-10-20T00-55-09Z",
+      dockerImage = s"cgr.dev/chainguard/minio:latest",
       exposedPorts = Seq(S3DockerContainer.port),
       env = Map(
         "MINIO_ACCESS_KEY" -> S3DockerContainer.accessKey,
