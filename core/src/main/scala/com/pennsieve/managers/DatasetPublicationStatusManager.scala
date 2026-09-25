@@ -44,18 +44,20 @@ trait DatasetPublicationStatusManager {
     publicationType: PublicationType,
     comments: Option[String] = None,
     embargoReleaseDate: Option[LocalDate] = None,
-    publicationArtifact: PublicationArtifact = PublicationArtifact()
+    publicationArtifact: PublicationArtifact = PublicationArtifact(),
+    removalMetadata: Option[RemovalRestoreMetadata] = None
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, DatasetPublicationStatus] = {
 
     val row = DatasetPublicationStatus(
-      dataset.id,
-      publicationStatus,
-      publicationType,
-      if (actor.id == 0) None else Some(actor.id),
-      comments,
-      embargoReleaseDate
+      datasetId = dataset.id,
+      publicationStatus = publicationStatus,
+      publicationType = publicationType,
+      createdBy = if (actor.id == 0) None else Some(actor.id),
+      comments = comments,
+      embargoReleaseDate = embargoReleaseDate,
+      removalMetadata = removalMetadata
     )
 
     for {
@@ -74,6 +76,28 @@ trait DatasetPublicationStatusManager {
         .traverse(changelogManager.logEvent(dataset, _))
     } yield status
 
+  }
+
+  /**
+    * Persists the Step Functions execution ARN (and the published version that
+    * triggered it) onto an existing `Removal` status row, in place. Unlike `create`,
+    * this does not append a new log entry -- it fills in metadata on the row that
+    * `create` already wrote for this specific accept/retry attempt.
+    */
+  def setRemovalMetadata(
+    statusId: Int,
+    metadata: RemovalRestoreMetadata
+  )(implicit
+    ec: ExecutionContext
+  ): EitherT[Future, CoreError, Unit] = {
+    db.run(
+        datasetPublicationStatusMapper
+          .get(statusId)
+          .map(_.removalMetadata)
+          .update(Some(metadata))
+      )
+      .toEitherT
+      .map(_ => ())
   }
 
   def getLogByDataset(

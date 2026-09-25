@@ -28,6 +28,7 @@ import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.aws.cognito.{ Cognito, CognitoClient }
 import com.pennsieve.aws.email.{ Email, SesMessageResult }
 import com.pennsieve.aws.queue.SQSClient
+import com.pennsieve.aws.stepfunctions.StepFunctionsClient
 import com.pennsieve.clients.DatasetAssetClient
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
@@ -170,6 +171,49 @@ case class PublishCompleteRequest(
   publishedVersion: Option[Int] = None,
   doi: Option[String] = None
 )
+
+/**
+  * Input to a publish-storage-sync restore Step Functions execution. See that
+  * project's restore integration contract for the full field-by-field spec.
+  */
+case class RestoreExecutionInput(
+  organizationId: Int,
+  datasetId: Int,
+  publicDatasetId: Int,
+  destinationStorageBucket: String,
+  publishedVersion: Int,
+  // named to avoid colliding with the final java.lang.Object#notify(); mapped
+  // back to "notify" in the JSON below to match the execution input contract.
+  notifyOnCompletion: Boolean
+)
+
+object RestoreExecutionInput {
+  implicit val encoder: io.circe.Encoder[RestoreExecutionInput] =
+    io.circe.Encoder.forProduct6(
+      "organizationId",
+      "datasetId",
+      "publicDatasetId",
+      "destinationStorageBucket",
+      "publishedVersion",
+      "notify"
+    )(
+      input =>
+        (
+          input.organizationId,
+          input.datasetId,
+          input.publicDatasetId,
+          input.destinationStorageBucket,
+          input.publishedVersion,
+          input.notifyOnCompletion
+        )
+    )
+}
+
+/**
+  * Body of the internal `/publication/removal/complete` callback, sent by
+  * whatever consumes publish-storage-sync's restore-completion signal.
+  */
+case class RemovalCompleteRequest(success: Boolean)
 
 case class DatasetReadmeDTO(readme: String)
 //changelog Data transfer object
@@ -324,7 +368,9 @@ class DataSetsController(
   cognitoClient: CognitoClient,
   orcidClient: OrcidClient,
   maxFileUploadSize: Int,
-  asyncExecutor: ExecutionContext
+  asyncExecutor: ExecutionContext,
+  stepFunctionsClient: StepFunctionsClient,
+  restoreStateMachineArn: String
 )(implicit
   val swagger: Swagger
 ) extends ScalatraServlet
@@ -3440,63 +3486,70 @@ class DataSetsController(
             case PublicationType.Removal =>
               for {
 
-                _ <- DataSetPublishingHelper
-                  .sendUnpublishRequest(
-                    secureContainer.organization,
-                    validated.dataset,
-                    secureContainer.user,
-                    publishClient
-                  )(ec, system, jwtConfig)
+                stillPublishedCount <- secureContainer.fileManager
+                  .countPublishedFiles(validated.dataset)
                   .coreErrorToActionResult()
 
-                _ <- secureContainer.datasetPublicationStatusManager
+                // Every removal starts with an Accepted row, same as every
+                // other publication type -- whether it finalizes immediately
+                // below (fast path) or only after a restore completes.
+                pending <- secureContainer.datasetPublicationStatusManager
                   .create(
                     dataset = validated.dataset,
                     publicationStatus = validated.publicationStatus,
                     publicationType = validated.publicationType,
-                    comments = None,
-                    embargoReleaseDate = validated.embargoReleaseDate
+                    comments = comments
                   )
                   .coreErrorToActionResult()
 
-                // remove the publishing team for withdrawals since the process is complete
-                _ <- DataSetPublishingHelper
-                  .removePublisherTeam(secureContainer, validated.dataset)
-                  .coreErrorToActionResult()
-
-                // get dataset owner (unregister will need the ORCID Authorization)
-                owner <- secureContainer.datasetManager
-                  .getOwner(validated.dataset)
-                  .coreErrorToActionResult()
-
-                // remove publication registrations
-                _ <- unregisterPublication(
-                  secureContainer,
-                  validated.dataset,
-                  owner
-                ).value
-                  .flatMap {
-                    case Left(error) =>
-                      logger.info(
-                        s"publication unregister failed with error: ${error}"
+                // Fast path: nothing lives only in the publish bucket (e.g. an
+                // embargoed dataset that never triggered dedup, or a dataset
+                // that was already restored) -- finalize synchronously in this
+                // same request, exactly as this endpoint always has.
+                //
+                // Otherwise some files are live only in the publish bucket -- a
+                // restore must copy them back to storage before it's safe to
+                // delete the publish bucket. Start that restore and leave this
+                // removal in an intermediate, locked state; the actual teardown
+                // happens in finalizeRemoval, once a completion signal (from the
+                // restore-completion consumer, or a superadmin calling the same
+                // endpoint by hand) confirms the restore is done and the gate is
+                // clear.
+                response <- (if (stillPublishedCount == 0) {
+                               finalizeRemoval(
+                                 secureContainer,
+                                 validated.dataset,
+                                 restoreSucceeded = true
+                               )
+                             } else {
+                               startRemovalRestore(
+                                 secureContainer,
+                                 validated.dataset,
+                                 pending,
+                                 currentPublicationStatus.publishedDatasetId,
+                                 currentPublicationStatus.publishedVersionCount
+                               )
+                             })
+                  .leftFlatMap { error =>
+                    // Accepted is a locked status the publisher can't re-accept
+                    // from, so a failure here would otherwise strand the
+                    // dataset. Mark this attempt Failed so it can be retried.
+                    logger.error(
+                      s"removal of dataset ${validated.dataset.id} failed after it was accepted: ${error.getMessage}"
+                    )
+                    secureContainer.datasetPublicationStatusManager
+                      .create(
+                        dataset = validated.dataset,
+                        publicationStatus = PublicationStatus.Failed,
+                        publicationType = PublicationType.Removal,
+                        comments = comments
                       )
-                      Future.successful(())
-                    case Right(_) =>
-                      logger.info("publication was unregistered at registries")
-                      Future.successful(())
+                      .flatMap(
+                        _ =>
+                          EitherT
+                            .leftT[Future, DatasetPublicationStatus](error)
+                      )
                   }
-                  .toEitherT
-                  .coreErrorToActionResult()
-
-                // add entries for both Accept and Complete, since the unpublish job is syncronous
-                response <- secureContainer.datasetPublicationStatusManager
-                  .create(
-                    dataset = validated.dataset,
-                    publicationStatus = PublicationStatus.Completed,
-                    publicationType = validated.publicationType,
-                    comments = comments,
-                    embargoReleaseDate = validated.embargoReleaseDate
-                  )
                   .coreErrorToActionResult()
               } yield response
 
@@ -3713,6 +3766,163 @@ class DataSetsController(
     } yield ()
   }
 
+  /**
+    * Starts the publish-storage-sync restore execution for an accepted
+    * removal, and records its execution ARN on that removal's `Accepted` row.
+    * The execution name is derived from the row id, so each accept (including
+    * a retry after `Failed`) starts a distinct execution.
+    */
+  private def startRemovalRestore(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    pending: DatasetPublicationStatus,
+    publishedDatasetId: Option[Int],
+    publishedVersion: Int
+  ): EitherT[Future, CoreError, DatasetPublicationStatus] =
+    for {
+      publicDatasetId <- EitherT.fromEither[Future](
+        publishedDatasetId
+          .toRight(
+            PredicateError(
+              s"dataset ${dataset.id} has no published Discover id"
+            ): CoreError
+          )
+      )
+
+      destinationStorageBucket = secureContainer.organization.storageBucket
+        .getOrElse(
+          insecureContainer.config
+            .as[String]("pennsieve.s3.default_storage_bucket")
+        )
+
+      input = RestoreExecutionInput(
+        organizationId = secureContainer.organization.id,
+        datasetId = dataset.id,
+        publicDatasetId = publicDatasetId,
+        destinationStorageBucket = destinationStorageBucket,
+        publishedVersion = publishedVersion,
+        notifyOnCompletion = true
+      ).asJson.noSpaces
+
+      result <- stepFunctionsClient.startExecution(
+        restoreStateMachineArn,
+        s"restore-${dataset.id}-${pending.id}",
+        input
+      )
+
+      _ <- secureContainer.datasetPublicationStatusManager
+        .setRemovalMetadata(
+          pending.id,
+          RemovalRestoreMetadata(
+            executionArn = Some(result.executionArn()),
+            publishedVersion = Some(publishedVersion)
+          )
+        )
+    } yield pending
+
+  /**
+    * Finalizes a dataset removal (unpublish) once a restore has either
+    * succeeded or failed. This is the only place that ever calls
+    * `sendUnpublishRequest` -- the destructive publish-bucket teardown -- and
+    * it never does so without first independently re-verifying that no files
+    * are still live-only in the publish bucket, regardless of what the
+    * caller claims. It only acts while the dataset's latest publication log
+    * row is an `Accepted` removal. Any other state is returned unchanged:
+    * either this removal already finished (a duplicate delivery of the
+    * completion signal) or no removal is in progress at all (a stale signal
+    * from an earlier attempt, or a mistaken manual call). Acting on such a
+    * signal could unpublish a dataset that has since been republished.
+    */
+  def finalizeRemoval(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    restoreSucceeded: Boolean
+  ): EitherT[Future, CoreError, DatasetPublicationStatus] =
+    secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .flatMap {
+        case None =>
+          EitherT.leftT[Future, DatasetPublicationStatus](
+            PredicateError(
+              s"dataset ${dataset.id} has no publication history to finalize a removal for"
+            ): CoreError
+          )
+
+        case Some(latest)
+            if latest.publicationType == PublicationType.Removal &&
+              latest.publicationStatus == PublicationStatus.Accepted =>
+          // Carried forward from the triggering Accepted row, since the caller
+          // (an external completion signal) has no comment of its own to supply.
+          finalizeAcceptedRemoval(
+            secureContainer,
+            dataset,
+            restoreSucceeded,
+            comments = latest.comments
+          )
+
+        case Some(latest) =>
+          if (!(latest.publicationType == PublicationType.Removal &&
+              latest.publicationStatus == PublicationStatus.Completed)) {
+            logger.warn(
+              s"ignoring removal completion for dataset ${dataset.id}: latest publication status is ${latest.publicationType}/${latest.publicationStatus}, not an Accepted removal"
+            )
+          }
+          EitherT.rightT[Future, CoreError](latest)
+      }
+
+  private def finalizeAcceptedRemoval(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    restoreSucceeded: Boolean,
+    comments: Option[String]
+  ): EitherT[Future, CoreError, DatasetPublicationStatus] =
+    for {
+      stillPublishedCount <- secureContainer.fileManager
+        .countPublishedFiles(dataset)
+
+      result <- if (restoreSucceeded && stillPublishedCount == 0) {
+        for {
+          _ <- DataSetPublishingHelper
+            .sendUnpublishRequest(
+              secureContainer.organization,
+              dataset,
+              secureContainer.user,
+              publishClient
+            )(ec, system, jwtConfig)
+
+          _ <- DataSetPublishingHelper
+            .removePublisherTeam(secureContainer, dataset)
+
+          owner <- secureContainer.datasetManager.getOwner(dataset)
+
+          _ <- unregisterPublication(secureContainer, dataset, owner).value.flatMap {
+            case Left(error) =>
+              logger.info(s"publication unregister failed with error: ${error}")
+              Future.successful(())
+            case Right(_) =>
+              logger.info("publication was unregistered at registries")
+              Future.successful(())
+          }.toEitherT
+
+          completed <- secureContainer.datasetPublicationStatusManager
+            .create(
+              dataset = dataset,
+              publicationStatus = PublicationStatus.Completed,
+              publicationType = PublicationType.Removal,
+              comments = comments
+            )
+        } yield completed
+      } else {
+        secureContainer.datasetPublicationStatusManager
+          .create(
+            dataset = dataset,
+            publicationStatus = PublicationStatus.Failed,
+            publicationType = PublicationType.Removal,
+            comments = comments
+          )
+      }
+    } yield result
+
   val publishComplete: OperationBuilder = (apiOperation[Unit]("publishComplete")
     summary "notify API that Discover has completed a publish job"
     parameters (pathParam[Int]("id").required.description("dataset id"),
@@ -3899,6 +4109,43 @@ class DataSetsController(
           else EitherT.rightT[Future, ActionResult](())
 
         } yield ()
+
+      val is = result.value.map(OkResult)
+    }
+  }
+
+  val removalComplete
+    : OperationBuilder = (apiOperation[DatasetPublicationStatus](
+    "removalComplete"
+  )
+    summary "internal use only: notify API that a dataset removal's restore has completed"
+    parameters (pathParam[Int]("id").required.description("dataset id"),
+    bodyParam[RemovalCompleteRequest]("body")
+      .description("whether the restore that preceded this removal succeeded")))
+
+  put("/:id/publication/removal/complete", operation(removalComplete)) {
+    new AsyncResult {
+      val result: EitherT[Future, ActionResult, DatasetPublicationStatus] =
+        for {
+          secureContainer <- getSecureContainer()
+          datasetId <- paramT[Int]("id")
+
+          _ <- checkOrErrorT(secureContainer.user.isSuperAdmin)(
+            Forbidden("Must be superadmin to complete a removal")
+          )
+
+          dataset <- secureContainer.datasetManager
+            .get(datasetId)
+            .coreErrorToActionResult()
+
+          body <- extractOrErrorT[RemovalCompleteRequest](parsedBody)
+
+          response <- finalizeRemoval(
+            secureContainer,
+            dataset,
+            restoreSucceeded = body.success
+          ).coreErrorToActionResult()
+        } yield response
 
       val is = result.value.map(OkResult)
     }

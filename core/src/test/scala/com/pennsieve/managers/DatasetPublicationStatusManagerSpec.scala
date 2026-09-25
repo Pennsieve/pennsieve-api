@@ -67,4 +67,59 @@ class DatasetPublicationStatusManagerSpec extends BaseManagerSpec {
     assert(latestPublicationStatus === Some(datasetPublicationStatus1))
   }
 
+  "Creating a Removal status with removal metadata" should "round-trip through getLatestByDataset" in {
+
+    val dm = datasetManager(testOrganization, superAdmin)
+    val dpsm = datasetPublicationStatusManager(testOrganization)
+
+    val dataset1 = dm.create("RemovalMetadataDataset").await.value
+
+    val metadata = RemovalRestoreMetadata(
+      executionArn =
+        Some("arn:aws:states:us-east-1:000000000000:execution:mock:1"),
+      publishedVersion = Some(3)
+    )
+
+    val created = dpsm
+      .create(
+        dataset1,
+        PublicationStatus.Accepted,
+        PublicationType.Removal,
+        removalMetadata = Some(metadata)
+      )
+      .await
+      .value
+
+    created.removalMetadata shouldBe Some(metadata)
+
+    val latest = dpsm.getLatestByDataset(dataset1.id).await.value
+    latest.flatMap(_.removalMetadata) shouldBe Some(metadata)
+  }
+
+  "setRemovalMetadata" should "update removal metadata on the row in place, not create a new log entry" in {
+
+    val dm = datasetManager(testOrganization, superAdmin)
+    val dpsm = datasetPublicationStatusManager(testOrganization)
+
+    val dataset1 = dm.create("SetRemovalMetadataDataset").await.value
+
+    val created = dpsm
+      .create(dataset1, PublicationStatus.Accepted, PublicationType.Removal)
+      .await
+      .value
+
+    created.removalMetadata shouldBe None
+
+    val metadata = RemovalRestoreMetadata(
+      executionArn =
+        Some("arn:aws:states:us-east-1:000000000000:execution:mock:2"),
+      publishedVersion = Some(1)
+    )
+
+    dpsm.setRemovalMetadata(created.id, metadata).await.value
+
+    val logRows = dpsm.getLogByDataset(dataset1.id).await.value
+    logRows.map(_.removalMetadata) shouldBe Seq(Some(metadata))
+  }
+
 }

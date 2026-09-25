@@ -44,6 +44,8 @@ final class DatasetPublicationStatusTable(schema: String, tag: Tag)
   def embargoReleaseDate = column[Option[LocalDate]]("embargo_release_date")
   def createdBy = column[Option[Int]]("created_by")
   def createdAt = column[ZonedDateTime]("created_at", O.AutoInc)
+  def removalMetadata =
+    column[Option[RemovalRestoreMetadata]]("removal_metadata")
 
   def pk = primaryKey("simple_pk", id)
 
@@ -56,7 +58,8 @@ final class DatasetPublicationStatusTable(schema: String, tag: Tag)
       comments,
       embargoReleaseDate,
       createdAt,
-      id
+      id,
+      removalMetadata
     ).mapTo[DatasetPublicationStatus]
 }
 
