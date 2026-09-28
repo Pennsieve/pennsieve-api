@@ -213,7 +213,11 @@ object RestoreExecutionInput {
   * Body of the internal `/publication/removal/complete` callback, sent by
   * whatever consumes publish-storage-sync's restore-completion signal.
   */
-case class RemovalCompleteRequest(success: Boolean)
+case class RemovalCompleteRequest(
+  success: Boolean,
+  // The restore Step Functions execution this signal reports on.
+  executionArn: String
+)
 
 case class DatasetReadmeDTO(readme: String)
 //changelog Data transfer object
@@ -3511,15 +3515,16 @@ class DataSetsController(
                 // restore must copy them back to storage before it's safe to
                 // delete the publish bucket. Start that restore and leave this
                 // removal in an intermediate, locked state; the actual teardown
-                // happens in finalizeRemoval, once a completion signal (from the
+                // happens in completeRemovalRestore, once a completion signal (from the
                 // restore-completion consumer, or a superadmin calling the same
                 // endpoint by hand) confirms the restore is done and the gate is
                 // clear.
                 response <- (if (stillPublishedCount == 0) {
-                               finalizeRemoval(
+                               finalizeAcceptedRemoval(
                                  secureContainer,
                                  validated.dataset,
-                                 restoreSucceeded = true
+                                 restoreSucceeded = true,
+                                 comments = comments
                                )
                              } else {
                                startRemovalRestore(
@@ -3821,22 +3826,22 @@ class DataSetsController(
     } yield pending
 
   /**
-    * Finalizes a dataset removal (unpublish) once a restore has either
-    * succeeded or failed. This is the only place that ever calls
-    * `sendUnpublishRequest` -- the destructive publish-bucket teardown -- and
-    * it never does so without first independently re-verifying that no files
-    * are still live-only in the publish bucket, regardless of what the
-    * caller claims. It only acts while the dataset's latest publication log
-    * row is an `Accepted` removal. Any other state is returned unchanged:
-    * either this removal already finished (a duplicate delivery of the
-    * completion signal) or no removal is in progress at all (a stale signal
-    * from an earlier attempt, or a mistaken manual call). Acting on such a
-    * signal could unpublish a dataset that has since been republished.
+    * Handles a restore-completion signal for a dataset removal. It acts only
+    * when the dataset's latest publication log row is an `Accepted` removal
+    * whose recorded restore execution is `executionArn`. Any other state is
+    * returned unchanged:
+    *   - the removal already finished (a duplicate delivery of the signal);
+    *   - no removal is in progress at all (e.g. the dataset was republished);
+    *   - a different attempt of the removal is in progress (e.g. a redelivered
+    *     failure from before a retry).
+    * Acting on such a signal could unpublish a republished dataset, or record
+    * an earlier attempt's outcome against the one now running.
     */
-  def finalizeRemoval(
+  def completeRemovalRestore(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
-    restoreSucceeded: Boolean
+    restoreSucceeded: Boolean,
+    executionArn: String
   ): EitherT[Future, CoreError, DatasetPublicationStatus] =
     secureContainer.datasetPublicationStatusManager
       .getLatestByDataset(dataset.id)
@@ -3850,7 +3855,10 @@ class DataSetsController(
 
         case Some(latest)
             if latest.publicationType == PublicationType.Removal &&
-              latest.publicationStatus == PublicationStatus.Accepted =>
+              latest.publicationStatus == PublicationStatus.Accepted &&
+              latest.removalMetadata
+                .flatMap(_.executionArn)
+                .contains(executionArn) =>
           // Carried forward from the triggering Accepted row, since the caller
           // (an external completion signal) has no comment of its own to supply.
           finalizeAcceptedRemoval(
@@ -3861,15 +3869,25 @@ class DataSetsController(
           )
 
         case Some(latest) =>
-          if (!(latest.publicationType == PublicationType.Removal &&
-              latest.publicationStatus == PublicationStatus.Completed)) {
+          val isDuplicate = latest.publicationType == PublicationType.Removal &&
+            latest.publicationStatus == PublicationStatus.Completed
+          if (!isDuplicate) {
             logger.warn(
-              s"ignoring removal completion for dataset ${dataset.id}: latest publication status is ${latest.publicationType}/${latest.publicationStatus}, not an Accepted removal"
+              s"ignoring removal completion for dataset ${dataset.id}, execution $executionArn: latest publication status is ${latest.publicationType}/${latest.publicationStatus} with execution ${latest.removalMetadata
+                .flatMap(_.executionArn)
+                .getOrElse("(none)")}"
             )
           }
           EitherT.rightT[Future, CoreError](latest)
       }
 
+  /**
+    * Finalizes an `Accepted` dataset removal (unpublish). This is the only
+    * place that ever calls `sendUnpublishRequest` -- the destructive
+    * publish-bucket teardown -- and it never does so without first
+    * independently re-verifying that no files are still live-only in the
+    * publish bucket, regardless of what the caller claims.
+    */
   private def finalizeAcceptedRemoval(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
@@ -4121,7 +4139,9 @@ class DataSetsController(
     summary "internal use only: notify API that a dataset removal's restore has completed"
     parameters (pathParam[Int]("id").required.description("dataset id"),
     bodyParam[RemovalCompleteRequest]("body")
-      .description("whether the restore that preceded this removal succeeded")))
+      .description(
+        "whether the restore that preceded this removal succeeded, and that restore's execution ARN"
+      )))
 
   put("/:id/publication/removal/complete", operation(removalComplete)) {
     new AsyncResult {
@@ -4140,10 +4160,11 @@ class DataSetsController(
 
           body <- extractOrErrorT[RemovalCompleteRequest](parsedBody)
 
-          response <- finalizeRemoval(
+          response <- completeRemovalRestore(
             secureContainer,
             dataset,
-            restoreSucceeded = body.success
+            restoreSucceeded = body.success,
+            executionArn = body.executionArn
           ).coreErrorToActionResult()
         } yield response
 

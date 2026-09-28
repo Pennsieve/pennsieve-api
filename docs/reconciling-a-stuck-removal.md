@@ -37,12 +37,12 @@ A removal whose restore fails to start is marked `Failed` right away, so every s
    Authorization: Bearer <superadmin session token>
    Content-Type: application/json
 
-   { "success": <true if SUCCEEDED, false otherwise> }
+   { "success": <true if SUCCEEDED, false otherwise>, "executionArn": "<arn from step 1>" }
    ```
    This is safe even if the execution's true state is uncertain: the endpoint
    independently re-verifies that no files are still live-only in the publish bucket
    before it will ever delete from the publish bucket, and it's a no-op unless the latest row
-   is still an `Accepted` removal.
+   is still an `Accepted` removal for that same execution ARN.
 
 4. **Confirm the result** -- the dataset's latest publication log row should now read
    `Completed` (teardown finished) or `Failed` (ready for the publisher to retry by

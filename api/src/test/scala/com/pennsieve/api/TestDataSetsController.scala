@@ -70,6 +70,11 @@ import scala.concurrent.Future
 
 class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
+  // Recorded on Accepted removal rows that tests create directly, standing in
+  // for the execution accept(removal) would have started.
+  val testRestoreExecutionArn: String =
+    "arn:aws:states:us-east-1:000000000000:execution:restore:restore-test"
+
   implicit val mockDatasetAssetClient: MockDatasetAssetClient =
     new MockDatasetAssetClient()
 
@@ -5814,13 +5819,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     // Simulate accept(removal)'s restore-needed path having already run:
     // an Accepted row exists and a restore is (nominally) in flight.
     secureContainer.datasetPublicationStatusManager
-      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .create(
+        dataset,
+        PublicationStatus.Accepted,
+        PublicationType.Removal,
+        removalMetadata = Some(
+          RemovalRestoreMetadata(executionArn = Some(testRestoreExecutionArn))
+        )
+      )
       .await
       .value
 
     putJson(
       s"/${dataset.id}/publication/removal/complete",
-      write(RemovalCompleteRequest(success = true)),
+      write(
+        RemovalCompleteRequest(
+          success = true,
+          executionArn = testRestoreExecutionArn
+        )
+      ),
       headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
     ) {
       status shouldBe 200
@@ -5844,13 +5861,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .value
 
     secureContainer.datasetPublicationStatusManager
-      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .create(
+        dataset,
+        PublicationStatus.Accepted,
+        PublicationType.Removal,
+        removalMetadata = Some(
+          RemovalRestoreMetadata(executionArn = Some(testRestoreExecutionArn))
+        )
+      )
       .await
       .value
 
     putJson(
       s"/${dataset.id}/publication/removal/complete",
-      write(RemovalCompleteRequest(success = false)),
+      write(
+        RemovalCompleteRequest(
+          success = false,
+          executionArn = testRestoreExecutionArn
+        )
+      ),
       headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
     ) {
       status shouldBe 200
@@ -5877,11 +5906,23 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .value
 
     secureContainer.datasetPublicationStatusManager
-      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .create(
+        dataset,
+        PublicationStatus.Accepted,
+        PublicationType.Removal,
+        removalMetadata = Some(
+          RemovalRestoreMetadata(executionArn = Some(testRestoreExecutionArn))
+        )
+      )
       .await
       .value
 
-    val request = write(RemovalCompleteRequest(success = true))
+    val request = write(
+      RemovalCompleteRequest(
+        success = true,
+        executionArn = testRestoreExecutionArn
+      )
+    )
 
     putJson(
       s"/${dataset.id}/publication/removal/complete",
@@ -5916,13 +5957,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .value
 
     secureContainer.datasetPublicationStatusManager
-      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .create(
+        dataset,
+        PublicationStatus.Accepted,
+        PublicationType.Removal,
+        removalMetadata = Some(
+          RemovalRestoreMetadata(executionArn = Some(testRestoreExecutionArn))
+        )
+      )
       .await
       .value
 
     putJson(
       s"/${dataset.id}/publication/removal/complete",
-      write(RemovalCompleteRequest(success = true)),
+      write(
+        RemovalCompleteRequest(
+          success = true,
+          executionArn = testRestoreExecutionArn
+        )
+      ),
       headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
     ) {
       status shouldBe 403
@@ -5946,13 +5999,25 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .value
 
     secureContainer.datasetPublicationStatusManager
-      .create(dataset, PublicationStatus.Accepted, PublicationType.Removal)
+      .create(
+        dataset,
+        PublicationStatus.Accepted,
+        PublicationType.Removal,
+        removalMetadata = Some(
+          RemovalRestoreMetadata(executionArn = Some(testRestoreExecutionArn))
+        )
+      )
       .await
       .value
 
     putJson(
       s"/${dataset.id}/publication/removal/complete",
-      write(RemovalCompleteRequest(success = true)),
+      write(
+        RemovalCompleteRequest(
+          success = true,
+          executionArn = testRestoreExecutionArn
+        )
+      ),
       headers = authorizationHeader(adminJwt) ++ traceIdHeader()
     ) {
       status shouldBe 200
@@ -6034,17 +6099,41 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // Simulate the restore itself: the file gets copied back to storage and
     // its published_s3_version_id is cleared, which is what the gate
-    // re-check inside finalizeRemoval independently verifies -- the "success"
+    // re-check before teardown independently verifies -- the "success"
     // signal alone is never trusted.
     secureContainer.fileManager
       .setFileUnpublished(dedupedFile, "storage-bucket", "restored-key")
       .await
       .value
 
+    // A signal about some other execution is ignored.
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      write(
+        RemovalCompleteRequest(
+          success = true,
+          executionArn = s"${executionArn.get}-other"
+        )
+      ),
+      headers = authorizationHeader(adminJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    mockPublishClient.unpublishRequests should not contain (
+      (
+        loggedInOrganization.id,
+        dataset.id
+      )
+    )
+
     // Simulate the restore-completion signal arriving.
     putJson(
       s"/${dataset.id}/publication/removal/complete",
-      write(RemovalCompleteRequest(success = true)),
+      write(
+        RemovalCompleteRequest(success = true, executionArn = executionArn.get)
+      ),
       headers = authorizationHeader(adminJwt) ++ traceIdHeader()
     ) {
       status shouldBe 200
@@ -6108,11 +6197,17 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     val firstExecutionName = s"restore-${dataset.id}-${firstAttempt.id}"
     mockStepFunctionsClient.startedExecutions
       .map(_._2) should contain(firstExecutionName)
+    val firstExecutionArn =
+      firstAttempt.removalMetadata.flatMap(_.executionArn).get
+
+    val firstAttemptFailed = write(
+      RemovalCompleteRequest(success = false, executionArn = firstExecutionArn)
+    )
 
     // The restore fails.
     putJson(
       s"/${dataset.id}/publication/removal/complete",
-      write(RemovalCompleteRequest(success = false)),
+      firstAttemptFailed,
       headers = authorizationHeader(adminJwt) ++ traceIdHeader()
     ) {
       status shouldBe 200
@@ -6143,6 +6238,136 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     secondExecutionName should not equal firstExecutionName
     mockStepFunctionsClient.startedExecutions
       .map(_._2) should contain(secondExecutionName)
+
+    // A redelivery of the first attempt's failure doesn't fail the second.
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      firstAttemptFailed,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .map(_.id) shouldBe Some(secondAttempt.id)
+  }
+
+  test(
+    "2 step publishing - a removal whose restore copied every file but then failed completes on re-accept"
+  ) {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    val dedupedPackage = createPackage(dataset, "deduped-package", `type` = CSV)
+    val dedupedFile = secureContainer.fileManager
+      .create(
+        name = "deduped-file",
+        `type` = FileType.CSV,
+        `package` = dedupedPackage,
+        s3Bucket = "publish-bucket",
+        s3Key = "some-key",
+        objectType = FileObjectType.Source,
+        processingState = FileProcessingState.Processed,
+        publishedS3VersionId = Some("v1")
+      )
+      .await
+      .value
+
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=removal",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    val restoreExecutionArn = secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .flatMap(_.removalMetadata)
+      .flatMap(_.executionArn)
+      .get
+
+    // The restore copies every file back to storage, then fails anyway.
+    secureContainer.fileManager
+      .setFileUnpublished(dedupedFile, "storage-bucket", "restored-key")
+      .await
+      .value
+
+    val restoreFailed = write(
+      RemovalCompleteRequest(
+        success = false,
+        executionArn = restoreExecutionArn
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      restoreFailed,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    // A failed restore is never treated as success, even with the gate clear.
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Failed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+    mockPublishClient.unpublishRequests should not contain (
+      (
+        loggedInOrganization.id,
+        dataset.id
+      )
+    )
+
+    // Nothing is left only in the publish bucket, so re-accepting takes the
+    // fast path: no new execution, and no execution ARN needed.
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+    mockPublishClient.unpublishRequests should contain(
+      (loggedInOrganization.id, dataset.id)
+    )
+    mockStepFunctionsClient.startedExecutions should have size 1
+
+    // A redelivery of the failed restore's message changes nothing.
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      restoreFailed,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    mockPublishClient.unpublishRequests
+      .count(_ == ((loggedInOrganization.id, dataset.id))) shouldBe 1
   }
 
   test(
@@ -6160,7 +6385,12 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     putJson(
       s"/${dataset.id}/publication/removal/complete",
-      write(RemovalCompleteRequest(success = true)),
+      write(
+        RemovalCompleteRequest(
+          success = true,
+          executionArn = testRestoreExecutionArn
+        )
+      ),
       headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
     ) {
       status shouldBe 200
@@ -6168,7 +6398,12 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     putJson(
       s"/${dataset.id}/publication/removal/complete",
-      write(RemovalCompleteRequest(success = false)),
+      write(
+        RemovalCompleteRequest(
+          success = false,
+          executionArn = testRestoreExecutionArn
+        )
+      ),
       headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
     ) {
       status shouldBe 200
