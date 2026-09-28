@@ -149,17 +149,34 @@ trait BaseBootstrapHelper {
   lazy val cognitoConfig: CognitoConfig = CognitoConfig(config)
   lazy val cognitoClient: CognitoClient = Cognito(cognitoConfig)
 
-  lazy val publishClient: PublishClient = {
-    val host = config.as[String]("pennsieve.discover_service.host")
-    val client = new SingleHttpResponder().responder
-    PublishClient.httpClient(client, host)
-  }
+  // An environment without discover-service (clin) sets
+  // pennsieve.discover_service.enabled = false: publish status reads say
+  // "not published" and unpublish is a no-op instead of failing on a host
+  // that does not exist (see DisabledDiscoverClients).
+  lazy val discoverEnabled: Boolean =
+    config
+      .as[Option[Boolean]]("pennsieve.discover_service.enabled")
+      .getOrElse(true)
 
-  lazy val searchClient: SearchClient = {
-    val host = config.as[String]("pennsieve.discover_service.host")
-    val client = new SingleHttpResponder().responder
-    SearchClient.httpClient(client, host)
-  }
+  lazy val publishClient: PublishClient =
+    if (discoverEnabled) {
+      val host = config.as[String]("pennsieve.discover_service.host")
+      val client = new SingleHttpResponder().responder
+      PublishClient.httpClient(client, host)
+    } else {
+      new DisabledPublishClient(
+        config.as[String]("pennsieve.publishing.default_workflow").toLong
+      )
+    }
+
+  lazy val searchClient: SearchClient =
+    if (discoverEnabled) {
+      val host = config.as[String]("pennsieve.discover_service.host")
+      val client = new SingleHttpResponder().responder
+      SearchClient.httpClient(client, host)
+    } else {
+      new DisabledSearchClient()
+    }
 
   lazy val doiClient: DoiClient = {
     val host = config.as[String]("pennsieve.doi_service.host")
