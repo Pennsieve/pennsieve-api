@@ -111,7 +111,9 @@ Container wiring mirrors the fix already made for `DatasetPublicationStatusManag
 
 ### Wire format — same SNS topic, new `eventCategory`
 
-Reuses the existing `{env}-integration-events-sns-topic` → SQS → integration-service pipeline (decided in discussion — simplest for integration-service's `TOPICS` table, avoids a second topic/queue/IAM wiring). Message shape mirrors `ChangelogManager.formatMessageForSNS`:
+Reuses the existing `{env}-integration-events-sns-topic` → SQS → integration-service pipeline (decided in discussion — simplest for integration-service's `TOPICS` table, avoids a second topic/queue/IAM wiring).
+
+**This topic is not pennsieve-api-exclusive.** It's intended as the shared event bus for *any* Pennsieve service that wants to emit something integration-service/User-Notifications can act on — not just dataset- and organization-scoped events. A near-term example: github-service emitting an event when a release is published to Discover or the App Store, which has no dataset or organization context at all (it's scoped to a GitHub repo/release). Keep the wire format's required fields to the true lowest common denominator (`eventCategory`, `eventType`, `eventDetail`) rather than assuming every message has an `organizationId`/`datasetId` — those become category-specific, optional fields, not universal ones. Message shape mirrors `ChangelogManager.formatMessageForSNS`:
 
 ```json
 {
@@ -141,7 +143,45 @@ Full membership + team set, matching what's silent today:
 | `UPDATE_TEAM` | `TeamManager.update` | — |
 | `DELETE_TEAM` | `TeamManager.delete` | — |
 
-**Explicitly out of scope for this design** (may be revisited later, but not blocking the membership/team vocabulary above): organization settings changes (name, color theme), subscription/billing status changes, feature-flag changes, custom-ToS-version updates. These are lower-value notification targets and silent today with no urgency to fix.
+### Event vocabulary, part 2: workspace-scoped notice of a personal dataset grant
+
+A distinct but related need, surfaced in review: **a workspace member wants to know when *they personally* are granted (or lose) direct access to a dataset** — "I'm already in this workspace; tell me when a new dataset shows up that I now have access to." This is impossible to express as a subscription against the *existing* dataset-level `UPDATE_PERMISSION`/`UPDATE_OWNER` `ChangelogEvent`s, because subscribing to a dataset-scoped topic requires knowing the `datasetId` in advance — and a user can't know (or have access to) the id of a dataset they haven't been granted access to yet. It has to be an organization-scoped event (subscribable the moment you join the workspace, with no dataset id needed up front), even though it's *describing* a dataset-level grant.
+
+Traced the exact call sites and confirmed the discriminator is already present in the existing dataset-level event payloads — no new information needs to be captured, just re-emitted at a different scope:
+
+- `UpdatePermission(oldRole, newRole, userId, teamId, organizationId)` — `api/src/main/scala/com/pennsieve/api/DataSetsController.scala`. Fired from exactly 3 endpoint pairs, cleanly discriminated by which of `userId`/`teamId`/`organizationId` is set:
+  - `PUT|DELETE /:id/collaborators/users` (`addUserCollaborator`/`deleteUserCollaborator`, `DataSetsController.scala:1968`/`2026`) — **direct-to-user grant**: `userId = Some`, `teamId = None`, `organizationId = None`.
+  - `PUT|DELETE /:id/collaborators/teams` (`DataSetsController.scala:2281`/`2340`) — **team grant**: `teamId = Some`.
+  - `PUT|DELETE /:id/collaborators/organizations` (`setOrganizationCollaboratorRole`, `DataSetsController.scala:2461`/`2512`) — **workspace-wide share**: `organizationId = Some`.
+  
+  Only the first shape is "directly to me, not via team, not workspace-wide" — exactly what you asked for. Within that shape, `oldRole: Option[Role]` further distinguishes *new* access (`oldRole = None`, this is the "added" case) from a *role change* on access you already had (`oldRole = Some(...)`) — these are different notification-worthy moments and get different event names below.
+- `UpdateOwner(oldOwner, newOwner)` — fired from the ownership-transfer endpoint (`switchOwner`, `DataSetsController.scala:2621`). Always a single, direct, individual grant by construction — you cannot become a dataset's owner via a team or a workspace-wide share — so no discriminator is needed; every occurrence qualifies.
+
+**Decision: fire these as parallel events at the same `DataSetsController` call sites**, right alongside the existing `changelogManager.logEvent(dataset, UpdatePermission(...))`/`UpdateOwner(...)` calls — not derived later by a downstream consumer watching the dataset-event stream. Same request, same actor, no added lag or secondary failure mode.
+
+| Event | Fires from (same call site as) | Discriminator | Subject |
+|---|---|---|---|
+| `ADDED_TO_DATASET` | `addUserCollaborator` | `userId` set, `teamId`/`organizationId` unset, **and** `oldRole.isEmpty` (new grant, not a role change) | the added user |
+| `REMOVED_FROM_DATASET` | `deleteUserCollaborator` | `userId` set, `teamId`/`organizationId` unset (removal is always `newRole = None`, no further discriminator needed) | the removed user |
+| `DATASET_OWNERSHIP_TRANSFERRED` | `switchOwner` | none needed — always direct/individual | the new owner |
+
+Proposed detail payloads (mirroring the `publishedDatasetId`/`publishedVersion`/`doi` pattern from the dataset-publication events — enough for a notification to be rendered without a follow-up API call):
+
+```scala
+case class AddedToDataset(datasetId: Int, datasetNodeId: String, datasetName: String, role: Role) extends OrganizationEventDetail {
+  val eventType = ADDED_TO_DATASET
+}
+case class RemovedFromDataset(datasetId: Int, datasetNodeId: String, datasetName: String) extends OrganizationEventDetail {
+  val eventType = REMOVED_FROM_DATASET
+}
+case class DatasetOwnershipTransferred(datasetId: Int, datasetNodeId: String, datasetName: String, previousOwnerUserId: Int) extends OrganizationEventDetail {
+  val eventType = DATASET_OWNERSHIP_TRANSFERRED
+}
+```
+
+Note these three are the *only* organization-level events proposed so far whose `OrganizationEventDetail` needs a dataset reference at all — that's fine; the event still lives in `organization_events` (keyed by `organization_id`/`subject_user_id`, no `dataset_id` column needed on the table itself), it's just that its *detail* payload happens to describe a dataset. This doesn't reopen the "should organization_events have a dataset_id column" question — the table stays dataset-agnostic; only this one event's JSON detail blob references a dataset, the same way `AddTeamUser`'s detail references a team without the table needing a `team_id` column.
+
+**Explicitly out of scope for this design** (may be revisited later, but not blocking the vocabulary above): organization settings changes (name, color theme), subscription/billing status changes, feature-flag changes, custom-ToS-version updates. These are lower-value notification targets and silent today with no urgency to fix.
 
 ## Open questions for review
 
@@ -149,3 +189,4 @@ Full membership + team set, matching what's silent today:
 2. **Exact field shapes** for each `OrganizationEventDetail` case class — the ones sketched above are a first pass; should be validated against what's actually in scope at each `OrganizationManager`/`TeamManager` call site (e.g. does `removeUser` have the user's prior permission level in scope to include in the detail, or just the user id?).
 3. **Email-template gap** — should adding the new `logEvent` calls also be the moment we add the missing email templates (`removedFromOrganization`, `removedFromTeam`, a permission-changed notice)? Or keep this design strictly to the event-emission layer and let email-template work happen separately/later, once User Notifications can itself be the delivery mechanism instead of a new bespoke email template per action?
 4. **Retroactive migration** — none. Like dataset ChangelogEvents, this only covers actions going forward from whenever it ships; no backfill of historical org/team membership changes is proposed or feasible (the data to reconstruct "who removed whom and when" doesn't exist today).
+5. **Team-grant and org-wide-share notifications** — this design deliberately only covers the *direct-to-user* dataset-grant shape (`ADDED_TO_DATASET`/`REMOVED_FROM_DATASET`). Being granted access to a dataset via team membership or a workspace-wide share is arguably just as notification-worthy, but is a materially different question ("notify every member of Team X whenever Team X's access changes" is a fan-out, not a single-subscriber event) — deferred as a separate, later design rather than folded in here.
