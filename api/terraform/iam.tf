@@ -47,6 +47,13 @@ resource "aws_iam_role_policy" "sns_iam_role_policy" {
   policy = data.aws_iam_policy_document.sns_iam_policy_document.json
 }
 
+resource "aws_iam_role_policy" "stepfunctions_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
+  name   = "${var.environment_name}-${var.service_name}-stepfunctions-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+  policy = data.aws_iam_policy_document.stepfunctions_iam_policy_document.json
+}
+
 resource "aws_iam_role_policy" "ssm_iam_role_policy" {
   role   = var.ecs_task_iam_role_id
 
@@ -237,6 +244,20 @@ data "aws_iam_policy_document" "sns_iam_policy_document" {
 
     resources = [
       data.terraform_remote_state.integration_service.outputs.sns_topic_arn
+    ]
+  }
+}
+
+// Allow API to start the publish-storage-sync restore state machine as part
+// of unpublish (accept(removal), including retries -- see the removal/complete
+// callback for the resulting completion signal).
+data "aws_iam_policy_document" "stepfunctions_iam_policy_document" {
+  statement {
+    effect  = "Allow"
+    actions = ["states:StartExecution"]
+
+    resources = [
+      data.terraform_remote_state.publish_storage_sync.outputs.publish_storage_sync_restore_state_machine_arn
     ]
   }
 }
