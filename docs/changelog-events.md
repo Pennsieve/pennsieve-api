@@ -170,7 +170,7 @@ This is the automatic follow-on to a successful embargo, once the release date a
 | Event | `(PublicationStatus, PublicationType)` | Detail payload | Trigger |
 |---|---|---|---|
 | `REQUEST_REMOVAL` | `(Requested, Removal)` | `{publicationStatusId: Int}` | Owner requests the published dataset be withdrawn/unpublished. |
-| `ACCEPT_REMOVAL` | `(Accepted, Removal)` | `{publicationStatusId: Int}` | Publisher accepts — kicks off discover-service's unpublish job (synchronous, unlike Publication/Embargo). |
+| `ACCEPT_REMOVAL` | `(Accepted, Removal)` | `{publicationStatusId: Int}` | Publisher accepts — starts a publish-storage-sync restore. discover-service's unpublish job runs only once the restore's completion signal arrives (`PUT /:id/publication/removal/complete`). |
 | `REJECT_REMOVAL` | `(Rejected, Removal)` | `{publicationStatusId: Int}` | |
 | `CANCEL_REMOVAL` | `(Cancelled, Removal)` | `{publicationStatusId: Int}` | |
 | `COMPLETE_REMOVAL` | `(Completed, Removal)` | `{publicationStatusId: Int} + PublicationArtifact` | |

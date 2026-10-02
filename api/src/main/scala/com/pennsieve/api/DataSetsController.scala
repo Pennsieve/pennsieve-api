@@ -28,7 +28,7 @@ import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.aws.cognito.{ Cognito, CognitoClient }
 import com.pennsieve.aws.email.{ Email, SesMessageResult }
 import com.pennsieve.aws.queue.SQSClient
-import com.pennsieve.aws.stepfunctions.StepFunctionsClient
+import com.pennsieve.aws.stepfunctions.{ StepFunctions, StepFunctionsClient }
 import com.pennsieve.clients.DatasetAssetClient
 import com.pennsieve.core.utilities
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
@@ -3490,52 +3490,37 @@ class DataSetsController(
             case PublicationType.Removal =>
               for {
 
-                stillPublishedCount <- secureContainer.fileManager
-                  .countPublishedFiles(validated.dataset)
-                  .coreErrorToActionResult()
-
                 // Every removal starts with an Accepted row, same as every
-                // other publication type -- whether it finalizes immediately
-                // below (fast path) or only after a restore completes.
+                // other publication type, and finalizes only after a restore
+                // completes.
                 pending <- secureContainer.datasetPublicationStatusManager
                   .create(
                     dataset = validated.dataset,
                     publicationStatus = validated.publicationStatus,
                     publicationType = validated.publicationType,
-                    comments = comments
+                    comments = comments,
+                    embargoReleaseDate = validated.embargoReleaseDate
                   )
                   .coreErrorToActionResult()
 
-                // Fast path: nothing lives only in the publish bucket (e.g. an
-                // embargoed dataset that never triggered dedup, or a dataset
-                // that was already restored) -- finalize synchronously in this
-                // same request, exactly as this endpoint always has.
-                //
-                // Otherwise some files are live only in the publish bucket -- a
-                // restore must copy them back to storage before it's safe to
-                // delete the publish bucket. Start that restore and leave this
-                // removal in an intermediate, locked state; the actual teardown
-                // happens in completeRemovalRestore, once a completion signal (from the
+                // A restore runs even when no files are live only in the
+                // publish bucket right now. Discover reports a publish complete
+                // before it queues publish-storage-sync, so a sync may still be
+                // pending or running; the restore takes publish-storage-sync's
+                // guard, which keeps that sync from moving files into a bucket
+                // that is about to be deleted. This removal stays in a locked,
+                // intermediate state; the teardown happens in
+                // completeRemovalRestore, once a completion signal (from the
                 // restore-completion consumer, or a superadmin calling the same
                 // endpoint by hand) confirms the restore is done and the gate is
                 // clear.
-                response <- (if (stillPublishedCount == 0) {
-                               finalizeAcceptedRemoval(
-                                 secureContainer,
-                                 validated.dataset,
-                                 restoreSucceeded = true,
-                                 comments = comments
-                               )
-                             } else {
-                               startRemovalRestore(
-                                 secureContainer,
-                                 validated.dataset,
-                                 pending,
-                                 currentPublicationStatus.publishedDatasetId,
-                                 currentPublicationStatus.publishedVersionCount
-                               )
-                             })
-                  .leftFlatMap { error =>
+                response <- startRemovalRestore(
+                  secureContainer,
+                  validated.dataset,
+                  pending,
+                  currentPublicationStatus.publishedDatasetId,
+                  currentPublicationStatus.publishedVersionCount
+                ).leftFlatMap { error =>
                     // Accepted is a locked status the publisher can't re-accept
                     // from, so a failure here would otherwise strand the
                     // dataset. Mark this attempt Failed so it can be retried.
@@ -3773,9 +3758,9 @@ class DataSetsController(
 
   /**
     * Starts the publish-storage-sync restore execution for an accepted
-    * removal, and records its execution ARN on that removal's `Accepted` row.
-    * The execution name is derived from the row id, so each accept (including
-    * a retry after `Failed`) starts a distinct execution.
+    * removal, after recording its execution ARN on that removal's `Accepted`
+    * row. The execution name is derived from the row id, so each accept
+    * (including a retry after `Failed`) starts a distinct execution.
     */
   private def startRemovalRestore(
     secureContainer: SecureAPIContainer,
@@ -3809,20 +3794,39 @@ class DataSetsController(
         notifyOnCompletion = true
       ).asJson.noSpaces
 
-      result <- stepFunctionsClient.startExecution(
-        restoreStateMachineArn,
-        s"restore-${dataset.id}-${pending.id}",
-        input
+      // Dataset and publication log ids are only unique within an
+      // organization's schema, so the org id keeps names from colliding across
+      // organizations.
+      executionName = s"restore-${secureContainer.organization.id}-${dataset.id}-${pending.id}"
+
+      executionArn <- EitherT.fromEither[Future](
+        StepFunctions.executionArn(restoreStateMachineArn, executionName)
       )
 
+      // Recorded before the execution starts, so a completion signal can never
+      // arrive ahead of the ARN it must match, and a failed write never leaves
+      // a restore running behind a Failed row.
       _ <- secureContainer.datasetPublicationStatusManager
         .setRemovalMetadata(
           pending.id,
           RemovalRestoreMetadata(
-            executionArn = Some(result.executionArn()),
+            executionArn = Some(executionArn),
             publishedVersion = Some(publishedVersion)
           )
         )
+
+      result <- stepFunctionsClient.startExecution(
+        restoreStateMachineArn,
+        executionName,
+        input
+      )
+
+      _ = if (result.executionArn() != executionArn) {
+        logger.error(
+          s"restore execution for dataset ${dataset.id} started as ${result
+            .executionArn()}, not the recorded $executionArn; its completion signal will be ignored"
+        )
+      }
     } yield pending
 
   /**

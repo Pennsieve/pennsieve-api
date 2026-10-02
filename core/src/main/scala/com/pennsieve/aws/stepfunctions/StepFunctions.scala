@@ -23,10 +23,46 @@ import software.amazon.awssdk.services.sfn.model.{
   StartExecutionResponse
 }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits.FutureEitherT
-import com.pennsieve.domain.{ CoreError, ExceptionError }
+import com.pennsieve.domain.{ CoreError, ExceptionError, PredicateError }
 
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
+
+object StepFunctions {
+
+  /**
+    * The ARN Step Functions assigns to the execution named `executionName` of
+    * the standard state machine `stateMachineArn`. Execution names are unique
+    * per state machine, so the ARN is known before the execution is started:
+    *
+    *   arn:<partition>:states:<region>:<account>:stateMachine:<machine>
+    *   arn:<partition>:states:<region>:<account>:execution:<machine>:<name>
+    */
+  def executionArn(
+    stateMachineArn: String,
+    executionName: String
+  ): Either[CoreError, String] =
+    stateMachineArn.split(":", -1) match {
+      case Array(
+          "arn",
+          partition,
+          "states",
+          region,
+          account,
+          "stateMachine",
+          machine
+          ) if machine.nonEmpty =>
+        Right(
+          s"arn:$partition:states:$region:$account:execution:$machine:$executionName"
+        )
+      case _ =>
+        Left(
+          PredicateError(
+            s"'$stateMachineArn' is not a Step Functions state machine ARN"
+          )
+        )
+    }
+}
 
 trait StepFunctionsClient {
 

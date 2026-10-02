@@ -4947,6 +4947,38 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  /**
+    * Sends the restore-completion signal for the dataset's in-progress removal,
+    * as the restore-completion consumer would once its restore finishes.
+    */
+  def removalCompleteResult(
+    success: Boolean = true
+  )(implicit
+    dataset: Dataset
+  ): (Int, Option[PublicationStatus], Option[PublicationType], Boolean) = {
+    val executionArn = secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .flatMap(_.removalMetadata)
+      .flatMap(_.executionArn)
+      .get
+
+    putJson(
+      s"/${dataset.id}/publication/removal/complete",
+      write(RemovalCompleteRequest(success, executionArn)),
+      jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      val currentStatus = currentPublicationStatus()
+      (
+        status,
+        currentStatus,
+        currentPublicationType(),
+        publisherTeamStateCorrect(currentStatus)
+      )
+    }
+  }
+
   def publicationRequestResult(
     publicationStatus: PublicationStatus,
     publicationType: PublicationType,
@@ -5148,10 +5180,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       PublicationType.Removal
     ), true)
 
+    // Accepting a removal starts a restore; the removal completes only once
+    // the restore's completion signal arrives.
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
-    ) shouldBe (201, Some(PublicationStatus.Completed), Some(
+    ) shouldBe (201, Some(PublicationStatus.Accepted), Some(
+      PublicationType.Removal
+    ), true)
+    removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
       PublicationType.Removal
     ), true)
 
@@ -6041,8 +6079,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
-    // A file that lives only in the publish bucket -- the gate that forces
-    // accept(removal) onto the restore-needed path instead of the fast path.
+    // A file that lives only in the publish bucket -- the gate that blocks
+    // teardown until the restore has copied it back.
     val dedupedPackage = createPackage(dataset, "deduped-package", `type` = CSV)
     val dedupedFile = secureContainer.fileManager
       .create(
@@ -6092,10 +6130,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .get
 
     val executionArn = pending.removalMetadata.flatMap(_.executionArn)
-    executionArn shouldBe defined
+    val executionName =
+      s"restore-${loggedInOrganization.id}-${dataset.id}-${pending.id}"
+
+    // Recorded before the execution starts, as the ARN Step Functions assigns.
+    executionArn shouldBe Some(
+      s"arn:aws:states:us-east-1:000000000000:execution:mock-restore:$executionName"
+    )
 
     mockStepFunctionsClient.startedExecutions
-      .map(_._2) should contain(s"restore-${dataset.id}-${pending.id}")
+      .map(_._2) should contain(executionName)
 
     // Simulate the restore itself: the file gets copied back to storage and
     // its published_s3_version_id is cleared, which is what the gate
@@ -6142,6 +6186,55 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
     currentPublicationType() shouldBe Some(PublicationType.Removal)
 
+    mockPublishClient.unpublishRequests should contain(
+      (loggedInOrganization.id, dataset.id)
+    )
+  }
+
+  test(
+    "2 step publishing - removing a dataset with no deduped files still starts a restore"
+  ) {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
+
+    // Nothing has been deduped yet -- e.g. a publish-storage-sync that is still
+    // queued. The removal must not tear down the publish bucket under it.
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=removal",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+    mockStepFunctionsClient.startedExecutions should have size 1
+    mockPublishClient.unpublishRequests should not contain (
+      (
+        loggedInOrganization.id,
+        dataset.id
+      )
+    )
+
+    removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
+      PublicationType.Removal
+    ), true)
     mockPublishClient.unpublishRequests should contain(
       (loggedInOrganization.id, dataset.id)
     )
@@ -6194,7 +6287,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
       .get
-    val firstExecutionName = s"restore-${dataset.id}-${firstAttempt.id}"
+    val firstExecutionName =
+      s"restore-${loggedInOrganization.id}-${dataset.id}-${firstAttempt.id}"
     mockStepFunctionsClient.startedExecutions
       .map(_._2) should contain(firstExecutionName)
     val firstExecutionArn =
@@ -6233,7 +6327,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
       .get
-    val secondExecutionName = s"restore-${dataset.id}-${secondAttempt.id}"
+    val secondExecutionName =
+      s"restore-${loggedInOrganization.id}-${dataset.id}-${secondAttempt.id}"
 
     secondExecutionName should not equal firstExecutionName
     mockStepFunctionsClient.startedExecutions
@@ -6339,8 +6434,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       )
     )
 
-    // Nothing is left only in the publish bucket, so re-accepting takes the
-    // fast path: no new execution, and no execution ARN needed.
+    // Re-accepting starts a fresh restore even though nothing is left only in
+    // the publish bucket; there's nothing for it to copy, but it still has to
+    // finish (and report back) before the removal completes.
     postJson(
       s"/${dataset.nodeId}/publication/accept?publicationType=removal",
       "",
@@ -6349,12 +6445,21 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
-    currentPublicationType() shouldBe Some(PublicationType.Removal)
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
+    mockStepFunctionsClient.startedExecutions should have size 2
+    mockPublishClient.unpublishRequests should not contain (
+      (
+        loggedInOrganization.id,
+        dataset.id
+      )
+    )
+
+    removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
+      PublicationType.Removal
+    ), true)
     mockPublishClient.unpublishRequests should contain(
       (loggedInOrganization.id, dataset.id)
     )
-    mockStepFunctionsClient.startedExecutions should have size 1
 
     // A redelivery of the failed restore's message changes nothing.
     putJson(
@@ -6482,10 +6587,12 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test(
-    "2 step publishing - a fast-path removal whose unpublish fails is marked Failed and can be retried"
+    "2 step publishing - a removal whose unpublish fails stays Accepted until a redelivered completion signal finishes it"
   ) {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
 
     secureContainer.datasetPublicationStatusManager
       .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
@@ -6500,19 +6607,6 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    mockPublishClient.withNextUnpublishFailing()
-
-    postJson(
-      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
-      "",
-      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
-    ) {
-      status shouldBe 500
-    }
-
-    currentPublicationStatus() shouldBe Some(PublicationStatus.Failed)
-    currentPublicationType() shouldBe Some(PublicationType.Removal)
-
     postJson(
       s"/${dataset.nodeId}/publication/accept?publicationType=removal",
       "",
@@ -6521,8 +6615,17 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    currentPublicationStatus() shouldBe Some(PublicationStatus.Completed)
+    mockPublishClient.withNextUnpublishFailing()
+
+    // The restore is done, so the removal stays Accepted rather than Failed:
+    // the completion signal is retried, not the restore.
+    removalCompleteResult()._1 shouldBe 500
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Accepted)
     currentPublicationType() shouldBe Some(PublicationType.Removal)
+
+    removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
+      PublicationType.Removal
+    ), true)
   }
 
   test("2 step publishing - service user can release dataset with one request") {
@@ -7625,10 +7728,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) shouldBe (201, Some(PublicationStatus.Requested), Some(
       PublicationType.Removal
     ), true)
+    // Accepting a removal starts a restore; the removal completes only once
+    // the restore's completion signal arrives.
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
-    ) shouldBe (201, Some(PublicationStatus.Completed), Some(
+    ) shouldBe (201, Some(PublicationStatus.Accepted), Some(
+      PublicationType.Removal
+    ), true)
+    removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
       PublicationType.Removal
     ), true)
   }
@@ -8034,10 +8143,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ), true)
 
     // accept and complete
+    // Accepting a removal starts a restore; the removal completes only once
+    // the restore's completion signal arrives.
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
-    ) shouldBe (201, Some(PublicationStatus.Completed), Some(
+    ) shouldBe (201, Some(PublicationStatus.Accepted), Some(
+      PublicationType.Removal
+    ), true)
+    removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
       PublicationType.Removal
     ), true)
 
@@ -8162,10 +8277,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) shouldBe (201, Some(PublicationStatus.Requested), Some(
       PublicationType.Removal
     ), true)
+    // Accepting a removal starts a restore; the removal completes only once
+    // the restore's completion signal arrives.
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
-    ) shouldBe (201, Some(PublicationStatus.Completed), Some(
+    ) shouldBe (201, Some(PublicationStatus.Accepted), Some(
+      PublicationType.Removal
+    ), true)
+    removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
       PublicationType.Removal
     ), true)
 
@@ -8224,10 +8345,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) shouldBe (201, Some(PublicationStatus.Requested), Some(
       PublicationType.Removal
     ), true)
+    // Accepting a removal starts a restore; the removal completes only once
+    // the restore's completion signal arrives.
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
-    ) shouldBe (201, Some(PublicationStatus.Completed), Some(
+    ) shouldBe (201, Some(PublicationStatus.Accepted), Some(
+      PublicationType.Removal
+    ), true)
+    removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
       PublicationType.Removal
     ), true)
 
@@ -8539,6 +8666,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
+
     postJson(
       s"/${dataset.nodeId}/publication/accept?publicationType=removal",
       "",
@@ -8546,6 +8675,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 201
     }
+
+    removalCompleteResult()(dataset)._1 shouldBe 200
   }
 
   test(
@@ -9015,12 +9146,24 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
+
     post(
       s"/${dataset.nodeId}/publication/accept?publicationType=removal",
       headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
     ) {
       status shouldBe 201
     }
+
+    // Discover is told to unpublish only after the restore completes.
+    mockPublishClient.unpublishRequests should not contain (
+      (
+        loggedInOrganization.id,
+        dataset.id
+      )
+    )
+
+    removalCompleteResult()(dataset)._1 shouldBe 200
 
     mockPublishClient.unpublishRequests should contain(
       (loggedInOrganization.id, dataset.id)
@@ -11039,6 +11182,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
+    mockPublishClient.withGetStatusPublishedDatasetId(42)
+
     postJson(
       s"/${dataset.nodeId}/publication/accept?publicationType=removal",
       "",
@@ -11046,6 +11191,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 201
     }
+
+    // The removal, and with it the unregistration, completes once the
+    // restore's completion signal arrives.
+    removalCompleteResult()._1 shouldBe 200
 
     // check that there is no registration
     val removedRegistration = secureContainer.datasetManager

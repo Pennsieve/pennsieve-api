@@ -16,8 +16,9 @@
 
 package com.pennsieve.aws.stepfunctions
 
-import com.pennsieve.domain.ExceptionError
+import com.pennsieve.domain.{ ExceptionError, PredicateError }
 import org.scalatest.OptionValues._
+import org.scalatest.prop.TableDrivenPropertyChecks._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.sfn.SfnAsyncClient
@@ -58,5 +59,32 @@ class StepFunctionsSpec extends AnyFlatSpec with Matchers {
 
     result.isLeft shouldBe true
     result.left.toOption.value shouldBe a[ExceptionError]
+  }
+
+  "executionArn" should "derive the execution ARN from the state machine ARN" in {
+    StepFunctions.executionArn(
+      "arn:aws:states:us-east-1:123456789012:stateMachine:dev-restore",
+      "restore-1-2-3"
+    ) shouldBe Right(
+      "arn:aws:states:us-east-1:123456789012:execution:dev-restore:restore-1-2-3"
+    )
+  }
+
+  it should "reject anything that isn't a state machine ARN" in {
+    forAll(
+      Table(
+        "stateMachineArn",
+        "",
+        "arn:state-machine",
+        "arn:aws:states:us-east-1:123456789012:stateMachine:",
+        "arn:aws:states:us-east-1:123456789012:execution:dev-restore:restore-1"
+      )
+    ) { stateMachineArn =>
+      StepFunctions
+        .executionArn(stateMachineArn, "restore-1-2-3")
+        .left
+        .toOption
+        .value shouldBe a[PredicateError]
+    }
   }
 }

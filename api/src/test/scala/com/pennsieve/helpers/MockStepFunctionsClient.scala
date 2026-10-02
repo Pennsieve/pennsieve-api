@@ -17,7 +17,7 @@
 package com.pennsieve.helpers
 
 import cats.data.EitherT
-import com.pennsieve.aws.stepfunctions.StepFunctionsClient
+import com.pennsieve.aws.stepfunctions.{ StepFunctions, StepFunctionsClient }
 import com.pennsieve.domain.{ CoreError, ServiceError }
 import software.amazon.awssdk.services.sfn.model.StartExecutionResponse
 
@@ -56,13 +56,17 @@ class MockStepFunctionsClient extends StepFunctionsClient {
         ServiceError("mock StartExecution failure"): CoreError
       )
     } else {
-      startedExecutions += ((stateMachineArn, executionName, input))
-      EitherT.rightT[Future, CoreError](
-        StartExecutionResponse
-          .builder()
-          .executionArn(s"$stateMachineArn:$executionName")
-          .build()
-      )
+      EitherT
+        .fromEither[Future](
+          StepFunctions.executionArn(stateMachineArn, executionName)
+        )
+        .map { executionArn =>
+          startedExecutions += ((stateMachineArn, executionName, input))
+          StartExecutionResponse
+            .builder()
+            .executionArn(executionArn)
+            .build()
+        }
     }
   }
 }

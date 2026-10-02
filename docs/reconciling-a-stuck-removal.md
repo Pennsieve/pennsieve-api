@@ -1,8 +1,8 @@
 # Reconciling a stuck dataset removal
 
-When a dataset removal (unpublish) needs a restore first -- some files are live only
-in the publish bucket -- `accept(removal)` starts a Step Functions execution and
-leaves the dataset in an intermediate `Accepted`/`Removal` state. It stays locked
+Every dataset removal (unpublish) runs a restore first: `accept(removal)` starts a
+Step Functions execution and leaves the dataset in an intermediate
+`Accepted`/`Removal` state. It stays locked
 until something calls `PUT /datasets/:id/publication/removal/complete`, which normally
 happens automatically once the restore finishes. If that completion signal is ever
 lost, the removal can be stuck indefinitely.
