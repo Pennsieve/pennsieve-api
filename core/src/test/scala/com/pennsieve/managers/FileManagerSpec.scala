@@ -18,7 +18,7 @@ package com.pennsieve.managers
 
 import com.pennsieve.domain.{ LockedDatasetError, PredicateError, ServiceError }
 import com.pennsieve.models.FileType.GenericData
-import com.pennsieve.models.PackageType.CSV
+import com.pennsieve.models.PackageType.{ CSV, Text }
 import com.pennsieve.models._
 import com.pennsieve.models.FileObjectType.Source
 import org.scalatest.EitherValues._
@@ -402,6 +402,48 @@ class FileManagerSpec extends BaseManagerSpec {
       )
     )
   }
+
+  "countPublishedFiles" should "count only files with a non-null publishedS3VersionId, scoped to the dataset" in {
+    val user = createUser()
+
+    val datasetA = createDataset(name = "CPFilesA")
+    val datasetB = createDataset(name = "CPFilesB")
+
+    val pkgA1 = createPackage(dataset = datasetA, user = user, `type` = CSV)
+    createFile(
+      container = pkgA1,
+      user = user,
+      publishedS3VersionId = Some("v1")
+    )
+    val pkgA2 = createPackage(dataset = datasetA, user = user, `type` = Text)
+    createFile(
+      container = pkgA2,
+      user = user,
+      publishedS3VersionId = Some("v3")
+    )
+    val pkgA3 = createPackage(dataset = datasetA, user = user, `type` = Text)
+    createFile(container = pkgA3, user = user, publishedS3VersionId = None)
+
+    val pkgB = createPackage(dataset = datasetB, user = user, `type` = CSV)
+    createFile(container = pkgB, user = user, publishedS3VersionId = Some("v2"))
+
+    val fm = fileManager(organization = testOrganization, user = user)
+
+    assert(fm.countPublishedFiles(datasetA).await.value == 2)
+    assert(fm.countPublishedFiles(datasetB).await.value == 1)
+  }
+
+  "countPublishedFiles" should "return 0 for a dataset with no published-only files" in {
+    val user = createUser()
+    val dataset = createDataset(name = "CPFilesNone")
+    val pkg = createPackage(dataset = dataset, user = user, `type` = CSV)
+    createFile(container = pkg, user = user, publishedS3VersionId = None)
+
+    val fm = fileManager(organization = testOrganization, user = user)
+
+    assert(fm.countPublishedFiles(dataset).await.value == 0)
+  }
+
   //  "files" should "not be created if it does not follow naming conventions" in {
 //
 //    val user = createUser()

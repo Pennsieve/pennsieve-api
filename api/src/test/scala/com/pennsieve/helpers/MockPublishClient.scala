@@ -51,6 +51,8 @@ class MockPublishClient(
 
   def clear(): Unit = {
     nextGetStatusValue = None
+    getStatusPublishedDatasetId = None
+    failNextUnpublish = false
     publishRequests.clear()
     releaseRequests.clear()
     reviseRequests.clear()
@@ -66,6 +68,15 @@ class MockPublishClient(
 
   def withNextGetStatusValue(nextStatusValue: PublishStatus): Unit = {
     nextGetStatusValue = Some(nextStatusValue)
+  }
+
+  // Unlike nextGetStatusValue, this isn't consumed on read -- a published
+  // dataset's Discover id doesn't change from one getStatus call to the next
+  // within a single test.
+  private var getStatusPublishedDatasetId: Option[Int] = None
+
+  def withGetStatusPublishedDatasetId(publishedDatasetId: Int): Unit = {
+    getStatusPublishedDatasetId = Some(publishedDatasetId)
   }
 
   // (organization, dataset) -> (embargo, request)
@@ -180,6 +191,12 @@ class MockPublishClient(
   var unpublishRequests: mutable.ArrayBuffer[(Int, Int)] =
     mutable.ArrayBuffer.empty[(Int, Int)]
 
+  private var failNextUnpublish: Boolean = false
+
+  def withNextUnpublishFailing(): Unit = {
+    failNextUnpublish = true
+  }
+
   override def unpublish(
     organizationId: Int,
     datasetId: Int,
@@ -188,21 +205,28 @@ class MockPublishClient(
   ): EitherT[Future, Either[Throwable, HttpResponse], UnpublishResponse] = {
     unpublishRequests += ((organizationId, datasetId))
 
-    EitherT.rightT[Future, Either[Throwable, HttpResponse]](
-      UnpublishResponse.OK(
-        DatasetPublishStatus(
-          name = "PPMI",
-          sourceOrganizationId = organizationId,
-          sourceDatasetId = datasetId,
-          publishedDatasetId = None,
-          publishedVersionCount = 0,
-          status = PublishStatus.NotPublished,
-          lastPublishedDate = None,
-          sponsorship = None,
-          workflowId = 4
+    if (failNextUnpublish) {
+      failNextUnpublish = false
+      EitherT.rightT[Future, Either[Throwable, HttpResponse]](
+        UnpublishResponse.InternalServerError("mock error")
+      )
+    } else {
+      EitherT.rightT[Future, Either[Throwable, HttpResponse]](
+        UnpublishResponse.OK(
+          DatasetPublishStatus(
+            name = "PPMI",
+            sourceOrganizationId = organizationId,
+            sourceDatasetId = datasetId,
+            publishedDatasetId = None,
+            publishedVersionCount = 0,
+            status = PublishStatus.NotPublished,
+            lastPublishedDate = None,
+            sponsorship = None,
+            workflowId = 4
+          )
         )
       )
-    )
+    }
   }
 
   override def getStatus(
@@ -216,7 +240,7 @@ class MockPublishClient(
           name = "PPMI",
           sourceOrganizationId = organizationId,
           sourceDatasetId = datasetId,
-          publishedDatasetId = None,
+          publishedDatasetId = getStatusPublishedDatasetId,
           publishedVersionCount = 0,
           status = nextStatus(),
           lastPublishedDate = None,
