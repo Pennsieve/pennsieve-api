@@ -3423,9 +3423,6 @@ class DataSetsController(
                   insecureContainer,
                   contributors,
                   validated.dataset,
-                  DataSetPublishingHelper.nextPublishedVersion(
-                    currentPublicationStatus
-                  ),
                   secureContainer.user,
                   validated.owner
                 )

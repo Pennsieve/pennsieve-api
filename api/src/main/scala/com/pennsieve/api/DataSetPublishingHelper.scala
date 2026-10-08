@@ -155,7 +155,6 @@ case object DataSetPublishingHelper extends LazyLogging {
     insecureContainer: InsecureAPIContainer,
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
-    version: Int,
     reviewer: User,
     owner: User
   )(implicit
@@ -921,13 +920,18 @@ case object DataSetPublishingHelper extends LazyLogging {
   }
 
   /**
-    * The version number a new publish of this dataset will get. Before creating
-    * a version, Discover rolls back a latest version that failed or is under
-    * embargo, then numbers the new one after the highest remaining version.
-    * That is the latest visible version, so this is one more than it.
+    * The version number of the publish (or embargo) that `status` reports on,
+    * where `status` is the response Discover returns when it starts one.
     *
-    * Publishing over an embargoed version reuses that version's number, so in
-    * that case this is one too high.
+    * Before creating a version, Discover rolls back a latest version that
+    * failed or is under embargo, then numbers the new one after the highest
+    * remaining version. The response is computed after that rollback, and the
+    * new version is still in progress and not yet visible, so the new version
+    * is one more than the latest visible version.
+    *
+    * Not for a status read before the request: when the latest version is
+    * under embargo (e.g. a re-embargo), the rollback hasn't happened yet and
+    * this would be one too high.
     */
   def nextPublishedVersion(status: DatasetPublishStatus): Int =
     status.latestPublishedVersion.getOrElse(0) + 1
