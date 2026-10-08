@@ -921,6 +921,18 @@ case object DataSetPublishingHelper extends LazyLogging {
   }
 
   /**
+    * The version number a new publish of this dataset will get. Before creating
+    * a version, Discover rolls back a latest version that failed or is under
+    * embargo, then numbers the new one after the highest remaining version.
+    * That is the latest visible version, so this is one more than it.
+    *
+    * Publishing over an embargoed version reuses that version's number, so in
+    * that case this is one too high.
+    */
+  def nextPublishedVersion(status: DatasetPublishStatus): Int =
+    status.latestPublishedVersion.getOrElse(0) + 1
+
+  /**
     * Build and send a request to Discover Service to publish a dataset.
     */
   def sendPublishRequest(
@@ -1055,7 +1067,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         s"Started publish of dataset ${dataset.nodeId} ${response.publishedDatasetId match {
           case Some(id) => s"to public dataset id=$id"
           case None => ""
-        }} version=${response.publishedVersionCount + 1} embargo=$embargo"
+        }} version=${nextPublishedVersion(response)} embargo=$embargo"
       )
 
     } yield response
@@ -1184,7 +1196,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         s"Revised dataset ${dataset.nodeId} ${response.publishedDatasetId match {
           case Some(id) => s"to public dataset id=$id"
           case None => ""
-        }} version=${response.publishedVersionCount}"
+        }} version=${response.latestPublishedVersion.getOrElse(0)}"
       )
 
     } yield response
@@ -1397,7 +1409,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         ps =>
           ps.sourceDatasetId -> DiscoverPublishedDatasetDTO(
             ps.publishedDatasetId,
-            ps.publishedVersionCount,
+            ps.latestPublishedVersion.getOrElse(0),
             ps.lastPublishedDate
           )
       ).toMap

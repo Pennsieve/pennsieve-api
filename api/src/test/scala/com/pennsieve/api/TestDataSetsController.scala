@@ -247,7 +247,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
           Some(
             DiscoverPublishedDatasetDTO(
               Some(10),
-              2,
+              4,
               Some(
                 OffsetDateTime.of(2019, 2, 1, 10, 11, 12, 13, ZoneOffset.UTC)
               )
@@ -260,7 +260,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
           Some(
             DiscoverPublishedDatasetDTO(
               Some(12),
-              3,
+              5,
               Some(
                 OffsetDateTime.of(2019, 4, 1, 10, 11, 12, 13, ZoneOffset.UTC)
               )
@@ -322,7 +322,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
           Some(
             DiscoverPublishedDatasetDTO(
               Some(12),
-              3,
+              5,
               Some(
                 OffsetDateTime
                   .of(2019, 4, 1, 10, 11, 12, 13, ZoneOffset.UTC)
@@ -749,7 +749,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         .map(
           _.publication.publishedDataset
             .map(_.version)
-        ) shouldBe List(Some(2), Some(3))
+        ) shouldBe List(Some(4), Some(5))
 
       response.datasets
         .map(_.publication.publishedDataset.map(_.lastPublishedDate)) shouldBe List(
@@ -5182,7 +5182,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // Accepting a removal starts a restore; the removal completes only once
     // the restore's completion signal arrives.
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
@@ -6072,7 +6075,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
     // accept(removal)'s restore-needed path requires a published Discover id.
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     secureContainer.datasetPublicationStatusManager
       .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
@@ -6197,7 +6203,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     // Nothing has been deduped yet -- e.g. a publish-storage-sync that is still
     // queued. The removal must not tear down the publish bucket under it.
@@ -6232,6 +6241,18 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       )
     )
 
+    // The restore's guard version is Discover's latest version number (the
+    // mock reports a publishedVersionCount of 0 alongside it).
+    val (_, _, input) = mockStepFunctionsClient.startedExecutions.head
+    org.json4s.jackson.JsonMethods
+      .parse(input) \ "publishedVersion" shouldBe JInt(3)
+    secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .flatMap(_.removalMetadata)
+      .flatMap(_.publishedVersion) shouldBe Some(3)
+
     removalCompleteResult() shouldBe (200, Some(PublicationStatus.Completed), Some(
       PublicationType.Removal
     ), true)
@@ -6240,11 +6261,49 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     )
   }
 
+  test(
+    "2 step publishing - a removal is marked Failed when Discover reports no latest published version"
+  ) {
+    implicit val dataset: Dataset =
+      initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
+
+    mockPublishClient.withGetStatusPublishedDatasetIdOnly(42)
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    postJson(
+      s"/${dataset.nodeId}/publication/request?publicationType=removal",
+      "",
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    postJson(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      "",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 400
+    }
+
+    currentPublicationStatus() shouldBe Some(PublicationStatus.Failed)
+    currentPublicationType() shouldBe Some(PublicationType.Removal)
+    mockStepFunctionsClient.startedExecutions shouldBe empty
+    mockPublishClient.unpublishRequests shouldBe empty
+  }
+
   test("2 step publishing - a failed removal can be retried by re-accepting") {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     secureContainer.datasetPublicationStatusManager
       .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
@@ -6357,7 +6416,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     secureContainer.datasetPublicationStatusManager
       .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
@@ -6529,7 +6591,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     secureContainer.datasetPublicationStatusManager
       .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
@@ -6592,7 +6657,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     implicit val dataset: Dataset =
       initializePublicationTest(assignPublisherUserDirectlyToDataset = false)
 
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     secureContainer.datasetPublicationStatusManager
       .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
@@ -7730,7 +7798,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ), true)
     // Accepting a removal starts a restore; the removal completes only once
     // the restore's completion signal arrives.
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
@@ -8145,7 +8216,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     // accept and complete
     // Accepting a removal starts a restore; the removal completes only once
     // the restore's completion signal arrives.
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
@@ -8279,7 +8353,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ), true)
     // Accepting a removal starts a restore; the removal completes only once
     // the restore's completion signal arrives.
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
@@ -8347,7 +8424,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ), true)
     // Accepting a removal starts a restore; the removal completes only once
     // the restore's completion signal arrives.
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
     publicationRequestResult(
       PublicationStatus.Accepted,
       PublicationType.Removal
@@ -8666,7 +8746,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     postJson(
       s"/${dataset.nodeId}/publication/accept?publicationType=removal",
@@ -9146,7 +9229,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .await
       .value
 
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     post(
       s"/${dataset.nodeId}/publication/accept?publicationType=removal",
@@ -9184,7 +9270,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       PublishStatus.PublishInProgress,
       None,
       None,
-      workflowId = 4
+      workflowId = 4,
+      latestPublishedVersion = None
     )
 
     get(
@@ -9207,7 +9294,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         PublishStatus.PublishInProgress,
         Some(OffsetDateTime.of(2019, 2, 1, 10, 11, 12, 13, ZoneOffset.UTC)),
         None,
-        workflowId = 4
+        workflowId = 4,
+        latestPublishedVersion = Some(4)
       ),
       DatasetPublishStatus(
         "TUSZ",
@@ -9218,7 +9306,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         PublishStatus.PublishInProgress,
         Some(OffsetDateTime.of(2019, 4, 1, 10, 11, 12, 13, ZoneOffset.UTC)),
         None,
-        workflowId = 4
+        workflowId = 4,
+        latestPublishedVersion = Some(5)
       )
     )
 
@@ -11182,7 +11271,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 201
     }
 
-    mockPublishClient.withGetStatusPublishedDatasetId(42)
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
 
     postJson(
       s"/${dataset.nodeId}/publication/accept?publicationType=removal",

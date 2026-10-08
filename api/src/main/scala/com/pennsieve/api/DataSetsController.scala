@@ -3423,7 +3423,9 @@ class DataSetsController(
                   insecureContainer,
                   contributors,
                   validated.dataset,
-                  currentPublicationStatus.publishedVersionCount + 1,
+                  DataSetPublishingHelper.nextPublishedVersion(
+                    currentPublicationStatus
+                  ),
                   secureContainer.user,
                   validated.owner
                 )
@@ -3519,7 +3521,7 @@ class DataSetsController(
                   validated.dataset,
                   pending,
                   currentPublicationStatus.publishedDatasetId,
-                  currentPublicationStatus.publishedVersionCount
+                  currentPublicationStatus.latestPublishedVersion
                 ).leftFlatMap { error =>
                     // Accepted is a locked status the publisher can't re-accept
                     // from, so a failure here would otherwise strand the
@@ -3761,13 +3763,17 @@ class DataSetsController(
     * removal, after recording its execution ARN on that removal's `Accepted`
     * row. The execution name is derived from the row id, so each accept
     * (including a retry after `Failed`) starts a distinct execution.
+    *
+    * `latestPublishedVersion` is Discover's latest version number. The restore
+    * records it as publish-storage-sync's guard version, which makes any sync
+    * for that version or earlier a no-op.
     */
   private def startRemovalRestore(
     secureContainer: SecureAPIContainer,
     dataset: Dataset,
     pending: DatasetPublicationStatus,
     publishedDatasetId: Option[Int],
-    publishedVersion: Int
+    latestPublishedVersion: Option[Int]
   ): EitherT[Future, CoreError, DatasetPublicationStatus] =
     for {
       publicDatasetId <- EitherT.fromEither[Future](
@@ -3775,6 +3781,15 @@ class DataSetsController(
           .toRight(
             PredicateError(
               s"dataset ${dataset.id} has no published Discover id"
+            ): CoreError
+          )
+      )
+
+      publishedVersion <- EitherT.fromEither[Future](
+        latestPublishedVersion
+          .toRight(
+            PredicateError(
+              s"dataset ${dataset.id} has no latest published version from Discover"
             ): CoreError
           )
       )
