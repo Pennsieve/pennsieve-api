@@ -40,13 +40,15 @@ A restore with nothing to copy just takes the guard and marks it `RESTORED`.
 { "executionArn": "arn:aws:states:<region>:<account>:execution:<machine>:restore-<orgId>-<datasetId>-<rowId>", "publishedVersion": 3 }
 ```
 
+`publishedVersion` is Discover's `latestPublishedVersion` for the dataset. The restore records it as the guard's `guardVersion`, and publish-storage-sync then treats any sync for that version or an earlier one as stale.
+
 The execution name includes the org id, because dataset ids and log row ids are only unique within an organization's schema. It also includes the row id, so each accept, including a retry, starts a distinct execution. The ARN is derived and written *before* `StartExecution`. That way a completion signal can never arrive ahead of the ARN it must match, and a failed write never leaves a restore running behind a `Failed` row.
 
 ## Outcomes
 
 | Situation | Result | Teardown | How it's retried |
 |---|---|---|---|
-| Discover status has no `publishedDatasetId`, the state machine ARN is empty or malformed, the metadata write fails, or `StartExecution` fails | Accept returns an error; `(Failed, Removal)` | No | Publisher re-accepts |
+| Discover status has no `publishedDatasetId` or `latestPublishedVersion`, the state machine ARN is empty or malformed, the metadata write fails, or `StartExecution` fails | Accept returns an error; `(Failed, Removal)` | No | Publisher re-accepts |
 | Completion with `success = false` | `(Failed, Removal)` | No | Publisher re-accepts, which starts a new restore |
 | Completion with `success = true`, but `countPublishedFiles > 0` | `(Failed, Removal)` | No | Publisher re-accepts |
 | Completion with `success = true` and `countPublishedFiles == 0` | Unpublish on Discover, remove the publisher team, unregister ORCID (failures logged and ignored); `(Completed, Removal)` | Yes | — |
@@ -69,7 +71,6 @@ The completion endpoint requires a superadmin. publish-storage-sync's Lambda cal
 
 ## Known gaps / things to watch
 
-- **`publishedVersion` is a count, not a version number.** The restore input takes it from Discover's `publishedVersionCount`, which counts versions in status `PublishSucceeded`. Once a dataset has been unpublished and republished, the count is lower than the latest version number. The restore then sets the guard's `guardVersion` too low, and a redelivered sync for the latest version is not treated as stale. The fix is a discover-service change that adds the latest version number to `DatasetPublishStatus`; switch the restore input to it once it ships.
 - **Two simultaneous completion calls for the same execution can both finalize.** Both pass the latest-row check before either writes `Completed`, so Discover is asked to unpublish twice and two `Completed` rows are written. This relies on Discover's unpublish being idempotent.
 - **An ambiguous `StartExecution` failure can leave a restore running behind a `Failed` row.** This happens when every SDK retry fails but AWS did start the execution. Its completion signal is then ignored, and a re-accept starts a second restore, possibly while the first is still running. That is safe but redundant. Both runs share the guard's `runUuid`, so they copy the same pinned versions to the same storage keys and write identical row updates. A run still going when the teardown deletes the publish bucket fails before changing anything.
 - **A retried teardown repeats completed steps.** If teardown fails after Discover's unpublish succeeded, the redelivered signal sends the unpublish again.
