@@ -266,19 +266,6 @@ lazy val apiSettings = Seq(
     val warFile: File = sbt.Keys.`package`.value
     new SecureDockerfile("pennsieve/tomcat-cloudwrap:8-jre-alpine-0.5.9") {
       copy(warFile, "webapps/ROOT.war", chown = "pennsieve:pennsieve")
-      run("mkdir", "newrelic")
-      run(
-        "wget",
-        "-qO",
-        "newrelic/newrelic.jar",
-        "http://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic.jar"
-      )
-      run(
-        "wget",
-        "-qO",
-        "newrelic/newrelic.yml",
-        "http://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic.yml"
-      )
       cmd("--service", "api", "exec", "catalina.sh", "run")
     }
   },
@@ -456,12 +443,6 @@ lazy val authorizationServiceSettings = Seq(
         baseDirectory.value / "bin" / "run.sh",
         "/app/run.sh",
         chown = "pennsieve:pennsieve"
-      )
-      run(
-        "wget",
-        "-qO",
-        "/app/newrelic.jar",
-        "http://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic.jar"
       )
       env("RUST_BACKTRACE", "1")
       cmd(

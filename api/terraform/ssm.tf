@@ -129,12 +129,6 @@ resource "aws_ssm_parameter" "email_support_email" {
   value = "support@${data.terraform_remote_state.account.outputs.domain_name}"
 }
 
-resource "aws_ssm_parameter" "java_opts" {
-  name  = "/${var.environment_name}/${var.service_name}/java-opts"
-  type  = "String"
-  value = join(" ", local.java_opts)
-}
-
 resource "aws_ssm_parameter" "job_scheduling_service_host" {
   name  = "/${var.environment_name}/${var.service_name}/job-scheduling-service-host"
   type  = "String"
@@ -155,29 +149,6 @@ resource "aws_ssm_parameter" "job_scheduling_service_rate_limit" {
 
 resource "aws_ssm_parameter" "jwt_secret_key" {
   name      = "/${var.environment_name}/${var.service_name}/jwt-secret-key"
-  overwrite = false
-  type      = "SecureString"
-  value     = "dummy"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
-}
-
-resource "aws_ssm_parameter" "new_relic_app_name" {
-  name  = "/${var.environment_name}/${var.service_name}/new-relic-app-name"
-  type  = "String"
-  value = "${var.environment_name}-${var.service_name}-${var.tier}"
-}
-
-resource "aws_ssm_parameter" "new_relic_labels" {
-  name  = "/${var.environment_name}/${var.service_name}/new-relic-labels"
-  type  = "String"
-  value = "Environment:${var.environment_name};Service:${var.service_name};Tier:${var.tier}"
-}
-
-resource "aws_ssm_parameter" "new_relic_license_key" {
-  name      = "/${var.environment_name}/${var.service_name}/new-relic-license-key"
   overwrite = false
   type      = "SecureString"
   value     = "dummy"
