@@ -71,6 +71,7 @@ class TestDisabledDiscoverClients
     status.status shouldBe PublishStatus.NotPublished
     status.publishedDatasetId shouldBe None
     status.publishedVersionCount shouldBe 0
+    status.latestPublishedVersion shouldBe None
     status.workflowId shouldBe 5L
   }
 

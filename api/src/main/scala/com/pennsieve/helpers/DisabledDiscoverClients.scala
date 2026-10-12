@@ -95,7 +95,8 @@ class DisabledPublishClient(
       status = PublishStatus.NotPublished,
       lastPublishedDate = None,
       sponsorship = None,
-      workflowId = defaultWorkflowId
+      workflowId = defaultWorkflowId,
+      latestPublishedVersion = None
     )
 
   override def getStatuses(
