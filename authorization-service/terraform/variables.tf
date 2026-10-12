@@ -13,18 +13,3 @@ variable "pennsieve_postgres_database" {
 }
 
 variable "ecs_task_iam_role_id" {}
-
-# New Relic
-variable "newrelic_agent_enabled" {
-  default = "true"
-}
-locals {
-  java_opts = [
-    "-javaagent:/app/newrelic.jar",
-    "-Dnewrelic.config.agent_enabled=${var.newrelic_agent_enabled}",
-    "-Dnewrelic.config.distributed_tracing.enabled=true",
-  ]
-
-  service = element(split("-", var.service_name), 0)
-  tier    = element(split("-", var.service_name), 1)
-}
