@@ -1,18 +1,29 @@
 Global / cancelable := true
 
 // common settings
+// Pennsieve packages live in AWS CodeArtifact (pennsieve-cc), `maven` repository.
+// Access is IAM: the build exchanges the active AWS credentials -- the Jenkins
+// agent's instance role, or `assume-role non-prod admin` locally -- for a
+// short-lived token. CODEARTIFACT_AUTH_TOKEN, if set, is used instead.
+lazy val codeArtifactHost = "pennsieve-932986170183.d.codeartifact.us-east-1.amazonaws.com"
+lazy val codeArtifactRepo = s"https://$codeArtifactHost/maven/maven/"
+lazy val codeArtifactToken: String = sys.env.get("CODEARTIFACT_AUTH_TOKEN").getOrElse {
+  import scala.sys.process._
+  val cmd = Seq("aws", "codeartifact", "get-authorization-token", "--domain", "pennsieve",
+    "--domain-owner", "932986170183", "--region", "us-east-1",
+    "--query", "authorizationToken", "--output", "text")
+  scala.util.Try(cmd.!!(ProcessLogger(_ => ())).trim).getOrElse {
+    println("[warn] No CodeArtifact token: AWS credentials missing or not allowed. Run assume-role non-prod admin.")
+    ""
+  }
+}
+
 ThisBuild / resolvers ++= Seq(
-  "Pennsieve Releases" at "https://nexus.pennsieve.cc/repository/maven-releases",
-  "Pennsieve Snapshots" at "https://nexus.pennsieve.cc/repository/maven-snapshots",
+  "pennsieve" at codeArtifactRepo,
   Resolver.sonatypeCentralSnapshots
 )
 
-ThisBuild / credentials += Credentials(
-  "Sonatype Nexus Repository Manager",
-  "nexus.pennsieve.cc",
-  sys.env("PENNSIEVE_NEXUS_USER"),
-  sys.env("PENNSIEVE_NEXUS_PW")
-)
+ThisBuild / credentials += Credentials("pennsieve/maven", codeArtifactHost, "aws", codeArtifactToken)
 
 // Temporarily disable Coursier because parallel builds fail on Jenkins.
 // See https://app.clickup.com/t/a8ned9
@@ -28,17 +39,13 @@ ThisBuild / startYear := Some(2021)
 
 ThisBuild / version := sys.props.get("version").getOrElse("bootstrap-SNAPSHOT")
 
-val publishToNexus =
-  settingKey[Option[Resolver]]("Pennsieve Nexus repository resolver")
+// Published with sbt-aether-deploy (publish := aetherDeploy.value on each
+// published project): sbt's own publisher writes no maven-metadata.xml, so its releases
+// stay Unfinished in CodeArtifact.
+val publishToPennsieve =
+  settingKey[Option[Resolver]]("Pennsieve CodeArtifact repository resolver")
 
-ThisBuild / publishToNexus := {
-  val nexus = "https://nexus.pennsieve.cc/repository"
-  if (isSnapshot.value) {
-    Some("Nexus Realm" at s"$nexus/maven-snapshots")
-  } else {
-    Some("Nexus Realm" at s"$nexus/maven-releases")
-  }
-}
+ThisBuild / publishToPennsieve := Some("pennsieve" at codeArtifactRepo)
 
 val remoteCacheLocation =
   sys.props.get("remote-cache").getOrElse("/tmp/sbt/pennsieve-api")
@@ -306,7 +313,8 @@ lazy val apiSettings = Seq(
 // core settings
 lazy val coreSettings = Seq(
   name := "pennsieve-core",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   Test / publishArtifact := true,
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
   publishMavenStyle := true,
@@ -393,7 +401,8 @@ lazy val jobsSettings = Seq(
 
 lazy val adminSettings = Seq(
   name := "admin",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
     "com.github.swagger-akka-http" %% "swagger-akka-http" % swaggerAkkaHttpVersion,
@@ -421,7 +430,8 @@ lazy val adminSettings = Seq(
 
 lazy val authorizationServiceSettings = Seq(
   name := "authorization-service",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.iheart" %% "ficus" % ficusVersion,
@@ -462,7 +472,8 @@ lazy val authorizationServiceSettings = Seq(
 
 lazy val bfAkkaHttpSettings = Seq(
   name := "bf-akka-http",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   Test / publishArtifact := true,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
@@ -554,7 +565,8 @@ lazy val bfAkkaSettings = Seq(
 
 lazy val coreClientsSettings = Seq(
   name := "core-clients",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "utilities" % utilitiesVersion,
@@ -569,7 +581,8 @@ lazy val coreClientsSettings = Seq(
 
 lazy val coreModelsSettings = Seq(
   name := "core-models",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
     "commons-io" % "commons-io" % commonsIoVersion,
@@ -587,7 +600,8 @@ lazy val coreModelsSettings = Seq(
 
 lazy val bfAwsSettings = Seq(
   name := "bf-aws",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
     "com.amazonaws" % "aws-java-sdk-athena" % awsVersion,
@@ -620,7 +634,8 @@ lazy val organizationStorageMigrationSettings =
 // See project/CompileMessageTemplates.scala for plugin implementation.
 lazy val messageTemplateSettings = Seq(
   name := "message-templates",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   messageTemplatesOutputPackage := "com.pennsieve.templates",
   messageTemplatesOutputFile := "GeneratedMessageTemplates.scala",
   messageTemplatesInputDirectory := "html",
