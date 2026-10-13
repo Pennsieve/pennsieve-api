@@ -10,7 +10,10 @@ timestamps {
         def commitHash  = sh(returnStdout: true, script: 'git rev-parse HEAD | cut -c-7').trim()
         def imageTag = "${env.BUILD_NUMBER}-${commitHash}"
         def remoteCache = "remote-cache-${imageTag}"
-        def sbt = "sbt -Dsbt.log.noformat=true -Dversion=$imageTag -Dremote-cache=$remoteCache"
+        // Coursier cache per workspace (expanded by the shell in each step): builds
+        // sharing an agent otherwise share ~/.cache/coursier, and concurrent sbt
+        // processes deadlock on its file locks ("Resource deadlock avoided").
+        def sbt = "COURSIER_CACHE=\$WORKSPACE@coursier sbt -Dsbt.log.noformat=true -Dversion=$imageTag -Dremote-cache=$remoteCache"
 
         try {
 
