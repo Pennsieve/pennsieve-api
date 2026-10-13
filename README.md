@@ -23,40 +23,13 @@ This project is set up to use docker to quickly develop locally using [testconta
 
 ## Building and Testing
 
-You will need access to the nexus repository manager. Once an account has been created for you, add the following to
-your .bashrc or .zshrc file:
+Pennsieve's own libraries (`core-models`, `auth-middleware` and the rest) come from Pennsieve's AWS CodeArtifact. sbt gets a short-lived token itself with your AWS credentials, so run it from a shell where you have assumed a role:
 
-```
-export PENNSIEVE_NEXUS_USER=[NEXUS USERNAME]
-export PENNSIEVE_NEXUS_PW=[REDACTED]
-```
-For intellij to work you will also need to add the following file at `~/Library/LaunchAgents/environment.plist`:
-
-```xml
- <?xml version="1.0" encoding="UTF-8"?>
- <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
- <plist version="1.0">
- <dict>
-  <key>Label</key>
-  <string>my.startup</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>sh</string>
-    <string>-c</string>
-    <string>
-    launchctl setenv PENNSIEVE_NEXUS_USER [NEXUS_USERNAME]
-    launchctl setenv PENNSIEVE_NEXUS_PW [REDACTED]
-    </string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
- </dict>
- </plist>
-
+```bash
+assume-role non-prod admin    # from cli-utils
 ```
 
-Then run `launchctl load ~/Library/LaunchAgents/environment.plist` and restart intellij for it to talk to the
-nexus server.  You don't need to rerun this command as OSX will do it for you in the future. To compile or test code
+IntelliJ needs the same credentials. Start it from that shell (for example `idea .`). Alternatively, run `ps-codeartifact-login` (cli-utils) and give IntelliJ's sbt the `CODEARTIFACT_AUTH_TOKEN` it sets; the token lasts as long as your role session. To compile or test code
 across both projects use the regular sbt commands:
 
 ```bash
