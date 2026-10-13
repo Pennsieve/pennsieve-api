@@ -25,10 +25,6 @@ ThisBuild / resolvers ++= Seq(
 
 ThisBuild / credentials += Credentials("pennsieve/maven", codeArtifactHost, "aws", codeArtifactToken)
 
-// Temporarily disable Coursier because parallel builds fail on Jenkins.
-// See https://app.clickup.com/t/a8ned9
-ThisBuild / useCoursier := false
-
 ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / organization := "com.pennsieve"
 ThisBuild / organizationName := "University of Pennsylvania"
