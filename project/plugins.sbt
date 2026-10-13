@@ -1,9 +1,5 @@
 logLevel := Level.Warn
 
-// Temporarily disable Coursier because parallel builds fail on Jenkins.
-// See https://app.clickup.com/t/a8ned9
-ThisBuild / useCoursier := false
-
 addSbtPlugin("com.earldouglas" % "xsbt-web-plugin" % "4.0.0")
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.6")
