@@ -159,6 +159,18 @@ trait ManagerSpec
     )
   }
 
+  def organizationEventManager(
+    organization: Organization = testOrganization
+  ): OrganizationEventManager = {
+    val sns: SNSClient = new MockSNS
+    new OrganizationEventManagerImpl(
+      database,
+      organization,
+      "test-topic",
+      sns = sns
+    )
+  }
+
   def datasetManager(
     organization: Organization = testOrganization,
     user: User = superAdmin

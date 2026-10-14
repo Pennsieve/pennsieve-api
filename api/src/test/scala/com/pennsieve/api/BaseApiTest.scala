@@ -201,7 +201,8 @@ trait ApiSuite
         user = user,
         organization = org
       ) with SecureCoreContainer with LocalEmailContainer with MockSNSContainer
-      with ChangelogContainer with DatasetPublicationStatusContainer {
+      with ChangelogContainer with OrganizationEventContainer
+      with DatasetPublicationStatusContainer {
         override val postgresUseSSL = false
         override val dataPostgresUseSSL = false
       }
