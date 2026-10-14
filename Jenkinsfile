@@ -61,7 +61,6 @@ timestamps {
                     'admin',
                     'api',
                     'authorization-service',
-                    'etl-data-cli',
                     'jobs'
                 ]
 

@@ -145,7 +145,6 @@ data "aws_iam_policy_document" "kms_iam_policy_document" {
 
     resources = [
       data.terraform_remote_state.platform_infrastructure.outputs.jobs_kms_key_arn,
-      data.terraform_remote_state.etl_infrastructure.outputs.sqs_kms_key_arn,
       data.terraform_remote_state.integration_service.outputs.integration_events_kms_key_arn
     ]
   }
@@ -231,7 +230,6 @@ data "aws_iam_policy_document" "sqs_iam_policy_document" {
     resources = [
       data.terraform_remote_state.platform_infrastructure.outputs.jobs_queue_arn,
       data.terraform_remote_state.platform_infrastructure.outputs.jobs_queue_v2_arn,
-      data.terraform_remote_state.etl_infrastructure.outputs.uploads_queue_arn,
     ]
   }
 }
