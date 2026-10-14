@@ -61,7 +61,7 @@ resource "aws_ssm_parameter" "pennsieve_environment" {
 resource "aws_ssm_parameter" "catalina_opts" {
   name  = "/${var.environment_name}/${var.service_name}/catalina-opts"
   type  = "String"
-  value = "-Xms${var.initial_heap_size} -Xmx${var.max_heap_size} -XX:MaxPermSize=${var.max_perm_size}"
+  value = "-Xms${var.initial_heap_size} -Xmx${var.max_heap_size}"
 }
 
 resource "aws_ssm_parameter" "data_postgres_database" {
