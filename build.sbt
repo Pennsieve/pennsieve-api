@@ -179,6 +179,10 @@ lazy val defaultMergeStrategy = settingKey[String => MergeStrategy](
 )
 
 ThisBuild / defaultMergeStrategy := {
+  // slf4j 2.x finds logback through ServiceLoader; without this file every
+  // fat jar falls back to the NOP logger.
+  case PathList("META-INF", "services", "org.slf4j.spi.SLF4JServiceProvider") =>
+    MergeStrategy.filterDistinctLines
   case PathList("META-INF", _ @_*) => MergeStrategy.discard
   case PathList("PropertyList-1.0.dtd", _ @_*) => MergeStrategy.last
   case PathList("codegen-resources", "customization.config", _ @_*) =>
