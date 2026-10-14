@@ -52,10 +52,6 @@ variable "max_heap_size" {
   default = "4096M"
 }
 
-variable "max_perm_size" {
-  default = "256M"
-}
-
 variable "publishing_default_workflow" {
   default = "5"
 }
