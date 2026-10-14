@@ -86,6 +86,12 @@ trait PostgresProfile
         s => PublicationStatus.withName(s)
       )
 
+    implicit val organizationEventNameMapper =
+      MappedColumnType.base[OrganizationEventName, String](
+        s => s.entryName,
+        s => OrganizationEventName.withName(s)
+      )
+
     implicit val systemTeamTypeMapper =
       MappedColumnType.base[SystemTeamType, String](
         s => s.entryName,
