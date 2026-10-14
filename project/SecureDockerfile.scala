@@ -15,3 +15,11 @@ abstract class SecureDockerfile(image: String) extends Dockerfile {
   run("chmod", "+r", CA_CERT_LOCATION)
   user("pennsieve")
 }
+
+object SecureDockerfile {
+  // Built from Pennsieve/docker-base-images java-cloudwrap/21 and tagged with
+  // the commit the base-image job built.
+  val BaseImageTag = "035617f"
+  val JavaImage = s"pennsieve/java-cloudwrap:21-jre-alpine-$BaseImageTag"
+  val TomcatImage = s"pennsieve/tomcat-cloudwrap:9-jre21-alpine-$BaseImageTag"
+}
