@@ -118,12 +118,6 @@ resource "aws_ssm_parameter" "email_support_email" {
   value = "support@${data.terraform_remote_state.account.outputs.domain_name}"
 }
 
-resource "aws_ssm_parameter" "etl_service_host" {
-  name  = "/${var.environment_name}/${var.service_name}/etl-service-host"
-  type  = "String"
-  value = "https://${data.terraform_remote_state.job_scheduling_service.outputs.internal_fqdn}"
-}
-
 resource "aws_ssm_parameter" "etl_organization_quota" {
   name  = "/${var.environment_name}/${var.service_name}/etl-organization-quota"
   type  = "String"
