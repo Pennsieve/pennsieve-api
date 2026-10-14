@@ -228,6 +228,15 @@ lazy val coreApiSharedSettings = Seq(
   excludeDependencies ++= unwantedDependencies
 )
 
+// scalatra-swagger's Reflector reads private fields of JDK classes (e.g.
+// ZonedDateTime, UUID, URL) when it builds the swagger models, which JRE 17+
+// refuses unless their packages are opened. Tomcat's catalina.sh opens
+// java.util itself; tests don't run through it. JDK_JAVA_OPTIONS is read by
+// the JRE 9+ launcher only, so JRE 8 ignores it.
+lazy val apiJdkJavaOptions = Seq("java.net", "java.time", "java.util")
+  .map(pkg => s"--add-opens=java.base/$pkg=ALL-UNNAMED")
+  .mkString(" ")
+
 // API settings
 lazy val apiSettings = Seq(
   name := "pennsieve-api",
@@ -260,6 +269,7 @@ lazy val apiSettings = Seq(
           Tests.Group(s"api-tests-$shard", tests, Tests.SubProcess(forkOpts))
       }
   },
+  Test / envVars += "JDK_JAVA_OPTIONS" -> apiJdkJavaOptions,
   Jetty / javaOptions ++= Seq(
     "-Xdebug",
     "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8000"
@@ -267,8 +277,9 @@ lazy val apiSettings = Seq(
   docker / buildOptions := BuildOptions(cache = false),
   docker / dockerfile := {
     val warFile: File = sbt.Keys.`package`.value
-    new SecureDockerfile("pennsieve/tomcat-cloudwrap:8-jre-alpine-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.TomcatImage) {
       copy(warFile, "webapps/ROOT.war", chown = "pennsieve:pennsieve")
+      env("JDK_JAVA_OPTIONS", apiJdkJavaOptions)
       cmd("--service", "api", "exec", "catalina.sh", "run")
     }
   },
@@ -377,7 +388,7 @@ lazy val jobsSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
       cmd("--service", "jobs", "exec", "java", "-jar", artifactTargetPath)
     }
@@ -415,7 +426,7 @@ lazy val adminSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
       cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
     }
@@ -443,7 +454,7 @@ lazy val authorizationServiceSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
       copy(
         baseDirectory.value / "bin" / "run.sh",
@@ -492,7 +503,7 @@ lazy val unusedOrganizationMigrationSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
       cmd("--service", "migrations", "exec", "java", "-jar", artifactTargetPath)
     }
@@ -511,7 +522,7 @@ lazy val inviteCognitoUserSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
       cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
     }
@@ -615,7 +626,7 @@ lazy val organizationStorageMigrationSettings =
     docker / dockerfile := {
       val artifact: File = assembly.value
       val artifactTargetPath = s"/app/${artifact.name}"
-      new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
+      new SecureDockerfile(SecureDockerfile.JavaImage) {
         copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
         cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
       }
