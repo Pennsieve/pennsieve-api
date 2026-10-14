@@ -25,7 +25,7 @@ ThisBuild / resolvers ++= Seq(
 
 ThisBuild / credentials += Credentials("pennsieve/maven", codeArtifactHost, "aws", codeArtifactToken)
 
-ThisBuild / scalaVersion := "2.13.16"
+ThisBuild / scalaVersion := "2.13.18"
 ThisBuild / organization := "com.pennsieve"
 ThisBuild / organizationName := "University of Pennsylvania"
 ThisBuild / licenses := List(
@@ -93,7 +93,7 @@ lazy val swaggerAkkaHttpVersion = "1.5.2"
 lazy val auditMiddlewareVersion = "1.0.3"
 lazy val authMiddlewareVersion = "5.1.3"
 
-lazy val awsVersion = "1.11.931"
+lazy val awsVersion = "1.12.797"
 lazy val awsV2Version = "2.15.58"
 
 lazy val catsVersion = "2.6.1"
@@ -107,7 +107,7 @@ lazy val ficusVersion = "1.5.2"
 lazy val json4sVersion = "3.5.5"
 
 lazy val jettyVersion = "9.1.3.v20140225"
-lazy val postgresVersion = "42.7.3"
+lazy val postgresVersion = "42.7.14"
 lazy val scalatraVersion = "2.7.1"
 
 lazy val scalatestVersion = "3.2.11"
@@ -126,9 +126,45 @@ lazy val serviceUtilitiesVersion = "9-b838dd9"
 lazy val discoverServiceClientVersion = "234-86b95fe"
 lazy val doiServiceClientVersion = "12-756107b"
 lazy val timeseriesCoreVersion = "6-487b00c"
-lazy val commonsIoVersion = "2.6"
+lazy val commonsIoVersion = "2.22.0"
 
 lazy val enumeratumVersion = "1.7.0"
+
+lazy val slf4jVersion = "2.0.17"
+lazy val logbackVersion = "1.3.16"
+lazy val jacksonVersion = "2.22.3"
+lazy val nettyVersion = "4.1.139.Final"
+
+// Transitive dependencies pinned to patched versions (clin Inspector findings
+// against the api WAR and the admin / authorization-service jars). Every
+// version here must still run on Java 8.
+ThisBuild / dependencyOverrides ++= Seq(
+  "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
+  "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
+  "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
+  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion,
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
+  "io.netty" % "netty-buffer" % nettyVersion,
+  "io.netty" % "netty-codec" % nettyVersion,
+  "io.netty" % "netty-codec-http" % nettyVersion,
+  "io.netty" % "netty-codec-http2" % nettyVersion,
+  "io.netty" % "netty-common" % nettyVersion,
+  "io.netty" % "netty-handler" % nettyVersion,
+  "io.netty" % "netty-resolver" % nettyVersion,
+  "io.netty" % "netty-transport" % nettyVersion,
+  "io.netty" % "netty-transport-native-epoll" % nettyVersion,
+  "io.netty" % "netty-transport-native-unix-common" % nettyVersion,
+  "org.yaml" % "snakeyaml" % "2.7",
+  "org.apache.commons" % "commons-text" % "1.15.0",
+  "org.apache.commons" % "commons-lang3" % "3.21.0",
+  "commons-beanutils" % "commons-beanutils" % "1.11.0",
+  "com.google.guava" % "guava" % "33.7.2-jre",
+  "org.typelevel" %% "jawn-parser" % "1.8.0",
+  // jackson-module-scala 2.22 asks for paranamer 2.8.3, whose DefaultParanamer
+  // is Java 9 bytecode.
+  "com.thoughtworks.paranamer" % "paranamer" % "2.8"
+)
 
 lazy val unwantedDependencies = Seq(
   ExclusionRule("commons-logging", "commons-logging"),
@@ -184,13 +220,13 @@ lazy val commonSettings = Seq(
   ),
   assembly / test := {},
   libraryDependencies ++= Seq(
-    "org.slf4j" % "slf4j-api" % "1.7.25",
-    "org.slf4j" % "jul-to-slf4j" % "1.7.25",
-    "org.slf4j" % "jcl-over-slf4j" % "1.7.25",
-    "org.slf4j" % "log4j-over-slf4j" % "1.7.25",
-    "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "ch.qos.logback" % "logback-core" % "1.2.3",
-    "net.logstash.logback" % "logstash-logback-encoder" % "5.2",
+    "org.slf4j" % "slf4j-api" % slf4jVersion,
+    "org.slf4j" % "jul-to-slf4j" % slf4jVersion,
+    "org.slf4j" % "jcl-over-slf4j" % slf4jVersion,
+    "org.slf4j" % "log4j-over-slf4j" % slf4jVersion,
+    "ch.qos.logback" % "logback-classic" % logbackVersion,
+    "ch.qos.logback" % "logback-core" % logbackVersion,
+    "net.logstash.logback" % "logstash-logback-encoder" % "7.4",
     "com.iheart" %% "ficus" % ficusVersion,
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
     "org.postgresql" % "postgresql" % postgresVersion,
@@ -590,7 +626,7 @@ lazy val coreModelsSettings = Seq(
     "io.circe" %% "circe-derivation" % circeDerivationVersion,
     "io.circe" %% "circe-parser" % circeVersion,
     "org.scalatest" %% "scalatest" % scalatestVersion % Test,
-    "com.google.guava" % "guava" % "29.0-jre"
+    "com.google.guava" % "guava" % "33.7.2-jre"
   )
 )
 
