@@ -129,24 +129,6 @@ resource "aws_ssm_parameter" "email_support_email" {
   value = "support@${data.terraform_remote_state.account.outputs.domain_name}"
 }
 
-resource "aws_ssm_parameter" "job_scheduling_service_host" {
-  name  = "/${var.environment_name}/${var.service_name}/job-scheduling-service-host"
-  type  = "String"
-  value = "https://${data.terraform_remote_state.job_scheduling_service.outputs.internal_fqdn}"
-}
-
-resource "aws_ssm_parameter" "job_scheduling_service_queue_size" {
-  name  = "/${var.environment_name}/${var.service_name}/job-scheduling-service-queue-size"
-  type  = "String"
-  value = var.job_scheduling_service_queue_size
-}
-
-resource "aws_ssm_parameter" "job_scheduling_service_rate_limit" {
-  name  = "/${var.environment_name}/${var.service_name}/job-scheduling-service-rate-limit"
-  type  = "String"
-  value = var.job_scheduling_service_rate_limit
-}
-
 resource "aws_ssm_parameter" "jwt_secret_key" {
   name      = "/${var.environment_name}/${var.service_name}/jwt-secret-key"
   overwrite = false

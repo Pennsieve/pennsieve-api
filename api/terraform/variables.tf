@@ -30,14 +30,6 @@ variable "data_postgres_database" {
   default = "data_postgres"
 }
 
-variable "job_scheduling_service_queue_size" {
-  default = "10000"
-}
-
-variable "job_scheduling_service_rate_limit" {
-  default = "100"
-}
-
 variable "orcid_client_id" {}
 
 variable "orcid_token_url" {}
