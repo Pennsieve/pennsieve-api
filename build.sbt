@@ -179,6 +179,10 @@ lazy val defaultMergeStrategy = settingKey[String => MergeStrategy](
 )
 
 ThisBuild / defaultMergeStrategy := {
+  // slf4j 2.x finds logback through ServiceLoader; without this file every
+  // fat jar falls back to the NOP logger.
+  case PathList("META-INF", "services", "org.slf4j.spi.SLF4JServiceProvider") =>
+    MergeStrategy.filterDistinctLines
   case PathList("META-INF", _ @_*) => MergeStrategy.discard
   case PathList("PropertyList-1.0.dtd", _ @_*) => MergeStrategy.last
   case PathList("codegen-resources", "customization.config", _ @_*) =>
@@ -316,7 +320,7 @@ lazy val apiSettings = Seq(
     new SecureDockerfile(SecureDockerfile.TomcatImage) {
       copy(warFile, "webapps/ROOT.war", chown = "pennsieve:pennsieve")
       env("JDK_JAVA_OPTIONS", apiJdkJavaOptions)
-      cmd("--service", "api", "exec", "catalina.sh", "run")
+      cmd("--service", "api", "exec", "--", "catalina.sh", "run")
     }
   },
   docker / imageNames := Seq(
@@ -426,7 +430,7 @@ lazy val jobsSettings = Seq(
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("--service", "jobs", "exec", "java", "-jar", artifactTargetPath)
+      cmd("--service", "jobs", "exec", "--", "java", "-jar", artifactTargetPath)
     }
   },
   docker / imageNames := Seq(
@@ -464,7 +468,7 @@ lazy val adminSettings = Seq(
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
+      cmd("--service", "admin", "exec", "--", "java", "-jar", artifactTargetPath)
     }
   },
   docker / imageNames := Seq(ImageName("pennsieve/admin:latest")),
@@ -502,6 +506,7 @@ lazy val authorizationServiceSettings = Seq(
         "--service",
         "authorization-service",
         "exec",
+        "--",
         "/app/run.sh",
         artifactTargetPath
       )
@@ -541,7 +546,7 @@ lazy val unusedOrganizationMigrationSettings = Seq(
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("--service", "migrations", "exec", "java", "-jar", artifactTargetPath)
+      cmd("--service", "migrations", "exec", "--", "java", "-jar", artifactTargetPath)
     }
   },
   docker / imageNames := Seq(
@@ -560,7 +565,7 @@ lazy val inviteCognitoUserSettings = Seq(
     val artifactTargetPath = s"/app/${artifact.name}"
     new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
+      cmd("--service", "admin", "exec", "--", "java", "-jar", artifactTargetPath)
     }
   },
   docker / imageNames := Seq(ImageName("pennsieve/invite-cognito-user:latest")),
@@ -664,7 +669,7 @@ lazy val organizationStorageMigrationSettings =
       val artifactTargetPath = s"/app/${artifact.name}"
       new SecureDockerfile(SecureDockerfile.JavaImage) {
         copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-        cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
+        cmd("--service", "admin", "exec", "--", "java", "-jar", artifactTargetPath)
       }
     },
     docker / imageNames := Seq(
