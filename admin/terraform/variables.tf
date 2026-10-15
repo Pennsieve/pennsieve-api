@@ -18,8 +18,6 @@ variable "data_postgres_database" {
 
 variable "ecs_task_iam_role_id" {}
 
-variable "etl_organization_quota" {}
-
 locals {
   resource_prefix = "${var.environment_name}-${var.service_name}"
 
