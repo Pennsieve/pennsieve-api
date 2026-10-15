@@ -118,12 +118,6 @@ resource "aws_ssm_parameter" "email_support_email" {
   value = "support@${data.terraform_remote_state.account.outputs.domain_name}"
 }
 
-resource "aws_ssm_parameter" "etl_organization_quota" {
-  name  = "/${var.environment_name}/${var.service_name}/etl-organization-quota"
-  type  = "String"
-  value = var.etl_organization_quota
-}
-
 resource "aws_ssm_parameter" "jobs_queue" {
   name  = "/${var.environment_name}/${var.service_name}/sqs-queue"
   type  = "String"
