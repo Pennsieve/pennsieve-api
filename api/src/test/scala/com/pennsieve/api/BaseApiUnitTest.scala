@@ -37,6 +37,7 @@ import com.pennsieve.auth.middleware.{
 import com.pennsieve.auth.middleware.Jwt.Role.RoleIdentifier
 import com.pennsieve.core.utilities.{
   ChangelogContainer,
+  OrganizationEventContainer,
   DatasetPublicationStatusContainer,
   _
 }
@@ -262,7 +263,8 @@ trait BaseApiUnitTest
         user = u,
         organization = org
       ) with SecureCoreContainer with LocalEmailContainer with MockSNSContainer
-      with ChangelogContainer with DatasetPublicationStatusContainer {
+      with ChangelogContainer with OrganizationEventContainer
+      with DatasetPublicationStatusContainer {
         override val postgresUseSSL = false
         override val dataPostgresUseSSL = false
         override lazy val userManager: UserManager = new FakeUserManager(st)

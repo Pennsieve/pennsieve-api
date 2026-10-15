@@ -2061,6 +2061,22 @@ class DataSetsController(
           )
           .coreErrorToActionResult()
 
+        _ <- if (oldRole.oldRole.isEmpty)
+          secureContainer.organizationEventManager
+            .logEvent(
+              actorUserId = Some(secureContainer.user.id),
+              subjectUserId = Some(user.id),
+              detail = OrganizationEventDetail.AddedToDataset(
+                dataset.id,
+                dataset.nodeId,
+                dataset.name,
+                userDto.role
+              )
+            )
+            .coreErrorToActionResult()
+        else
+          EitherT.rightT[Future, ActionResult](())
+
       } yield ()
 
       override val is = addResponse.value.map(OkResult)
@@ -2114,6 +2130,15 @@ class DataSetsController(
                 teamId = None,
                 organizationId = None
               )
+            )
+            .coreErrorToActionResult()
+
+          _ <- secureContainer.organizationEventManager
+            .logEvent(
+              actorUserId = Some(secureContainer.user.id),
+              subjectUserId = Some(user.id),
+              detail = OrganizationEventDetail
+                .RemovedFromDataset(dataset.id, dataset.nodeId, dataset.name)
             )
             .coreErrorToActionResult()
 
@@ -2676,6 +2701,19 @@ class DataSetsController(
             dataset,
             ChangelogEventDetail
               .UpdateOwner(oldOwner = currentOwner.id, newOwner = newOwner.id)
+          )
+          .coreErrorToActionResult()
+
+        _ <- secureContainer.organizationEventManager
+          .logEvent(
+            actorUserId = Some(user.id),
+            subjectUserId = Some(newOwner.id),
+            detail = OrganizationEventDetail.DatasetOwnershipTransferred(
+              dataset.id,
+              dataset.nodeId,
+              dataset.name,
+              previousOwnerUserId = currentOwner.id
+            )
           )
           .coreErrorToActionResult()
 

@@ -36,8 +36,9 @@ import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
 import com.pennsieve.helpers.ResultHandlers.OkResult
 import com.pennsieve.helpers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.managers.OrganizationEventManagerImpl
 import com.pennsieve.models.DBPermission.Guest
-import com.pennsieve.models.Degree
+import com.pennsieve.models.{ Degree, OrganizationEventDetail }
 import org.json4s._
 import org.scalatra._
 import org.scalatra.json.JacksonJsonSupport
@@ -192,6 +193,20 @@ class AccountController(
 
         _ <- insecureContainer.organizationManager
           .addUser(welcomeOrganization, newUser, Guest)
+          .orError()
+
+        // No actor: this is a self-service signup, no admin present.
+        _ <- new OrganizationEventManagerImpl(
+          insecureContainer.db,
+          welcomeOrganization,
+          insecureContainer.sns_topic,
+          insecureContainer.sns
+        ).logEvent(
+            actorUserId = None,
+            subjectUserId = Some(newUser.id),
+            detail = OrganizationEventDetail
+              .AddExternalOrganizationUser(newUser.id, Guest)
+          )
           .orError()
 
         organizations <- insecureContainer.userManager
