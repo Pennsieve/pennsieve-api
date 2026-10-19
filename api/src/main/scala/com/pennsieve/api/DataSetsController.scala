@@ -2012,18 +2012,19 @@ class DataSetsController(
           .coreErrorToActionResult()
 
         _ <- if (oldRole.oldRole.isEmpty)
-          secureContainer.organizationEventManager
-            .logEvent(
-              actorUserId = Some(secureContainer.user.id),
-              subjectUserId = Some(user.id),
-              detail = OrganizationEventDetail.AddedToDataset(
-                dataset.id,
-                dataset.nodeId,
-                dataset.name,
-                userDto.role
+          EitherT.right[ActionResult](
+            secureContainer.organizationEventManager
+              .logEventBestEffort(
+                actorUserId = Some(secureContainer.user.id),
+                subjectUserId = Some(user.id),
+                detail = OrganizationEventDetail.AddedToDataset(
+                  dataset.id,
+                  dataset.nodeId,
+                  dataset.name,
+                  userDto.role
+                )
               )
-            )
-            .coreErrorToActionResult()
+          )
         else
           EitherT.rightT[Future, ActionResult](())
 
@@ -2083,14 +2084,27 @@ class DataSetsController(
             )
             .coreErrorToActionResult()
 
-          _ <- secureContainer.organizationEventManager
-            .logEvent(
-              actorUserId = Some(secureContainer.user.id),
-              subjectUserId = Some(user.id),
-              detail = OrganizationEventDetail
-                .RemovedFromDataset(dataset.id, dataset.nodeId, dataset.name)
+          // deleteUserCollaborator's underlying delete silently no-ops when
+          // removing the acting user themselves or an Owner (DatasetManager
+          // filters those out), but still returns the pre-existing oldRole.
+          // oldRole.isDefined at least rules out "there was nothing to
+          // remove"; it can't distinguish the rarer self/Owner no-op cases
+          // without a deeper DatasetManager change (not done here).
+          _ <- if (oldRole.oldRole.isDefined)
+            EitherT.right[ActionResult](
+              secureContainer.organizationEventManager
+                .logEventBestEffort(
+                  actorUserId = Some(secureContainer.user.id),
+                  subjectUserId = Some(user.id),
+                  detail = OrganizationEventDetail.RemovedFromDataset(
+                    dataset.id,
+                    dataset.nodeId,
+                    dataset.name
+                  )
+                )
             )
-            .coreErrorToActionResult()
+          else
+            EitherT.rightT[Future, ActionResult](())
 
         } yield ()
 
@@ -2654,18 +2668,19 @@ class DataSetsController(
           )
           .coreErrorToActionResult()
 
-        _ <- secureContainer.organizationEventManager
-          .logEvent(
-            actorUserId = Some(user.id),
-            subjectUserId = Some(newOwner.id),
-            detail = OrganizationEventDetail.DatasetOwnershipTransferred(
-              dataset.id,
-              dataset.nodeId,
-              dataset.name,
-              previousOwnerUserId = currentOwner.id
+        _ <- EitherT.right[ActionResult](
+          secureContainer.organizationEventManager
+            .logEventBestEffort(
+              actorUserId = Some(user.id),
+              subjectUserId = Some(newOwner.id),
+              detail = OrganizationEventDetail.DatasetOwnershipTransferred(
+                dataset.id,
+                dataset.nodeId,
+                dataset.name,
+                previousOwnerUserId = currentOwner.id
+              )
             )
-          )
-          .coreErrorToActionResult()
+        )
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
