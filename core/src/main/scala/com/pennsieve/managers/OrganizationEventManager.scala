@@ -100,6 +100,35 @@ trait OrganizationEventManager extends LazyLogging {
       _ <- logEventSNS(actorUserId, subjectUserId, detail)
     } yield event
 
+  /**
+    * Best-effort wrapper around [[logEvent]]: organization-event logging is
+    * a side signal, not the action it accompanies, so a DB or SNS failure
+    * here must never fail the caller's (already-committed) request. Logs
+    * the failure and resolves to `Unit` either way. Every call site should
+    * use this rather than `logEvent` directly.
+    */
+  def logEventBestEffort(
+    actorUserId: Option[Int],
+    subjectUserId: Option[Int],
+    detail: OrganizationEventDetail,
+    timestamp: ZonedDateTime = ZonedDateTime.now()
+  )(implicit
+    ec: ExecutionContext
+  ): Future[Unit] =
+    logEvent(actorUserId, subjectUserId, detail, timestamp).value
+      .recover {
+        case throwable =>
+          Left(ThrowableError(throwable))
+      }
+      .map {
+        case Left(error) =>
+          logger
+            .error(
+              s"failed to log organization event (organizationId=${organization.id}, eventType=${detail.eventType}): $error"
+            )
+        case Right(_) => ()
+      }
+
   def eventCategory(detail: OrganizationEventDetail): String =
     detail.eventType.category match {
       case OrganizationEventCategory.ORGANIZATION => "ORGANIZATION"
