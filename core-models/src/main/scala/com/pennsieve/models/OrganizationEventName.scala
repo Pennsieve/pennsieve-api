@@ -25,11 +25,13 @@ import scala.collection.immutable
   *
   * This is the vocabulary for `organization_events` -- a parallel capability
   * to the dataset-scoped `ChangelogEventName`/`ChangelogEventDetail`, not an
-  * extension of it. Scoped in this first implementation pass to Parts 1+2 of
-  * the design doc (org/team administration, and workspace-scoped notice of a
-  * personal dataset grant); Parts 3 (Publishers-gated workspace-wide
-  * visibility) and 4 (PUBLISHING-category broadcasts) are deferred until
-  * their gating/subscription mechanisms are designed.
+  * extension of it. Implemented: Parts 1+2 (org/team administration, and
+  * workspace-scoped notice of a personal dataset grant) and Part 4
+  * (workspace-wide publishing-lifecycle broadcasts). Part 3 (Publishers-
+  * gated workspace-wide visibility) remains deferred -- its v1 scope was
+  * absorbed into Part 4's plain org-membership gate, so no Publishers-team
+  * gate or wildcard-subscription mechanism is needed yet; see the doc's
+  * Part 3 scope note.
   */
 sealed trait OrganizationEventName extends EnumEntry with UpperSnakecase {
   val category: OrganizationEventCategory
@@ -83,5 +85,23 @@ object OrganizationEventName
   }
   case object DATASET_OWNERSHIP_TRANSFERRED extends OrganizationEventName {
     val category = ORGANIZATION
+  }
+
+  // Part 4: workspace-wide publishing-lifecycle broadcasts
+
+  case object DATASET_PUBLISHED extends OrganizationEventName {
+    val category = PUBLISHING
+  }
+  case object DATASET_EMBARGOED extends OrganizationEventName {
+    val category = PUBLISHING
+  }
+  case object DATASET_EMBARGO_RELEASED extends OrganizationEventName {
+    val category = PUBLISHING
+  }
+  case object DATASET_UNPUBLISHED extends OrganizationEventName {
+    val category = PUBLISHING
+  }
+  case object DATASET_REVISED extends OrganizationEventName {
+    val category = PUBLISHING
   }
 }

@@ -3474,6 +3474,36 @@ class DataSetsController(
                   currentPublicationStatus.publishedDatasetId
                 )
 
+                // Workspace-wide publishing broadcast (organization_events,
+                // Part 4) -- best-effort; DOI isn't on PublishCompleteRequest
+                // for revisions (synchronous /revise path), so resolve it
+                // via doi-service instead. See getLatestDoiBestEffort.
+                _ <- EitherT.right[ActionResult](
+                  getLatestDoiBestEffort(
+                    secureContainer.organization,
+                    validated.dataset,
+                    validated.owner
+                  ).flatMap {
+                    case Some(doi) =>
+                      secureContainer.organizationEventManager
+                        .logEventBestEffort(
+                          actorUserId = None,
+                          subjectUserId = None,
+                          detail = OrganizationEventDetail.DatasetRevised(
+                            validated.dataset.id,
+                            validated.dataset.nodeId,
+                            validated.dataset.name,
+                            currentPublicationStatus.publishedDatasetId,
+                            currentPublicationStatus.publishedVersionCount,
+                            doi,
+                            validated.owner.id,
+                            s"${validated.owner.firstName} ${validated.owner.lastName}"
+                          )
+                        )
+                    case None => Future.successful(())
+                  }
+                )
+
                 // remove the publishing team for revisions since the process is complete
                 _ <- DataSetPublishingHelper
                   .removePublisherTeam(secureContainer, validated.dataset)
@@ -3511,6 +3541,36 @@ class DataSetsController(
                     embargoReleaseDate = validated.embargoReleaseDate
                   )
                   .coreErrorToActionResult()
+
+                // Workspace-wide publishing broadcast (organization_events,
+                // Part 4) -- best-effort; DOI isn't on PublishCompleteRequest
+                // for removals (synchronous /unpublish path), so resolve it
+                // via doi-service instead. See getLatestDoiBestEffort.
+                _ <- EitherT.right[ActionResult](
+                  getLatestDoiBestEffort(
+                    secureContainer.organization,
+                    validated.dataset,
+                    validated.owner
+                  ).flatMap {
+                    case Some(doi) =>
+                      secureContainer.organizationEventManager
+                        .logEventBestEffort(
+                          actorUserId = None,
+                          subjectUserId = None,
+                          detail = OrganizationEventDetail.DatasetUnpublished(
+                            validated.dataset.id,
+                            validated.dataset.nodeId,
+                            validated.dataset.name,
+                            currentPublicationStatus.publishedDatasetId,
+                            currentPublicationStatus.publishedVersionCount,
+                            doi,
+                            validated.owner.id,
+                            s"${validated.owner.firstName} ${validated.owner.lastName}"
+                          )
+                        )
+                    case None => Future.successful(())
+                  }
+                )
 
                 // remove the publishing team for withdrawals since the process is complete
                 _ <- DataSetPublishingHelper
@@ -3915,6 +3975,73 @@ class DataSetsController(
                     publishedDatasetId
                   )
               case _ => EitherT.rightT[Future, ActionResult](())
+            }
+
+            // Workspace-wide publishing broadcast (organization_events,
+            // Part 4) -- best-effort, parallel to the email dispatch above,
+            // not a replacement for it.
+            _ <- (body.publishedVersion, body.doi) match {
+              case (Some(publishedVersion), Some(doi)) =>
+                val detail = publicationStatus.publicationType match {
+                  case PublicationType.Embargo =>
+                    Some(
+                      OrganizationEventDetail.DatasetEmbargoed(
+                        dataset.id,
+                        dataset.nodeId,
+                        dataset.name,
+                        Some(publishedDatasetId),
+                        publishedVersion,
+                        doi,
+                        owner.id,
+                        s"${owner.firstName} ${owner.lastName}"
+                      )
+                    )
+                  case PublicationType.Publication =>
+                    Some(
+                      OrganizationEventDetail.DatasetPublished(
+                        dataset.id,
+                        dataset.nodeId,
+                        dataset.name,
+                        Some(publishedDatasetId),
+                        publishedVersion,
+                        doi,
+                        owner.id,
+                        s"${owner.firstName} ${owner.lastName}"
+                      )
+                    )
+                  case PublicationType.Release =>
+                    Some(
+                      OrganizationEventDetail.DatasetEmbargoReleased(
+                        dataset.id,
+                        dataset.nodeId,
+                        dataset.name,
+                        Some(publishedDatasetId),
+                        publishedVersion,
+                        doi,
+                        owner.id,
+                        s"${owner.firstName} ${owner.lastName}"
+                      )
+                    )
+                  case _ => None
+                }
+
+                detail match {
+                  case Some(d) =>
+                    EitherT.right[ActionResult](
+                      secureContainer.organizationEventManager
+                        .logEventBestEffort(
+                          actorUserId = None,
+                          subjectUserId = None,
+                          detail = d
+                        )
+                    )
+                  case None => EitherT.rightT[Future, ActionResult](())
+                }
+              case _ =>
+                logger.warn(
+                  s"Skipping organization_events publishing broadcast for dataset ${dataset.nodeId}: missing publishedVersion/doi on PublishCompleteRequest"
+                )
+                EitherT.rightT[Future, ActionResult](())
             }
 
             // register publication with external sites/registries
@@ -4358,6 +4485,42 @@ class DataSetsController(
       case GetLatestDoiResponse.Unauthorized =>
         Left(UnauthorizedError(s"DOI service authorization failed"))
     }
+  }
+
+  /**
+    * Best-effort DOI lookup for the Part 4 publishing-broadcast events at
+    * the Revision/Removal call sites, which (unlike Publication/Embargo/
+    * Release) never receive a DOI via `PublishCompleteRequest` -- see
+    * docs/changelog-events.md Part 4. Never fails the caller: a lookup
+    * failure just means the broadcast event is skipped for this call,
+    * mirroring `organizationEventManager.logEventBestEffort`'s own
+    * never-fail-the-caller semantics.
+    */
+  def getLatestDoiBestEffort(
+    organization: Organization,
+    dataset: Dataset,
+    user: User
+  ): Future[Option[String]] = {
+    val token = JwtAuthenticator
+      .generateServiceToken(1.minute, organization.id, Some(dataset.id))
+    val tokenHeader = Authorization(OAuth2BearerToken(token.value))
+
+    doiClient
+      .getLatestDoi(organization.id, dataset.id, List(tokenHeader))
+      .leftMap {
+        case Left(e) => ServiceError(e.getMessage): CoreError
+        case Right(resp) => ServiceError(resp.toString): CoreError
+      }
+      .subflatMap(handleGetDoiResponse(user.nodeId, dataset.id, _))
+      .value
+      .map {
+        case Right(doiDTO) => Some(doiDTO.doi)
+        case Left(error) =>
+          logger.warn(
+            s"organization_events: could not resolve DOI for dataset ${dataset.nodeId}, skipping publishing broadcast: $error"
+          )
+          None
+      }
   }
 
   def handleCreateDoiResponse(

@@ -89,6 +89,71 @@ class OrganizationEventManagerSpec extends BaseManagerSpec {
       .RemovedFromDataset(42, "N:dataset:abc", "My Dataset")
   }
 
+  it should "log a Part 4 publishing broadcast with no actor or subject" in {
+    val oem = organizationEventManager()
+
+    val detail = OrganizationEventDetail.DatasetPublished(
+      datasetId = 42,
+      datasetNodeId = "N:dataset:abc",
+      datasetName = "My Dataset",
+      publishedDatasetId = Some(99),
+      publishedVersion = 1,
+      doi = "10.1234/abcd",
+      ownerUserId = superAdmin.id,
+      ownerName = "Super Admin"
+    )
+
+    val event = oem
+      .logEvent(actorUserId = None, subjectUserId = None, detail = detail)
+      .await
+      .value
+
+    event.actorUserId shouldBe None
+    event.subjectUserId shouldBe None
+    event.eventType shouldBe OrganizationEventName.DATASET_PUBLISHED
+    event.eventType.category shouldBe OrganizationEventCategory.PUBLISHING
+  }
+
+  it should "round trip a Part 4 publishing broadcast's detail payload through the DB" in {
+    val oem = organizationEventManager()
+
+    val detail = OrganizationEventDetail.DatasetRevised(
+      datasetId = 7,
+      datasetNodeId = "N:dataset:xyz",
+      datasetName = "Revised Dataset",
+      publishedDatasetId = Some(100),
+      publishedVersion = 2,
+      doi = "10.5678/efgh",
+      ownerUserId = superAdmin.id,
+      ownerName = "Super Admin"
+    )
+
+    oem
+      .logEvent(actorUserId = None, subjectUserId = None, detail = detail)
+      .await
+      .value
+
+    val events = oem.getEvents().await.value
+
+    events should have size 1
+    events.head.eventType shouldBe OrganizationEventName.DATASET_REVISED
+
+    val decoded = events.head.detail
+      .as(OrganizationEventDetail.decoder(events.head.eventType))
+      .value
+
+    decoded shouldBe detail
+  }
+
+  it should "distinguish ORGANIZATION and PUBLISHING categories for Parts 1+2 vs Part 4" in {
+    OrganizationEventName.ADD_ORGANIZATION_USER.category shouldBe OrganizationEventCategory.ORGANIZATION
+    OrganizationEventName.DATASET_PUBLISHED.category shouldBe OrganizationEventCategory.PUBLISHING
+    OrganizationEventName.DATASET_EMBARGOED.category shouldBe OrganizationEventCategory.PUBLISHING
+    OrganizationEventName.DATASET_EMBARGO_RELEASED.category shouldBe OrganizationEventCategory.PUBLISHING
+    OrganizationEventName.DATASET_UNPUBLISHED.category shouldBe OrganizationEventCategory.PUBLISHING
+    OrganizationEventName.DATASET_REVISED.category shouldBe OrganizationEventCategory.PUBLISHING
+  }
+
   it should "scope events to their organization" in {
     val oem1 = organizationEventManager(testOrganization)
     val oem2 = organizationEventManager(testOrganization2)

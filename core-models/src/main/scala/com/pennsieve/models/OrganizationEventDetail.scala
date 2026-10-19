@@ -24,9 +24,9 @@ import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
 /**
   * See docs/changelog-events.md Part 2 for the full design (pennsieve-api#405).
   *
-  * Mirrors `ChangelogEventDetail`'s case-class-per-event-name pattern. Scoped
-  * in this first implementation pass to the Part 1+2 vocabulary in
-  * `OrganizationEventName` -- see that file's scaladoc for what's deferred.
+  * Mirrors `ChangelogEventDetail`'s case-class-per-event-name pattern. Covers
+  * Parts 1+2+4 of `OrganizationEventName` -- see that file's scaladoc for
+  * what's still deferred (Part 3).
   */
 sealed trait OrganizationEventDetail { self =>
   val eventType: OrganizationEventName
@@ -49,6 +49,11 @@ object OrganizationEventDetail {
       case d: AddedToDataset => d.asJson
       case d: RemovedFromDataset => d.asJson
       case d: DatasetOwnershipTransferred => d.asJson
+      case d: DatasetPublished => d.asJson
+      case d: DatasetEmbargoed => d.asJson
+      case d: DatasetEmbargoReleased => d.asJson
+      case d: DatasetUnpublished => d.asJson
+      case d: DatasetRevised => d.asJson
     }
 
   def decoder[A <: OrganizationEventDetail](
@@ -70,6 +75,11 @@ object OrganizationEventDetail {
       case REMOVED_FROM_DATASET => RemovedFromDataset.decoder.widen
       case DATASET_OWNERSHIP_TRANSFERRED =>
         DatasetOwnershipTransferred.decoder.widen
+      case DATASET_PUBLISHED => DatasetPublished.decoder.widen
+      case DATASET_EMBARGOED => DatasetEmbargoed.decoder.widen
+      case DATASET_EMBARGO_RELEASED => DatasetEmbargoReleased.decoder.widen
+      case DATASET_UNPUBLISHED => DatasetUnpublished.decoder.widen
+      case DATASET_REVISED => DatasetRevised.decoder.widen
     }
 
   // Part 1: organization/team administration
@@ -224,5 +234,110 @@ object OrganizationEventDetail {
       deriveEncoder[DatasetOwnershipTransferred]
     implicit val decoder: Decoder[DatasetOwnershipTransferred] =
       deriveDecoder[DatasetOwnershipTransferred]
+  }
+
+  // Part 4: workspace-wide publishing-lifecycle broadcasts. All five share
+  // the same fields -- no actor, no subject, no FAILED_* sibling (so doi/
+  // publishedVersion are non-optional, unlike Part 1's PublicationArtifact;
+  // see docs/changelog-events.md Part 4 for the full rationale).
+
+  case class DatasetPublished(
+    datasetId: Int,
+    datasetNodeId: String,
+    datasetName: String,
+    publishedDatasetId: Option[Int],
+    publishedVersion: Int,
+    doi: String,
+    ownerUserId: Int,
+    ownerName: String
+  ) extends OrganizationEventDetail {
+    val eventType = DATASET_PUBLISHED
+  }
+
+  object DatasetPublished {
+    implicit val encoder: Encoder[DatasetPublished] =
+      deriveEncoder[DatasetPublished]
+    implicit val decoder: Decoder[DatasetPublished] =
+      deriveDecoder[DatasetPublished]
+  }
+
+  case class DatasetEmbargoed(
+    datasetId: Int,
+    datasetNodeId: String,
+    datasetName: String,
+    publishedDatasetId: Option[Int],
+    publishedVersion: Int,
+    doi: String,
+    ownerUserId: Int,
+    ownerName: String
+  ) extends OrganizationEventDetail {
+    val eventType = DATASET_EMBARGOED
+  }
+
+  object DatasetEmbargoed {
+    implicit val encoder: Encoder[DatasetEmbargoed] =
+      deriveEncoder[DatasetEmbargoed]
+    implicit val decoder: Decoder[DatasetEmbargoed] =
+      deriveDecoder[DatasetEmbargoed]
+  }
+
+  case class DatasetEmbargoReleased(
+    datasetId: Int,
+    datasetNodeId: String,
+    datasetName: String,
+    publishedDatasetId: Option[Int],
+    publishedVersion: Int,
+    doi: String,
+    ownerUserId: Int,
+    ownerName: String
+  ) extends OrganizationEventDetail {
+    val eventType = DATASET_EMBARGO_RELEASED
+  }
+
+  object DatasetEmbargoReleased {
+    implicit val encoder: Encoder[DatasetEmbargoReleased] =
+      deriveEncoder[DatasetEmbargoReleased]
+    implicit val decoder: Decoder[DatasetEmbargoReleased] =
+      deriveDecoder[DatasetEmbargoReleased]
+  }
+
+  case class DatasetUnpublished(
+    datasetId: Int,
+    datasetNodeId: String,
+    datasetName: String,
+    publishedDatasetId: Option[Int],
+    publishedVersion: Int,
+    doi: String,
+    ownerUserId: Int,
+    ownerName: String
+  ) extends OrganizationEventDetail {
+    val eventType = DATASET_UNPUBLISHED
+  }
+
+  object DatasetUnpublished {
+    implicit val encoder: Encoder[DatasetUnpublished] =
+      deriveEncoder[DatasetUnpublished]
+    implicit val decoder: Decoder[DatasetUnpublished] =
+      deriveDecoder[DatasetUnpublished]
+  }
+
+  case class DatasetRevised(
+    datasetId: Int,
+    datasetNodeId: String,
+    datasetName: String,
+    publishedDatasetId: Option[Int],
+    publishedVersion: Int,
+    doi: String,
+    ownerUserId: Int,
+    ownerName: String
+  ) extends OrganizationEventDetail {
+    val eventType = DATASET_REVISED
+  }
+
+  object DatasetRevised {
+    implicit val encoder: Encoder[DatasetRevised] =
+      deriveEncoder[DatasetRevised]
+    implicit val decoder: Decoder[DatasetRevised] =
+      deriveDecoder[DatasetRevised]
   }
 }
