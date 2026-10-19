@@ -183,6 +183,13 @@ class AccountController(
           )(
             insecureContainer.organizationManager,
             insecureContainer.userInviteManager,
+            organization =>
+              new OrganizationEventManagerImpl(
+                insecureContainer.db,
+                organization,
+                insecureContainer.sns_topic,
+                insecureContainer.sns
+              ),
             executor
           )
           .orBadRequest()
@@ -195,19 +202,22 @@ class AccountController(
           .addUser(welcomeOrganization, newUser, Guest)
           .orError()
 
-        // No actor: this is a self-service signup, no admin present.
-        _ <- new OrganizationEventManagerImpl(
-          insecureContainer.db,
-          welcomeOrganization,
-          insecureContainer.sns_topic,
-          insecureContainer.sns
-        ).logEvent(
+        // Distinct from the per-invite events createFromInvite logs for
+        // each real inviting organization above -- this is its own,
+        // separate grant. No actor: self-service signup, no admin present.
+        _ <- EitherT.right[ActionResult](
+          new OrganizationEventManagerImpl(
+            insecureContainer.db,
+            welcomeOrganization,
+            insecureContainer.sns_topic,
+            insecureContainer.sns
+          ).logEventBestEffort(
             actorUserId = None,
             subjectUserId = Some(newUser.id),
             detail = OrganizationEventDetail
               .AddExternalOrganizationUser(newUser.id, Guest)
           )
-          .orError()
+        )
 
         organizations <- insecureContainer.userManager
           .getOrganizations(newUser)
