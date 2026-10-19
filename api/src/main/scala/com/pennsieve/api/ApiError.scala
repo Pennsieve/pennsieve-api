@@ -20,6 +20,16 @@ abstract class ApiError
 
 final case class Error(message: String) extends ApiError
 
+/**
+  * A file held until its malware scan finishes: the same body download-service
+  * sends with its 409, so clients handle both alike.
+  */
+final case class ScanPendingError(
+  code: String,
+  scanStatus: String,
+  message: String
+) extends ApiError
+
 final case class FatalError(
   message: String = "Something horrible has happened. Please contact support."
 ) extends ApiError

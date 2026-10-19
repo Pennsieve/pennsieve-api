@@ -117,6 +117,32 @@ object PackagesController {
 
   def scanStatusBlocks(scanStatus: Option[String]): Boolean =
     scanStatus.exists(s => s == ScanStatusInfected || s == ScanStatusFailed)
+
+  // scan_status values of a file whose scan hasn't finished. With the scan
+  // wait on (SCAN_WAIT_ON_PENDING, clin) no link is issued for them, as
+  // download-service holds them (POAM-040). Off, they pass as before.
+  val ScanStatusPending: String = "pending"
+  val ScanStatusScanning: String = "scanning"
+
+  def scanStatusWaits(
+    scanStatus: Option[String],
+    scanWaitOnPending: Boolean
+  ): Boolean =
+    scanWaitOnPending && scanStatus.exists(
+      s => s == ScanStatusPending || s == ScanStatusScanning
+    )
+
+  val ScanPendingMessage: String =
+    "This file is still being scanned for malware. It will be available to download shortly."
+
+  def scanPending(scanStatus: Option[String]): ActionResult =
+    Conflict(
+      ScanPendingError(
+        "scan_pending",
+        scanStatus.getOrElse(""),
+        ScanPendingMessage
+      )
+    )
 }
 
 class PackagesController(
@@ -126,7 +152,8 @@ class PackagesController(
   objectStore: ObjectStore,
   urlShortenerClient: UrlShortenerClient,
   system: ActorSystem,
-  asyncExecutor: ExecutionContext
+  asyncExecutor: ExecutionContext,
+  scanWaitOnPending: Boolean = Settings.scan_wait_on_pending
 )(implicit
   val swagger: Swagger
 ) extends ScalatraServlet
@@ -553,12 +580,14 @@ class PackagesController(
             ) {
               case ((datasetIds, rootNodeIds, downloadResponse), p) => {
                 // Gate on scan_status (see scan-service docs §12.3):
-                // infected/failed are routed into `blocked` with no
-                // presigned URL; anything else (clean / pending /
-                // scanning / unscanned / not_required / null) passes
-                // through to `data` with the status surfaced.
+                // infected/failed, and with the scan wait on pending/
+                // scanning, are routed into `blocked` with no presigned
+                // URL and their status; anything else (clean / unscanned /
+                // not_required / null) passes through to `data` with the
+                // status surfaced.
                 val newState =
-                  if (PackagesController.scanStatusBlocks(p.scanStatus)) {
+                  if (PackagesController.scanStatusBlocks(p.scanStatus) ||
+                    scanStatusWaits(p.scanStatus, scanWaitOnPending)) {
                     val blockedEntry = DownloadManifestBlockedEntry(
                       nodeId = p.nodeId,
                       fileName = p.fileName,
@@ -990,6 +1019,10 @@ class PackagesController(
             ): ActionResult
           )
         else EitherT.rightT[Future, ActionResult](())
+        // Held until its scan finishes, where the scan wait is on.
+        _ <- if (scanStatusWaits(file.scan.status, scanWaitOnPending))
+          EitherT.leftT[Future, Unit](scanPending(file.scan.status))
+        else EitherT.rightT[Future, ActionResult](())
 
         url <- if (!short)
           objectStore
@@ -1097,6 +1130,10 @@ class PackagesController(
               )
             ): ActionResult
           )
+        else EitherT.rightT[Future, ActionResult](())
+        // Held until its scan finishes, where the scan wait is on.
+        _ <- if (scanStatusWaits(file.scan.status, scanWaitOnPending))
+          EitherT.leftT[Future, Unit](scanPending(file.scan.status))
         else EitherT.rightT[Future, ActionResult](())
 
         _ <- auditLogger
