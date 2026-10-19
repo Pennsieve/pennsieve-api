@@ -46,6 +46,8 @@ object Settings {
   val uploader_role: String = config.as[String]("pennsieve.s3.uploader_role")
 
   val url_time_limit: Int = config.as[Int]("pennsieve.url_time_limit")
+  val scan_wait_on_pending: Boolean =
+    config.as[Boolean]("pennsieve.scan_wait_on_pending")
   val bitly_url_time_limit: Int =
     config.as[Int]("bitly.url_time_limit")
 
