@@ -79,10 +79,6 @@ trait AdminServiceSpec
       ConfigValueFactory.fromAnyRef("localhost:8080")
     )
     .withValue(
-      "job_scheduling_service.quota",
-      ConfigValueFactory.fromAnyRef(10)
-    )
-    .withValue(
       "job_scheduling_service.queue_size",
       ConfigValueFactory.fromAnyRef(100)
     )

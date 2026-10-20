@@ -61,7 +61,7 @@ resource "aws_ssm_parameter" "pennsieve_environment" {
 resource "aws_ssm_parameter" "catalina_opts" {
   name  = "/${var.environment_name}/${var.service_name}/catalina-opts"
   type  = "String"
-  value = "-Xms${var.initial_heap_size} -Xmx${var.max_heap_size} -XX:MaxPermSize=${var.max_perm_size}"
+  value = "-Xms${var.initial_heap_size} -Xmx${var.max_heap_size}"
 }
 
 resource "aws_ssm_parameter" "data_postgres_database" {
@@ -129,55 +129,8 @@ resource "aws_ssm_parameter" "email_support_email" {
   value = "support@${data.terraform_remote_state.account.outputs.domain_name}"
 }
 
-resource "aws_ssm_parameter" "java_opts" {
-  name  = "/${var.environment_name}/${var.service_name}/java-opts"
-  type  = "String"
-  value = join(" ", local.java_opts)
-}
-
-resource "aws_ssm_parameter" "job_scheduling_service_host" {
-  name  = "/${var.environment_name}/${var.service_name}/job-scheduling-service-host"
-  type  = "String"
-  value = "https://${data.terraform_remote_state.job_scheduling_service.outputs.internal_fqdn}"
-}
-
-resource "aws_ssm_parameter" "job_scheduling_service_queue_size" {
-  name  = "/${var.environment_name}/${var.service_name}/job-scheduling-service-queue-size"
-  type  = "String"
-  value = var.job_scheduling_service_queue_size
-}
-
-resource "aws_ssm_parameter" "job_scheduling_service_rate_limit" {
-  name  = "/${var.environment_name}/${var.service_name}/job-scheduling-service-rate-limit"
-  type  = "String"
-  value = var.job_scheduling_service_rate_limit
-}
-
 resource "aws_ssm_parameter" "jwt_secret_key" {
   name      = "/${var.environment_name}/${var.service_name}/jwt-secret-key"
-  overwrite = false
-  type      = "SecureString"
-  value     = "dummy"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
-}
-
-resource "aws_ssm_parameter" "new_relic_app_name" {
-  name  = "/${var.environment_name}/${var.service_name}/new-relic-app-name"
-  type  = "String"
-  value = "${var.environment_name}-${var.service_name}-${var.tier}"
-}
-
-resource "aws_ssm_parameter" "new_relic_labels" {
-  name  = "/${var.environment_name}/${var.service_name}/new-relic-labels"
-  type  = "String"
-  value = "Environment:${var.environment_name};Service:${var.service_name};Tier:${var.tier}"
-}
-
-resource "aws_ssm_parameter" "new_relic_license_key" {
-  name      = "/${var.environment_name}/${var.service_name}/new-relic-license-key"
   overwrite = false
   type      = "SecureString"
   value     = "dummy"
@@ -287,13 +240,6 @@ resource "aws_ssm_parameter" "sqs_queue_v2" {
   value = data.terraform_remote_state.platform_infrastructure.outputs.jobs_queue_v2_id
 }
 
-# $env-etl-uploads-queue
-resource "aws_ssm_parameter" "uploads_queue" {
-  name  = "/${var.environment_name}/${var.service_name}/uploads-queue"
-  type  = "String"
-  value = data.terraform_remote_state.etl_infrastructure.outputs.uploads_queue_name
-}
-
 # S3
 resource "aws_ssm_parameter" "storage_bucket_name" {
   name  = "/${var.environment_name}/${var.service_name}/storage-bucket-name"
@@ -371,6 +317,18 @@ resource "aws_ssm_parameter" "publishing_default_workflow" {
   name  = "/${var.environment_name}/${var.service_name}/publishing-default-workflow"
   type  = "String"
   value = var.publishing_default_workflow
+}
+
+resource "aws_ssm_parameter" "restore_state_machine_arn" {
+  name  = "/${var.environment_name}/${var.service_name}/restore-state-machine-arn"
+  type  = "String"
+  value = data.terraform_remote_state.publish_storage_sync.outputs.publish_storage_sync_restore_state_machine_arn
+}
+
+resource "aws_ssm_parameter" "default_storage_bucket" {
+  name  = "/${var.environment_name}/${var.service_name}/default-storage-bucket"
+  type  = "String"
+  value = data.terraform_remote_state.platform_infrastructure.outputs.storage_bucket_id
 }
 
 // EXTERNAL PUBLISH BUCKETS CONFIGURATION

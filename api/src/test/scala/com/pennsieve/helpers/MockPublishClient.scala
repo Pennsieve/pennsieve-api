@@ -51,6 +51,9 @@ class MockPublishClient(
 
   def clear(): Unit = {
     nextGetStatusValue = None
+    getStatusPublishedDatasetId = None
+    getStatusLatestPublishedVersion = None
+    failNextUnpublish = false
     publishRequests.clear()
     releaseRequests.clear()
     reviseRequests.clear()
@@ -66,6 +69,28 @@ class MockPublishClient(
 
   def withNextGetStatusValue(nextStatusValue: PublishStatus): Unit = {
     nextGetStatusValue = Some(nextStatusValue)
+  }
+
+  // Unlike nextGetStatusValue, these aren't consumed on read -- a published
+  // dataset's Discover id and latest version don't change from one getStatus
+  // call to the next within a single test.
+  private var getStatusPublishedDatasetId: Option[Int] = None
+  private var getStatusLatestPublishedVersion: Option[Int] = None
+
+  // getStatus always reports a publishedVersionCount of 0, so a test can tell
+  // which of the two a caller used.
+  def withGetStatusPublished(
+    publishedDatasetId: Int,
+    latestPublishedVersion: Int
+  ): Unit = {
+    getStatusPublishedDatasetId = Some(publishedDatasetId)
+    getStatusLatestPublishedVersion = Some(latestPublishedVersion)
+  }
+
+  // A published dataset whose Discover reports no latest version, as one
+  // deployed before that field existed would.
+  def withGetStatusPublishedDatasetIdOnly(publishedDatasetId: Int): Unit = {
+    getStatusPublishedDatasetId = Some(publishedDatasetId)
   }
 
   // (organization, dataset) -> (embargo, request)
@@ -104,7 +129,8 @@ class MockPublishClient(
             status = PublishStatus.PublishInProgress,
             lastPublishedDate = None,
             sponsorship = None,
-            workflowId = body.workflowId.get // return whatever was asked
+            workflowId = body.workflowId.get, // return whatever was asked
+            latestPublishedVersion = None
           )
         )
       )
@@ -141,7 +167,8 @@ class MockPublishClient(
             status = PublishStatus.PublishSucceeded,
             lastPublishedDate = None,
             sponsorship = None,
-            workflowId = 4
+            workflowId = 4,
+            latestPublishedVersion = Some(3)
           )
         )
       )
@@ -170,7 +197,8 @@ class MockPublishClient(
           status = PublishStatus.ReleaseInProgress,
           lastPublishedDate = None,
           sponsorship = None,
-          workflowId = 4
+          workflowId = 4,
+          latestPublishedVersion = None
         )
       )
     )
@@ -180,6 +208,12 @@ class MockPublishClient(
   var unpublishRequests: mutable.ArrayBuffer[(Int, Int)] =
     mutable.ArrayBuffer.empty[(Int, Int)]
 
+  private var failNextUnpublish: Boolean = false
+
+  def withNextUnpublishFailing(): Unit = {
+    failNextUnpublish = true
+  }
+
   override def unpublish(
     organizationId: Int,
     datasetId: Int,
@@ -188,21 +222,29 @@ class MockPublishClient(
   ): EitherT[Future, Either[Throwable, HttpResponse], UnpublishResponse] = {
     unpublishRequests += ((organizationId, datasetId))
 
-    EitherT.rightT[Future, Either[Throwable, HttpResponse]](
-      UnpublishResponse.OK(
-        DatasetPublishStatus(
-          name = "PPMI",
-          sourceOrganizationId = organizationId,
-          sourceDatasetId = datasetId,
-          publishedDatasetId = None,
-          publishedVersionCount = 0,
-          status = PublishStatus.NotPublished,
-          lastPublishedDate = None,
-          sponsorship = None,
-          workflowId = 4
+    if (failNextUnpublish) {
+      failNextUnpublish = false
+      EitherT.rightT[Future, Either[Throwable, HttpResponse]](
+        UnpublishResponse.InternalServerError("mock error")
+      )
+    } else {
+      EitherT.rightT[Future, Either[Throwable, HttpResponse]](
+        UnpublishResponse.OK(
+          DatasetPublishStatus(
+            name = "PPMI",
+            sourceOrganizationId = organizationId,
+            sourceDatasetId = datasetId,
+            publishedDatasetId = None,
+            publishedVersionCount = 0,
+            status = PublishStatus.NotPublished,
+            lastPublishedDate = None,
+            sponsorship = None,
+            workflowId = 4,
+            latestPublishedVersion = None
+          )
         )
       )
-    )
+    }
   }
 
   override def getStatus(
@@ -216,12 +258,13 @@ class MockPublishClient(
           name = "PPMI",
           sourceOrganizationId = organizationId,
           sourceDatasetId = datasetId,
-          publishedDatasetId = None,
+          publishedDatasetId = getStatusPublishedDatasetId,
           publishedVersionCount = 0,
           status = nextStatus(),
           lastPublishedDate = None,
           sponsorship = None,
-          workflowId = 4
+          workflowId = 4,
+          latestPublishedVersion = getStatusLatestPublishedVersion
         )
       )
     )
@@ -245,7 +288,8 @@ class MockPublishClient(
               OffsetDateTime.of(2019, 2, 1, 10, 11, 12, 13, ZoneOffset.UTC)
             ),
             sponsorship = None,
-            workflowId = 4
+            workflowId = 4,
+            latestPublishedVersion = Some(4)
           ),
           DatasetPublishStatus(
             name = "TUSZ",
@@ -258,7 +302,8 @@ class MockPublishClient(
               OffsetDateTime.of(2019, 4, 1, 10, 11, 12, 13, ZoneOffset.UTC)
             ),
             sponsorship = None,
-            workflowId = 4
+            workflowId = 4,
+            latestPublishedVersion = Some(5)
           )
         )
       )

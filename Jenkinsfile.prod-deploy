@@ -1,12 +1,6 @@
 #!groovy
 
 timestamps {
-    def pennsieveNexusCreds = usernamePassword(
-        credentialsId: 'pennsieve-nexus-ci-login',
-        usernameVariable: 'PENNSIEVE_NEXUS_USER',
-        passwordVariable: 'PENNSIEVE_NEXUS_PW'
-    )
-
     node('prod-executor') {
         try {
             // Postgres migrations now run from the pennsieve-db-migrations
@@ -16,7 +10,6 @@ timestamps {
                 'admin',
                 'api',
                 'authorization-service',
-                'etl-data-cli',
                 'jobs'
             ]
 

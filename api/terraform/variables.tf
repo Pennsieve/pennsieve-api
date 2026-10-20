@@ -30,14 +30,6 @@ variable "data_postgres_database" {
   default = "data_postgres"
 }
 
-variable "job_scheduling_service_queue_size" {
-  default = "10000"
-}
-
-variable "job_scheduling_service_rate_limit" {
-  default = "100"
-}
-
 variable "orcid_client_id" {}
 
 variable "orcid_token_url" {}
@@ -60,23 +52,6 @@ variable "max_heap_size" {
   default = "4096M"
 }
 
-variable "max_perm_size" {
-  default = "256M"
-}
-
-# Java Opts
-
-variable "newrelic_agent_enabled" {
-  default = "true"
-}
-
 variable "publishing_default_workflow" {
   default = "5"
-}
-
-locals {
-  java_opts = [
-    "-javaagent:/usr/local/tomcat/newrelic/newrelic.jar",
-    "-Dnewrelic.config.agent_enabled=${var.newrelic_agent_enabled}",
-  ]
 }

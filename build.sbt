@@ -1,24 +1,31 @@
 Global / cancelable := true
 
 // common settings
+// Pennsieve packages live in AWS CodeArtifact (pennsieve-cc), `maven` repository.
+// Access is IAM: the build exchanges the active AWS credentials -- the Jenkins
+// agent's instance role, or `assume-role non-prod admin` locally -- for a
+// short-lived token. CODEARTIFACT_AUTH_TOKEN, if set, is used instead.
+lazy val codeArtifactHost = "pennsieve-932986170183.d.codeartifact.us-east-1.amazonaws.com"
+lazy val codeArtifactRepo = s"https://$codeArtifactHost/maven/maven/"
+lazy val codeArtifactToken: String = sys.env.get("CODEARTIFACT_AUTH_TOKEN").getOrElse {
+  import scala.sys.process._
+  val cmd = Seq("aws", "codeartifact", "get-authorization-token", "--domain", "pennsieve",
+    "--domain-owner", "932986170183", "--region", "us-east-1",
+    "--query", "authorizationToken", "--output", "text")
+  scala.util.Try(cmd.!!(ProcessLogger(_ => ())).trim).getOrElse {
+    println("[warn] No CodeArtifact token: AWS credentials missing or not allowed. Run assume-role non-prod admin.")
+    ""
+  }
+}
+
 ThisBuild / resolvers ++= Seq(
-  "Pennsieve Releases" at "https://nexus.pennsieve.cc/repository/maven-releases",
-  "Pennsieve Snapshots" at "https://nexus.pennsieve.cc/repository/maven-snapshots",
+  "pennsieve" at codeArtifactRepo,
   Resolver.sonatypeCentralSnapshots
 )
 
-ThisBuild / credentials += Credentials(
-  "Sonatype Nexus Repository Manager",
-  "nexus.pennsieve.cc",
-  sys.env("PENNSIEVE_NEXUS_USER"),
-  sys.env("PENNSIEVE_NEXUS_PW")
-)
+ThisBuild / credentials += Credentials("pennsieve/maven", codeArtifactHost, "aws", codeArtifactToken)
 
-// Temporarily disable Coursier because parallel builds fail on Jenkins.
-// See https://app.clickup.com/t/a8ned9
-ThisBuild / useCoursier := false
-
-ThisBuild / scalaVersion := "2.13.16"
+ThisBuild / scalaVersion := "2.13.18"
 ThisBuild / organization := "com.pennsieve"
 ThisBuild / organizationName := "University of Pennsylvania"
 ThisBuild / licenses := List(
@@ -28,17 +35,13 @@ ThisBuild / startYear := Some(2021)
 
 ThisBuild / version := sys.props.get("version").getOrElse("bootstrap-SNAPSHOT")
 
-val publishToNexus =
-  settingKey[Option[Resolver]]("Pennsieve Nexus repository resolver")
+// Published with sbt-aether-deploy (publish := aetherDeploy.value on each
+// published project): sbt's own publisher writes no maven-metadata.xml, so its releases
+// stay Unfinished in CodeArtifact.
+val publishToPennsieve =
+  settingKey[Option[Resolver]]("Pennsieve CodeArtifact repository resolver")
 
-ThisBuild / publishToNexus := {
-  val nexus = "https://nexus.pennsieve.cc/repository"
-  if (isSnapshot.value) {
-    Some("Nexus Realm" at s"$nexus/maven-snapshots")
-  } else {
-    Some("Nexus Realm" at s"$nexus/maven-releases")
-  }
-}
+ThisBuild / publishToPennsieve := Some("pennsieve" at codeArtifactRepo)
 
 val remoteCacheLocation =
   sys.props.get("remote-cache").getOrElse("/tmp/sbt/pennsieve-api")
@@ -90,7 +93,7 @@ lazy val swaggerAkkaHttpVersion = "1.5.2"
 lazy val auditMiddlewareVersion = "1.0.3"
 lazy val authMiddlewareVersion = "5.1.3"
 
-lazy val awsVersion = "1.11.931"
+lazy val awsVersion = "1.12.797"
 lazy val awsV2Version = "2.15.58"
 
 lazy val catsVersion = "2.6.1"
@@ -104,7 +107,7 @@ lazy val ficusVersion = "1.5.2"
 lazy val json4sVersion = "3.5.5"
 
 lazy val jettyVersion = "9.1.3.v20140225"
-lazy val postgresVersion = "42.7.3"
+lazy val postgresVersion = "42.7.14"
 lazy val scalatraVersion = "2.7.1"
 
 lazy val scalatestVersion = "3.2.11"
@@ -120,12 +123,48 @@ lazy val slickCatsVersion = "0.10.4"
 lazy val testContainersVersion = "0.44.1"
 lazy val utilitiesVersion = "4-55953e4"
 lazy val serviceUtilitiesVersion = "9-b838dd9"
-lazy val discoverServiceClientVersion = "155-899ad5e"
+lazy val discoverServiceClientVersion = "234-86b95fe"
 lazy val doiServiceClientVersion = "12-756107b"
 lazy val timeseriesCoreVersion = "6-487b00c"
-lazy val commonsIoVersion = "2.6"
+lazy val commonsIoVersion = "2.22.0"
 
 lazy val enumeratumVersion = "1.7.0"
+
+lazy val slf4jVersion = "2.0.17"
+lazy val logbackVersion = "1.3.16"
+lazy val jacksonVersion = "2.22.3"
+lazy val nettyVersion = "4.1.139.Final"
+
+// Transitive dependencies pinned to patched versions (clin Inspector findings
+// against the api WAR and the admin / authorization-service jars). Every
+// version here must still run on Java 8.
+ThisBuild / dependencyOverrides ++= Seq(
+  "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
+  "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
+  "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
+  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion,
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
+  "io.netty" % "netty-buffer" % nettyVersion,
+  "io.netty" % "netty-codec" % nettyVersion,
+  "io.netty" % "netty-codec-http" % nettyVersion,
+  "io.netty" % "netty-codec-http2" % nettyVersion,
+  "io.netty" % "netty-common" % nettyVersion,
+  "io.netty" % "netty-handler" % nettyVersion,
+  "io.netty" % "netty-resolver" % nettyVersion,
+  "io.netty" % "netty-transport" % nettyVersion,
+  "io.netty" % "netty-transport-native-epoll" % nettyVersion,
+  "io.netty" % "netty-transport-native-unix-common" % nettyVersion,
+  "org.yaml" % "snakeyaml" % "2.7",
+  "org.apache.commons" % "commons-text" % "1.15.0",
+  "org.apache.commons" % "commons-lang3" % "3.21.0",
+  "commons-beanutils" % "commons-beanutils" % "1.11.0",
+  "com.google.guava" % "guava" % "33.7.2-jre",
+  "org.typelevel" %% "jawn-parser" % "1.8.0",
+  // jackson-module-scala 2.22 asks for paranamer 2.8.3, whose DefaultParanamer
+  // is Java 9 bytecode.
+  "com.thoughtworks.paranamer" % "paranamer" % "2.8"
+)
 
 lazy val unwantedDependencies = Seq(
   ExclusionRule("commons-logging", "commons-logging"),
@@ -140,6 +179,10 @@ lazy val defaultMergeStrategy = settingKey[String => MergeStrategy](
 )
 
 ThisBuild / defaultMergeStrategy := {
+  // slf4j 2.x finds logback through ServiceLoader; without this file every
+  // fat jar falls back to the NOP logger.
+  case PathList("META-INF", "services", "org.slf4j.spi.SLF4JServiceProvider") =>
+    MergeStrategy.filterDistinctLines
   case PathList("META-INF", _ @_*) => MergeStrategy.discard
   case PathList("PropertyList-1.0.dtd", _ @_*) => MergeStrategy.last
   case PathList("codegen-resources", "customization.config", _ @_*) =>
@@ -181,13 +224,13 @@ lazy val commonSettings = Seq(
   ),
   assembly / test := {},
   libraryDependencies ++= Seq(
-    "org.slf4j" % "slf4j-api" % "1.7.25",
-    "org.slf4j" % "jul-to-slf4j" % "1.7.25",
-    "org.slf4j" % "jcl-over-slf4j" % "1.7.25",
-    "org.slf4j" % "log4j-over-slf4j" % "1.7.25",
-    "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "ch.qos.logback" % "logback-core" % "1.2.3",
-    "net.logstash.logback" % "logstash-logback-encoder" % "5.2",
+    "org.slf4j" % "slf4j-api" % slf4jVersion,
+    "org.slf4j" % "jul-to-slf4j" % slf4jVersion,
+    "org.slf4j" % "jcl-over-slf4j" % slf4jVersion,
+    "org.slf4j" % "log4j-over-slf4j" % slf4jVersion,
+    "ch.qos.logback" % "logback-classic" % logbackVersion,
+    "ch.qos.logback" % "logback-core" % logbackVersion,
+    "net.logstash.logback" % "logstash-logback-encoder" % "7.4",
     "com.iheart" %% "ficus" % ficusVersion,
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
     "org.postgresql" % "postgresql" % postgresVersion,
@@ -225,6 +268,15 @@ lazy val coreApiSharedSettings = Seq(
   excludeDependencies ++= unwantedDependencies
 )
 
+// scalatra-swagger's Reflector reads private fields of JDK classes (e.g.
+// ZonedDateTime, UUID, URL) when it builds the swagger models, which JRE 17+
+// refuses unless their packages are opened. Tomcat's catalina.sh opens
+// java.util itself; tests don't run through it. JDK_JAVA_OPTIONS is read by
+// the JRE 9+ launcher only, so JRE 8 ignores it.
+lazy val apiJdkJavaOptions = Seq("java.net", "java.time", "java.util")
+  .map(pkg => s"--add-opens=java.base/$pkg=ALL-UNNAMED")
+  .mkString(" ")
+
 // API settings
 lazy val apiSettings = Seq(
   name := "pennsieve-api",
@@ -257,6 +309,7 @@ lazy val apiSettings = Seq(
           Tests.Group(s"api-tests-$shard", tests, Tests.SubProcess(forkOpts))
       }
   },
+  Test / envVars += "JDK_JAVA_OPTIONS" -> apiJdkJavaOptions,
   Jetty / javaOptions ++= Seq(
     "-Xdebug",
     "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8000"
@@ -264,22 +317,10 @@ lazy val apiSettings = Seq(
   docker / buildOptions := BuildOptions(cache = false),
   docker / dockerfile := {
     val warFile: File = sbt.Keys.`package`.value
-    new SecureDockerfile("pennsieve/tomcat-cloudwrap:8-jre-alpine-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.TomcatImage) {
       copy(warFile, "webapps/ROOT.war", chown = "pennsieve:pennsieve")
-      run("mkdir", "newrelic")
-      run(
-        "wget",
-        "-qO",
-        "newrelic/newrelic.jar",
-        "http://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic.jar"
-      )
-      run(
-        "wget",
-        "-qO",
-        "newrelic/newrelic.yml",
-        "http://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic.yml"
-      )
-      cmd("--service", "api", "exec", "catalina.sh", "run")
+      env("JDK_JAVA_OPTIONS", apiJdkJavaOptions)
+      cmd("--service", "api", "exec", "--", "catalina.sh", "run")
     }
   },
   docker / imageNames := Seq(
@@ -319,7 +360,8 @@ lazy val apiSettings = Seq(
 // core settings
 lazy val coreSettings = Seq(
   name := "pennsieve-core",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   Test / publishArtifact := true,
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
   publishMavenStyle := true,
@@ -350,6 +392,7 @@ lazy val coreSettings = Seq(
     "com.amazonaws" % "aws-java-sdk-sts" % awsVersion,
     "software.amazon.awssdk" % "sns" % awsV2Version,
     "software.amazon.awssdk" % "sqs" % awsV2Version,
+    "software.amazon.awssdk" % "sfn" % awsV2Version,
     "software.amazon.awssdk" % "cognitoidentityprovider" % awsV2Version,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
@@ -385,9 +428,9 @@ lazy val jobsSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("--service", "jobs", "exec", "java", "-jar", artifactTargetPath)
+      cmd("--service", "jobs", "exec", "--", "java", "-jar", artifactTargetPath)
     }
   },
   docker / imageNames := Seq(
@@ -405,7 +448,8 @@ lazy val jobsSettings = Seq(
 
 lazy val adminSettings = Seq(
   name := "admin",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "discover-service-client" % discoverServiceClientVersion,
     "com.github.swagger-akka-http" %% "swagger-akka-http" % swaggerAkkaHttpVersion,
@@ -422,9 +466,9 @@ lazy val adminSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
+      cmd("--service", "admin", "exec", "--", "java", "-jar", artifactTargetPath)
     }
   },
   docker / imageNames := Seq(ImageName("pennsieve/admin:latest")),
@@ -433,7 +477,8 @@ lazy val adminSettings = Seq(
 
 lazy val authorizationServiceSettings = Seq(
   name := "authorization-service",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.iheart" %% "ficus" % ficusVersion,
@@ -449,24 +494,19 @@ lazy val authorizationServiceSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:10-jre-slim-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
       copy(
         baseDirectory.value / "bin" / "run.sh",
         "/app/run.sh",
         chown = "pennsieve:pennsieve"
       )
-      run(
-        "wget",
-        "-qO",
-        "/app/newrelic.jar",
-        "http://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic.jar"
-      )
       env("RUST_BACKTRACE", "1")
       cmd(
         "--service",
         "authorization-service",
         "exec",
+        "--",
         "/app/run.sh",
         artifactTargetPath
       )
@@ -480,7 +520,8 @@ lazy val authorizationServiceSettings = Seq(
 
 lazy val bfAkkaHttpSettings = Seq(
   name := "bf-akka-http",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   Test / publishArtifact := true,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
@@ -503,9 +544,9 @@ lazy val unusedOrganizationMigrationSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("--service", "migrations", "exec", "java", "-jar", artifactTargetPath)
+      cmd("--service", "migrations", "exec", "--", "java", "-jar", artifactTargetPath)
     }
   },
   docker / imageNames := Seq(
@@ -522,9 +563,9 @@ lazy val inviteCognitoUserSettings = Seq(
   docker / dockerfile := {
     val artifact: File = assembly.value
     val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
+    new SecureDockerfile(SecureDockerfile.JavaImage) {
       copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
+      cmd("--service", "admin", "exec", "--", "java", "-jar", artifactTargetPath)
     }
   },
   docker / imageNames := Seq(ImageName("pennsieve/invite-cognito-user:latest")),
@@ -572,7 +613,8 @@ lazy val bfAkkaSettings = Seq(
 
 lazy val coreClientsSettings = Seq(
   name := "core-clients",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
     "com.pennsieve" %% "utilities" % utilitiesVersion,
@@ -587,7 +629,8 @@ lazy val coreClientsSettings = Seq(
 
 lazy val coreModelsSettings = Seq(
   name := "core-models",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
     "commons-io" % "commons-io" % commonsIoVersion,
@@ -599,13 +642,14 @@ lazy val coreModelsSettings = Seq(
     "io.circe" %% "circe-derivation" % circeDerivationVersion,
     "io.circe" %% "circe-parser" % circeVersion,
     "org.scalatest" %% "scalatest" % scalatestVersion % Test,
-    "com.google.guava" % "guava" % "29.0-jre"
+    "com.google.guava" % "guava" % "33.7.2-jre"
   )
 )
 
 lazy val bfAwsSettings = Seq(
   name := "bf-aws",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   publishMavenStyle := true,
   libraryDependencies ++= Seq(
     "com.amazonaws" % "aws-java-sdk-athena" % awsVersion,
@@ -623,9 +667,9 @@ lazy val organizationStorageMigrationSettings =
     docker / dockerfile := {
       val artifact: File = assembly.value
       val artifactTargetPath = s"/app/${artifact.name}"
-      new SecureDockerfile("pennsieve/java-cloudwrap:8-jre-alpine-0.5.9") {
+      new SecureDockerfile(SecureDockerfile.JavaImage) {
         copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-        cmd("--service", "admin", "exec", "java", "-jar", artifactTargetPath)
+        cmd("--service", "admin", "exec", "--", "java", "-jar", artifactTargetPath)
       }
     },
     docker / imageNames := Seq(
@@ -638,7 +682,8 @@ lazy val organizationStorageMigrationSettings =
 // See project/CompileMessageTemplates.scala for plugin implementation.
 lazy val messageTemplateSettings = Seq(
   name := "message-templates",
-  publishTo := publishToNexus.value,
+  publishTo := publishToPennsieve.value,
+  publish := aether.AetherKeys.aetherDeploy.value,
   messageTemplatesOutputPackage := "com.pennsieve.templates",
   messageTemplatesOutputFile := "GeneratedMessageTemplates.scala",
   messageTemplatesInputDirectory := "html",

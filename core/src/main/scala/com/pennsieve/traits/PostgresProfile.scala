@@ -270,6 +270,12 @@ trait PostgresProfile
         jsonString => jsonString.as[FileChecksum].toOption.get
       )
 
+    implicit val removalRestoreMetadataMapper =
+      MappedColumnType.base[RemovalRestoreMetadata, Json](
+        removalMetadata => removalMetadata.asJson,
+        jsonString => jsonString.as[RemovalRestoreMetadata].toOption.get
+      )
+
     implicit val licenseMapper: JdbcType[License] with BaseTypedType[License] =
       MappedColumnType
         .base[License, String](s => s.entryName, s => License.withName(s))

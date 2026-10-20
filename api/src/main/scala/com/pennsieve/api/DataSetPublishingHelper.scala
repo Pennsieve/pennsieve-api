@@ -155,7 +155,6 @@ case object DataSetPublishingHelper extends LazyLogging {
     insecureContainer: InsecureAPIContainer,
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
-    version: Int,
     reviewer: User,
     owner: User
   )(implicit
@@ -921,6 +920,23 @@ case object DataSetPublishingHelper extends LazyLogging {
   }
 
   /**
+    * The version number of the publish (or embargo) that `status` reports on,
+    * where `status` is the response Discover returns when it starts one.
+    *
+    * Before creating a version, Discover rolls back a latest version that
+    * failed or is under embargo, then numbers the new one after the highest
+    * remaining version. The response is computed after that rollback, and the
+    * new version is still in progress and not yet visible, so the new version
+    * is one more than the latest visible version.
+    *
+    * Not for a status read before the request: when the latest version is
+    * under embargo (e.g. a re-embargo), the rollback hasn't happened yet and
+    * this would be one too high.
+    */
+  def nextPublishedVersion(status: DatasetPublishStatus): Int =
+    status.latestPublishedVersion.getOrElse(0) + 1
+
+  /**
     * Build and send a request to Discover Service to publish a dataset.
     */
   def sendPublishRequest(
@@ -1055,7 +1071,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         s"Started publish of dataset ${dataset.nodeId} ${response.publishedDatasetId match {
           case Some(id) => s"to public dataset id=$id"
           case None => ""
-        }} version=${response.publishedVersionCount + 1} embargo=$embargo"
+        }} version=${nextPublishedVersion(response)} embargo=$embargo"
       )
 
     } yield response
@@ -1184,7 +1200,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         s"Revised dataset ${dataset.nodeId} ${response.publishedDatasetId match {
           case Some(id) => s"to public dataset id=$id"
           case None => ""
-        }} version=${response.publishedVersionCount}"
+        }} version=${response.latestPublishedVersion.getOrElse(0)}"
       )
 
     } yield response
@@ -1397,7 +1413,7 @@ case object DataSetPublishingHelper extends LazyLogging {
         ps =>
           ps.sourceDatasetId -> DiscoverPublishedDatasetDTO(
             ps.publishedDatasetId,
-            ps.publishedVersionCount,
+            ps.latestPublishedVersion.getOrElse(0),
             ps.lastPublishedDate
           )
       ).toMap

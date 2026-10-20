@@ -185,6 +185,10 @@ trait ApiSuite
         "pennsieve.publishing.default_workflow",
         ConfigValueFactory.fromAnyRef("5")
       )
+      .withValue(
+        "pennsieve.s3.default_storage_bucket",
+        ConfigValueFactory.fromAnyRef("test-storage-pennsieve")
+      )
 
     insecureContainer = new InsecureContainer(config) with TestCoreContainer
     with LocalEmailContainer with MessageTemplatesContainer with DataDBContainer

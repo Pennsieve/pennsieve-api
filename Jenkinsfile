@@ -1,19 +1,19 @@
 #!groovy
 
+// sbt resolves and publishes Pennsieve libraries through AWS CodeArtifact with a
+// short-lived token from the agent's instance role (see build.sbt); no Jenkins
+// credential is involved.
 timestamps {
-    def pennsieveNexusCreds = usernamePassword(
-        credentialsId: 'pennsieve-nexus-ci-login',
-        usernameVariable: 'PENNSIEVE_NEXUS_USER',
-        passwordVariable: 'PENNSIEVE_NEXUS_PW'
-    )
-
     node('executor') {
         checkout scm
 
         def commitHash  = sh(returnStdout: true, script: 'git rev-parse HEAD | cut -c-7').trim()
         def imageTag = "${env.BUILD_NUMBER}-${commitHash}"
         def remoteCache = "remote-cache-${imageTag}"
-        def sbt = "sbt -Dsbt.log.noformat=true -Dversion=$imageTag -Dremote-cache=$remoteCache"
+        // Coursier cache per workspace (expanded by the shell in each step): builds
+        // sharing an agent otherwise share ~/.cache/coursier, and concurrent sbt
+        // processes deadlock on its file locks ("Resource deadlock avoided").
+        def sbt = "COURSIER_CACHE=\$WORKSPACE@coursier sbt -Dsbt.log.noformat=true -Dversion=$imageTag -Dremote-cache=$remoteCache"
 
         try {
 
@@ -27,21 +27,17 @@ timestamps {
             }
 
             stage('Build') {
-                withCredentials([pennsieveNexusCreds]) {
-                    sh "${sbt} clean compile pushRemoteCache"
-                }
+                sh "${sbt} clean compile pushRemoteCache"
                 stash name: "${remoteCache}", includes: "${remoteCache}/**/*"
             }
 
             if (env.BRANCH_NAME != 'main') {
                 stage('Test') {
                     unstash name: "${remoteCache}"
-                    withCredentials([pennsieveNexusCreds]) {
-                        try {
-                            sh "${sbt} clean pullRemoteCache test"
-                        } finally {
-                            junit '**/target/test-reports/*.xml'
-                        }
+                    try {
+                        sh "${sbt} clean pullRemoteCache test"
+                    } finally {
+                        junit '**/target/test-reports/*.xml'
                     }
                 }
             } else {
@@ -55,7 +51,7 @@ timestamps {
                         'message-templates'
                     ]
                     def publishJarSteps = jars.collectEntries {
-                        ["${it}" : generatePublishJarStep(it, sbt, pennsieveNexusCreds, remoteCache)]
+                        ["${it}" : generatePublishJarStep(it, sbt, remoteCache)]
                     }
                     publishJarSteps.failFast = true
                     parallel publishJarSteps
@@ -65,7 +61,6 @@ timestamps {
                     'admin',
                     'api',
                     'authorization-service',
-                    'etl-data-cli',
                     'jobs'
                 ]
 
@@ -76,7 +71,7 @@ timestamps {
 
                 stage('Publish Containers') {
                     def publishContainerSteps = containers.collectEntries {
-                        ["${it}" : generatePublishContainerStep(it, sbt, imageTag, pennsieveNexusCreds, remoteCache)]
+                        ["${it}" : generatePublishContainerStep(it, sbt, imageTag, remoteCache)]
                     }
                     publishContainerSteps.failFast = true
                     parallel publishContainerSteps
@@ -115,7 +110,7 @@ def generateDeployStep(String service, String imageTag) {
 }
 
 // Generate parallel container publish steps
-def generatePublishContainerStep(String service, String sbt, String imageTag, creds, String remoteCache) {
+def generatePublishContainerStep(String service, String sbt, String imageTag, String remoteCache) {
     return {
         node('executor') {
             checkout scm
@@ -129,9 +124,7 @@ def generatePublishContainerStep(String service, String sbt, String imageTag, cr
                     break
             }
 
-            withCredentials([creds]) {
-                sh "${sbt} clean pullRemoteCache ${service}/docker"
-            }
+            sh "${sbt} clean pullRemoteCache ${service}/docker"
 
             for (image in images) {
                 if (['clamd', 'discover-pgdump-postgres'].contains(image)) {
@@ -146,16 +139,14 @@ def generatePublishContainerStep(String service, String sbt, String imageTag, cr
 }
 
 // Generate parallel jar publish steps
-def generatePublishJarStep(String jar, String sbt, creds, String remoteCache) {
+def generatePublishJarStep(String jar, String sbt, String remoteCache) {
     return {
         node('executor') {
             checkout scm
             unstash name: "${remoteCache}"
 
-            withCredentials([creds]) {
-                retry(3) {
-                    sh "${sbt} clean pullRemoteCache ${jar}/publish"
-                }
+            retry(3) {
+                sh "${sbt} clean pullRemoteCache ${jar}/publish"
             }
         }
     }

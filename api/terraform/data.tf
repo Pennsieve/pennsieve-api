@@ -67,6 +67,17 @@ data "terraform_remote_state" "doi_service" {
   }
 }
 
+# Import Publish Storage Sync Data (restore state machine + completion queue)
+data "terraform_remote_state" "publish_storage_sync" {
+  backend = "s3"
+
+  config = {
+    bucket = "${var.aws_account}-terraform-state"
+    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/publish-storage-sync/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
 # Import ECS Cluster Data
 data "terraform_remote_state" "ecs_cluster" {
   backend = "s3"
@@ -78,34 +89,12 @@ data "terraform_remote_state" "ecs_cluster" {
   }
 }
 
-# Import ETL Infrastructure
-data "terraform_remote_state" "etl_infrastructure" {
-  backend = "s3"
-
-  config = {
-    bucket = "${var.aws_account}-terraform-state"
-    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/etl-infrastructure/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
 data "terraform_remote_state" "gateway" {
   backend = "s3"
 
   config = {
     bucket = "${var.aws_account}-terraform-state"
     key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/gateway/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
-# Import Job Scheduling Service Data
-data "terraform_remote_state" "job_scheduling_service" {
-  backend = "s3"
-
-  config = {
-    bucket = "${var.aws_account}-terraform-state"
-    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/job-scheduling-service/terraform.tfstate"
     region = "us-east-1"
   }
 }
