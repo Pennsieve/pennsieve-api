@@ -38,8 +38,6 @@ import com.pennsieve.models.{
   Collection,
   Contributor,
   DBPermission,
-  DataCanvas,
-  DataCanvasFolder,
   Dataset,
   DatasetAsset,
   DatasetContributor,
@@ -811,83 +809,5 @@ object Builders {
       subscription <- organizationManager.getSubscription(organization.id)
       featureFlags <- organizationManager.getActiveFeatureFlags(organization.id)
     } yield organizationDTO(organization, subscription, featureFlags, storage)
-  }
-
-  def dataCanvasDTO[DIContainer <: DataCanvasManagerContainer](
-    datacanvas: DataCanvas
-  )(implicit
-    executionContext: ExecutionContext,
-    secureContainer: DIContainer,
-    system: ActorSystem,
-    jwtConfig: Jwt.Config
-  ): EitherT[Future, CoreError, DataCanvasDTO] = {
-    for {
-      locked <- secureContainer.dataCanvasManager.isLocked(datacanvas)
-    } yield
-      DataCanvasDTO(
-        id = datacanvas.id,
-        name = datacanvas.name,
-        description = datacanvas.description,
-        createdAt = datacanvas.createdAt,
-        updatedAt = datacanvas.updatedAt,
-        nodeId = datacanvas.nodeId,
-        permissionBit = datacanvas.permissionBit,
-        role = datacanvas.role,
-        statusId = datacanvas.statusId,
-        isPublic = datacanvas.isPublic
-      )
-  }
-
-  def datacanvasDTOs[DIContainer <: DataCanvasManagerContainer](
-    datacanvases: Seq[DataCanvas]
-  )(implicit
-    executionContext: ExecutionContext,
-    secureContainer: DIContainer,
-    system: ActorSystem,
-    jwtConfig: Jwt.Config
-  ): EitherT[Future, CoreError, List[DataCanvasDTO]] = {
-    for {
-      dtos <- datacanvases.toList
-        .traverse {
-          case datacanvas: DataCanvas =>
-            for {
-              _ <- secureContainer.dataCanvasManager.isLocked(datacanvas)
-            } yield
-              DataCanvasDTO(
-                id = datacanvas.id,
-                name = datacanvas.name,
-                description = datacanvas.description,
-                createdAt = datacanvas.createdAt,
-                updatedAt = datacanvas.updatedAt,
-                nodeId = datacanvas.nodeId,
-                permissionBit = datacanvas.permissionBit,
-                role = datacanvas.role,
-                statusId = datacanvas.statusId,
-                isPublic = datacanvas.isPublic
-              )
-        }
-    } yield dtos
-  }
-
-  def dataCanvasFolderDTO[DIContainer <: DataCanvasManagerContainer](
-    folder: DataCanvasFolder
-  )(implicit
-    executionContext: ExecutionContext,
-    secureContainer: DIContainer,
-    system: ActorSystem,
-    jwtConfig: Jwt.Config
-  ): EitherT[Future, CoreError, DataCanvasFolderDTO] = {
-    for {
-      locked <- secureContainer.dataCanvasManager.isFolderLocked(folder)
-    } yield
-      DataCanvasFolderDTO(
-        id = folder.id,
-        parentId = folder.parentId,
-        dataCanvasId = folder.dataCanvasId,
-        name = folder.name,
-        nodeId = folder.nodeId,
-        createdAt = folder.createdAt,
-        updatedAt = folder.updatedAt
-      )
   }
 }
