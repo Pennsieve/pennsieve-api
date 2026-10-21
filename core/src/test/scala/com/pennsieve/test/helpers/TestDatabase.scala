@@ -86,8 +86,7 @@ trait TestDatabase extends AwaitableImplicits {
     "contributors",
     "dataset_contributor",
     "collections",
-    "data_use_agreements",
-    "datacanvases"
+    "data_use_agreements"
   )
 
   /**
@@ -120,8 +119,8 @@ trait TestDatabase extends AwaitableImplicits {
     // Preserve the seed image's 4 default dataset_status rows (NO_STATUS,
     // WORK_IN_PROGRESS, IN_REVIEW, COMPLETED) so DatasetManager.getDefaultStatus
     // works in harnesses that don't call resetDefaultStatusOptions (admin,
-    // authorization-service). Delete only test-added rows; datasets and
-    // datacanvases (which FK into dataset_status) are already emptied above.
+    // authorization-service). Delete only test-added rows; datasets (which FK
+    // into dataset_status) are already emptied above.
     val datasetStatusDeletes = preserveDefaultDatasetStatusSchemas
       .map(
         schema =>
@@ -222,9 +221,9 @@ $$pgclean$$"""
     // Preserve the seed image's 4 default dataset_status rows (NO_STATUS,
     // WORK_IN_PROGRESS, IN_REVIEW, COMPLETED) so DatasetManager.getDefaultStatus
     // works in harnesses that don't call resetDefaultStatusOptions (admin,
-    // authorization-service). Delete only test-added rows. datasets and
-    // datacanvases must be truncated first — both FK into dataset_status, and
-    // the DELETE would otherwise hit ON DELETE RESTRICT.
+    // authorization-service). Delete only test-added rows. datasets must be
+    // truncated first — it FKs into dataset_status, and the DELETE would
+    // otherwise hit ON DELETE RESTRICT.
     DBIO.seq(
       sqlu"""TRUNCATE TABLE "#$schema"."datasets" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."packages" RESTART IDENTITY CASCADE""",
@@ -234,7 +233,6 @@ $$pgclean$$"""
       sqlu"""TRUNCATE TABLE "#$schema"."dataset_contributor" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."collections" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "#$schema"."data_use_agreements" RESTART IDENTITY CASCADE""",
-      sqlu"""TRUNCATE TABLE "#$schema"."datacanvases" RESTART IDENTITY CASCADE""",
       sqlu"""DELETE FROM "#$schema"."dataset_status" WHERE name NOT IN (#$defaultDatasetStatusNamesSql)"""
     )
   }
@@ -245,16 +243,6 @@ $$pgclean$$"""
         "timeseries" -> Seq("ranges", "annotations", "channel_groups", "layers")
       ),
       Seq.empty
-    )
-
-  // The seed image pre-creates pennsieve.all_files but not the corresponding
-  // union views for other per-organization tables (e.g. datacanvases). Rebuild
-  // them once against the pre-seeded schemas 1..10 so cross-org queries work.
-  // refresh_union_view is a SELECT against a plpgsql function; sqlu would
-  // fail with "a result was returned when none was expected".
-  def refreshUnionViews: DBIO[Unit] =
-    DBIO.seq(
-      sql"""SELECT pennsieve.refresh_union_view('datacanvases')""".as[Unit]
     )
 
 }
