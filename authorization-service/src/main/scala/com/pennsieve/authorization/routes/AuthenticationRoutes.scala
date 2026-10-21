@@ -52,7 +52,15 @@ class AuthenticationRoutes(cognitoConfig: CognitoConfig) extends RouteService {
         region = cognitoConfig.region.toString,
         userPool = CognitoPoolConfigDTO(cognitoConfig.userPool),
         tokenPool = CognitoPoolConfigDTO(cognitoConfig.tokenPool),
-        identityPool = CognitoPoolConfigDTO(cognitoConfig.identityPool)
+        // The Cognito identity pool (legacy uploads-bucket credentials) is
+        // gone. identityPool stays in the response, empty, because clients
+        // still require the key: pennsieve-agent-python 7.x builds its
+        // CognitoConfig(region, userPool, tokenPool, identityPool) from it.
+        identityPool = CognitoPoolConfigDTO(
+          region = cognitoConfig.region.toString,
+          id = "",
+          appClientId = ""
+        )
       )
     }
   }

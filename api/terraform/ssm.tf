@@ -307,12 +307,6 @@ resource "aws_ssm_parameter" "integration_sns_topic" {
   value = data.terraform_remote_state.integration_service.outputs.sns_topic_arn
 }
 
-resource "aws_ssm_parameter" "identity_token_pool_id" {
-  name  = "/${var.environment_name}/${var.service_name}/cognito-identity-pool-id"
-  type  = "String"
-  value = data.terraform_remote_state.upload_service_v2.outputs.identity_pool_id
-}
-
 resource "aws_ssm_parameter" "publishing_default_workflow" {
   name  = "/${var.environment_name}/${var.service_name}/publishing-default-workflow"
   type  = "String"

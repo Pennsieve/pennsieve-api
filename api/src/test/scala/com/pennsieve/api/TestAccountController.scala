@@ -50,8 +50,7 @@ class TestAccountController extends BaseApiUnitTest {
   val cognitoConfig = CognitoConfig(
     Region.US_EAST_1,
     CognitoPoolConfig(Region.US_EAST_1, "user-pool-id", "client-id"),
-    CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id"),
-    CognitoPoolConfig(Region.US_EAST_1, "identity-pool-id", "")
+    CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
   )
 
   val issuedAtTime: Long = Instant.now().toEpochMilli() / 1000 - 90

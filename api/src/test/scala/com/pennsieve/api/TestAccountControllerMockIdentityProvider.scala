@@ -42,8 +42,7 @@ class TestAccountControllerMockIdentityProvider extends BaseApiUnitTest {
   private val cognitoConfig: CognitoConfig = CognitoConfig(
     Region.US_EAST_1,
     CognitoPoolConfig(Region.US_EAST_1, "user-pool-id", "client-id"),
-    CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id"),
-    CognitoPoolConfig(Region.US_EAST_1, "identity-pool-id", "")
+    CognitoPoolConfig(Region.US_EAST_1, "token-pool-id", "client-id")
   )
 
   val recaptchaClient: AntiSpamChallengeClient = new MockRecaptchaClient()
