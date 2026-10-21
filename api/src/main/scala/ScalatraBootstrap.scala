@@ -160,15 +160,6 @@ class ScalatraBootstrap extends LifeCycle with LazyLogging {
       )
       context mount (internalDataSetsController, "/internal/datasets/*", "internalDatasets")
 
-      val dataCanvasController = new DataCanvasController(
-        bootstrapHelper.insecureContainer,
-        bootstrapHelper.secureContainerBuilder,
-        bootstrapHelper.objectStore,
-        system,
-        ec
-      )
-      context mount (dataCanvasController, "/datacanvas", "dataCanvas")
-
       // collection endpoints
       ///////////////////////////////
       val collectionsController = new CollectionsController(

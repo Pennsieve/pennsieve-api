@@ -294,7 +294,6 @@ lazy val apiSettings = Seq(
       "com.pennsieve.api.TestDataSetsController" -> 0,
       "com.pennsieve.api.TestPackagesController" -> 1,
       "com.pennsieve.api.TestOrganizationsController" -> 1,
-      "com.pennsieve.api.TestDataCanvasController" -> 2,
       "com.pennsieve.api.TestWebhooksController" -> 2,
       "com.pennsieve.api.TimeSeriesControllerAnnotationSpecs" -> 2,
       "com.pennsieve.api.TestDataController" -> 2
