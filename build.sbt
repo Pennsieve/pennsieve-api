@@ -3,7 +3,7 @@ Global / cancelable := true
 // common settings
 // Pennsieve packages live in AWS CodeArtifact (pennsieve-cc), `maven` repository.
 // Access is IAM: the build exchanges the active AWS credentials -- the Jenkins
-// agent's instance role, or `assume-role non-prod admin` locally -- for a
+// agent's instance role, or `assume-role ccmfa x` locally -- for a
 // short-lived token. CODEARTIFACT_AUTH_TOKEN, if set, is used instead.
 lazy val codeArtifactHost = "pennsieve-932986170183.d.codeartifact.us-east-1.amazonaws.com"
 lazy val codeArtifactRepo = s"https://$codeArtifactHost/maven/maven/"
@@ -13,7 +13,7 @@ lazy val codeArtifactToken: String = sys.env.get("CODEARTIFACT_AUTH_TOKEN").getO
     "--domain-owner", "932986170183", "--region", "us-east-1",
     "--query", "authorizationToken", "--output", "text")
   scala.util.Try(cmd.!!(ProcessLogger(_ => ())).trim).getOrElse {
-    println("[warn] No CodeArtifact token: AWS credentials missing or not allowed. Run assume-role non-prod admin.")
+    println("[warn] No CodeArtifact token: AWS credentials missing or not allowed. Run assume-role ccmfa x (or assume-role non-prod admin).")
     ""
   }
 }
