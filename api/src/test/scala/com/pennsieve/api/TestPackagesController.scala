@@ -4140,6 +4140,7 @@ class TestPackagesController
       // All files should be unpublished by default
       files.foreach { file =>
         file.content.publishedS3VersionId shouldBe empty
+        file.content.published shouldBe false
       }
     }
   }
