@@ -23,13 +23,14 @@ This project is set up to use docker to quickly develop locally using [testconta
 
 ## Building and Testing
 
-Pennsieve's own libraries (`core-models`, `auth-middleware` and the rest) come from Pennsieve's AWS CodeArtifact. sbt gets a short-lived token itself with your AWS credentials, so run it from a shell where you have assumed a role:
+Pennsieve's own libraries (`core-models`, `auth-middleware` and the rest) come from Pennsieve's AWS CodeArtifact. sbt gets a short-lived token itself with your AWS credentials, so run it from a shell where you have an MFA session or have assumed a role:
 
 ```bash
-assume-role non-prod admin    # from cli-utils
+assume-role ccmfa x           # from cli-utils: MFA session in pennsieve-cc, no role needed
+assume-role non-prod admin    # also works
 ```
 
-IntelliJ needs the same credentials. Start it from that shell (for example `idea .`). Alternatively, run `ps-codeartifact-login` (cli-utils) and give IntelliJ's sbt the `CODEARTIFACT_AUTH_TOKEN` it sets; the token lasts as long as your role session. To compile or test code
+IntelliJ needs the same credentials. Start it from that shell (for example `idea .`). Alternatively, run `ps-codeartifact-login` (cli-utils) and give IntelliJ's sbt the `CODEARTIFACT_AUTH_TOKEN` it sets; the token lasts as long as your session. To compile or test code
 across both projects use the regular sbt commands:
 
 ```bash

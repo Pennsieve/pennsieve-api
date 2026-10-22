@@ -102,7 +102,6 @@ abstract class AbstractFilesTable[T](
   def properties = column[Option[Json]]("properties")
   def assetType = column[Option[String]]("asset_type")
   def provenanceId = column[Option[UUID]]("provenance_id")
-  def published = column[Boolean]("published")
   def publishedS3VersionId = column[Option[String]]("published_s3_version_id")
   // Malware-scan columns, written by scan-service. Read as Option to
   // tolerate pre-migration rows / older DB images. DB default for
@@ -136,7 +135,6 @@ abstract class AbstractFilesTable[T](
     properties,
     assetType,
     provenanceId,
-    published,
     publishedS3VersionId,
     scan,
     id
@@ -245,21 +243,6 @@ class FilesMapper(val organization: Organization)
       }
   }
 
-  def setPublished(
-    packageId: Int,
-    published: Boolean,
-    s3Key: Option[String] = None
-  )(implicit
-    ec: ExecutionContext
-  ): DBIOAction[Int, NoStream, Effect.Write] = {
-    val baseQuery = this.filter(_.packageId === packageId)
-    val filteredQuery = s3Key match {
-      case Some(key) => baseQuery.filter(_.s3key === key)
-      case None => baseQuery
-    }
-    filteredQuery.map(_.published).update(published)
-  }
-
   def setFilePublished(
     packageId: Int,
     fileId: Int,
@@ -272,8 +255,8 @@ class FilesMapper(val organization: Organization)
     this
       .filter(_.packageId === packageId)
       .filter(_.id === fileId)
-      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId, f.published))
-      .update(s3Bucket, s3Key, Some(s3VersionID), true)
+      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId))
+      .update(s3Bucket, s3Key, Some(s3VersionID))
       .flatMap {
         case 0 =>
           DBIO.failed(NotFound(s"File for package $packageId with id $fileId"))
@@ -292,8 +275,8 @@ class FilesMapper(val organization: Organization)
     this
       .filter(_.packageId === packageId)
       .filter(_.id === fileId)
-      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId, f.published))
-      .update(s3Bucket, s3Key, None, false)
+      .map(f => (f.s3bucket, f.s3key, f.publishedS3VersionId))
+      .update(s3Bucket, s3Key, None)
       .flatMap {
         case 0 =>
           DBIO.failed(NotFound(s"File for package $packageId with id $fileId"))
