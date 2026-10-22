@@ -53,7 +53,7 @@ object FileDTO {
         file.properties,
         file.assetType,
         file.provenanceId,
-        file.published,
+        file.publishedS3VersionId.isDefined,
         file.publishedS3VersionId,
         file.scan.status,
         file.scan.scannedAt,

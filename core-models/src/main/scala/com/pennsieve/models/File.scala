@@ -76,7 +76,6 @@ final case class File(
   properties: Option[Json] = None,
   assetType: Option[String] = None,
   provenanceId: Option[UUID] = None,
-  published: Boolean = false,
   publishedS3VersionId: Option[String] = None,
   // Malware-scan state (scan_status, scanned_at, scan_engine,
   // scan_skip_reason). See FileScanInfo for why these are grouped.
