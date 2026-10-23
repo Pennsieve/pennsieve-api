@@ -1449,38 +1449,45 @@ class OrganizationsController(
           InvalidAction("Guest users may not be added to Teams."): CoreError
         ).coreErrorToActionResult()
 
-        results <- users
-          .traverse { user =>
-            secureContainer.teamManager
-              .addUser(team, user, Delete)
-              .semiflatMap { addedUser =>
-                secureContainer.organizationEventManager
-                  .logEventBestEffort(
-                    actorUserId = Some(admin.id),
-                    subjectUserId = Some(user.id),
-                    detail = OrganizationEventDetail
-                      .AddTeamUser(team.id, team.name, user.id)
-                  )
-                  .map(_ => addedUser)
-              }
-              .map { _ =>
-                insecureContainer.emailer
-                  .sendEmail(
-                    Email(user.email),
-                    Settings.support_email,
-                    insecureContainer.messageTemplates.addedToTeam(
-                      administrator = administrator,
-                      team = team.name,
-                      emailAddress = user.email,
-                      org = organization
-                    ),
-                    "You’ve been added to a team"
-                  )
+        // Each iteration is a DB insert + a logEventBestEffort (DB+SNS) + an
+        // email send -- independent per-user round trips with nothing for
+        // one user's add to wait on from another's. Building the list of
+        // EitherTs first (rather than traversing lazily one at a time)
+        // starts every underlying Future immediately, so all N adds run
+        // concurrently; .sequence below then still short-circuits on the
+        // first Left, same semantics as the prior sequential traverse.
+        addUserFutures = users.map { user =>
+          secureContainer.teamManager
+            .addUser(team, user, Delete)
+            .semiflatMap { addedUser =>
+              secureContainer.organizationEventManager
+                .logEventBestEffort(
+                  actorUserId = Some(admin.id),
+                  subjectUserId = Some(user.id),
+                  detail = OrganizationEventDetail
+                    .AddTeamUser(team.id, team.name, user.id)
+                )
+                .map(_ => addedUser)
+            }
+            .map { _ =>
+              insecureContainer.emailer
+                .sendEmail(
+                  Email(user.email),
+                  Settings.support_email,
+                  insecureContainer.messageTemplates.addedToTeam(
+                    administrator = administrator,
+                    team = team.name,
+                    emailAddress = user.email,
+                    org = organization
+                  ),
+                  "You’ve been added to a team"
+                )
 
-                user
-              }
-          }
-          .coreErrorToActionResult()
+              user
+            }
+        }
+
+        results <- addUserFutures.sequence.coreErrorToActionResult()
 
         dto <- results
           .traverse(

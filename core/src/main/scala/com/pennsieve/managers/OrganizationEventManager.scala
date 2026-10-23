@@ -100,6 +100,18 @@ trait OrganizationEventManager extends LazyLogging {
     * here must never fail the caller's (already-committed) request. Logs
     * the failure and resolves to `Unit` either way. Every call site should
     * use this rather than `logEvent` directly.
+    *
+    * Deliberate design choice, not an oversight: [[logEvent]]'s DB-then-SNS
+    * sequencing means a DB failure here (e.g. a missing/un-migrated table)
+    * silently drops the SNS publish too, with only this logged error as a
+    * trace. That's correct for this system's priorities -- the real
+    * operation these events describe (a publish, a membership change) must
+    * succeed or fail entirely on its own, never on whether a signal about
+    * it could also be sent. These events are a nice-to-have audit/notify
+    * trail, not a dependency the real operation's correctness rests on, so
+    * a lost signal here is an acceptable cost; it is not grounds to couple
+    * the real operation's outcome to this method's success, nor to
+    * decouple the SNS publish from the DB write to work around it.
     */
   def logEventBestEffort(
     actorUserId: Option[Int],

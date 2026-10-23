@@ -3527,30 +3527,44 @@ class DataSetsController(
                 // Part 4) -- best-effort; DOI isn't on PublishCompleteRequest
                 // for revisions (synchronous /revise path), so resolve it
                 // via doi-service instead. See getLatestDoiBestEffort.
+                //
+                // Skips entirely (no broadcast) if latestPublishedVersion is
+                // missing -- a dataset mid-Revision is by definition already
+                // published, so None here means our own data is stale or
+                // wrong, not that there's no version to report. The signal
+                // is a nice-to-have; a broadcast with a fabricated version
+                // number is worse than no broadcast at all.
                 _ <- EitherT.right[ActionResult](
-                  getLatestDoiBestEffort(
-                    secureContainer.organization,
-                    validated.dataset,
-                    validated.owner
-                  ).flatMap {
-                    case Some(doi) =>
-                      secureContainer.organizationEventManager
-                        .logEventBestEffort(
-                          actorUserId = None,
-                          subjectUserId = None,
-                          detail = OrganizationEventDetail.DatasetRevised(
-                            validated.dataset.id,
-                            validated.dataset.nodeId,
-                            validated.dataset.name,
-                            currentPublicationStatus.publishedDatasetId,
-                            currentPublicationStatus.latestPublishedVersion
-                              .getOrElse(0),
-                            doi,
-                            validated.owner.id,
-                            s"${validated.owner.firstName} ${validated.owner.lastName}"
-                          )
-                        )
-                    case None => Future.successful(())
+                  currentPublicationStatus.latestPublishedVersion match {
+                    case None =>
+                      logger.warn(
+                        s"organization_events: no latestPublishedVersion for dataset ${validated.dataset.nodeId}, skipping publishing broadcast"
+                      )
+                      Future.successful(())
+                    case Some(publishedVersion) =>
+                      getLatestDoiBestEffort(
+                        secureContainer.organization,
+                        validated.dataset,
+                        validated.owner
+                      ).flatMap {
+                        case Some(doi) =>
+                          secureContainer.organizationEventManager
+                            .logEventBestEffort(
+                              actorUserId = None,
+                              subjectUserId = None,
+                              detail = OrganizationEventDetail.DatasetRevised(
+                                validated.dataset.id,
+                                validated.dataset.nodeId,
+                                validated.dataset.name,
+                                currentPublicationStatus.publishedDatasetId,
+                                publishedVersion,
+                                doi,
+                                validated.owner.id,
+                                s"${validated.owner.firstName} ${validated.owner.lastName}"
+                              )
+                            )
+                        case None => Future.successful(())
+                      }
                   }
                 )
 
@@ -4064,30 +4078,44 @@ class DataSetsController(
           // not before: the broadcast is a side signal describing an
           // already-real outcome, never a participant in whether that
           // outcome is considered to have happened.
+          // Skips entirely (no broadcast) if latestPublishedVersion is
+          // missing on the pre-unpublish status -- this dataset was
+          // published a moment ago by definition, so None here means our
+          // own data is stale or wrong, not that there's no version to
+          // report. The signal is a nice-to-have; a broadcast with a
+          // fabricated version number is worse than no broadcast at all.
           _ <- EitherT.right[CoreError](publishedStatusBeforeUnpublish match {
             case Some(status) =>
-              getLatestDoiBestEffort(
-                secureContainer.organization,
-                dataset,
-                owner
-              ).flatMap {
-                case Some(doi) =>
-                  secureContainer.organizationEventManager
-                    .logEventBestEffort(
-                      actorUserId = None,
-                      subjectUserId = None,
-                      detail = OrganizationEventDetail.DatasetUnpublished(
-                        dataset.id,
-                        dataset.nodeId,
-                        dataset.name,
-                        status.publishedDatasetId,
-                        status.latestPublishedVersion.getOrElse(0),
-                        doi,
-                        owner.id,
-                        s"${owner.firstName} ${owner.lastName}"
-                      )
-                    )
-                case None => Future.successful(())
+              status.latestPublishedVersion match {
+                case None =>
+                  logger.warn(
+                    s"organization_events: no latestPublishedVersion for dataset ${dataset.nodeId}, skipping publishing broadcast"
+                  )
+                  Future.successful(())
+                case Some(publishedVersion) =>
+                  getLatestDoiBestEffort(
+                    secureContainer.organization,
+                    dataset,
+                    owner
+                  ).flatMap {
+                    case Some(doi) =>
+                      secureContainer.organizationEventManager
+                        .logEventBestEffort(
+                          actorUserId = None,
+                          subjectUserId = None,
+                          detail = OrganizationEventDetail.DatasetUnpublished(
+                            dataset.id,
+                            dataset.nodeId,
+                            dataset.name,
+                            status.publishedDatasetId,
+                            publishedVersion,
+                            doi,
+                            owner.id,
+                            s"${owner.firstName} ${owner.lastName}"
+                          )
+                        )
+                    case None => Future.successful(())
+                  }
               }
             case None => Future.successful(())
           })
