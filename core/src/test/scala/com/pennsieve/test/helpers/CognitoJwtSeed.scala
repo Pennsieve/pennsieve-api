@@ -53,12 +53,6 @@ trait CognitoJwtSeed[
       "token-pool-id",
       "client-id",
       _ => cognitoJwkProvider
-    ),
-    CognitoPoolConfig(
-      Region.US_EAST_1,
-      "token-pool-id",
-      "client-id",
-      _ => cognitoJwkProvider
     )
   )
 

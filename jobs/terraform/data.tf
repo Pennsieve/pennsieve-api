@@ -79,18 +79,6 @@ data "terraform_remote_state" "gateway" {
   }
 }
 
-# Import Upload Service 2
-data "terraform_remote_state" "upload_service_2" {
-  backend = "s3"
-
-  config = {
-    bucket = "${var.aws_account}-terraform-state"
-    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/upload-service-v2/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-
-
 # Import afs1 region
 
 data "terraform_remote_state" "africa_south_region" {

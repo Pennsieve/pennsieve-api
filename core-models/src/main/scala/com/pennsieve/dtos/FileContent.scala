@@ -40,6 +40,7 @@ case class FileContent(
   properties: Option[Json] = None,
   assetType: Option[String] = None,
   provenanceId: Option[UUID] = None,
+  // Derived from publishedS3VersionId
   published: Boolean = false,
   publishedS3VersionId: Option[String] = None,
   // Malware-scan state from the per-org files table (see scan-service
