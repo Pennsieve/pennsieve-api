@@ -64,13 +64,7 @@ trait OrganizationEventManager extends LazyLogging {
   ): EitherT[Future, CoreError, OrganizationEvent] =
     db.run(
         organizationEventMapper
-          .logEvent(
-            organization.id,
-            actorUserId,
-            subjectUserId,
-            detail,
-            timestamp
-          )
+          .logEvent(actorUserId, subjectUserId, detail, timestamp)
           .transactionally
       )
       .toEitherT
@@ -161,7 +155,6 @@ trait OrganizationEventManager extends LazyLogging {
   ): EitherT[Future, CoreError, List[OrganizationEvent]] =
     db.run(
         organizationEventMapper
-          .getEvents(organization.id)
           .sortBy(_.createdAt.desc)
           .drop(offset)
           .take(limit)

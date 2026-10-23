@@ -335,7 +335,6 @@ The lookup table exists **purely as a normalization optimization**: it lets `cha
 ```
 organization_events (
   id,
-  organization_id,
   actor_user_id,       -- who performed the action (nullable — see below)
   subject_user_id,     -- who the action was performed on (nullable — not every event has one)
   event_type,          -- OrganizationEventName stored directly as an enum column
@@ -348,7 +347,7 @@ This mirrors a pattern already used elsewhere in this codebase — `dataset_publ
 
 **Decision: single table, as shown above — not the two-table shape.** An earlier pass considered keeping two tables for structural parallelism with the dataset-changelog system despite the weak normalization payoff at this volume, but that was reconsidered: the single-table design is what's actually implemented (`organization_events`, `core/src/main/scala/com/pennsieve/db/OrganizationEventTable.scala`), with `event_type` as a direct enum column via a `MappedColumnType` registration in `PostgresProfile.scala`, mirroring `dataset_publication_log` as described above. *(Revisit if organization_events volume ever approaches dataset_events volume — unlikely, but worth naming the assumption.)*
 
-Lives in the **per-organization Postgres schema** (`organization.schemaId`), per the pennsieve-db-migrations repo's `core/` vs `organization/` migration split — same as `changelog_events`, not a shared cross-org table.
+Lives in the **per-organization Postgres schema** (`organization.schemaId`), per the pennsieve-db-migrations repo's `core/` vs `organization/` migration split — same as `changelog_events`, not a shared cross-org table. No `organization_id` column: since the table itself lives in that organization's schema, the schema *is* the organization identity, so a column repeating it would be redundant (same reasoning as `changelog_events`, which also has no such column).
 
 This intentionally does **not** touch `changelog_events`/`changelog_event_types`/`ChangelogEventName`/`ChangelogEventCategory` at all. Existing dataset-changelog code, tests, and consumers are unaffected.
 
@@ -457,7 +456,7 @@ case class DatasetOwnershipTransferred(datasetId: Int, datasetNodeId: String, da
 }
 ```
 
-Note: the event still lives in `organization_events` (keyed by `organization_id`/`subject_user_id`); it's just that its *detail* payload happens to reference a dataset. This doesn't reopen the "should `organization_events` have a `dataset_id` column" question — the table stays dataset-agnostic, same as `AddTeamUser`'s detail referencing a team without the table needing a `team_id` column.
+Note: the event still lives in `organization_events` (keyed by `subject_user_id`, with organization identity coming from the per-org schema, not a column); it's just that its *detail* payload happens to reference a dataset. This doesn't reopen the "should `organization_events` have a `dataset_id` column" question — the table stays dataset-agnostic, same as `AddTeamUser`'s detail referencing a team without the table needing a `team_id` column.
 
 ## Event vocabulary, part 3: workspace-wide visibility for privileged roles (Publishers/"Curators")
 
@@ -517,7 +516,7 @@ case class DatasetPublished(      // DatasetEmbargoed / DatasetEmbargoReleased /
 }
 ```
 
-`ownerUserId`/`ownerName` are the fields that make this payload actually useful for the motivating Curator use case ("reach out to the new owner immediately") — without them, a Curator sees "a dataset was published" with no one to contact. Denormalizing the name (rather than requiring a follow-up lookup) mirrors why `datasetName` is already inline rather than just `datasetId`. No `organizationId` on the detail — it's already on the `organization_events` row and the SNS envelope; no `actorUserId` duplication either, since there isn't one (see above).
+`ownerUserId`/`ownerName` are the fields that make this payload actually useful for the motivating Curator use case ("reach out to the new owner immediately") — without them, a Curator sees "a dataset was published" with no one to contact. Denormalizing the name (rather than requiring a follow-up lookup) mirrors why `datasetName` is already inline rather than just `datasetId`. No `organizationId` on the detail — organization identity already comes from the per-org schema the `organization_events` row lives in, and it's on the SNS envelope; no `actorUserId` duplication either, since there isn't one (see above).
 
 **Implementation note (2026-10-19): `doi`/`publishedVersion` aren't available the same way at all five call sites.** `DATASET_PUBLISHED`/`DATASET_EMBARGOED`/`DATASET_EMBARGO_RELEASED` fire from the `PUT /:id/publication/complete` callback, where `PublishCompleteRequest.doi`/`publishedVersion` are already present (both `Option`, so the broadcast is skipped with a warning log if either is missing rather than failing the request). `DATASET_UNPUBLISHED`/`DATASET_REVISED` fire from the synchronous Revision/Removal accept-flows, which never receive a DOI at all — confirmed by inspecting the actual `DatasetPublishStatus` discover-service client class, which has no `doi` field. Resolved by adding a small best-effort helper (`DataSetsController.getLatestDoiBestEffort`) that calls the existing `doiClient.getLatestDoi` (already used elsewhere in this controller for ORCID registration) — if that lookup fails, the broadcast is skipped rather than blocking the underlying revision/removal action. `publishedVersion` for these two uses `currentPublicationStatus.publishedVersionCount` (a running count, already fetched earlier in the same request) as the closest available stand-in, matching the semantic already used for the sibling revision-accepted email at the same call site.
 

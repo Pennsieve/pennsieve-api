@@ -37,7 +37,6 @@ final class OrganizationEventTable(schema: String, tag: Tag)
     extends Table[OrganizationEvent](tag, Some(schema), "organization_events") {
 
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
-  def organizationId = column[Int]("organization_id")
   def actorUserId = column[Option[Int]]("actor_user_id")
   def subjectUserId = column[Option[Int]]("subject_user_id")
   def eventType = column[OrganizationEventName]("event_type")
@@ -45,29 +44,14 @@ final class OrganizationEventTable(schema: String, tag: Tag)
   def createdAt = column[ZonedDateTime]("created_at")
 
   def * =
-    (
-      organizationId,
-      actorUserId,
-      subjectUserId,
-      eventType,
-      detail,
-      createdAt,
-      id
-    ).mapTo[OrganizationEvent]
+    (actorUserId, subjectUserId, eventType, detail, createdAt, id)
+      .mapTo[OrganizationEvent]
 }
 
 class OrganizationEventMapper(val organization: Organization)
     extends TableQuery(new OrganizationEventTable(organization.schemaId, _)) {
 
-  def getEvents(
-    organizationId: Int
-  )(implicit
-    ec: ExecutionContext
-  ): Query[OrganizationEventTable, OrganizationEvent, Seq] =
-    this.filter(_.organizationId === organizationId)
-
   def logEvent(
-    organizationId: Int,
     actorUserId: Option[Int],
     subjectUserId: Option[Int],
     detail: OrganizationEventDetail,
@@ -77,7 +61,6 @@ class OrganizationEventMapper(val organization: Organization)
   ): DBIO[OrganizationEvent] =
     (this returning this) +=
       OrganizationEvent(
-        organizationId = organizationId,
         actorUserId = actorUserId,
         subjectUserId = subjectUserId,
         eventType = detail.eventType,

@@ -39,7 +39,6 @@ class OrganizationEventManagerSpec extends BaseManagerSpec {
       .await
       .value
 
-    event.organizationId shouldBe testOrganization.id
     event.actorUserId shouldBe Some(superAdmin.id)
     event.subjectUserId shouldBe Some(user.id)
     event.eventType shouldBe OrganizationEventName.ADD_ORGANIZATION_USER

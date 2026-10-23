@@ -25,9 +25,12 @@ import io.circe._
   * `actorUserId`/`subjectUserId` are both nullable -- see that doc's Schema
   * section for why: some events have no single human actor (workspace-wide
   * broadcasts), and not every event has a single subject (e.g. CREATE_TEAM).
+  *
+  * No `organizationId` field: this table lives in the per-organization
+  * schema, so the organization is already identified by which schema the
+  * row is in (mirrors `changelog_events`, which has no such column either).
   */
 case class OrganizationEvent(
-  organizationId: Int,
   actorUserId: Option[Int],
   subjectUserId: Option[Int],
   eventType: OrganizationEventName,
