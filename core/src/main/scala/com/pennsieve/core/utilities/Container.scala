@@ -316,6 +316,25 @@ trait ChangelogContainer {
 
 }
 
+trait OrganizationEventContainer {
+  self: Container with SecureCoreContainer with SNSContainer =>
+
+  // Reuses the SAME SNS topic as ChangelogContainer -- organization events
+  // are a new producer onto the existing topic, not a new topic. See
+  // docs/changelog-events.md Part 2, "Wire format".
+  val organization_events_topic: SnsTopic =
+    config.as[String]("pennsieve.changelog.sns_topic")
+
+  lazy val organizationEventManager: OrganizationEventManager =
+    new OrganizationEventManagerImpl(
+      db,
+      organization,
+      organization_events_topic,
+      sns
+    )
+
+}
+
 trait RequestContextContainer extends OrganizationContainer {
   self: Container =>
   val user: User

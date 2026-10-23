@@ -36,8 +36,9 @@ import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
 import com.pennsieve.helpers.ResultHandlers.OkResult
 import com.pennsieve.helpers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.managers.OrganizationEventManagerImpl
 import com.pennsieve.models.DBPermission.Guest
-import com.pennsieve.models.Degree
+import com.pennsieve.models.{ Degree, OrganizationEventDetail }
 import org.json4s._
 import org.scalatra._
 import org.scalatra.json.JacksonJsonSupport
@@ -182,6 +183,13 @@ class AccountController(
           )(
             insecureContainer.organizationManager,
             insecureContainer.userInviteManager,
+            organization =>
+              new OrganizationEventManagerImpl(
+                insecureContainer.db,
+                organization,
+                insecureContainer.sns_topic,
+                insecureContainer.sns
+              ),
             executor
           )
           .orBadRequest()
@@ -193,6 +201,23 @@ class AccountController(
         _ <- insecureContainer.organizationManager
           .addUser(welcomeOrganization, newUser, Guest)
           .orError()
+
+        // Distinct from the per-invite events createFromInvite logs for
+        // each real inviting organization above -- this is its own,
+        // separate grant. No actor: self-service signup, no admin present.
+        _ <- EitherT.right[ActionResult](
+          new OrganizationEventManagerImpl(
+            insecureContainer.db,
+            welcomeOrganization,
+            insecureContainer.sns_topic,
+            insecureContainer.sns
+          ).logEventBestEffort(
+            actorUserId = None,
+            subjectUserId = Some(newUser.id),
+            detail = OrganizationEventDetail
+              .AddExternalOrganizationUser(newUser.id, Guest)
+          )
+        )
 
         organizations <- insecureContainer.userManager
           .getOrganizations(newUser)

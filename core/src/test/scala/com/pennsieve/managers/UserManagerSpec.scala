@@ -122,7 +122,12 @@ class UserManagerSpec extends BaseManagerSpec {
         middleInitial = None,
         degree = None,
         title = "title"
-      )(organizationManager(), userInviteManager, global)
+      )(
+        organizationManager(),
+        userInviteManager,
+        organizationEventManager(_),
+        global
+      )
       .await
       .value
 
@@ -186,7 +191,12 @@ class UserManagerSpec extends BaseManagerSpec {
         title = "title",
         middleInitial = None,
         degree = None
-      )(organizationManager(), userInviteManager, global)
+      )(
+        organizationManager(),
+        userInviteManager,
+        organizationEventManager(_),
+        global
+      )
       .await
       .value
 

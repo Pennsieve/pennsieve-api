@@ -30,6 +30,7 @@ import com.pennsieve.models.{
   Degree,
   NodeCodes,
   Organization,
+  OrganizationEventDetail,
   Package,
   Team,
   User,
@@ -225,6 +226,7 @@ trait UserManager {
   )(implicit
     organizationManager: OrganizationManager,
     userInviteManager: UserInviteManager,
+    organizationEventManagerFor: Organization => OrganizationEventManager,
     ec: ExecutionContext
   ): EitherT[Future, CoreError, User] =
     for {
@@ -262,11 +264,28 @@ trait UserManager {
         invite => userInviteManager.getOrganization(invite)
       )
 
+      // Each invite grants membership in its own (real, inviting)
+      // organization -- log ADD_EXTERNAL_ORGANIZATION_USER once per
+      // invite, against that organization, not a fixed/unrelated one.
+      // Best-effort: this is a new-account signup flow and an event-log
+      // failure must never fail account creation after invites are
+      // about to be consumed below.
       _ <- organizations
         .zip(invites)
         .map {
           case (organization, inv) =>
-            organizationManager.addUser(organization, user, inv.permission)
+            organizationManager
+              .addUser(organization, user, inv.permission)
+              .semiflatMap { result =>
+                organizationEventManagerFor(organization)
+                  .logEventBestEffort(
+                    actorUserId = None,
+                    subjectUserId = Some(user.id),
+                    detail = OrganizationEventDetail
+                      .AddExternalOrganizationUser(user.id, inv.permission)
+                  )
+                  .map(_ => result)
+              }
         }
         .sequence
 
