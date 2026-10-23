@@ -61,7 +61,8 @@ import com.pennsieve.clients.CustomTermsOfServiceClient
 import com.pennsieve.domain.{
   CoreError,
   InvalidDateVersion,
-  MissingCustomTermsOfService
+  MissingCustomTermsOfService,
+  NotFound
 }
 import com.pennsieve.managers.OrganizationManager.Invite
 
@@ -227,6 +228,35 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
 
+        // inviteMember's addUser call is an upsert: a "found existing user by
+        // email" result can mean either a brand-new membership or a permission
+        // change to an existing membership. Pre-fetch each invite's prior
+        // permission BEFORE calling inviteMember (which performs the upsert),
+        // since reading it afterward would only ever see the post-upsert
+        // (i.e. new/requested) value -- a user not found yet just means no
+        // prior membership, not an error, so NotFound collapses to None here
+        // rather than failing the whole request.
+        priorPermissions <- inviteRequests.invites.toList
+          .traverse { invite =>
+            insecureContainer.userManager
+              .getByEmail(invite.email)
+              .flatMap { user =>
+                secureContainer.organizationManager
+                  .getUserPermission(organization, user)
+                  .map(permission => invite.email -> permission)
+              }
+              .leftFlatMap {
+                case _: NotFound =>
+                  EitherT.rightT[Future, CoreError](
+                    invite.email -> (None: Option[DBPermission])
+                  )
+                case error =>
+                  EitherT.leftT[Future, (String, Option[DBPermission])](error)
+              }
+          }
+          .map(_.toMap)
+          .coreErrorToActionResult()
+
         // TODO: only process a single invite per request
         results <- inviteRequests.invites.toList
           .traverse(
@@ -245,26 +275,22 @@ class OrganizationsController(
                   insecureContainer.messageTemplates,
                   executor
                 )
+                .map(result => invite.email -> result)
           )
           .coreErrorToActionResult()
 
         // Only AddedExistingUser represents an immediate add -- InvitedNewUser
         // is just a pending Cognito invite, logged as ADD_EXTERNAL_ORGANIZATION_USER
         // on acceptance instead (AccountController's createAccountFromInvite).
-        //
-        // inviteMember's addUser call is an upsert: a "found existing user by
-        // email" result can mean either a brand-new membership or a permission
-        // change to an existing membership. Pre-fetch to tell the two apart so
-        // we log the right event (or none, if nothing actually changed).
         _ <- results
           .traverse {
-            case OrganizationManager.AddEmailResult.AddedExistingUser(user) =>
+            case (
+                email,
+                OrganizationManager.AddEmailResult.AddedExistingUser(user)
+                ) =>
               val newPermission = DBPermission.fromRole(inviteRequests.role)
-              for {
-                priorPermission <- secureContainer.organizationManager
-                  .getUserPermission(organization, user)
-                  .coreErrorToActionResult()
-                _ <- EitherT.right[ActionResult](priorPermission match {
+              EitherT.right[ActionResult](
+                priorPermissions.getOrElse(email, None) match {
                   case Some(oldPermission) if oldPermission != newPermission =>
                     secureContainer.organizationEventManager
                       .logEventBestEffort(
@@ -287,9 +313,9 @@ class OrganizationsController(
                         detail = OrganizationEventDetail
                           .AddOrganizationUser(user.id, newPermission)
                       )
-                })
-              } yield ()
-            case OrganizationManager.AddEmailResult.InvitedNewUser(_) =>
+                }
+              )
+            case (_, OrganizationManager.AddEmailResult.InvitedNewUser(_)) =>
               EitherT.rightT[Future, ActionResult](())
           }
 
@@ -302,7 +328,10 @@ class OrganizationsController(
 
       } yield
         results
-          .map(AddUserResponse(organization)(_))
+          .map {
+            case (_, addEmailResult) =>
+              AddUserResponse(organization)(addEmailResult)
+          }
           .map(dto => (dto.email.toString, dto)) // Backwards-compatible response
           .toMap
       val is = result.value.map(OkResult)

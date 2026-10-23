@@ -527,6 +527,88 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
   }
 
+  test(
+    "adding an existing org member logs ADD_ORGANIZATION_USER on first add, UPDATE_ORGANIZATION_PERMISSION on a later permission change"
+  ) {
+    // externalUser is a real User account (per BaseApiTest fixtures) but not
+    // yet a member of loggedInOrganization -- the first add below is a
+    // genuinely new membership.
+    val firstAddReq = write(
+      AddToOrganizationRequest(
+        Set(
+          Invite(
+            externalUser.email,
+            externalUser.firstName,
+            externalUser.lastName
+          )
+        ),
+        role = Some(Role.Viewer)
+      )
+    )
+
+    postJson(
+      s"/${loggedInOrganization.nodeId}/members",
+      firstAddReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    val eventsAfterFirstAdd =
+      secureContainer.organizationEventManager.getEvents().await.value
+    eventsAfterFirstAdd.map(_.eventType) should contain(
+      OrganizationEventName.ADD_ORGANIZATION_USER
+    )
+    eventsAfterFirstAdd.map(_.eventType) should not contain
+      OrganizationEventName.UPDATE_ORGANIZATION_PERMISSION
+
+    // Re-add the same user with a different role -- inviteMember's addUser
+    // is an upsert, so this should be detected as a permission change, not
+    // logged as another ADD_ORGANIZATION_USER.
+    val secondAddReq = write(
+      AddToOrganizationRequest(
+        Set(
+          Invite(
+            externalUser.email,
+            externalUser.firstName,
+            externalUser.lastName
+          )
+        ),
+        role = Some(Role.Editor)
+      )
+    )
+
+    postJson(
+      s"/${loggedInOrganization.nodeId}/members",
+      secondAddReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    val eventsAfterPermissionChange =
+      secureContainer.organizationEventManager.getEvents().await.value
+
+    val updateEvents = eventsAfterPermissionChange.filter(
+      _.eventType == OrganizationEventName.UPDATE_ORGANIZATION_PERMISSION
+    )
+    updateEvents should have size 1
+
+    val detail = updateEvents.head.detail
+      .as(OrganizationEventDetail.decoder(updateEvents.head.eventType))
+      .value
+      .asInstanceOf[OrganizationEventDetail.UpdateOrganizationPermission]
+
+    detail.userId shouldBe externalUser.id
+    detail.oldPermission shouldBe DBPermission.Read
+    detail.newPermission shouldBe DBPermission.Delete
+
+    // Still only one ADD_ORGANIZATION_USER total -- the second call must not
+    // log a second add.
+    eventsAfterPermissionChange
+      .count(_.eventType == OrganizationEventName.ADD_ORGANIZATION_USER) shouldBe 1
+  }
+
   test("remove an organization member") {
 
     val user = userManager
