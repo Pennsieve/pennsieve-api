@@ -357,6 +357,28 @@ object FileTypeInfo {
         hasWorkflow = false,
         icon = Microscope
       )
+    case OMEZarr =>
+      FileTypeInfo(
+        fileType = OMEZarr,
+        packageType = PackageType.Slide,
+        packageSubtype = "Image",
+        masterExtension = None,
+        grouping = Individual,
+        validate = false,
+        hasWorkflow = false,
+        icon = Microscope
+      )
+    case TSZarr =>
+      FileTypeInfo(
+        fileType = TSZarr,
+        packageType = PackageType.TimeSeries,
+        packageSubtype = "Timeseries",
+        masterExtension = None,
+        grouping = Individual,
+        validate = false,
+        hasWorkflow = false,
+        icon = Timeseries
+      )
     case BRUKERTIFF =>
       FileTypeInfo(
         fileType = BRUKERTIFF,
