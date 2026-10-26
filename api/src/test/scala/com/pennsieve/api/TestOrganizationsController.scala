@@ -1720,4 +1720,81 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     }
   }
 
+  test(
+    "addToTeam applies partially when one user in the batch fails (pre-existing behavior, not changed by traverse vs. map+sequence)"
+  ) {
+    val team =
+      teamManager.create("PartialFailureTeam", loggedInOrganization).await.value
+
+    def addOrgMember(email: String): User = {
+      val created = insecureContainer.userManager
+        .create(
+          User(
+            NodeCodes.generateId(NodeCodes.userCode),
+            email,
+            "first",
+            None,
+            "last",
+            None,
+            "cred",
+            "",
+            "http://test.com",
+            0,
+            false,
+            false,
+            None
+          )
+        )
+        .await
+        .value
+      organizationManager
+        .addUser(loggedInOrganization, created, Delete)
+        .await
+        .value
+      created
+    }
+
+    val firstUser = addOrgMember("partial-failure-first@test.com")
+    // TeamManager.addUser rejects integration users outright -- used here
+    // purely as a reliable mid-batch failure trigger, not because
+    // integration-user team membership is the thing under test.
+    val failingUser = integrationUser
+    val lastUser = addOrgMember("partial-failure-last@test.com")
+
+    val addToTeamRequest = write(
+      AddToTeamRequest(
+        List(firstUser.nodeId, failingUser.nodeId, lastUser.nodeId)
+      )
+    )
+
+    postJson(
+      s"/${loggedInOrganization.nodeId}/teams/${team.nodeId}/members",
+      addToTeamRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(400)
+    }
+
+    // The request as a whole reports failure, but cats' List[A].traverse
+    // over EitherT[Future, E, *] does not stop at the first Left -- every
+    // element's underlying Future already ran by the time any failure is
+    // observed (confirmed empirically, independent of this endpoint). So
+    // both the user before AND the user after the failing one are added,
+    // even though the HTTP response is a 400. This is real, pre-existing
+    // behavior (unrelated to today's traverse-vs-map+sequence choice,
+    // both have it) -- not something this test is asserting as correct,
+    // just documenting so a future fix has a regression test to flip.
+    val teamMemberIds =
+      teamManager.getUsers(team).await.value.map(_.id)
+
+    teamMemberIds should contain(firstUser.id)
+    teamMemberIds should contain(lastUser.id)
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.ADD_TEAM_USER => e
+    } should have size 2
+  }
+
 }

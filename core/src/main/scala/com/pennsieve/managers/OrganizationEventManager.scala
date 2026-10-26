@@ -112,6 +112,11 @@ trait OrganizationEventManager extends LazyLogging {
     * a lost signal here is an acceptable cost; it is not grounds to couple
     * the real operation's outcome to this method's success, nor to
     * decouple the SNS publish from the DB write to work around it.
+    *
+    * That said, a lost signal must not go unnoticed: this method's
+    * `logger.error` call is required to be wired to an alert/metric before
+    * this ships, not optional ops hygiene -- see docs/changelog-events.md's
+    * "Durability/atomicity of event logging" note.
     */
   def logEventBestEffort(
     actorUserId: Option[Int],

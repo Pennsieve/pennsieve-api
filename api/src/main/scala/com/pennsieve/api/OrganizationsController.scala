@@ -1449,45 +1449,51 @@ class OrganizationsController(
           InvalidAction("Guest users may not be added to Teams."): CoreError
         ).coreErrorToActionResult()
 
-        // Each iteration is a DB insert + a logEventBestEffort (DB+SNS) + an
-        // email send -- independent per-user round trips with nothing for
-        // one user's add to wait on from another's. Building the list of
-        // EitherTs first (rather than traversing lazily one at a time)
-        // starts every underlying Future immediately, so all N adds run
-        // concurrently; .sequence below then still short-circuits on the
-        // first Left, same semantics as the prior sequential traverse.
-        addUserFutures = users.map { user =>
-          secureContainer.teamManager
-            .addUser(team, user, Delete)
-            .semiflatMap { addedUser =>
-              secureContainer.organizationEventManager
-                .logEventBestEffort(
-                  actorUserId = Some(admin.id),
-                  subjectUserId = Some(user.id),
-                  detail = OrganizationEventDetail
-                    .AddTeamUser(team.id, team.name, user.id)
-                )
-                .map(_ => addedUser)
-            }
-            .map { _ =>
-              insecureContainer.emailer
-                .sendEmail(
-                  Email(user.email),
-                  Settings.support_email,
-                  insecureContainer.messageTemplates.addedToTeam(
-                    administrator = administrator,
-                    team = team.name,
-                    emailAddress = user.email,
-                    org = organization
-                  ),
-                  "You’ve been added to a team"
-                )
+        // Reverted a prior attempt to parallelize this (building the
+        // EitherT list via .map, then .sequence) for latency: empirically
+        // (not just in theory) cats' List[A].traverse over
+        // EitherT[Future, E, *] does NOT stop at the first failure either
+        // -- every element's underlying Future is already running by the
+        // time any Left is observed, same as .sequence would. So
+        // addToTeam has *always* applied partially on a mid-batch failure
+        // (users after the failing one can still get added), independent
+        // of traverse vs. map+sequence; this revert is a readability/
+        // latency wash, not a correctness fix. The partial-application
+        // behavior itself is a real, pre-existing gap worth its own fix
+        // (e.g. a manual fold with an early exit), tracked separately --
+        // not introduced or fixed by this change.
+        results <- users
+          .traverse { user =>
+            secureContainer.teamManager
+              .addUser(team, user, Delete)
+              .semiflatMap { addedUser =>
+                secureContainer.organizationEventManager
+                  .logEventBestEffort(
+                    actorUserId = Some(admin.id),
+                    subjectUserId = Some(user.id),
+                    detail = OrganizationEventDetail
+                      .AddTeamUser(team.id, team.name, user.id)
+                  )
+                  .map(_ => addedUser)
+              }
+              .map { _ =>
+                insecureContainer.emailer
+                  .sendEmail(
+                    Email(user.email),
+                    Settings.support_email,
+                    insecureContainer.messageTemplates.addedToTeam(
+                      administrator = administrator,
+                      team = team.name,
+                      emailAddress = user.email,
+                      org = organization
+                    ),
+                    "You’ve been added to a team"
+                  )
 
-              user
-            }
-        }
-
-        results <- addUserFutures.sequence.coreErrorToActionResult()
+                user
+              }
+          }
+          .coreErrorToActionResult()
 
         dto <- results
           .traverse(

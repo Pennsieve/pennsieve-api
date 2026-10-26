@@ -91,6 +91,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
   var mockPublishClient: MockPublishClient = _
 
+  var mockDoiClient: MockDoiClient = _
+
   var mockSearchClient: MockSearchClient = _
 
   implicit val zonedDateTimeOrdering: Ordering[ZonedDateTime] =
@@ -104,6 +106,8 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     }
 
     mockPublishClient = new MockPublishClient()
+
+    mockDoiClient = new MockDoiClient()
 
     mockSearchClient = new MockSearchClient()
 
@@ -148,7 +152,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         mockSqsClient,
         mockPublishClient,
         mockSearchClient,
-        new MockDoiClient(),
+        mockDoiClient,
         mockDatasetAssetClient,
         new MockCognito,
         mockOrcidClient,
@@ -9167,6 +9171,399 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     latestPublicationStatus.publicationStatus shouldBe PublicationStatus.Failed
   }
 
+  test(
+    "fire a DATASET_PUBLISHED organization event when publish completes with a version and doi"
+  ) {
+    val dataset = createDataSet("My Dataset")
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
+      .await
+      .value
+
+    val request = write(
+      PublishCompleteRequest(
+        publishedDatasetId = Some(99),
+        publishedVersionCount = 1,
+        lastPublishedDate = Some(OffsetDateTime.now),
+        status = PublishStatus.PublishSucceeded,
+        success = true,
+        error = None,
+        publishedVersion = Some(1),
+        doi = Some("10.1234/abcd")
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    val published = events.collect {
+      case e if e.eventType == OrganizationEventName.DATASET_PUBLISHED => e
+    }
+
+    published should have size 1
+    val decoded = published.head.detail
+      .as(OrganizationEventDetail.decoder(published.head.eventType))
+      .value
+
+    decoded shouldBe OrganizationEventDetail.DatasetPublished(
+      datasetId = dataset.id,
+      datasetNodeId = dataset.nodeId,
+      datasetName = dataset.name,
+      publishedDatasetId = Some(99),
+      publishedVersion = 1,
+      doi = "10.1234/abcd",
+      ownerUserId = loggedInUser.id,
+      ownerName = s"${loggedInUser.firstName} ${loggedInUser.lastName}"
+    )
+  }
+
+  test(
+    "skip the DATASET_PUBLISHED broadcast (but still complete the publish) when version/doi are missing"
+  ) {
+    val dataset = createDataSet("My Dataset")
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
+      .await
+      .value
+
+    val request = write(
+      PublishCompleteRequest(
+        Some(1),
+        1,
+        Some(OffsetDateTime.now),
+        PublishStatus.PublishSucceeded,
+        success = true,
+        error = None
+        // publishedVersion/doi left at their None defaults
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    val latestPublicationStatus =
+      secureContainer.datasetPublicationStatusManager
+        .getLatestByDataset(dataset.id)
+        .await
+        .value
+        .get
+    latestPublicationStatus.publicationStatus shouldBe PublicationStatus.Completed
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.DATASET_PUBLISHED => e
+    } shouldBe empty
+  }
+
+  test(
+    "fire a DATASET_EMBARGO_RELEASED organization event when a release completes with a version and doi"
+  ) {
+    val dataset = createDataSet("My Dataset")
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Release)
+      .await
+      .value
+
+    val request = write(
+      PublishCompleteRequest(
+        publishedDatasetId = Some(99),
+        publishedVersionCount = 1,
+        lastPublishedDate = Some(OffsetDateTime.now),
+        status = PublishStatus.PublishSucceeded,
+        success = true,
+        error = None,
+        publishedVersion = Some(2),
+        doi = Some("10.1234/released")
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.DATASET_EMBARGO_RELEASED =>
+        e
+    } should have size 1
+  }
+
+  test("fire a DATASET_REVISED organization event when a revision is accepted") {
+    val dataset = initializePublicationTest()
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Requested, PublicationType.Revision)
+      .await
+      .value
+
+    // currentPublicationStatus.latestPublishedVersion comes from a live
+    // getPublishedStatus call (DataSetPublishingHelper), not the local DB
+    // row -- must be seeded or the S2 guard correctly skips the broadcast.
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 38,
+      latestPublishedVersion = 3
+    )
+
+    mockDoiClient.createMockDoi(
+      loggedInOrganization.id,
+      dataset.id,
+      CreateDraftDoiRequest(
+        title = Some(dataset.name),
+        publicationYear = Some(2026)
+      )
+    )
+
+    post(
+      s"/${dataset.nodeId}/publication/accept?publicationType=revision",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.DATASET_REVISED => e
+    } should have size 1
+  }
+
+  test("skip the DATASET_REVISED broadcast when no DOI can be resolved") {
+    val dataset = initializePublicationTest()
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Requested, PublicationType.Revision)
+      .await
+      .value
+
+    // Deliberately not seeding mockDoiClient with a DOI for this dataset --
+    // getLatestDoiBestEffort should resolve to None, and the broadcast
+    // should be skipped rather than fail the real accept.
+
+    post(
+      s"/${dataset.nodeId}/publication/accept?publicationType=revision",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.DATASET_REVISED => e
+    } shouldBe empty
+  }
+
+  test("fire a DATASET_UNPUBLISHED organization event when a removal completes") {
+    val dataset = initializePublicationTest()
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Completed, PublicationType.Publication)
+      .await
+      .value
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Requested, PublicationType.Removal)
+      .await
+      .value
+
+    mockPublishClient.withGetStatusPublished(
+      publishedDatasetId = 42,
+      latestPublishedVersion = 3
+    )
+
+    mockDoiClient.createMockDoi(
+      loggedInOrganization.id,
+      dataset.id,
+      CreateDraftDoiRequest(
+        title = Some(dataset.name),
+        publicationYear = Some(2026)
+      )
+    )
+
+    post(
+      s"/${dataset.nodeId}/publication/accept?publicationType=removal",
+      headers = authorizationHeader(colleagueJwt) ++ traceIdHeader()
+    ) {
+      status shouldBe 201
+    }
+
+    removalCompleteResult()(dataset)._1 shouldBe 200
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.DATASET_UNPUBLISHED => e
+    } should have size 1
+  }
+
+  test(
+    "a duplicate (redelivered) publish-complete callback is a no-op once the row is already Completed"
+  ) {
+    val dataset = createDataSet("My Dataset")
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
+      .await
+      .value
+
+    val request = write(
+      PublishCompleteRequest(
+        publishedDatasetId = Some(99),
+        publishedVersionCount = 1,
+        lastPublishedDate = Some(OffsetDateTime.now),
+        status = PublishStatus.PublishSucceeded,
+        success = true,
+        error = None,
+        publishedVersion = Some(1),
+        doi = Some("10.1234/abcd")
+      )
+    )
+
+    // First delivery: completes normally and fires the broadcast once.
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    val statusAfterFirst = secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .get
+    statusAfterFirst.publicationStatus shouldBe PublicationStatus.Completed
+
+    // Redelivery of the exact same callback: the guard should see the
+    // latest status is already Completed and no-op, not re-send emails,
+    // re-fire the broadcast, or re-run registerPublication.
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      request,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.DATASET_PUBLISHED => e
+    } should have size 1
+  }
+
+  test(
+    "a publish-complete callback that fails before create() leaves the row Accepted, so a redelivery completes the real work"
+  ) {
+    val dataset = createDataSet("My Dataset")
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
+      .await
+      .value
+
+    // success=true with no publishedDatasetId trips the "Missing published
+    // dataset ID" InternalServerError inside publishCompleteBody's success
+    // branch, before removePublisherTeam/emails/broadcast/create ever run
+    // -- simulating a delivery that fails partway through the real work,
+    // not just a network blip before anything started.
+    val badRequest = write(
+      PublishCompleteRequest(
+        publishedDatasetId = None,
+        publishedVersionCount = 1,
+        lastPublishedDate = Some(OffsetDateTime.now),
+        status = PublishStatus.PublishSucceeded,
+        success = true,
+        error = None,
+        publishedVersion = Some(1),
+        doi = Some("10.1234/abcd")
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      badRequest,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 500
+    }
+
+    val afterFailure = secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .get
+    // create() never ran: the row is still Accepted, not Completed, so the
+    // isDuplicate guard will NOT short-circuit a redelivery.
+    afterFailure.publicationStatus shouldBe PublicationStatus.Accepted
+
+    val goodRequest = write(
+      PublishCompleteRequest(
+        publishedDatasetId = Some(99),
+        publishedVersionCount = 1,
+        lastPublishedDate = Some(OffsetDateTime.now),
+        status = PublishStatus.PublishSucceeded,
+        success = true,
+        error = None,
+        publishedVersion = Some(1),
+        doi = Some("10.1234/abcd")
+      )
+    )
+
+    putJson(
+      s"/${dataset.id}/publication/complete",
+      goodRequest,
+      headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+    ) {
+      status shouldBe 200
+    }
+
+    val afterRedelivery = secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .get
+    afterRedelivery.publicationStatus shouldBe PublicationStatus.Completed
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.DATASET_PUBLISHED => e
+    } should have size 1
+  }
+
   test("deserialize publish-complete message correctly") {
     val date =
       OffsetDateTime.of(2014, 10, 4, 12, 34, 56, 0, ZoneOffset.of("+09:00"))
@@ -10885,6 +11282,69 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         response.filter(u => u.email.equals(externalUser.email))
       externalPresent.length shouldEqual (1)
     }
+  }
+
+  test(
+    "addExternalCollaborator fires ADDED_TO_DATASET on a genuinely new grant (S7, round 3)"
+  ) {
+    val dataset = createDataSet(s"test-dataset-for-external-invite-event")
+    val externalInvite = CollaboratorRoleDTO(externalUser.email, Role.Editor)
+
+    putJson(
+      s"/${dataset.nodeId}/collaborators/external",
+      write(externalInvite),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldEqual (200)
+    }
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    val added = events.collect {
+      case e if e.eventType == OrganizationEventName.ADDED_TO_DATASET => e
+    }
+
+    added should have size 1
+    val decoded = added.head.detail
+      .as(OrganizationEventDetail.decoder(added.head.eventType))
+      .value
+
+    decoded shouldBe OrganizationEventDetail.AddedToDataset(
+      dataset.id,
+      dataset.nodeId,
+      dataset.name,
+      Role.Editor
+    )
+  }
+
+  test(
+    "addExternalCollaborator does not re-fire ADDED_TO_DATASET on a role change for an existing collaborator"
+  ) {
+    val dataset = createDataSet(s"test-dataset-for-external-role-change")
+    val externalInvite = CollaboratorRoleDTO(externalUser.email, Role.Editor)
+
+    putJson(
+      s"/${dataset.nodeId}/collaborators/external",
+      write(externalInvite),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldEqual (200)
+    }
+
+    val roleChange = CollaboratorRoleDTO(externalUser.email, Role.Viewer)
+    putJson(
+      s"/${dataset.nodeId}/collaborators/external",
+      write(roleChange),
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status shouldEqual (200)
+    }
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.ADDED_TO_DATASET => e
+    } should have size 1
   }
 
   test("external user should have access to a dataset they are invited to") {

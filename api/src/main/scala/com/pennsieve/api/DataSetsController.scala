@@ -2266,6 +2266,29 @@ class DataSetsController(
           .addUserCollaborator(dataset, user, userDto.role)
           .coreErrorToActionResult()
 
+        // Mirrors addUserCollaborator's own ADDED_TO_DATASET call (S7,
+        // round 3): this is the most common route to dataset access
+        // (share-by-email), so it should emit the same signal a direct
+        // addUserCollaborator grant does. Same oldRole.isEmpty guard --
+        // only a genuinely new grant, not a role change on an existing
+        // collaborator.
+        _ <- if (oldRole.oldRole.isEmpty)
+          EitherT.right[ActionResult](
+            secureContainer.organizationEventManager
+              .logEventBestEffort(
+                actorUserId = Some(invitingUser.id),
+                subjectUserId = Some(user.id),
+                detail = OrganizationEventDetail.AddedToDataset(
+                  dataset.id,
+                  dataset.nodeId,
+                  dataset.name,
+                  userDto.role
+                )
+              )
+          )
+        else
+          EitherT.rightT[Future, ActionResult](())
+
         // ensure user is in the Welcome Workspace
         welcomeWorkspace <- secureContainer.organizationManager
           .getBySlug("welcome_to_pennsieve")
@@ -4228,48 +4251,31 @@ class DataSetsController(
         ): CoreError
       ).coreErrorToActionResult()
 
-      _ <- secureContainer.datasetPublicationStatusManager
-        .create(
-          dataset = dataset,
-          publicationStatus =
-            if (body.success)
-              PublicationStatus.Completed
-            else PublicationStatus.Failed,
-          publicationType = publicationStatus.publicationType,
-          comments = publicationStatus.comments,
-          embargoReleaseDate = publicationStatus.embargoReleaseDate,
-          publicationArtifact =
-            if (body.success)
-              ChangelogEventDetail.PublicationArtifact(
-                publishedDatasetId = body.publishedDatasetId,
-                publishedVersion = body.publishedVersion,
-                doi = body.doi
-              )
-            else ChangelogEventDetail.PublicationArtifact()
-        )
-        .coreErrorToActionResult()
+      // On failure there's no tail work the Failed write needs to follow,
+      // so write it immediately, same as before. On success, create(Completed)
+      // moves to the very end of this method (see below) instead of running
+      // here first: the idempotency guard in the caller short-circuits any
+      // redelivery once the latest status is no longer Accepted, so if
+      // create(Completed) ran first and a *later* step in this method then
+      // failed, a redelivered retry would see Completed, hit the guard, and
+      // silently skip the remaining real work a second time -- emails never
+      // sent, publisher team never removed, broadcast never fired, with
+      // nothing to flag it. Mirrors finalizeAcceptedRemoval's shape, where
+      // create(Completed) is also the method's last step.
+      _ <- if (!body.success)
+        secureContainer.datasetPublicationStatusManager
+          .create(
+            dataset = dataset,
+            publicationStatus = PublicationStatus.Failed,
+            publicationType = publicationStatus.publicationType,
+            comments = publicationStatus.comments,
+            embargoReleaseDate = publicationStatus.embargoReleaseDate,
+            publicationArtifact = ChangelogEventDetail.PublicationArtifact()
+          )
+          .coreErrorToActionResult()
+      else EitherT.rightT[Future, ActionResult](())
 
-      // Only remove the publisher team if the publish was successful.
-      // In the case of failure, a subsequent success (via retry) or a
-      // reject will remove it
-
-      _ <- (if (body.success) {
-              DataSetPublishingHelper.removePublisherTeam(
-                secureContainer,
-                dataset
-              )
-            } else {
-              EitherT.rightT[Future, CoreError](())
-            }).coreErrorToActionResult()
-
-      contributors <- secureContainer.datasetManager
-        .getContributors(dataset)
-        .map(_.map(ContributorDTO(_)))
-        .coreErrorToActionResult()
-
-      _ = if (body.success) {
-        logger.info(s"Publish complete for dataset ${dataset.nodeId}")
-      } else {
+      _ = if (!body.success) {
         logger.error(
           s"Publish failed for dataset ${dataset.nodeId}: ${body.error}"
         )
@@ -4281,6 +4287,17 @@ class DataSetsController(
             InternalServerError("Missing published dataset ID")
           )
           .toEitherT[Future]
+
+        _ <- DataSetPublishingHelper
+          .removePublisherTeam(secureContainer, dataset)
+          .coreErrorToActionResult()
+
+        contributors <- secureContainer.datasetManager
+          .getContributors(dataset)
+          .map(_.map(ContributorDTO(_)))
+          .coreErrorToActionResult()
+
+        _ = logger.info(s"Publish complete for dataset ${dataset.nodeId}")
 
         //find all the files with a state of pending and mark them as Uploaded
         _ <- secureContainer.packageManager
@@ -4412,6 +4429,23 @@ class DataSetsController(
               Future.successful(())
           }
           .toEitherT
+          .coreErrorToActionResult()
+
+        // create(Completed) is the last real step, not the first: see the
+        // comment above the Failed-branch create call for why.
+        _ <- secureContainer.datasetPublicationStatusManager
+          .create(
+            dataset = dataset,
+            publicationStatus = PublicationStatus.Completed,
+            publicationType = publicationStatus.publicationType,
+            comments = publicationStatus.comments,
+            embargoReleaseDate = publicationStatus.embargoReleaseDate,
+            publicationArtifact = ChangelogEventDetail.PublicationArtifact(
+              publishedDatasetId = body.publishedDatasetId,
+              publishedVersion = body.publishedVersion,
+              doi = body.doi
+            )
+          )
           .coreErrorToActionResult()
 
       } yield ()
