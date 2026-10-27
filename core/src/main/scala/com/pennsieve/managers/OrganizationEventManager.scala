@@ -26,6 +26,7 @@ import com.pennsieve.models._
 import com.pennsieve.traits.PostgresProfile.api._
 import com.pennsieve.aws.sns.SNSClient
 import com.typesafe.scalalogging.LazyLogging
+import io.circe.Json
 import io.circe.syntax._
 import software.amazon.awssdk.services.sns.model.PublishResponse
 
@@ -65,21 +66,15 @@ trait OrganizationEventManager extends LazyLogging {
     db.run(
         organizationEventMapper
           .logEvent(actorUserId, subjectUserId, detail, timestamp)
-          .transactionally
       )
       .toEitherT
 
   def logEventSNS(
-    actorUserId: Option[Int],
-    subjectUserId: Option[Int],
-    detail: OrganizationEventDetail
+    event: OrganizationEvent
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, PublishResponse] =
-    sns.publish(
-      snsTopic,
-      formatMessageForSNS(actorUserId, subjectUserId, detail)
-    )
+    sns.publish(snsTopic, formatMessageForSNS(event))
 
   def logEvent(
     actorUserId: Option[Int],
@@ -91,7 +86,7 @@ trait OrganizationEventManager extends LazyLogging {
   ): EitherT[Future, CoreError, OrganizationEvent] =
     for {
       event <- logEventDB(actorUserId, subjectUserId, detail, timestamp)
-      _ <- logEventSNS(actorUserId, subjectUserId, detail)
+      _ <- logEventSNS(event)
     } yield event
 
   /**
@@ -140,29 +135,37 @@ trait OrganizationEventManager extends LazyLogging {
         case Right(_) => ()
       }
 
-  def eventCategory(detail: OrganizationEventDetail): String =
-    detail.eventType.category match {
+  def eventCategory(eventType: OrganizationEventName): String =
+    eventType.category match {
       case OrganizationEventCategory.ORGANIZATION => "ORGANIZATION"
       case OrganizationEventCategory.PUBLISHING => "PUBLISHING"
     }
 
-  def formatMessageForSNS(
-    actorUserId: Option[Int],
-    subjectUserId: Option[Int],
-    detail: OrganizationEventDetail
-  ): String =
-    f"""{
-     |    "organizationId": "${organization.id}",
-     |    "actorUserId": ${actorUserId
-         .map(id => s""""$id"""")
-         .getOrElse("null")},
-     |    "subjectUserId": ${subjectUserId
-         .map(id => s""""$id"""")
-         .getOrElse("null")},
-     |    "eventCategory": "${eventCategory(detail)}",
-     |    "eventType": "${detail.eventType.toString}",
-     |    "eventDetail": ${detail.asJson.noSpaces}
-     |}""".stripMargin.replaceAll("\n", "").replaceAll(" +", " ")
+  /**
+    * Wire format for the shared `pennsieve.changelog.sns_topic` SNS topic.
+    * Built as a circe `Json` object (not a hand-assembled string) so free-text
+    * fields inside `eventDetail` (dataset/team names, etc.) are JSON-escaped
+    * correctly rather than run through a blanket `replaceAll` that would
+    * corrupt them -- see docs/changelog-events.md's "Wire format" section.
+    *
+    * `id`/`createdAt` let consumers de-duplicate on `(organizationId, id)`:
+    * `logEventBestEffort`'s at-least-once redelivery semantics (see its own
+    * scaladoc) mean the same event can legitimately be published more than
+    * once.
+    */
+  def formatMessageForSNS(event: OrganizationEvent): String =
+    Json
+      .obj(
+        "organizationId" -> organization.id.toString.asJson,
+        "id" -> event.id.toString.asJson,
+        "createdAt" -> event.createdAt.toString.asJson,
+        "actorUserId" -> event.actorUserId.map(_.toString).asJson,
+        "subjectUserId" -> event.subjectUserId.map(_.toString).asJson,
+        "eventCategory" -> eventCategory(event.eventType).asJson,
+        "eventType" -> event.eventType.toString.asJson,
+        "eventDetail" -> event.detail
+      )
+      .noSpaces
 
   def getEvents(
     limit: Int = 25,

@@ -292,7 +292,8 @@ class OrganizationsController(
               EitherT.right[ActionResult](
                 priorPermissions.getOrElse(email, None) match {
                   case Some(oldPermission) if oldPermission != newPermission =>
-                    secureContainer.organizationEventManager
+                    secureContainer
+                      .organizationEventManagerFor(organization)
                       .logEventBestEffort(
                         actorUserId = Some(administrator.id),
                         subjectUserId = Some(user.id),
@@ -306,7 +307,8 @@ class OrganizationsController(
                   case Some(_) => // unchanged -- nothing to log
                     Future.successful(())
                   case None =>
-                    secureContainer.organizationEventManager
+                    secureContainer
+                      .organizationEventManagerFor(organization)
                       .logEventBestEffort(
                         actorUserId = Some(administrator.id),
                         subjectUserId = Some(user.id),
@@ -783,7 +785,8 @@ class OrganizationsController(
           .coreErrorToActionResult()
 
         _ <- EitherT.right[ActionResult](
-          secureContainer.organizationEventManager
+          secureContainer
+            .organizationEventManagerFor(organization)
             .logEventBestEffort(
               actorUserId = Some(user.id),
               subjectUserId = None,
@@ -870,7 +873,8 @@ class OrganizationsController(
 
         _ <- if (oldName != teamToSave.name)
           EitherT.right[ActionResult](
-            secureContainer.organizationEventManager
+            secureContainer
+              .organizationEventManagerFor(organization)
               .logEventBestEffort(
                 actorUserId = Some(user.id),
                 subjectUserId = None,
@@ -933,7 +937,8 @@ class OrganizationsController(
           .coreErrorToActionResult()
 
         _ <- EitherT.right[ActionResult](
-          secureContainer.organizationEventManager
+          secureContainer
+            .organizationEventManagerFor(organization)
             .logEventBestEffort(
               actorUserId = Some(user.id),
               subjectUserId = None,
@@ -1077,7 +1082,8 @@ class OrganizationsController(
           .removeUser(organization, member)
           .coreErrorToActionResult()
         _ <- EitherT.right[ActionResult](
-          secureContainer.organizationEventManager
+          secureContainer
+            .organizationEventManagerFor(organization)
             .logEventBestEffort(
               actorUserId = Some(administrator.id),
               subjectUserId = Some(member.id),
@@ -1467,7 +1473,8 @@ class OrganizationsController(
             secureContainer.teamManager
               .addUser(team, user, Delete)
               .semiflatMap { addedUser =>
-                secureContainer.organizationEventManager
+                secureContainer
+                  .organizationEventManagerFor(organization)
                   .logEventBestEffort(
                     actorUserId = Some(admin.id),
                     subjectUserId = Some(user.id),
@@ -1562,7 +1569,8 @@ class OrganizationsController(
           .coreErrorToActionResult()
 
         _ <- EitherT.right[ActionResult](
-          secureContainer.organizationEventManager
+          secureContainer
+            .organizationEventManagerFor(organization)
             .logEventBestEffort(
               actorUserId = Some(user.id),
               subjectUserId = Some(member.id),

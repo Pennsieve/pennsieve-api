@@ -259,58 +259,99 @@ class OrganizationEventManagerSpec extends BaseManagerSpec {
   it should "format a wire-compatible SNS message with the organization's own id, not a stored column" in {
     val oem = organizationEventManager()
     val user = createUser()
-
-    val message = oem.formatMessageForSNS(
+    val detail = OrganizationEventDetail
+      .AddOrganizationUser(user.id, DBPermission.Read)
+    val event = OrganizationEvent(
       actorUserId = Some(superAdmin.id),
       subjectUserId = Some(user.id),
-      detail = OrganizationEventDetail
-        .AddOrganizationUser(user.id, DBPermission.Read)
+      eventType = detail.eventType,
+      detail = detail.asJson,
+      id = 7
     )
 
-    message should include(s""""organizationId": "${testOrganization.id}"""")
-    message should include(s""""actorUserId": "${superAdmin.id}"""")
-    message should include(s""""subjectUserId": "${user.id}"""")
-    message should include(""""eventCategory": "ORGANIZATION"""")
-    message should include(""""eventType": "ADD_ORGANIZATION_USER"""")
-    // Hand-built JSON string, not a real serializer -- no embedded newlines
-    // or run-on whitespace from the multiline template.
+    val message = oem.formatMessageForSNS(event)
+
+    message should include(s""""organizationId":"${testOrganization.id}"""")
+    message should include(""""id":"7"""")
+    message should include(s""""createdAt":"${event.createdAt}"""")
+    message should include(s""""actorUserId":"${superAdmin.id}"""")
+    message should include(s""""subjectUserId":"${user.id}"""")
+    message should include(""""eventCategory":"ORGANIZATION"""")
+    message should include(""""eventType":"ADD_ORGANIZATION_USER"""")
+    // Real circe serialization now, not a hand-built template -- no
+    // embedded newlines or run-on whitespace either way.
     message should not include "\n"
   }
 
   it should "format null actor/subject on the SNS message for an actorless/subjectless broadcast" in {
     val oem = organizationEventManager()
-
-    val message = oem.formatMessageForSNS(
+    val detail = OrganizationEventDetail.CreateTeam(1, "Some Team")
+    val event = OrganizationEvent(
       actorUserId = None,
       subjectUserId = None,
-      detail = OrganizationEventDetail.CreateTeam(1, "Some Team")
+      eventType = detail.eventType,
+      detail = detail.asJson
     )
 
-    message should include(""""actorUserId": null""")
-    message should include(""""subjectUserId": null""")
-    message should include(""""eventCategory": "ORGANIZATION"""")
-    message should include(""""eventType": "CREATE_TEAM"""")
+    val message = oem.formatMessageForSNS(event)
+
+    message should include(""""actorUserId":null""")
+    message should include(""""subjectUserId":null""")
+    message should include(""""eventCategory":"ORGANIZATION"""")
+    message should include(""""eventType":"CREATE_TEAM"""")
   }
 
   it should "categorize a Part 4 broadcast as PUBLISHING on the SNS message" in {
     val oem = organizationEventManager()
-
-    val message = oem.formatMessageForSNS(
+    val detail = OrganizationEventDetail.DatasetPublished(
+      datasetId = 42,
+      datasetNodeId = "N:dataset:abc",
+      datasetName = "My Dataset",
+      publishedDatasetId = Some(99),
+      publishedVersion = 1,
+      doi = "10.1234/abcd",
+      ownerUserId = superAdmin.id,
+      ownerName = "Super Admin"
+    )
+    val event = OrganizationEvent(
       actorUserId = None,
       subjectUserId = None,
-      detail = OrganizationEventDetail.DatasetPublished(
-        datasetId = 42,
-        datasetNodeId = "N:dataset:abc",
-        datasetName = "My Dataset",
-        publishedDatasetId = Some(99),
-        publishedVersion = 1,
-        doi = "10.1234/abcd",
-        ownerUserId = superAdmin.id,
-        ownerName = "Super Admin"
-      )
+      eventType = detail.eventType,
+      detail = detail.asJson
     )
 
-    message should include(""""eventCategory": "PUBLISHING"""")
-    message should include(""""eventType": "DATASET_PUBLISHED"""")
+    val message = oem.formatMessageForSNS(event)
+
+    message should include(""""eventCategory":"PUBLISHING"""")
+    message should include(""""eventType":"DATASET_PUBLISHED"""")
+  }
+
+  it should "not collapse double spaces or otherwise mangle free-text fields inside eventDetail" in {
+    val oem = organizationEventManager()
+    val detail = OrganizationEventDetail.UpdateTeam(
+      teamId = 1,
+      oldName = """Lab  "A"""",
+      newName = """Lab "A""""
+    )
+    val event = OrganizationEvent(
+      actorUserId = Some(superAdmin.id),
+      subjectUserId = None,
+      eventType = detail.eventType,
+      detail = detail.asJson
+    )
+
+    val message = oem.formatMessageForSNS(event)
+
+    // Round-trips through real JSON parsing, not substring matching on a
+    // hand-built template -- this is the whole point of the circe rewrite.
+    // A quote character would have produced invalid JSON under the old
+    // hand-built-string approach; it must be escaped correctly here.
+    val parsed = io.circe.parser.parse(message).value
+    val eventDetail = parsed.hcursor.downField("eventDetail")
+    eventDetail.get[String]("oldName").value shouldBe """Lab  "A""""
+    eventDetail.get[String]("newName").value shouldBe """Lab "A""""
+    eventDetail.get[String]("oldName").value should not be eventDetail
+      .get[String]("newName")
+      .value
   }
 }

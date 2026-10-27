@@ -222,11 +222,11 @@ trait UserManager {
     middleInitial: Option[String],
     lastName: String,
     degree: Option[Degree],
-    title: String
+    title: String,
+    organizationEventManagerFor: Organization => OrganizationEventManager
   )(implicit
     organizationManager: OrganizationManager,
     userInviteManager: UserInviteManager,
-    organizationEventManagerFor: Organization => OrganizationEventManager,
     ec: ExecutionContext
   ): EitherT[Future, CoreError, User] =
     for {

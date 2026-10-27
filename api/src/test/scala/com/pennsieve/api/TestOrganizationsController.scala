@@ -25,6 +25,7 @@ import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
 import com.pennsieve.managers.{
   DatasetStatusManager,
   DatasetStatusManagerImpl,
+  OrganizationEventManagerImpl,
   SecureOrganizationManagerImpl,
   UpdateOrganization
 }
@@ -607,6 +608,48 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     // log a second add.
     eventsAfterPermissionChange
       .count(_.eventType == OrganizationEventName.ADD_ORGANIZATION_USER) shouldBe 1
+  }
+
+  test(
+    "creating a team in a path org the caller is also admin of (but whose token is scoped to a different org) logs the event into the PATH org's schema, not the token org's"
+  ) {
+    // loggedInUser's token (loggedInJwt) is scoped to loggedInOrganization,
+    // but loggedInUser is ALSO an admin of a second, distinct organization.
+    // Hitting /organizations/:organizationId/teams with the path set to the
+    // second org must write the event into the second org's schema (and
+    // SNS organizationId) -- not into loggedInOrganization's, just because
+    // that's what the token happens to carry.
+    val secondOrg = createOrganization("Second Org")
+    insecureContainer.organizationManager
+      .addUser(secondOrg, loggedInUser, Administer)
+      .await
+      .value
+
+    val secondOrgEventManager = new OrganizationEventManagerImpl(
+      insecureContainer.db,
+      secondOrg,
+      insecureContainer.sns_topic,
+      insecureContainer.sns
+    )
+
+    val createReq = write(CreateGroupRequest("Cross-Org Team"))
+
+    postJson(
+      s"/${secondOrg.nodeId}/teams",
+      createReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
+
+    val tokenOrgEvents =
+      secureContainer.organizationEventManager.getEvents().await.value
+    tokenOrgEvents.map(_.eventType) should not contain OrganizationEventName.CREATE_TEAM
+
+    val pathOrgEvents = secondOrgEventManager.getEvents().await.value
+    pathOrgEvents.map(_.eventType) should contain(
+      OrganizationEventName.CREATE_TEAM
+    )
   }
 
   test("remove an organization member") {

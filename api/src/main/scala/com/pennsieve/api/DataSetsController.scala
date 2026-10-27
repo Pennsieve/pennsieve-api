@@ -4282,6 +4282,16 @@ class DataSetsController(
       }
 
       _ <- if (body.success) for {
+        // If this is missing on a success callback, the dataset did
+        // genuinely publish (body.success is true) -- so this does NOT
+        // write Failed, unlike the !body.success branch above. But since
+        // create(Completed) now runs last (see the comment above it), the
+        // row stays Accepted and every redelivery hits this same 500. A
+        // sender that always omits publishedDatasetId on success is a
+        // caller bug outside this method's control; this is a known,
+        // intentionally-not-handled edge case, not a dead end -- a human
+        // investigating the stuck Accepted row is the expected recovery
+        // path, same as any other defect that leaves state mid-flight.
         publishedDatasetId <- body.publishedDatasetId
           .toRight[ActionResult](
             InternalServerError("Missing published dataset ID")
