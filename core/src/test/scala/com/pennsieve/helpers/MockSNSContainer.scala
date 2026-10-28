@@ -30,6 +30,13 @@ trait MockSNSContainer extends SNSContainer { self: Container =>
   override val sns: SNSClient = new MockSNS()
 }
 
+object MockSNS {
+
+  // Shared across MockSNS instances, because each container builds its own.
+  // Tests that assert on what was published should `clear()` first.
+  val published = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+}
+
 class MockSNS() extends SNSClient {
 
   override def publish(
@@ -38,6 +45,8 @@ class MockSNS() extends SNSClient {
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, CoreError, PublishResponse] = {
+
+    MockSNS.published.add(message)
 
     EitherT(
       Future.successful(

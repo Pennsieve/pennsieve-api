@@ -40,13 +40,14 @@ import com.pennsieve.models._
 import com.pennsieve.models.DateVersion._
 import com.pennsieve.traits.PostgresProfile.api._
 import java.time.{ Duration, ZonedDateTime }
+import scala.jdk.CollectionConverters._
 
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.clients.{
   CustomTermsOfServiceClient,
   MockCustomTermsOfServiceClient
 }
-import com.pennsieve.helpers.{ DataSetTestMixin, MockAuditLogger }
+import com.pennsieve.helpers.{ DataSetTestMixin, MockAuditLogger, MockSNS }
 import com.pennsieve.managers.OrganizationManager.Invite
 import org.apache.http.impl.client.HttpClients
 import org.json4s.jackson.Serialization.{ read, write }
@@ -633,6 +634,7 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     )
 
     val createReq = write(CreateGroupRequest("Cross-Org Team"))
+    MockSNS.published.clear()
 
     postJson(
       s"/${secondOrg.nodeId}/teams",
@@ -649,6 +651,14 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     val pathOrgEvents = secondOrgEventManager.getEvents().await.value
     pathOrgEvents.map(_.eventType) should contain(
       OrganizationEventName.CREATE_TEAM
+    )
+
+    // ...and the published SNS message names the path org too.
+    val published = MockSNS.published.asScala.toList
+      .flatMap(m => io.circe.parser.parse(m).toOption)
+      .filter(_.hcursor.get[String]("eventType") == Right("CREATE_TEAM"))
+    published.map(_.hcursor.get[String]("organizationId")) shouldBe List(
+      Right(secondOrg.id.toString)
     )
   }
 

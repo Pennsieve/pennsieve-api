@@ -38,8 +38,8 @@ import com.pennsieve.helpers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
 import com.pennsieve.managers.OrganizationEventManagerImpl
 import com.pennsieve.models.DBPermission.Guest
-import net.ceedubs.ficus.Ficus._
 import com.pennsieve.models.{ Degree, OrganizationEventDetail }
+import net.ceedubs.ficus.Ficus._
 import org.json4s._
 import org.scalatra._
 import org.scalatra.json.JacksonJsonSupport
@@ -88,11 +88,11 @@ class AccountController(
 
   override val pennsieveSwaggerTag = "Account"
 
-  // `insecureContainer.sns_topic` (ApiSNSContainer) falls back to "" on a
-  // missing config key, so a misconfigured deploy would publish org events
-  // to an empty topic name instead of failing at startup. Read the same key
-  // the way OrganizationEventContainer/ChangelogContainer do (no fallback)
-  // so this controller's own org-event publishes fail fast instead.
+  // Read `pennsieve.changelog.sns_topic` directly, the way
+  // OrganizationEventContainer/ChangelogContainer do, so org events from this
+  // controller go to the same topic as every other org event and a missing
+  // key fails at startup. (`insecureContainer.sns_topic` is a different key
+  // that defaults to "integration-events".)
   private val organizationEventsTopic: String =
     insecureContainer.config.as[String]("pennsieve.changelog.sns_topic")
 
