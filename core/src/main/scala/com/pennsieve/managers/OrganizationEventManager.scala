@@ -102,9 +102,8 @@ trait OrganizationEventManager extends LazyLogging {
     * trace. That's correct for this system's priorities -- the real
     * operation these events describe (a publish, a membership change) must
     * succeed or fail entirely on its own, never on whether a signal about
-    * it could also be sent. These events are a nice-to-have audit/notify
-    * trail, not a dependency the real operation's correctness rests on, so
-    * a lost signal here is an acceptable cost; it is not grounds to couple
+    * it could also be sent. These events are not a dependency the real
+    * operation's correctness rests on, so a lost signal is not grounds to couple
     * the real operation's outcome to this method's success, nor to
     * decouple the SNS publish from the DB write to work around it.
     *
@@ -148,10 +147,22 @@ trait OrganizationEventManager extends LazyLogging {
     * correctly rather than run through a blanket `replaceAll` that would
     * corrupt them -- see docs/changelog-events.md's "Wire format" section.
     *
-    * `id`/`createdAt` let consumers de-duplicate on `(organizationId, id)`:
-    * `logEventBestEffort`'s at-least-once redelivery semantics (see its own
-    * scaladoc) mean the same event can legitimately be published more than
-    * once.
+    * `id`/`createdAt` identify one logged event, i.e. one `organization_events`
+    * row. `(organizationId, id)` therefore de-duplicates *transport-level*
+    * duplicates only: the same message delivered more than once by SNS/SQS.
+    *
+    * It does NOT de-duplicate a re-run of the producing operation. If the
+    * publish-complete callback is redelivered, `publishCompleteBody` runs
+    * again and logs again: that inserts a NEW row, so the second broadcast
+    * has a different `id`. For the three callback-driven Part 4 events
+    * (`DATASET_PUBLISHED`, `DATASET_EMBARGOED`, `DATASET_EMBARGO_RELEASED`),
+    * consumers that need to collapse those should key on
+    * `(organizationId, eventType, datasetId, publishedVersion)`, all of which
+    * are in `eventDetail` and are identical across redeliveries of the same
+    * callback (`datasetId` is the workspace dataset's id, not Discover's
+    * `publishedDatasetId`). `DATASET_REVISED` has no such key (repeat revisions of one
+    * version are legitimate) but is emitted from a synchronous request, not a
+    * redelivered callback. See docs/changelog-events.md open question 11.
     */
   def formatMessageForSNS(event: OrganizationEvent): String =
     Json
