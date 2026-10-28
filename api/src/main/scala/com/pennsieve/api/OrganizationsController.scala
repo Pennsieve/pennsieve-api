@@ -61,7 +61,8 @@ import com.pennsieve.clients.CustomTermsOfServiceClient
 import com.pennsieve.domain.{
   CoreError,
   InvalidDateVersion,
-  MissingCustomTermsOfService
+  MissingCustomTermsOfService,
+  NotFound
 }
 import com.pennsieve.managers.OrganizationManager.Invite
 
@@ -227,6 +228,35 @@ class OrganizationsController(
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
 
+        // inviteMember's addUser call is an upsert: a "found existing user by
+        // email" result can mean either a brand-new membership or a permission
+        // change to an existing membership. Pre-fetch each invite's prior
+        // permission BEFORE calling inviteMember (which performs the upsert),
+        // since reading it afterward would only ever see the post-upsert
+        // (i.e. new/requested) value -- a user not found yet just means no
+        // prior membership, not an error, so NotFound collapses to None here
+        // rather than failing the whole request.
+        priorPermissions <- inviteRequests.invites.toList
+          .traverse { invite =>
+            insecureContainer.userManager
+              .getByEmail(invite.email)
+              .flatMap { user =>
+                secureContainer.organizationManager
+                  .getUserPermission(organization, user)
+                  .map(permission => invite.email -> permission)
+              }
+              .leftFlatMap {
+                case _: NotFound =>
+                  EitherT.rightT[Future, CoreError](
+                    invite.email -> (None: Option[DBPermission])
+                  )
+                case error =>
+                  EitherT.leftT[Future, (String, Option[DBPermission])](error)
+              }
+          }
+          .map(_.toMap)
+          .coreErrorToActionResult()
+
         // TODO: only process a single invite per request
         results <- inviteRequests.invites.toList
           .traverse(
@@ -245,8 +275,51 @@ class OrganizationsController(
                   insecureContainer.messageTemplates,
                   executor
                 )
+                .map(result => invite.email -> result)
           )
           .coreErrorToActionResult()
+
+        // Only AddedExistingUser represents an immediate add -- InvitedNewUser
+        // is just a pending Cognito invite, logged as ADD_EXTERNAL_ORGANIZATION_USER
+        // on acceptance instead (AccountController's createAccountFromInvite).
+        _ <- results
+          .traverse {
+            case (
+                email,
+                OrganizationManager.AddEmailResult.AddedExistingUser(user)
+                ) =>
+              val newPermission = DBPermission.fromRole(inviteRequests.role)
+              EitherT.right[ActionResult](
+                priorPermissions.getOrElse(email, None) match {
+                  case Some(oldPermission) if oldPermission != newPermission =>
+                    secureContainer
+                      .organizationEventManagerFor(organization)
+                      .logEventBestEffort(
+                        actorUserId = Some(administrator.id),
+                        subjectUserId = Some(user.id),
+                        detail = OrganizationEventDetail
+                          .UpdateOrganizationPermission(
+                            user.id,
+                            oldPermission,
+                            newPermission
+                          )
+                      )
+                  case Some(_) => // unchanged -- nothing to log
+                    Future.successful(())
+                  case None =>
+                    secureContainer
+                      .organizationEventManagerFor(organization)
+                      .logEventBestEffort(
+                        actorUserId = Some(administrator.id),
+                        subjectUserId = Some(user.id),
+                        detail = OrganizationEventDetail
+                          .AddOrganizationUser(user.id, newPermission)
+                      )
+                }
+              )
+            case (_, OrganizationManager.AddEmailResult.InvitedNewUser(_)) =>
+              EitherT.rightT[Future, ActionResult](())
+          }
 
         _ <- auditLogger
           .message()
@@ -257,7 +330,10 @@ class OrganizationsController(
 
       } yield
         results
-          .map(AddUserResponse(organization)(_))
+          .map {
+            case (_, addEmailResult) =>
+              AddUserResponse(organization)(addEmailResult)
+          }
           .map(dto => (dto.email.toString, dto)) // Backwards-compatible response
           .toMap
       val is = result.value.map(OkResult)
@@ -708,6 +784,16 @@ class OrganizationsController(
           .create(teamToCreate.name, organization)
           .coreErrorToActionResult()
 
+        _ <- EitherT.right[ActionResult](
+          secureContainer
+            .organizationEventManagerFor(organization)
+            .logEventBestEffort(
+              actorUserId = Some(user.id),
+              subjectUserId = None,
+              detail = OrganizationEventDetail.CreateTeam(t.id, t.name)
+            )
+        )
+
         team <- secureContainer.organizationManager
           .getTeamWithOrganizationTeamByNodeId(organization, t.nodeId)
           .coreErrorToActionResult()
@@ -761,6 +847,7 @@ class OrganizationsController(
       val result: EitherT[Future, ActionResult, TeamDTO] = for {
         secureContainer <- getSecureContainer()
         traceId <- getTraceId(request)
+        user = secureContainer.user
         teamToSave <- extractOrErrorT[UpdateGroupRequest](parsedBody)
         organizationId <- paramT[String]("organizationId")
         teamId <- paramT[String]("id")
@@ -768,6 +855,11 @@ class OrganizationsController(
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId, DBPermission.Administer)
           .coreErrorToActionResult()
+
+        existing <- secureContainer.organizationManager
+          .getTeamWithOrganizationTeamByNodeId(organization, teamId)
+          .coreErrorToActionResult()
+        oldName = existing._1.name
 
         _ <- secureContainer.teamManager
           .update(organization, teamId, teamToSave.name)
@@ -778,6 +870,23 @@ class OrganizationsController(
           .coreErrorToActionResult()
 
         teamDTO = TeamDTO(updated)
+
+        _ <- if (oldName != teamToSave.name)
+          EitherT.right[ActionResult](
+            secureContainer
+              .organizationEventManagerFor(organization)
+              .logEventBestEffort(
+                actorUserId = Some(user.id),
+                subjectUserId = None,
+                detail = OrganizationEventDetail.UpdateTeam(
+                  updated._1.id,
+                  oldName = oldName,
+                  newName = teamToSave.name
+                )
+              )
+          )
+        else
+          EitherT.rightT[Future, ActionResult](())
 
         _ <- auditLogger
           .message()
@@ -826,6 +935,17 @@ class OrganizationsController(
         _ <- secureContainer.teamManager
           .delete(team._1.id)
           .coreErrorToActionResult()
+
+        _ <- EitherT.right[ActionResult](
+          secureContainer
+            .organizationEventManagerFor(organization)
+            .logEventBestEffort(
+              actorUserId = Some(user.id),
+              subjectUserId = None,
+              detail =
+                OrganizationEventDetail.DeleteTeam(team._1.id, team._1.name)
+            )
+        )
 
         _ <- auditLogger
           .message()
@@ -921,6 +1041,7 @@ class OrganizationsController(
     new AsyncResult {
       val result = for {
         secureContainer <- getSecureContainer()
+        administrator = secureContainer.user
         organizationId <- paramT[String]("organizationId")
         memberId <- paramT[String]("id")
         organization <- secureContainer.organizationManager
@@ -960,6 +1081,15 @@ class OrganizationsController(
         _ <- secureContainer.organizationManager
           .removeUser(organization, member)
           .coreErrorToActionResult()
+        _ <- EitherT.right[ActionResult](
+          secureContainer
+            .organizationEventManagerFor(organization)
+            .logEventBestEffort(
+              actorUserId = Some(administrator.id),
+              subjectUserId = Some(member.id),
+              detail = OrganizationEventDetail.RemoveOrganizationUser(member.id)
+            )
+        )
       } yield ()
 
       val is = result.value.map(OkResult)
@@ -1028,6 +1158,10 @@ class OrganizationsController(
             .contains(Delete) || userToSave.permission.contains(Administer)
         )(BadRequest(s"Invalid permission: ${userToSave.permission}"))
 
+        oldPermission <- secureContainer.organizationManager
+          .getUserPermission(secureContainer.organization, user)
+          .coreErrorToActionResult()
+
         _ <- userToSave.permission
           .traverse { permission =>
             secureContainer.organizationManager
@@ -1038,6 +1172,25 @@ class OrganizationsController(
               )
           }
           .coreErrorToActionResult()
+
+        _ <- EitherT.right[ActionResult](
+          (userToSave.permission, oldPermission) match {
+            case (Some(newPermission), Some(oldPerm))
+                if newPermission != oldPerm =>
+              secureContainer.organizationEventManager
+                .logEventBestEffort(
+                  actorUserId = Some(secureContainer.user.id),
+                  subjectUserId = Some(user.id),
+                  detail = OrganizationEventDetail
+                    .UpdateOrganizationPermission(
+                      user.id,
+                      oldPermission = oldPerm,
+                      newPermission = newPermission
+                    )
+                )
+            case _ => Future.successful(())
+          }
+        )
 
         organization <- secureContainer.organizationManager
           .getByNodeId(organizationId)
@@ -1302,10 +1455,34 @@ class OrganizationsController(
           InvalidAction("Guest users may not be added to Teams."): CoreError
         ).coreErrorToActionResult()
 
+        // Reverted a prior attempt to parallelize this (building the
+        // EitherT list via .map, then .sequence) for latency: empirically
+        // (not just in theory) cats' List[A].traverse over
+        // EitherT[Future, E, *] does NOT stop at the first failure either
+        // -- every element's underlying Future is already running by the
+        // time any Left is observed, same as .sequence would. So
+        // addToTeam has *always* applied partially on a mid-batch failure
+        // (users after the failing one can still get added), independent
+        // of traverse vs. map+sequence; this revert is a readability/
+        // latency wash, not a correctness fix. The partial-application
+        // behavior itself is a real, pre-existing gap worth its own fix
+        // (e.g. a manual fold with an early exit), tracked separately --
+        // not introduced or fixed by this change.
         results <- users
           .traverse { user =>
             secureContainer.teamManager
               .addUser(team, user, Delete)
+              .semiflatMap { addedUser =>
+                secureContainer
+                  .organizationEventManagerFor(organization)
+                  .logEventBestEffort(
+                    actorUserId = Some(admin.id),
+                    subjectUserId = Some(user.id),
+                    detail = OrganizationEventDetail
+                      .AddTeamUser(team.id, team.name, user.id)
+                  )
+                  .map(_ => addedUser)
+              }
               .map { _ =>
                 insecureContainer.emailer
                   .sendEmail(
@@ -1390,6 +1567,17 @@ class OrganizationsController(
         _ <- secureContainer.teamManager
           .removeUser(team, member)
           .coreErrorToActionResult()
+
+        _ <- EitherT.right[ActionResult](
+          secureContainer
+            .organizationEventManagerFor(organization)
+            .logEventBestEffort(
+              actorUserId = Some(user.id),
+              subjectUserId = Some(member.id),
+              detail = OrganizationEventDetail
+                .RemoveTeamUser(team.id, team.name, member.id)
+            )
+        )
       } yield ()
 
       val is = result.value.map(OkResult)

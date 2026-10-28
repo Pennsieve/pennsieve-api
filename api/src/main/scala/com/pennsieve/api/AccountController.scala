@@ -36,8 +36,10 @@ import com.pennsieve.helpers.APIContainers.InsecureAPIContainer
 import com.pennsieve.helpers.ResultHandlers.OkResult
 import com.pennsieve.helpers._
 import com.pennsieve.helpers.either.EitherTErrorHandler.implicits._
+import com.pennsieve.managers.OrganizationEventManagerImpl
 import com.pennsieve.models.DBPermission.Guest
-import com.pennsieve.models.Degree
+import com.pennsieve.models.{ Degree, OrganizationEventDetail }
+import net.ceedubs.ficus.Ficus._
 import org.json4s._
 import org.scalatra._
 import org.scalatra.json.JacksonJsonSupport
@@ -85,6 +87,14 @@ class AccountController(
     with LazyLogging {
 
   override val pennsieveSwaggerTag = "Account"
+
+  // Read `pennsieve.changelog.sns_topic` directly, the way
+  // OrganizationEventContainer/ChangelogContainer do, so org events from this
+  // controller go to the same topic as every other org event and a missing
+  // key fails at startup. (`insecureContainer.sns_topic` is a different key
+  // that defaults to "integration-events".)
+  private val organizationEventsTopic: String =
+    insecureContainer.config.as[String]("pennsieve.changelog.sns_topic")
 
   protected implicit def executor: ExecutionContext = asyncExecutor
   override implicit lazy val logger: Logger = Logger("com.pennsieve")
@@ -178,7 +188,14 @@ class AccountController(
             middleInitial = createRequest.middleInitial,
             lastName = createRequest.lastName,
             degree = createRequest.degree,
-            title = createRequest.title
+            title = createRequest.title,
+            organizationEventManagerFor = organization =>
+              new OrganizationEventManagerImpl(
+                insecureContainer.db,
+                organization,
+                organizationEventsTopic,
+                insecureContainer.sns
+              )
           )(
             insecureContainer.organizationManager,
             insecureContainer.userInviteManager,
@@ -193,6 +210,32 @@ class AccountController(
         _ <- insecureContainer.organizationManager
           .addUser(welcomeOrganization, newUser, Guest)
           .orError()
+
+        // Distinct from the per-invite events createFromInvite logs for
+        // each real inviting organization above -- this is its own,
+        // separate grant. No actor: self-service signup, no admin present.
+        //
+        // Not deduplicated against createFromInvite's own per-invite events:
+        // if one of this user's invites was itself to welcome_to_pennsieve,
+        // they get two ADD_EXTERNAL_ORGANIZATION_USER events for the same
+        // org. createFromInvite doesn't expose which organizations it
+        // already logged against, and checking pre-existing membership here
+        // would need its own upsert-semantics decision (see the separate,
+        // pre-existing addGuestUser/Guest-downgrade ticket) -- not a trivial
+        // fix, left as a known gap.
+        _ <- EitherT.right[ActionResult](
+          new OrganizationEventManagerImpl(
+            insecureContainer.db,
+            welcomeOrganization,
+            organizationEventsTopic,
+            insecureContainer.sns
+          ).logEventBestEffort(
+            actorUserId = None,
+            subjectUserId = Some(newUser.id),
+            detail = OrganizationEventDetail
+              .AddExternalOrganizationUser(newUser.id, Guest)
+          )
+        )
 
         organizations <- insecureContainer.userManager
           .getOrganizations(newUser)

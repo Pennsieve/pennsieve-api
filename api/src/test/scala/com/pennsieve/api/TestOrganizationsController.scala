@@ -25,6 +25,7 @@ import com.pennsieve.dtos.{ DatasetStatusDTO, TeamDTO, UserDTO, UserInviteDTO }
 import com.pennsieve.managers.{
   DatasetStatusManager,
   DatasetStatusManagerImpl,
+  OrganizationEventManagerImpl,
   SecureOrganizationManagerImpl,
   UpdateOrganization
 }
@@ -39,13 +40,14 @@ import com.pennsieve.models._
 import com.pennsieve.models.DateVersion._
 import com.pennsieve.traits.PostgresProfile.api._
 import java.time.{ Duration, ZonedDateTime }
+import scala.jdk.CollectionConverters._
 
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.clients.{
   CustomTermsOfServiceClient,
   MockCustomTermsOfServiceClient
 }
-import com.pennsieve.helpers.{ DataSetTestMixin, MockAuditLogger }
+import com.pennsieve.helpers.{ DataSetTestMixin, MockAuditLogger, MockSNS }
 import com.pennsieve.managers.OrganizationManager.Invite
 import org.apache.http.impl.client.HttpClients
 import org.json4s.jackson.Serialization.{ read, write }
@@ -525,6 +527,139 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
 
     // Should not send another request to Cognito
     mockCognito.sentInvites.toList.map(_.address) shouldBe List(email)
+  }
+
+  test(
+    "adding an existing org member logs ADD_ORGANIZATION_USER on first add, UPDATE_ORGANIZATION_PERMISSION on a later permission change"
+  ) {
+    // externalUser is a real User account (per BaseApiTest fixtures) but not
+    // yet a member of loggedInOrganization -- the first add below is a
+    // genuinely new membership.
+    val firstAddReq = write(
+      AddToOrganizationRequest(
+        Set(
+          Invite(
+            externalUser.email,
+            externalUser.firstName,
+            externalUser.lastName
+          )
+        ),
+        role = Some(Role.Viewer)
+      )
+    )
+
+    postJson(
+      s"/${loggedInOrganization.nodeId}/members",
+      firstAddReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    val eventsAfterFirstAdd =
+      secureContainer.organizationEventManager.getEvents().await.value
+    eventsAfterFirstAdd.map(_.eventType) should contain(
+      OrganizationEventName.ADD_ORGANIZATION_USER
+    )
+    eventsAfterFirstAdd.map(_.eventType) should not contain
+      OrganizationEventName.UPDATE_ORGANIZATION_PERMISSION
+
+    // Re-add the same user with a different role -- inviteMember's addUser
+    // is an upsert, so this should be detected as a permission change, not
+    // logged as another ADD_ORGANIZATION_USER.
+    val secondAddReq = write(
+      AddToOrganizationRequest(
+        Set(
+          Invite(
+            externalUser.email,
+            externalUser.firstName,
+            externalUser.lastName
+          )
+        ),
+        role = Some(Role.Editor)
+      )
+    )
+
+    postJson(
+      s"/${loggedInOrganization.nodeId}/members",
+      secondAddReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+    }
+
+    val eventsAfterPermissionChange =
+      secureContainer.organizationEventManager.getEvents().await.value
+
+    val updateEvents = eventsAfterPermissionChange.filter(
+      _.eventType == OrganizationEventName.UPDATE_ORGANIZATION_PERMISSION
+    )
+    updateEvents should have size 1
+
+    val detail = updateEvents.head.detail
+      .as(OrganizationEventDetail.decoder(updateEvents.head.eventType))
+      .value
+      .asInstanceOf[OrganizationEventDetail.UpdateOrganizationPermission]
+
+    detail.userId shouldBe externalUser.id
+    detail.oldPermission shouldBe DBPermission.Read
+    detail.newPermission shouldBe DBPermission.Delete
+
+    // Still only one ADD_ORGANIZATION_USER total -- the second call must not
+    // log a second add.
+    eventsAfterPermissionChange
+      .count(_.eventType == OrganizationEventName.ADD_ORGANIZATION_USER) shouldBe 1
+  }
+
+  test(
+    "creating a team in a path org the caller is also admin of (but whose token is scoped to a different org) logs the event into the PATH org's schema, not the token org's"
+  ) {
+    // loggedInUser's token (loggedInJwt) is scoped to loggedInOrganization,
+    // but loggedInUser is ALSO an admin of a second, distinct organization.
+    // Hitting /organizations/:organizationId/teams with the path set to the
+    // second org must write the event into the second org's schema (and
+    // SNS organizationId) -- not into loggedInOrganization's, just because
+    // that's what the token happens to carry.
+    val secondOrg = createOrganization("Second Org")
+    insecureContainer.organizationManager
+      .addUser(secondOrg, loggedInUser, Administer)
+      .await
+      .value
+
+    val secondOrgEventManager = new OrganizationEventManagerImpl(
+      insecureContainer.db,
+      secondOrg,
+      insecureContainer.sns_topic,
+      insecureContainer.sns
+    )
+
+    val createReq = write(CreateGroupRequest("Cross-Org Team"))
+    MockSNS.published.clear()
+
+    postJson(
+      s"/${secondOrg.nodeId}/teams",
+      createReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(201)
+    }
+
+    val tokenOrgEvents =
+      secureContainer.organizationEventManager.getEvents().await.value
+    tokenOrgEvents.map(_.eventType) should not contain OrganizationEventName.CREATE_TEAM
+
+    val pathOrgEvents = secondOrgEventManager.getEvents().await.value
+    pathOrgEvents.map(_.eventType) should contain(
+      OrganizationEventName.CREATE_TEAM
+    )
+
+    // ...and the published SNS message names the path org too.
+    val published = MockSNS.published.asScala.toList
+      .flatMap(m => io.circe.parser.parse(m).toOption)
+      .filter(_.hcursor.get[String]("eventType") == Right("CREATE_TEAM"))
+    published.map(_.hcursor.get[String]("organizationId")) shouldBe List(
+      Right(secondOrg.id.toString)
+    )
   }
 
   test("remove an organization member") {
@@ -1636,6 +1771,83 @@ class TestOrganizationsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status should equal(403)
     }
+  }
+
+  test(
+    "addToTeam applies partially when one user in the batch fails (pre-existing behavior, not changed by traverse vs. map+sequence)"
+  ) {
+    val team =
+      teamManager.create("PartialFailureTeam", loggedInOrganization).await.value
+
+    def addOrgMember(email: String): User = {
+      val created = insecureContainer.userManager
+        .create(
+          User(
+            NodeCodes.generateId(NodeCodes.userCode),
+            email,
+            "first",
+            None,
+            "last",
+            None,
+            "cred",
+            "",
+            "http://test.com",
+            0,
+            false,
+            false,
+            None
+          )
+        )
+        .await
+        .value
+      organizationManager
+        .addUser(loggedInOrganization, created, Delete)
+        .await
+        .value
+      created
+    }
+
+    val firstUser = addOrgMember("partial-failure-first@test.com")
+    // TeamManager.addUser rejects integration users outright -- used here
+    // purely as a reliable mid-batch failure trigger, not because
+    // integration-user team membership is the thing under test.
+    val failingUser = integrationUser
+    val lastUser = addOrgMember("partial-failure-last@test.com")
+
+    val addToTeamRequest = write(
+      AddToTeamRequest(
+        List(firstUser.nodeId, failingUser.nodeId, lastUser.nodeId)
+      )
+    )
+
+    postJson(
+      s"/${loggedInOrganization.nodeId}/teams/${team.nodeId}/members",
+      addToTeamRequest,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(400)
+    }
+
+    // The request as a whole reports failure, but cats' List[A].traverse
+    // over EitherT[Future, E, *] does not stop at the first Left -- every
+    // element's underlying Future already ran by the time any failure is
+    // observed (confirmed empirically, independent of this endpoint). So
+    // both the user before AND the user after the failing one are added,
+    // even though the HTTP response is a 400. This is real, pre-existing
+    // behavior (unrelated to today's traverse-vs-map+sequence choice,
+    // both have it) -- not something this test is asserting as correct,
+    // just documenting so a future fix has a regression test to flip.
+    val teamMemberIds =
+      teamManager.getUsers(team).await.value.map(_.id)
+
+    teamMemberIds should contain(firstUser.id)
+    teamMemberIds should contain(lastUser.id)
+
+    val events =
+      secureContainer.organizationEventManager.getEvents().await.value
+    events.collect {
+      case e if e.eventType == OrganizationEventName.ADD_TEAM_USER => e
+    } should have size 2
   }
 
 }

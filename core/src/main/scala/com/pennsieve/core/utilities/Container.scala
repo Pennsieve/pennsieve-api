@@ -316,6 +316,28 @@ trait ChangelogContainer {
 
 }
 
+trait OrganizationEventContainer {
+  self: Container with SecureCoreContainer with SNSContainer =>
+
+  // Reuses the SAME SNS topic as ChangelogContainer -- organization events
+  // are a new producer onto the existing topic, not a new topic. See
+  // docs/changelog-events.md Part 2, "Wire format".
+  val organization_events_topic: SnsTopic =
+    config.as[String]("pennsieve.changelog.sns_topic")
+
+  lazy val organizationEventManager: OrganizationEventManager =
+    organizationEventManagerFor(organization)
+
+  // Handlers that act on a *different* organization than the token's own
+  // (e.g. an admin-of-two-orgs path like `/organizations/:organizationId/...`,
+  // where the path org is loaded via `organizationManager.getByNodeId`) must
+  // log into that org's schema, not the token org's -- `organizationEventManager`
+  // above is only correct when the handler's own org IS the token org.
+  def organizationEventManagerFor(org: Organization): OrganizationEventManager =
+    new OrganizationEventManagerImpl(db, org, organization_events_topic, sns)
+
+}
+
 trait RequestContextContainer extends OrganizationContainer {
   self: Container =>
   val user: User

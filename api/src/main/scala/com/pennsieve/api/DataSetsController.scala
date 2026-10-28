@@ -2061,6 +2061,23 @@ class DataSetsController(
           )
           .coreErrorToActionResult()
 
+        _ <- if (oldRole.oldRole.isEmpty)
+          EitherT.right[ActionResult](
+            secureContainer.organizationEventManager
+              .logEventBestEffort(
+                actorUserId = Some(secureContainer.user.id),
+                subjectUserId = Some(user.id),
+                detail = OrganizationEventDetail.AddedToDataset(
+                  dataset.id,
+                  dataset.nodeId,
+                  dataset.name,
+                  userDto.role
+                )
+              )
+          )
+        else
+          EitherT.rightT[Future, ActionResult](())
+
       } yield ()
 
       override val is = addResponse.value.map(OkResult)
@@ -2116,6 +2133,28 @@ class DataSetsController(
               )
             )
             .coreErrorToActionResult()
+
+          // deleteUserCollaborator's underlying delete silently no-ops when
+          // removing the acting user themselves or an Owner (DatasetManager
+          // filters those out), but still returns the pre-existing oldRole.
+          // oldRole.isDefined at least rules out "there was nothing to
+          // remove"; it can't distinguish the rarer self/Owner no-op cases
+          // without a deeper DatasetManager change (not done here).
+          _ <- if (oldRole.oldRole.isDefined)
+            EitherT.right[ActionResult](
+              secureContainer.organizationEventManager
+                .logEventBestEffort(
+                  actorUserId = Some(secureContainer.user.id),
+                  subjectUserId = Some(user.id),
+                  detail = OrganizationEventDetail.RemovedFromDataset(
+                    dataset.id,
+                    dataset.nodeId,
+                    dataset.name
+                  )
+                )
+            )
+          else
+            EitherT.rightT[Future, ActionResult](())
 
         } yield ()
 
@@ -2226,6 +2265,29 @@ class DataSetsController(
         oldRole <- secureContainer.datasetManager
           .addUserCollaborator(dataset, user, userDto.role)
           .coreErrorToActionResult()
+
+        // Mirrors addUserCollaborator's own ADDED_TO_DATASET call (S7,
+        // round 3): this is the most common route to dataset access
+        // (share-by-email), so it should emit the same signal a direct
+        // addUserCollaborator grant does. Same oldRole.isEmpty guard --
+        // only a genuinely new grant, not a role change on an existing
+        // collaborator.
+        _ <- if (oldRole.oldRole.isEmpty)
+          EitherT.right[ActionResult](
+            secureContainer.organizationEventManager
+              .logEventBestEffort(
+                actorUserId = Some(invitingUser.id),
+                subjectUserId = Some(user.id),
+                detail = OrganizationEventDetail.AddedToDataset(
+                  dataset.id,
+                  dataset.nodeId,
+                  dataset.name,
+                  userDto.role
+                )
+              )
+          )
+        else
+          EitherT.rightT[Future, ActionResult](())
 
         // ensure user is in the Welcome Workspace
         welcomeWorkspace <- secureContainer.organizationManager
@@ -2678,6 +2740,20 @@ class DataSetsController(
               .UpdateOwner(oldOwner = currentOwner.id, newOwner = newOwner.id)
           )
           .coreErrorToActionResult()
+
+        _ <- EitherT.right[ActionResult](
+          secureContainer.organizationEventManager
+            .logEventBestEffort(
+              actorUserId = Some(user.id),
+              subjectUserId = Some(newOwner.id),
+              detail = OrganizationEventDetail.DatasetOwnershipTransferred(
+                dataset.id,
+                dataset.nodeId,
+                dataset.name,
+                previousOwnerUserId = currentOwner.id
+              )
+            )
+        )
 
         _ <- secureContainer.datasetManager
           .touchUpdatedAtTimestamp(dataset)
@@ -3470,6 +3546,51 @@ class DataSetsController(
                   currentPublicationStatus.publishedDatasetId
                 )
 
+                // Workspace-wide publishing broadcast (organization_events,
+                // Part 4) -- best-effort; DOI isn't on PublishCompleteRequest
+                // for revisions (synchronous /revise path), so resolve it
+                // via doi-service instead. See getLatestDoiBestEffort.
+                //
+                // Skips entirely (no broadcast) if latestPublishedVersion is
+                // missing -- a dataset mid-Revision is by definition already
+                // published, so None here means our own data is stale or
+                // wrong, not that there's no version to report. The signal
+                // is a nice-to-have; a broadcast with a fabricated version
+                // number is worse than no broadcast at all.
+                _ <- EitherT.right[ActionResult](
+                  currentPublicationStatus.latestPublishedVersion match {
+                    case None =>
+                      logger.warn(
+                        s"organization_events: no latestPublishedVersion for dataset ${validated.dataset.nodeId}, skipping publishing broadcast"
+                      )
+                      Future.successful(())
+                    case Some(publishedVersion) =>
+                      getLatestDoiBestEffort(
+                        secureContainer.organization,
+                        validated.dataset,
+                        validated.owner
+                      ).flatMap {
+                        case Some(doi) =>
+                          secureContainer.organizationEventManager
+                            .logEventBestEffort(
+                              actorUserId = None,
+                              subjectUserId = None,
+                              detail = OrganizationEventDetail.DatasetRevised(
+                                validated.dataset.id,
+                                validated.dataset.nodeId,
+                                validated.dataset.name,
+                                currentPublicationStatus.publishedDatasetId,
+                                publishedVersion,
+                                doi,
+                                validated.owner.id,
+                                s"${validated.owner.firstName} ${validated.owner.lastName}"
+                              )
+                            )
+                        case None => Future.successful(())
+                      }
+                  }
+                )
+
                 // remove the publishing team for revisions since the process is complete
                 _ <- DataSetPublishingHelper
                   .removePublisherTeam(secureContainer, validated.dataset)
@@ -3916,6 +4037,34 @@ class DataSetsController(
 
       result <- if (restoreSucceeded && stillPublishedCount == 0) {
         for {
+          // Fetched before the unpublish request below, while Discover still
+          // reports this dataset as published -- publishedDatasetId/
+          // publishedVersion aren't retrievable from this method's own
+          // parameters (DatasetPublicationStatus.removalMetadata only has
+          // publishedVersion, and only on the triggering Accepted row one
+          // call frame up, in completeRemovalRestore). Best-effort: a
+          // failure here must not block the real unpublish.
+          // TODO(organization_events): once discover-service adds `doi` to
+          // DatasetPublishStatus (see docs/changelog-events.md Part 4) and
+          // pennsieve-api regenerates its client, read doi from this same
+          // response instead of the separate getLatestDoiBestEffort call
+          // below.
+          publishedStatusBeforeUnpublish <- DataSetPublishingHelper
+            .getPublishedStatus(
+              publishClient,
+              secureContainer.organization,
+              dataset,
+              secureContainer.user
+            )(ec, system, jwtConfig)
+            .map(status => Some(status): Option[DatasetPublishStatus])
+            .recover {
+              case error =>
+                logger.warn(
+                  s"organization_events: could not fetch published status for dataset ${dataset.nodeId} before unpublish, skipping publishing broadcast: $error"
+                )
+                None
+            }
+
           _ <- DataSetPublishingHelper
             .sendUnpublishRequest(
               secureContainer.organization,
@@ -3945,6 +4094,54 @@ class DataSetsController(
               publicationType = PublicationType.Removal,
               comments = comments
             )
+
+          // Workspace-wide publishing broadcast (organization_events, Part
+          // 4) -- best-effort, fired only on genuine completion (never on
+          // the Failed branch below). Fired after `create` above commits,
+          // not before: the broadcast is a side signal describing an
+          // already-real outcome, never a participant in whether that
+          // outcome is considered to have happened.
+          // Skips entirely (no broadcast) if latestPublishedVersion is
+          // missing on the pre-unpublish status -- this dataset was
+          // published a moment ago by definition, so None here means our
+          // own data is stale or wrong, not that there's no version to
+          // report. The signal is a nice-to-have; a broadcast with a
+          // fabricated version number is worse than no broadcast at all.
+          _ <- EitherT.right[CoreError](publishedStatusBeforeUnpublish match {
+            case Some(status) =>
+              status.latestPublishedVersion match {
+                case None =>
+                  logger.warn(
+                    s"organization_events: no latestPublishedVersion for dataset ${dataset.nodeId}, skipping publishing broadcast"
+                  )
+                  Future.successful(())
+                case Some(publishedVersion) =>
+                  getLatestDoiBestEffort(
+                    secureContainer.organization,
+                    dataset,
+                    owner
+                  ).flatMap {
+                    case Some(doi) =>
+                      secureContainer.organizationEventManager
+                        .logEventBestEffort(
+                          actorUserId = None,
+                          subjectUserId = None,
+                          detail = OrganizationEventDetail.DatasetUnpublished(
+                            dataset.id,
+                            dataset.nodeId,
+                            dataset.name,
+                            status.publishedDatasetId,
+                            publishedVersion,
+                            doi,
+                            owner.id,
+                            s"${owner.firstName} ${owner.lastName}"
+                          )
+                        )
+                    case None => Future.successful(())
+                  }
+              }
+            case None => Future.successful(())
+          })
         } yield completed
       } else {
         secureContainer.datasetPublicationStatusManager
@@ -4002,151 +4199,269 @@ class DataSetsController(
               )
           }
 
-          _ = if (publicationStatus.publicationStatus != PublicationStatus.Accepted) {
-            logger.error(
-              s"Publish complete has been called on a dataset with a publication status of ${publicationStatus.publicationStatus}"
+          // Idempotency guard: a redelivered completion callback (Step
+          // Functions retrying, or any at-least-once redelivery) must be a
+          // no-op once a prior delivery already resolved this Accepted row
+          // to Completed/Failed -- otherwise this would insert a second
+          // status-history row, re-send contributor emails, and re-fire the
+          // organization_events broadcast on every redelivery. Mirrors
+          // completeRemovalRestore's `isDuplicate` short-circuit for the
+          // symmetrical removal-completion path (see above).
+          isDuplicate = publicationStatus.publicationStatus != PublicationStatus.Accepted
+
+          _ = if (isDuplicate) {
+            logger.warn(
+              s"ignoring duplicate publish complete for dataset ${dataset.nodeId}: latest publication status is already ${publicationStatus.publicationStatus}"
             )
           }
 
-          _ <- checkOrErrorT(
-            publicationStatus.publicationType in Seq(
-              PublicationType.Publication,
-              PublicationType.Embargo,
-              PublicationType.Release
-            )
-          )(
-            PredicateError(
-              s"Publication type must be publication, embargo, or release, but was ${publicationStatus.publicationType}"
-            ): CoreError
-          ).coreErrorToActionResult()
-
-          _ <- secureContainer.datasetPublicationStatusManager
-            .create(
-              dataset = dataset,
-              publicationStatus =
-                if (body.success)
-                  PublicationStatus.Completed
-                else PublicationStatus.Failed,
-              publicationType = publicationStatus.publicationType,
-              comments = publicationStatus.comments,
-              embargoReleaseDate = publicationStatus.embargoReleaseDate,
-              publicationArtifact =
-                if (body.success)
-                  ChangelogEventDetail.PublicationArtifact(
-                    publishedDatasetId = body.publishedDatasetId,
-                    publishedVersion = body.publishedVersion,
-                    doi = body.doi
-                  )
-                else ChangelogEventDetail.PublicationArtifact()
-            )
-            .coreErrorToActionResult()
-
-          // Only remove the publisher team if the publish was successful.
-          // In the case of failure, a subsequent success (via retry) or a
-          // reject will remove it
-
-          _ <- (if (body.success) {
-                  DataSetPublishingHelper.removePublisherTeam(
-                    secureContainer,
-                    dataset
-                  )
-                } else {
-                  EitherT.rightT[Future, CoreError](())
-                }).coreErrorToActionResult()
-
-          contributors <- secureContainer.datasetManager
-            .getContributors(dataset)
-            .map(_.map(ContributorDTO(_)))
-            .coreErrorToActionResult()
-
-          _ = if (body.success) {
-            logger.info(s"Publish complete for dataset ${dataset.nodeId}")
-          } else {
-            logger.error(
-              s"Publish failed for dataset ${dataset.nodeId}: ${body.error}"
-            )
-          }
-
-          _ <- if (body.success) for {
-            publishedDatasetId <- body.publishedDatasetId
-              .toRight[ActionResult](
-                InternalServerError("Missing published dataset ID")
-              )
-              .toEitherT[Future]
-
-            //find all the files with a state of pending and mark them as Uploaded
-            _ <- secureContainer.packageManager
-              .markFilesInPendingStateAsUploaded(dataset = dataset)
-              .coreErrorToActionResult()
-
-            _ <- publicationStatus.publicationType match {
-              case PublicationType.Embargo =>
-                DataSetPublishingHelper.emailContributorsDatasetEmbargoed(
-                  insecureContainer,
-                  contributors,
-                  dataset,
-                  owner,
-                  publicationStatus.embargoReleaseDate.get
-                )
-              case PublicationType.Publication =>
-                DataSetPublishingHelper.emailContributorsDatasetPublished(
-                  insecureContainer,
-                  contributors,
-                  owner,
-                  dataset,
-                  publishedDatasetId
-                )
-              case PublicationType.Release =>
-                DataSetPublishingHelper
-                  .emailContributorsEmbargoedDatasetReleased(
-                    insecureContainer,
-                    contributors,
-                    dataset,
-                    owner,
-                    publishedDatasetId
-                  )
-              case _ => EitherT.rightT[Future, ActionResult](())
-            }
-
-            // register publication with external sites/registries
-            _ <- registerPublication(
+          _ <- if (isDuplicate) EitherT.rightT[Future, ActionResult](())
+          else
+            publishCompleteBody(
               secureContainer,
               dataset,
               owner,
               body,
               publicationStatus
-            ).value
-              .flatMap {
-                case Left(error) =>
-                  logger.info(
-                    s"publication registration failed with error: ${error}"
-                  )
-                  Future.successful(())
-                case Right(registrations) =>
-                  registrations.length match {
-                    case 0 =>
-                      logger.info(
-                        "publication was not registered with any registries"
-                      )
-                    case count: Int =>
-                      logger.info(
-                        s"publication was registered with ${count} registries"
-                      )
-                  }
-
-                  Future.successful(())
-              }
-              .toEitherT
-              .coreErrorToActionResult()
-
-          } yield ()
-          else EitherT.rightT[Future, ActionResult](())
+            )
 
         } yield ()
 
       val is = result.value.map(OkResult)
     }
   }
+
+  private def publishCompleteBody(
+    secureContainer: SecureAPIContainer,
+    dataset: Dataset,
+    owner: User,
+    body: PublishCompleteRequest,
+    publicationStatus: DatasetPublicationStatus
+  ): EitherT[Future, ActionResult, Unit] =
+    for {
+      _ <- checkOrErrorT(
+        publicationStatus.publicationType in Seq(
+          PublicationType.Publication,
+          PublicationType.Embargo,
+          PublicationType.Release
+        )
+      )(
+        PredicateError(
+          s"Publication type must be publication, embargo, or release, but was ${publicationStatus.publicationType}"
+        ): CoreError
+      ).coreErrorToActionResult()
+
+      // On failure there's no tail work the Failed write needs to follow,
+      // so write it immediately, same as before. On success, create(Completed)
+      // moves to the very end of this method (see below) instead of running
+      // here first: the idempotency guard in the caller short-circuits any
+      // redelivery once the latest status is no longer Accepted, so if
+      // create(Completed) ran first and a *later* step in this method then
+      // failed, a redelivered retry would see Completed, hit the guard, and
+      // silently skip the remaining real work a second time -- emails never
+      // sent, publisher team never removed, broadcast never fired, with
+      // nothing to flag it. Mirrors finalizeAcceptedRemoval's shape, where
+      // create(Completed) is also the method's last step.
+      _ <- if (!body.success)
+        secureContainer.datasetPublicationStatusManager
+          .create(
+            dataset = dataset,
+            publicationStatus = PublicationStatus.Failed,
+            publicationType = publicationStatus.publicationType,
+            comments = publicationStatus.comments,
+            embargoReleaseDate = publicationStatus.embargoReleaseDate,
+            publicationArtifact = ChangelogEventDetail.PublicationArtifact()
+          )
+          .coreErrorToActionResult()
+      else EitherT.rightT[Future, ActionResult](())
+
+      _ = if (!body.success) {
+        logger.error(
+          s"Publish failed for dataset ${dataset.nodeId}: ${body.error}"
+        )
+      }
+
+      _ <- if (body.success) for {
+        // If this is missing on a success callback, the dataset did
+        // genuinely publish (body.success is true) -- so this does NOT
+        // write Failed, unlike the !body.success branch above. But since
+        // create(Completed) now runs last (see the comment above it), the
+        // row stays Accepted and every redelivery hits this same 500. A
+        // sender that always omits publishedDatasetId on success is a
+        // caller bug outside this method's control; this is a known,
+        // intentionally-not-handled edge case, not a dead end -- a human
+        // investigating the stuck Accepted row is the expected recovery
+        // path, same as any other defect that leaves state mid-flight.
+        publishedDatasetId <- body.publishedDatasetId
+          .toRight[ActionResult](
+            InternalServerError("Missing published dataset ID")
+          )
+          .toEitherT[Future]
+
+        _ <- DataSetPublishingHelper
+          .removePublisherTeam(secureContainer, dataset)
+          .coreErrorToActionResult()
+
+        contributors <- secureContainer.datasetManager
+          .getContributors(dataset)
+          .map(_.map(ContributorDTO(_)))
+          .coreErrorToActionResult()
+
+        _ = logger.info(s"Publish complete for dataset ${dataset.nodeId}")
+
+        //find all the files with a state of pending and mark them as Uploaded
+        _ <- secureContainer.packageManager
+          .markFilesInPendingStateAsUploaded(dataset = dataset)
+          .coreErrorToActionResult()
+
+        _ <- publicationStatus.publicationType match {
+          case PublicationType.Embargo =>
+            DataSetPublishingHelper.emailContributorsDatasetEmbargoed(
+              insecureContainer,
+              contributors,
+              dataset,
+              owner,
+              publicationStatus.embargoReleaseDate.get
+            )
+          case PublicationType.Publication =>
+            DataSetPublishingHelper.emailContributorsDatasetPublished(
+              insecureContainer,
+              contributors,
+              owner,
+              dataset,
+              publishedDatasetId
+            )
+          case PublicationType.Release =>
+            DataSetPublishingHelper
+              .emailContributorsEmbargoedDatasetReleased(
+                insecureContainer,
+                contributors,
+                dataset,
+                owner,
+                publishedDatasetId
+              )
+          case _ => EitherT.rightT[Future, ActionResult](())
+        }
+
+        // Workspace-wide publishing broadcast (organization_events,
+        // Part 4) -- best-effort, parallel to the email dispatch above,
+        // not a replacement for it.
+        _ <- (body.publishedVersion, body.doi) match {
+          case (Some(publishedVersion), Some(doi)) =>
+            val detail = publicationStatus.publicationType match {
+              case PublicationType.Embargo =>
+                Some(
+                  OrganizationEventDetail.DatasetEmbargoed(
+                    dataset.id,
+                    dataset.nodeId,
+                    dataset.name,
+                    Some(publishedDatasetId),
+                    publishedVersion,
+                    doi,
+                    owner.id,
+                    s"${owner.firstName} ${owner.lastName}"
+                  )
+                )
+              case PublicationType.Publication =>
+                Some(
+                  OrganizationEventDetail.DatasetPublished(
+                    dataset.id,
+                    dataset.nodeId,
+                    dataset.name,
+                    Some(publishedDatasetId),
+                    publishedVersion,
+                    doi,
+                    owner.id,
+                    s"${owner.firstName} ${owner.lastName}"
+                  )
+                )
+              case PublicationType.Release =>
+                Some(
+                  OrganizationEventDetail.DatasetEmbargoReleased(
+                    dataset.id,
+                    dataset.nodeId,
+                    dataset.name,
+                    Some(publishedDatasetId),
+                    publishedVersion,
+                    doi,
+                    owner.id,
+                    s"${owner.firstName} ${owner.lastName}"
+                  )
+                )
+              case _ => None
+            }
+
+            detail match {
+              case Some(d) =>
+                EitherT.right[ActionResult](
+                  secureContainer.organizationEventManager
+                    .logEventBestEffort(
+                      actorUserId = None,
+                      subjectUserId = None,
+                      detail = d
+                    )
+                )
+              case None => EitherT.rightT[Future, ActionResult](())
+            }
+          case _ =>
+            logger.warn(
+              s"Skipping organization_events publishing broadcast for dataset ${dataset.nodeId}: missing publishedVersion/doi on PublishCompleteRequest"
+            )
+            EitherT.rightT[Future, ActionResult](())
+        }
+
+        // register publication with external sites/registries
+        _ <- registerPublication(
+          secureContainer,
+          dataset,
+          owner,
+          body,
+          publicationStatus
+        ).value
+          .flatMap {
+            case Left(error) =>
+              logger.info(
+                s"publication registration failed with error: ${error}"
+              )
+              Future.successful(())
+            case Right(registrations) =>
+              registrations.length match {
+                case 0 =>
+                  logger.info(
+                    "publication was not registered with any registries"
+                  )
+                case count: Int =>
+                  logger.info(
+                    s"publication was registered with ${count} registries"
+                  )
+              }
+
+              Future.successful(())
+          }
+          .toEitherT
+          .coreErrorToActionResult()
+
+        // create(Completed) is the last real step, not the first: see the
+        // comment above the Failed-branch create call for why.
+        _ <- secureContainer.datasetPublicationStatusManager
+          .create(
+            dataset = dataset,
+            publicationStatus = PublicationStatus.Completed,
+            publicationType = publicationStatus.publicationType,
+            comments = publicationStatus.comments,
+            embargoReleaseDate = publicationStatus.embargoReleaseDate,
+            publicationArtifact = ChangelogEventDetail.PublicationArtifact(
+              publishedDatasetId = body.publishedDatasetId,
+              publishedVersion = body.publishedVersion,
+              doi = body.doi
+            )
+          )
+          .coreErrorToActionResult()
+
+      } yield ()
+      else EitherT.rightT[Future, ActionResult](())
+
+    } yield ()
 
   val removalComplete
     : OperationBuilder = (apiOperation[DatasetPublicationStatus](
@@ -4589,6 +4904,42 @@ class DataSetsController(
       case GetLatestDoiResponse.Unauthorized =>
         Left(UnauthorizedError(s"DOI service authorization failed"))
     }
+  }
+
+  /**
+    * Best-effort DOI lookup for the Part 4 publishing-broadcast events at
+    * the Revision/Removal call sites, which (unlike Publication/Embargo/
+    * Release) never receive a DOI via `PublishCompleteRequest` -- see
+    * docs/changelog-events.md Part 4. Never fails the caller: a lookup
+    * failure just means the broadcast event is skipped for this call,
+    * mirroring `organizationEventManager.logEventBestEffort`'s own
+    * never-fail-the-caller semantics.
+    */
+  def getLatestDoiBestEffort(
+    organization: Organization,
+    dataset: Dataset,
+    user: User
+  ): Future[Option[String]] = {
+    val token = JwtAuthenticator
+      .generateServiceToken(1.minute, organization.id, Some(dataset.id))
+    val tokenHeader = Authorization(OAuth2BearerToken(token.value))
+
+    doiClient
+      .getLatestDoi(organization.id, dataset.id, List(tokenHeader))
+      .leftMap {
+        case Left(e) => ServiceError(e.getMessage): CoreError
+        case Right(resp) => ServiceError(resp.toString): CoreError
+      }
+      .subflatMap(handleGetDoiResponse(user.nodeId, dataset.id, _))
+      .value
+      .map {
+        case Right(doiDTO) => Some(doiDTO.doi)
+        case Left(error) =>
+          logger.warn(
+            s"organization_events: could not resolve DOI for dataset ${dataset.nodeId}, skipping publishing broadcast: $error"
+          )
+          None
+      }
   }
 
   def handleCreateDoiResponse(
