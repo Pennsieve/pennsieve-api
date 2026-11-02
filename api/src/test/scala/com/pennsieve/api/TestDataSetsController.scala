@@ -5059,10 +5059,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     currentPublicationStatus() shouldBe Some(PublicationStatus.Draft)
     currentPublicationType() shouldBe None
 
-    val alreadySentMessagesSubjectList = insecureContainer.emailer
+    val alreadySentMessageIds = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(_.subject)
+      .map(_.messageId)
       .toList
 
     postJson(
@@ -5206,21 +5206,21 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // Note: the 'colleague' user is added to the Publishers team in initializePublicationTest()
     // and the 'publisher' user is added to the Publishers team in ApiSuite.beforeEach()
-    sentMessages.map(_.subject).toList shouldBe List.concat(
-      alreadySentMessagesSubjectList,
+    sentMessages.map(_.messageId).toList shouldBe List.concat(
+      alreadySentMessageIds,
       List(
-        "Dataset Submitted for Review", //submitted
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
-        "Dataset Revision needed", //rejected
-        "Dataset Submitted for Review", //submitted
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
-        "Dataset Submitted for Review", //submitted again after cancel (cancel does not send email for now)
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
-        "Dataset Accepted", //accepted
-        "Dataset Published to Pennsieve Discover" //published
+        "dataset-publication-in-review", //submitted
+        "dataset-submitted-for-review", //cc: Publishers Team (colleague)
+        "dataset-submitted-for-review", //cc: Publishers Team (publisher)
+        "dataset-revision-needed", //rejected
+        "dataset-publication-in-review", //submitted
+        "dataset-submitted-for-review", //cc: Publishers Team (colleague)
+        "dataset-submitted-for-review", //cc: Publishers Team (publisher)
+        "dataset-publication-in-review", //submitted again after cancel (cancel does not send email for now)
+        "dataset-submitted-for-review", //cc: Publishers Team (colleague)
+        "dataset-submitted-for-review", //cc: Publishers Team (publisher)
+        "dataset-publication-accepted", //accepted
+        "notification-of-publication-to-contributor" //published
       )
     )
   }
@@ -5319,10 +5319,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     "2 step publishing - revision - request > cancel > request > reject > request > accept > complete"
   ) {
 
-    val alreadySentMessagesSubjectList = insecureContainer.emailer
+    val alreadySentMessageIds = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(_.subject)
+      .map(_.messageId)
       .toList
 
     implicit val dataset: Dataset =
@@ -5449,9 +5449,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sentEmails
 
-    sentMessages.map(_.subject).toList shouldBe List.concat(
-      alreadySentMessagesSubjectList,
-      List("Dataset Revision")
+    sentMessages.map(_.messageId).toList shouldBe List.concat(
+      alreadySentMessageIds,
+      List("dataset-revision")
     )
   }
 
@@ -5562,10 +5562,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   test(
     "2 step publishing - embargo - request > accept > publication successful"
   ) {
-    val alreadySentMessagesSubjectList = insecureContainer.emailer
+    val alreadySentMessageIds = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(_.subject)
+      .map(_.messageId)
       .toList
 
     implicit val dataset: Dataset =
@@ -5637,9 +5637,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sentEmails
 
-    sentMessages.map(_.subject).toList shouldBe List.concat(
-      alreadySentMessagesSubjectList,
-      List("Dataset Accepted", "Dataset Under Embargo")
+    sentMessages.map(_.messageId).toList shouldBe List.concat(
+      alreadySentMessageIds,
+      List("dataset-publication-accepted", "dataset-embargo-accepted")
     )
 
   }
@@ -5701,10 +5701,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("2 step publishing - release - request > accept > release successful") {
-    val alreadySentMessagesSubjectList = insecureContainer.emailer
+    val alreadySentMessageIds = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(_.subject)
+      .map(_.messageId)
       .toList
 
     implicit val dataset: Dataset =
@@ -5761,9 +5761,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sentEmails
 
-    sentMessages.map(_.subject).toList shouldBe List.concat(
-      alreadySentMessagesSubjectList,
-      List("Dataset Release Accepted", "Dataset Released")
+    sentMessages.map(_.messageId).toList shouldBe List.concat(
+      alreadySentMessageIds,
+      List("embargo-dataset-release-accepted", "embargoed-dataset-released")
     )
   }
 
@@ -6819,7 +6819,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     val alreadySent = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(e => (e.subject, e.to.address))
+      .map(e => (e.messageId, e.recipients.head.email))
       .toList
 
     val serviceHeader =
@@ -6923,10 +6923,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(e => (e.subject, e.to.address))
+      .map(e => (e.messageId, e.recipients.head.email))
       .toList shouldBe alreadySent ++ List(
-      ("Request to Access Data", loggedInUser.email),
-      ("Request Accepted", colleagueUser.email)
+      ("embargo-access-requested", loggedInUser.email),
+      ("embargo-access-approved", colleagueUser.email)
     )
   }
   test(

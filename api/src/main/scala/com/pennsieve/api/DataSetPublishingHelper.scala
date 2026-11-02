@@ -24,7 +24,7 @@ import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.implicits._
 import com.pennsieve.auth.middleware.{ DatasetPermission, Jwt }
-import com.pennsieve.aws.email.{ Email, SesMessageResult }
+import com.pennsieve.aws.email.EmailSendResult
 import com.pennsieve.clients.{ DatasetAssetClient }
 import com.pennsieve.core.utilities.{
   checkOrError,
@@ -64,7 +64,6 @@ import com.pennsieve.managers.{ DatasetAssetsManager, DatasetManager }
 import com.pennsieve.models.PublicationStatus.Requested
 import com.pennsieve.models.PublicationType.Revision
 import com.pennsieve.models._
-import com.pennsieve.web.Settings
 import com.typesafe.scalalogging.LazyLogging
 import io.scalaland.chimney.dsl._
 import org.apache.commons.io.IOUtils
@@ -120,7 +119,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     discoverDatasetId: Int
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
 
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
@@ -138,12 +137,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(contributorEmail),
-              from = Settings.support_email,
-              message = message,
-              subject = s"Dataset Published to Pennsieve Discover"
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -159,7 +153,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     owner: User
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
@@ -171,19 +165,12 @@ case object DataSetPublishingHelper extends LazyLogging {
               contributorEmail
             )
 
-          val subject = "Dataset Accepted"
-
           logger.info(
             s"Sent email to ${contributorEmail} after the dataset ${dataset.nodeId} was accepted for publication to discover"
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(contributorEmail),
-              from = Settings.support_email,
-              message = message,
-              subject = subject
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -199,7 +186,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     embargoDate: LocalDate
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
@@ -212,19 +199,12 @@ case object DataSetPublishingHelper extends LazyLogging {
               emailAddress = contributorEmail
             )
 
-          val subject = "Dataset Under Embargo"
-
           logger.info(
             s"Sent email to ${contributorEmail} after the dataset ${dataset.nodeId} was embargoed for publication to discover"
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(contributorEmail),
-              from = Settings.support_email,
-              message = message,
-              subject = subject
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -239,7 +219,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     owner: User
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
@@ -250,19 +230,13 @@ case object DataSetPublishingHelper extends LazyLogging {
               reviewer,
               contributorEmail
             )
-          val subject = "Dataset Release Accepted"
 
           logger.info(
             s"Sent email to ${contributorEmail} after the request to release embargoed dataset ${dataset.nodeId} for publication to discover was accepted"
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(contributorEmail),
-              from = Settings.support_email,
-              message = message,
-              subject = subject
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
         }
@@ -277,7 +251,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     discoverDatasetId: Int
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
@@ -287,19 +261,13 @@ case object DataSetPublishingHelper extends LazyLogging {
               contributorEmail,
               discoverDatasetId
             )
-          val subject = "Dataset Released"
 
           logger.info(
             s"Sent email to ${contributorEmail} after the embargoed dataset ${dataset.nodeId} was released for publication to discover"
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(contributorEmail),
-              from = Settings.support_email,
-              message = message,
-              subject = subject
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
         }
@@ -316,7 +284,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     message: Option[String]
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
@@ -331,20 +299,12 @@ case object DataSetPublishingHelper extends LazyLogging {
               certainMessage
             )
 
-          val subject =
-            "Dataset Revision needed"
-
           logger.info(
             s"Sent email to ${contributorEmail} after the dataset ${dataset.nodeId} was rejected for publication to discover"
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(contributorEmail),
-              from = Settings.support_email,
-              message = content,
-              subject = subject
-            )
+            .send(content)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -361,7 +321,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     discoverDatasetId: Option[Int]
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
@@ -373,20 +333,12 @@ case object DataSetPublishingHelper extends LazyLogging {
               dataset
             )
 
-          val subject =
-            "Dataset Revision"
-
           logger.info(
             s"Sent email to ${contributorEmail} after accepting a request for revision for the dataset ${dataset.nodeId}"
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(contributorEmail),
-              from = Settings.support_email,
-              message = message,
-              subject = subject
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -402,7 +354,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     owner: User
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
     uniqueEmails(owner, contributors.map(_.email))
       .traverse { contributorEmail =>
         {
@@ -416,20 +368,12 @@ case object DataSetPublishingHelper extends LazyLogging {
                 contributorEmail
               )
 
-          val subject =
-            "Dataset Submitted for Review"
-
           logger.info(
             s"Sent email to ${contributorEmail} after receiving a request for publication for the dataset ${dataset.nodeId}"
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(contributorEmail),
-              from = Settings.support_email,
-              message = message,
-              subject = subject
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -445,7 +389,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     publishers: Seq[User]
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, Seq[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, Seq[EmailSendResult]] = {
     publishers
       .traverse { publisher =>
         {
@@ -462,20 +406,12 @@ case object DataSetPublishingHelper extends LazyLogging {
                 emailAddress = publisher.email
               )
 
-          val subject =
-            "Dataset Submitted to Publishers for Review"
-
           logger.info(
             s"Sent email to Publisher ${publisher.email} after receiving a request for publication for the dataset ${dataset.nodeId}"
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(publisher.email),
-              from = Settings.support_email,
-              message = message,
-              subject = subject
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
         }
@@ -491,7 +427,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     dataset: Dataset
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, List[SesMessageResult]] = {
+  ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
     uniqueEmails(owner, managers.map(_.email))
       .traverse { email =>
         {
@@ -509,12 +445,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .sendEmail(
-              to = Email(email),
-              from = Settings.support_email,
-              message = message,
-              subject = "Request to Access Data"
-            )
+            .send(message)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -531,7 +462,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     discoverDatasetId: Option[Int]
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, SesMessageResult] = {
+  ): EitherT[Future, ActionResult, EmailSendResult] = {
 
     val message = insecureContainer.messageTemplates
       .embargoAccessApproved(
@@ -548,12 +479,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     )
 
     insecureContainer.emailer
-      .sendEmail(
-        to = Email(requestingUser.email),
-        from = Settings.support_email,
-        message = message,
-        subject = "Request Accepted"
-      )
+      .send(message)
       .leftMap(error => InternalServerError(error.getMessage))
       .toEitherT[Future]
   }
@@ -566,7 +492,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     dataset: Dataset
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, ActionResult, SesMessageResult] = {
+  ): EitherT[Future, ActionResult, EmailSendResult] = {
     val message = insecureContainer.messageTemplates
       .embargoAccessDenied(
         dataset = dataset,
@@ -581,12 +507,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     )
 
     insecureContainer.emailer
-      .sendEmail(
-        to = Email(requestingUser.email),
-        from = Settings.support_email,
-        message = message,
-        subject = "Request Denied"
-      )
+      .send(message)
       .leftMap(error => InternalServerError(error.getMessage))
       .toEitherT[Future]
   }

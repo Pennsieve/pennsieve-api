@@ -40,6 +40,13 @@ resource "aws_iam_role_policy" "sqs_iam_role_policy" {
   policy = data.aws_iam_policy_document.sqs_iam_policy_document.json
 }
 
+resource "aws_iam_role_policy" "email_service_iam_role_policy" {
+  role   = var.ecs_task_iam_role_id
+
+  name   = "${var.environment_name}-${var.service_name}-email-service-policy-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
+  policy = data.aws_iam_policy_document.email_service_iam_policy_document.json
+}
+
 resource "aws_iam_role_policy" "sns_iam_role_policy" {
   role   = var.ecs_task_iam_role_id
 
@@ -217,6 +224,31 @@ data "aws_iam_policy_document" "ses_iam_policy_document" {
     ]
 
     resources = ["*"]
+  }
+}
+
+// Allow API to enqueue email requests on the email-service send queue (and use its KMS key)
+data "aws_iam_policy_document" "email_service_iam_policy_document" {
+  # Enqueue email requests on the email-service send queue.
+  statement {
+    sid    = "EmailServiceSQSPermissions"
+    effect = "Allow"
+    actions = [
+      "sqs:SendMessage",
+      "sqs:GetQueueAttributes",
+    ]
+    resources = [data.terraform_remote_state.email_service.outputs.email_service_queue_arn]
+  }
+
+  # The send queue is KMS-encrypted; sending requires use of its key.
+  statement {
+    sid    = "EmailServiceKMSPermissions"
+    effect = "Allow"
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+    ]
+    resources = [data.terraform_remote_state.email_service.outputs.email_service_queue_kms_key_arn]
   }
 }
 

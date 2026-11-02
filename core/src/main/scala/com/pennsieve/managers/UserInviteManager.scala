@@ -22,8 +22,7 @@ import java.util.UUID
 import cats.data._
 import cats.implicits._
 import com.pennsieve.aws.cognito.CognitoClient
-import com.pennsieve.aws.email.{ Email, EmailToSend }
-import com.pennsieve.core.utilities.MessageTemplates
+import com.pennsieve.aws.email.Email
 
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._

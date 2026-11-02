@@ -20,7 +20,6 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
-import com.pennsieve.aws.email.Email
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.domain.StorageAggregation.susers
@@ -398,22 +397,12 @@ class UserController(
         _ = userRequestedChange match {
           case true =>
             insecureContainer.emailer
-              .sendEmail(
-                to = Email(oldEmail),
-                from = Settings.support_email,
-                message = messageToOld,
-                subject = s"Your email address has changed"
-              )
+              .send(messageToOld)
               .leftMap(error => InternalServerError(error.getMessage))
               .toEitherT[Future]
 
             insecureContainer.emailer
-              .sendEmail(
-                to = Email(newEmail),
-                from = Settings.support_email,
-                message = messageToNew,
-                subject = s"Your email address has changed"
-              )
+              .send(messageToNew)
               .leftMap(error => InternalServerError(error.getMessage))
               .toEitherT[Future]
 

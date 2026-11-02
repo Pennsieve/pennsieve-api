@@ -21,7 +21,7 @@ import java.time.{ Duration, ZonedDateTime }
 import cats.data._
 import cats.implicits._
 import com.pennsieve.aws.cognito.CognitoClient
-import com.pennsieve.aws.email.{ Email, EmailToSend, Emailer }
+import com.pennsieve.aws.email.Emailer
 import com.pennsieve.core.utilities.{ DatabaseHelpers, FutureEitherHelpers }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.db._
@@ -984,20 +984,14 @@ trait SecureOrganizationManager extends OrganizationManager {
     emailer: Emailer,
     messageTemplates: MessageTemplates
   ): Either[CoreError, Unit] = {
-    val email = EmailToSend(
-      to = Email(user.email),
-      from = messageTemplates.supportEmail,
-      message = messageTemplates
-        .addedToOrganization(
-          user.email,
-          administrator.fullName,
-          organization,
-          customMessage.getOrElse("")
-        ),
-      subject = s"You’ve been added to an organization"
+    val email = messageTemplates.addedToOrganization(
+      user.email,
+      administrator.fullName,
+      organization,
+      customMessage.getOrElse("")
     )
 
-    emailer.sendEmail(email).leftMap(ThrowableError(_)).map(_ => ())
+    emailer.send(email).leftMap(ThrowableError(_)).map(_ => ())
   }
 
   /**

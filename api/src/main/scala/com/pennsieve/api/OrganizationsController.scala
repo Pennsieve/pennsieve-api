@@ -1485,16 +1485,13 @@ class OrganizationsController(
               }
               .map { _ =>
                 insecureContainer.emailer
-                  .sendEmail(
-                    Email(user.email),
-                    Settings.support_email,
+                  .send(
                     insecureContainer.messageTemplates.addedToTeam(
                       administrator = administrator,
                       team = team.name,
                       emailAddress = user.email,
                       org = organization
-                    ),
-                    "You’ve been added to a team"
+                    )
                   )
 
                 user

@@ -26,7 +26,7 @@ import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.aws.cognito.{ Cognito, CognitoClient }
-import com.pennsieve.aws.email.{ Email, SesMessageResult }
+import com.pennsieve.aws.email.{ Email, EmailSendResult }
 import com.pennsieve.aws.queue.SQSClient
 import com.pennsieve.aws.stepfunctions.{ StepFunctions, StepFunctionsClient }
 import com.pennsieve.clients.DatasetAssetClient
@@ -2298,31 +2298,20 @@ class DataSetsController(
           .addGuestUser(welcomeWorkspace, user)
           .coreErrorToActionResult()
 
-        // generate email message to existing user
-        emailMessage = userExists match {
-          case true =>
-            insecureContainer.messageTemplates
-              .inviteExternalExistingUserToDataset(
-                user.email,
-                s"${invitingUser.firstName} ${invitingUser.lastName}",
-                invitingUser.email,
-                secureContainer.organization.name,
-                dataset.name,
-                customMessage = customMessage
-              )
-          case false =>
-            "n/a"
-        }
-
         _ <- userExists match {
           case true =>
             // send email message to invited user, if they are an existing Pennsieve user
             insecureContainer.emailer
-              .sendEmail(
-                to = Email(user.email),
-                from = Settings.support_email,
-                message = emailMessage,
-                subject = s"You have been invited to collaborate"
+              .send(
+                insecureContainer.messageTemplates
+                  .inviteExternalExistingUserToDataset(
+                    user.email,
+                    s"${invitingUser.firstName} ${invitingUser.lastName}",
+                    invitingUser.email,
+                    secureContainer.organization.name,
+                    dataset.name,
+                    customMessage = customMessage
+                  )
               )
               .leftMap(error => InternalServerError(error.getMessage))
               .toEitherT[Future]
@@ -2768,12 +2757,7 @@ class DataSetsController(
           )
 
         _ <- insecureContainer.emailer
-          .sendEmail(
-            to = Email(newOwner.email),
-            from = Settings.support_email,
-            message = message,
-            subject = s"You’re now a dataset owner"
-          )
+          .send(message)
           .leftMap(error => InternalServerError(error.getMessage))
           .toEitherT[Future]
 
@@ -3246,7 +3230,7 @@ class DataSetsController(
             )
           } else {
             EitherT
-              .rightT[Future, CoreError](List[SesMessageResult]())
+              .rightT[Future, CoreError](List[EmailSendResult]())
               .coreErrorToActionResult()
           }
 
@@ -3264,7 +3248,7 @@ class DataSetsController(
             )
           } else {
             EitherT
-              .rightT[Future, CoreError](List[SesMessageResult]())
+              .rightT[Future, CoreError](List[EmailSendResult]())
               .coreErrorToActionResult()
           }
 
@@ -3386,7 +3370,7 @@ class DataSetsController(
             )
           } else {
             EitherT
-              .rightT[Future, CoreError](List[SesMessageResult]())
+              .rightT[Future, CoreError](List[EmailSendResult]())
               .coreErrorToActionResult()
           }
 

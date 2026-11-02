@@ -16,13 +16,11 @@
 
 package com.pennsieve.aws.email
 
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.simpleemail.{
-  AmazonSimpleEmailService,
-  AmazonSimpleEmailServiceClientBuilder
-}
+import com.pennsieve.email.client.EmailClient
 import com.pennsieve.utilities.Container
 import net.ceedubs.ficus.Ficus._
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.sqs.SqsClient
 
 trait EmailContainer { self: Container =>
 
@@ -31,13 +29,16 @@ trait EmailContainer { self: Container =>
 
 trait AWSEmailContainer extends EmailContainer { self: Container =>
 
-  lazy val client: AmazonSimpleEmailService =
-    AmazonSimpleEmailServiceClientBuilder
-      .standard()
-      .withRegion(Regions.US_EAST_1)
-      .build()
+  lazy val emailServiceQueueUrl: String =
+    config.as[String]("email.service_queue_url")
 
-  override lazy val emailer: Emailer = new SESEmailer(client)
+  lazy val emailClient: EmailClient =
+    new EmailClient(
+      SqsClient.builder().region(Region.US_EAST_1).build(),
+      emailServiceQueueUrl
+    )
+
+  override lazy val emailer: Emailer = new QueueEmailer(emailClient)
 }
 
 trait LocalEmailContainer extends EmailContainer { self: Container =>

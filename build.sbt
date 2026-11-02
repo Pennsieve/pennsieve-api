@@ -95,6 +95,8 @@ lazy val authMiddlewareVersion = "5.1.3"
 
 lazy val awsVersion = "1.12.797"
 lazy val awsV2Version = "2.15.58"
+// Producer client for the email-service (SQS). Released from vX.Y.Z tags in Pennsieve/email-service.
+lazy val emailClientVersion = "1.1.0"
 
 lazy val catsVersion = "2.6.1"
 
@@ -386,11 +388,11 @@ lazy val coreSettings = Seq(
     "com.amazonaws" % "aws-java-sdk-ecs" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-kms" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-s3" % awsVersion,
-    "com.amazonaws" % "aws-java-sdk-ses" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-ssm" % awsVersion,
     "com.amazonaws" % "aws-java-sdk-sts" % awsVersion,
     "software.amazon.awssdk" % "sns" % awsV2Version,
     "software.amazon.awssdk" % "sqs" % awsV2Version,
+    "com.pennsieve" %% "email-client-scala" % emailClientVersion,
     "software.amazon.awssdk" % "sfn" % awsV2Version,
     "software.amazon.awssdk" % "cognitoidentityprovider" % awsV2Version,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
