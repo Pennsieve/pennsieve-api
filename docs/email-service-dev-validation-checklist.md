@@ -24,31 +24,106 @@ For every row:
 - [ ] `email-message-log` row is `SENT` (`ENV=dev scripts/email-log.sh` in email-service)
 - [ ] If nothing arrives, check whether the journal row is `LoggedOnly=true` (a send control fired; not a failure)
 
+## Resources to prepare
+
+Fill the **Actual** column in the checklist with real values at runtime (user email, dataset id, etc.).
+
+**Datasets (all in test org O38, owner = `OWNER`):**
+
+| Name | State needed | Used by |
+|---|---|---|
+| `DS1` | Ready to publish (see [Dataset setup](#dataset-setup-ready-to-publish)); never published or embargoed | #1–#6 (publish, reject, revision) |
+| `DS2` | Ready to publish; never published (an embargo is refused on a dataset that is already published) | #7–#12, #8, #9 (embargo, previews, release) |
+| `DS3` | Created only | #17, #18 (collaborator, owner switch) |
+
+**Users:**
+
+| Name | Role | Notes |
+|---|---|---|
+| `OWNER` | Owner of DS1, DS2, DS3; org member | Needs an ORCID linked, **or** be on the publisher team (publishers get a placeholder ORCID) |
+| `PUBLISHER` | Member of the org's Publisher team | Accepts / rejects publication requests |
+| `SUPER` | Platform superadmin | E4 callback and E5 preview request are superadmin-only |
+| `MANAGER` | Manager on DS1/DS2 (`AddPeople`) | `OWNER` also qualifies |
+| `ORG_ADMIN` | Org administrator | Adds team and org members |
+| `PREVIEW_1`, `PREVIEW_2` | Existing users who seek embargo preview | Typically outside the org (the embargo-preview use case; not verified the endpoint requires that). Need their integer user ids |
+| `EXISTING_USER` | An existing Pennsieve user | Invitee for #16 and #17 |
+| `TEAM_MEMBER` | Non-Guest member of O38 | Added to the team in #15 |
+| `NEW_OWNER` | A user who can own DS3 | #18 |
+| `EMAIL_USER` | Throwaway user | Needs the *before* inbox, and an unused *after* inbox that you can read |
+
+Also: a **Team** in O38 (for #15), and a non-empty Publisher team. Every recipient above needs a real,
+readable inbox. Collection variables: `dataset_node_id`, `dataset_int_id` (swap per dataset),
+`email_team_id`, `email_test_user_int_id`, `email_test_user2_int_id`, `email_existing_user_email`,
+`email_original_address`, `email_new_address`, `new_owner_node_id`.
+
+## Dataset setup (ready to publish)
+
+Publication requests are refused unless the dataset passes `gatherPublicationInfo`
+(`DataSetPublishingHelper.scala`). It requires **all** of:
+
+1. a **description** (the subtitle), non-empty;
+2. a **license**;
+3. a **banner image**;
+4. a **readme**;
+5. at least one **tag**;
+6. at least one **contributor**;
+7. the owner has an **ORCID** linked, unless the caller is on the Publisher team.
+
+Steps 1-6 can be scripted as `OWNER` (endpoint shapes read from the code; not yet run against Dev):
+
+| Step | Call | Body |
+|---|---|---|
+| Create with description, license, tags | `POST /datasets/` | `{"name": "...", "description": "...", "properties": [], "license": "<License>", "tags": ["..."]}` |
+| Banner | `PUT /datasets/:id/banner` | multipart form, file field `banner` (an image) |
+| Readme | `PUT /datasets/:id/readme` | `{"readme": "..."}` |
+| Create a contributor | `POST /contributors/` | `{"firstName": "...", "lastName": "...", "email": "..."}` (returns the contributor id) |
+| Attach contributor | `PUT /datasets/:id/contributors` | `{"contributorId": <int>}` |
+
+`license` is a Circe enum with human-readable values, e.g. `"Creative Commons Zero 1.0 Universal"`.
+The ORCID link (item 7) comes from the ORCID OAuth flow in the app, so it can't be scripted; use an
+owner that already has one, or put the owner on the Publisher team. `DS3` needs only the create call
+(name, `"properties": []`). To read integer ids, check the `content` of `GET /datasets/:id` and
+`GET /user` (field name not verified).
+
+## Run order
+
+State rules from `validatePublicationStateTransition`:
+
+- an embargo is allowed only on a dataset that has not been published;
+- a revision needs a dataset whose last completed workflow was publication, revision or release;
+- a release needs an embargo that has completed;
+- an embargo preview request (E5) needs the dataset to be **under embargo**, i.e. after #7 and **before** the release.
+
+So the order is: **DS1** `#1+#2` -> `#4` -> (re-request `#1+#2`) -> `#3` -> `#6` -> `pre.revision` -> `#5`.
+**DS2** `pre.embargo` -> `#3` (embargo) -> `#7` -> **previews** `#10` -> `#11` -> `#10b` -> `#12` -> `pre.release` -> `#8` -> `#9`.
+Then **DS3** `#17` and `#18`, and the independent `#13+#14`, `#15`, `#16`.
+
 ## Checklist
 
-Endpoint refs (E1…E13) point to the [reference section](#api-endpoint-reference). Paths are
-relative to the api host.
+One row per send point. Endpoint refs (E1...E12) point to the [reference section](#api-endpoint-reference);
+paths are relative to the api host. Fill **Actual** at runtime (who you ran it as, the dataset id, the inbox
+you checked).
 
-| Done | # | messageId | Recipients | Triggering endpoint | Action / condition |
-|---|---|---|---|---|---|
-| [ ] | 1 | `dataset-publication-in-review` | owner + contributors | E1 `POST /datasets/:id/publication/request` | `publicationType=Publication` only |
-| [ ] | 2 | `dataset-submitted-for-review` | publishers | E1 `POST /datasets/:id/publication/request` | Same call as #1 (publisher team) |
-| [ ] | 3 | `dataset-publication-accepted` | owner + contributors | E2 `POST /datasets/:id/publication/accept` | `publicationType=Publication` or `Embargo` |
-| [ ] | 4 | `dataset-revision-needed` | owner + contributors | E3 `POST /datasets/:id/publication/reject` | `publicationType=Publication` only |
-| [ ] | 5 | `dataset-revision` | owner + contributors | E2 `POST /datasets/:id/publication/accept` | `publicationType=Revision` |
-| [ ] | 6 | `notification-of-publication-to-contributor` | owner + contributors | E4 `PUT /datasets/:id/publication/complete` | Discover callback, latest status type `Publication` |
-| [ ] | 7 | `dataset-embargo-accepted` | owner + contributors | E4 `PUT /datasets/:id/publication/complete` | Discover callback, latest status type `Embargo` |
-| [ ] | 8 | `embargo-dataset-release-accepted` | owner + contributors | E2 `POST /datasets/:id/publication/accept` | `publicationType=Release` |
-| [ ] | 9 | `embargoed-dataset-released` | owner + contributors | E4 `PUT /datasets/:id/publication/complete` | Discover callback, latest status type `Release` |
-| [ ] | 10 | `embargo-access-requested` | dataset managers | E5 `POST /datasets/publication/preview/request` | Superadmin only; dataset must be under embargo |
-| [ ] | 11 | `embargo-access-approved` | requesting user | E6 `POST /datasets/:id/publication/preview` | Manager grants preview access |
-| [ ] | 12 | `embargo-access-denied` | requesting user | E7 `DELETE /datasets/:id/publication/preview` | Only if the removed previewer's access was still `Requested` |
-| [ ] | 13 | `email-address-changed` (old address) | old email | E8 `PUT /user/email` | Only when `userRequestedChange` is `true` |
-| [ ] | 14 | `email-address-changed` (new address) | new email | E8 `PUT /user/email` | Same call as #13 (check both inboxes) |
-| [ ] | 15 | `added-to-team` | added user | E9 `POST /organizations/:organizationId/teams/:id/members` | One email per added user |
-| [ ] | 16 | `added-to-organization` | added user | E10 `POST /organizations/:id/members` | Invitee email matches an existing user; see note under E10 |
-| [ ] | 17 | `invite-external-existing-user-to-dataset` | external user | E11 `PUT /datasets/:nodeId/collaborators/external` | Only when the email is an existing Pennsieve user |
-| [ ] | 18 | `change-of-dataset-owner` | new owner | E12 `PUT /datasets/:id/collaborators/owner` | Switch a dataset's owner |
+| Done | # | messageId | Endpoint | Run as | Resource requirements | Actual |
+|---|---|---|---|---|---|---|
+| [ ] | 1 | `dataset-publication-in-review` | E1 `POST /datasets/:id/publication/request` | `OWNER` | DS1 ready to publish, no publication history; at least one contributor (recipients: owner + contributors); `publicationType=publication` | |
+| [ ] | 2 | `dataset-submitted-for-review` | E1 (same call as #1) | `OWNER` | As #1, plus a non-empty Publisher team (recipients) | |
+| [ ] | 3 | `dataset-publication-accepted` | E2 `POST /datasets/:id/publication/accept` | `PUBLISHER` | DS1 in Requested (`publication`); or DS2 in Requested (`embargo`) | |
+| [ ] | 4 | `dataset-revision-needed` | E3 `POST /datasets/:id/publication/reject` | `PUBLISHER` | DS1 in Requested (`publication`); run before #3 as the alternative branch | |
+| [ ] | 5 | `dataset-revision` | E2 (`publicationType=revision`) | `PUBLISHER` | DS1 already published (#6 done), then `pre.revision` requested by `MANAGER`/`OWNER` | |
+| [ ] | 6 | `notification-of-publication-to-contributor` | E4 `PUT /datasets/:id/publication/complete` | `SUPER` (normally the Discover callback) | DS1 accepted (#3), latest status still `Accepted`; DS1 integer id | |
+| [ ] | 7 | `dataset-embargo-accepted` | E4 (embargo) | `SUPER` | DS2 accepted as `embargo` (#3), latest status `Accepted`; DS2 integer id; `embargoReleaseDate` set on request | |
+| [ ] | 8 | `embargo-dataset-release-accepted` | E2 (`publicationType=release`) | `PUBLISHER` | DS2 embargo completed (#7), then `pre.release` requested; do after the previews (#10-#12) | |
+| [ ] | 9 | `embargoed-dataset-released` | E4 (release) | `SUPER` | DS2 release accepted (#8), latest status `Accepted` | |
+| [ ] | 10 | `embargo-access-requested` | E5 `POST /datasets/publication/preview/request` | `SUPER` | DS2 under embargo (after #7); DS2 integer id; `PREVIEW_1` integer id; DS2 managers exist (recipients) | |
+| [ ] | 11 | `embargo-access-approved` | E6 `POST /datasets/:id/publication/preview` | `MANAGER` (needs `AddPeople` on DS2) | DS2 under embargo; `PREVIEW_1` (after #10) | |
+| [ ] | 12 | `embargo-access-denied` | E7 `DELETE /datasets/:id/publication/preview` | `MANAGER` (needs `AddPeople` on DS2) | `PREVIEW_2` with a pending request (`#10b` for `PREVIEW_2`); sends nothing if access was already approved | |
+| [ ] | 13 | `email-address-changed` (old address) | E8 `PUT /user/email` | `EMAIL_USER` | Before-inbox readable; `userRequestedChange=true`; restore the address afterwards | |
+| [ ] | 14 | `email-address-changed` (new address) | E8 (same call as #13) | `EMAIL_USER` | After-inbox readable and not used by another account | |
+| [ ] | 15 | `added-to-team` | E9 `POST /organizations/:organizationId/teams/:id/members` | `ORG_ADMIN` | A team in O38; `TEAM_MEMBER` is a non-Guest org member | |
+| [ ] | 16 | `added-to-organization` | E10 `POST /organizations/:id/members` | `ORG_ADMIN` | `EXISTING_USER` email (an existing Pennsieve user; a new address sends no #16) | |
+| [ ] | 17 | `invite-external-existing-user-to-dataset` | E11 `PUT /datasets/:nodeId/collaborators/external` | `OWNER` (needs `AddPeople` + `ChangeRoles` on DS3) | DS3; `EXISTING_USER` email; not the demo org | |
+| [ ] | 18 | `change-of-dataset-owner` | E12 `PUT /datasets/:id/collaborators/owner` | `OWNER` (current owner of DS3) | DS3 not locked; `NEW_OWNER` node id; changes the owner, so reverse it afterwards | |
 
 ## API endpoint reference
 
