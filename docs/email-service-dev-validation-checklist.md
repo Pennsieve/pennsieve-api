@@ -57,10 +57,16 @@ Controllers are mounted at `/datasets/*` (DataSetsController), `/organizations/*
 All calls need a bearer token for the acting user, and the dataset/org must belong to the
 org in the user's token context.
 
-**Not verified:** the JSON casing of enum values (`publicationType`, `role`, `status`). They are
-Scala enumeratum enums with Circe, so confirm the wire casing against a real response before
-building the Postman requests. Dataset `:id` / `:nodeId` path params are strings (node ids)
-except E4, which takes the integer dataset id.
+**Enum wire format (from the code, not yet confirmed against Dev):** `PublicationType`,
+`PublicationStatus` and `Role` are enumeratum `Snakecase`, so on the wire they are lowercase
+snake_case (`publication`, `embargo`, `release`, `revision`, `viewer`); `PublishStatus` is
+`UpperSnakecase` (`PUBLISH_SUCCEEDED`). The tables below show the Scala names; send the wire
+form. Postman request `#0` logs the observed casing. Dataset `:id` / `:nodeId` path params are
+strings (node ids) except E4, which takes the integer dataset id.
+
+**Postman:** these requests are built in `~/git/work/postman/` (collection folder
+`pennsieve-api-emails`, driven by `email-send.sh` / `email-verify-log.sh`); see the README section
+"Email-service validation" there.
 
 ### E1. Request publication
 
@@ -110,7 +116,8 @@ Same params as E1. Sends #4 only when `publicationType=Publication`. Needs the p
 | body | `publishedVersion` | integer, optional | |
 | body | `doi` | string, optional | |
 
-**Superadmin only.** Normally called by Discover after E2, so for #6, #7 and #9 either drive
+**Superadmin only.** The controller treats the call as a duplicate (no-op, no email) unless the
+dataset's latest publication status is still `Accepted`. Normally called by Discover after E2, so for #6, #7 and #9 either drive
 E2 and let Discover call back, or call this directly with a superadmin token. The email sent
 (#6 / #7 / #9) depends on the dataset's latest publication status type (`Publication` /
 `Embargo` / `Release`).
