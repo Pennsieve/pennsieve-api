@@ -5226,13 +5226,13 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // Resubmitting after a rejection or cancel is a new event: each submission
     // must carry its own dedupe id or the email-service would suppress the
-    // later ones as repeats of the first.
+    // later ones as repeats of the first. Recipients of one submission share
+    // an id on purpose; the service appends the recipient to the key.
     val inReviewDedupeIds = sentMessages
       .filter(_.messageId == "dataset-publication-in-review")
       .flatMap(_.dedupeId)
       .toList
-    inReviewDedupeIds.size should be >= 3
-    inReviewDedupeIds.distinct shouldBe inReviewDedupeIds
+    inReviewDedupeIds.distinct.size should be >= 3
   }
 
   test(
