@@ -276,6 +276,10 @@ class AWSBootstrapHelper(
     with TimeSeriesDBContainer with AWSSQSContainer with AWSSNSContainer
     with AWSS3Container with ApiSQSContainer with ApiSNSContainer
 
+  // A missing email-service queue URL (e.g. the image deployed before its
+  // Terraform) should stop this deployment, not break each email later.
+  insecureContainer.verifyEmailConfig()
+
   lazy val customTermsOfServiceClient: CustomTermsOfServiceClient =
     new S3CustomTermsOfServiceClient(
       insecureContainer.s3,

@@ -9226,6 +9226,57 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test(
+    "complete the publish and fire the broadcast even when the contributor emails cannot be enqueued"
+  ) {
+    val dataset = createDataSet("My Dataset")
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
+      .await
+      .value
+
+    val request = write(
+      PublishCompleteRequest(
+        publishedDatasetId = Some(99),
+        publishedVersionCount = 1,
+        lastPublishedDate = Some(OffsetDateTime.now),
+        status = PublishStatus.PublishSucceeded,
+        success = true,
+        error = None,
+        publishedVersion = Some(1),
+        doi = Some("10.1234/abcd")
+      )
+    )
+
+    val emailer = insecureContainer.emailer.asInstanceOf[LoggingEmailer]
+    emailer.failSends = Some(new RuntimeException("queue unavailable"))
+    try {
+      putJson(
+        s"/${dataset.id}/publication/complete",
+        request,
+        headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+      ) {
+        status shouldBe 200
+      }
+    } finally {
+      emailer.failSends = None
+    }
+
+    secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .get
+      .publicationStatus shouldBe PublicationStatus.Completed
+
+    secureContainer.organizationEventManager
+      .getEvents()
+      .await
+      .value
+      .count(_.eventType == OrganizationEventName.DATASET_PUBLISHED) shouldBe 1
+  }
+
+  test(
     "skip the DATASET_PUBLISHED broadcast (but still complete the publish) when version/doi are missing"
   ) {
     val dataset = createDataSet("My Dataset")

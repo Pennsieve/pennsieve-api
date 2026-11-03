@@ -15,6 +15,12 @@ sample requests straight on the queue. This checklist is the api-side test.
 
 Use the test org (O38), never a live org.
 
+## Deploy order and failure behaviour
+
+- **Apply the Terraform before the image.** The api reads the queue URL from the SSM parameter `email-service-queue-url`, which this change's Terraform creates from the email-service remote state. If the `terraform plan` cannot read the email-service state or its outputs, stop there.
+- **A missing queue URL stops the deployment.** `api` and `admin` check `email.service_queue_url` once at startup (`verifyEmailConfig`) and refuse to start without it, so a new task never becomes healthy and the previous tasks keep serving. A value that is present but wrong, or missing IAM/KMS permissions, is not caught at startup; it shows up as the failures below.
+- **A failed enqueue never blocks `publication/complete`.** The contributor emails there are best-effort: the failure is logged with the marker `EMAIL_ENQUEUE_FAILED` and the dataset still completes and broadcasts. Other send sites still return their existing error. **Alarm:** a CloudWatch metric filter on `EMAIL_ENQUEUE_FAILED` (and the org-event write failure log) belongs in the infrastructure repo; it is not part of this PR.
+
 ## Per-email checks
 
 For every row:

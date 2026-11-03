@@ -18,6 +18,7 @@ package com.pennsieve.aws.email
 
 import com.pennsieve.email.client.EmailClient
 import com.pennsieve.utilities.Container
+import com.typesafe.scalalogging.Logger
 import net.ceedubs.ficus.Ficus._
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
@@ -39,6 +40,20 @@ trait AWSEmailContainer extends EmailContainer { self: Container =>
     )
 
   override lazy val emailer: Emailer = new QueueEmailer(emailClient)
+
+  private lazy val emailLogger: Logger =
+    Logger("com.pennsieve.aws.email.AWSEmailContainer")
+
+  /** Fails at boot, rather than on the first send inside a request, if the
+    * email-service queue URL is missing. Call it once on the long-lived
+    * insecure container, never on the per-request secure containers.
+    */
+  def verifyEmailConfig(): Unit = {
+    locally(emailer)
+    emailLogger.info(
+      s"Sending platform emails through the email-service queue $emailServiceQueueUrl"
+    )
+  }
 }
 
 trait LocalEmailContainer extends EmailContainer { self: Container =>

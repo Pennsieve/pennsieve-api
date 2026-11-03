@@ -46,14 +46,20 @@ class QueueEmailer(client: EmailClient) extends Emailer {
 class LoggingEmailer extends Emailer with LazyLogging {
   val sentEmails: mutable.ArrayBuffer[EmailRequest] = mutable.ArrayBuffer.empty
 
-  def send(request: EmailRequest): Either[Throwable, EmailSendResult] = {
-    sentEmails += request
-    logger.debug("Not sending test email since ENVIRONMENT is LOCAL")
-    logger.debug("messageId: " + request.messageId)
-    logger.debug("to: " + request.recipients.map(_.email).mkString(", "))
-    logger.debug("context: " + request.context)
-    Right(EmailSendResult("testmessage"))
-  }
+  /** Test hook: when set, `send` fails like an enqueue failure would. */
+  @volatile var failSends: Option[Throwable] = None
+
+  def send(request: EmailRequest): Either[Throwable, EmailSendResult] =
+    failSends match {
+      case Some(error) => Left(error)
+      case None =>
+        sentEmails += request
+        logger.debug("Not sending test email since ENVIRONMENT is LOCAL")
+        logger.debug("messageId: " + request.messageId)
+        logger.debug("to: " + request.recipients.map(_.email).mkString(", "))
+        logger.debug("context: " + request.context)
+        Right(EmailSendResult("testmessage"))
+    }
 
   def sendEmailTo(recipient: String): Boolean =
     sentEmails.exists(_.recipients.exists(_.email.equalsIgnoreCase(recipient)))

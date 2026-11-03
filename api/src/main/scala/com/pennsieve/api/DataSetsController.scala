@@ -4298,34 +4298,57 @@ class DataSetsController(
           .markFilesInPendingStateAsUploaded(dataset = dataset)
           .coreErrorToActionResult()
 
-        _ <- publicationStatus.publicationType match {
-          case PublicationType.Embargo =>
-            DataSetPublishingHelper.emailContributorsDatasetEmbargoed(
-              insecureContainer,
-              contributors,
-              dataset,
-              owner,
-              publicationStatus.embargoReleaseDate.get
-            )
-          case PublicationType.Publication =>
-            DataSetPublishingHelper.emailContributorsDatasetPublished(
-              insecureContainer,
-              contributors,
-              owner,
-              dataset,
-              publishedDatasetId
-            )
-          case PublicationType.Release =>
-            DataSetPublishingHelper
-              .emailContributorsEmbargoedDatasetReleased(
-                insecureContainer,
-                contributors,
-                dataset,
-                owner,
-                publishedDatasetId
-              )
-          case _ => EitherT.rightT[Future, ActionResult](())
-        }
+        // Contributor emails are a notification, not part of the publication's
+        // state. If they cannot be enqueued (email-service queue missing,
+        // IAM, throttling), log and continue, so the dataset does not stay
+        // `Accepted` forever and the broadcast and the final status write
+        // still happen. The EMAIL_ENQUEUE_FAILED marker is what an alarm on
+        // this should match.
+        _ <- EitherT.right[ActionResult](
+          Future
+            .delegate((publicationStatus.publicationType match {
+              case PublicationType.Embargo =>
+                DataSetPublishingHelper.emailContributorsDatasetEmbargoed(
+                  insecureContainer,
+                  contributors,
+                  dataset,
+                  owner,
+                  publicationStatus.embargoReleaseDate.get
+                )
+              case PublicationType.Publication =>
+                DataSetPublishingHelper.emailContributorsDatasetPublished(
+                  insecureContainer,
+                  contributors,
+                  owner,
+                  dataset,
+                  publishedDatasetId
+                )
+              case PublicationType.Release =>
+                DataSetPublishingHelper
+                  .emailContributorsEmbargoedDatasetReleased(
+                    insecureContainer,
+                    contributors,
+                    dataset,
+                    owner,
+                    publishedDatasetId
+                  )
+              case _ => EitherT.rightT[Future, ActionResult](())
+            }).value)
+            .map {
+              case Left(error) =>
+                logger.error(
+                  s"EMAIL_ENQUEUE_FAILED: contributor emails for dataset ${dataset.nodeId} (publication complete) were not all enqueued: $error"
+                )
+              case Right(_) => ()
+            }
+            .recover {
+              case scala.util.control.NonFatal(e) =>
+                logger.error(
+                  s"EMAIL_ENQUEUE_FAILED: contributor emails for dataset ${dataset.nodeId} (publication complete) threw: ${e.getMessage}",
+                  e
+                )
+            }
+        )
 
         // Workspace-wide publishing broadcast (organization_events,
         // Part 4) -- best-effort, parallel to the email dispatch above,
