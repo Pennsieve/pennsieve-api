@@ -20,6 +20,7 @@ import cats.data._
 import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
+import com.pennsieve.aws.email.EmailEventKey
 import com.pennsieve.core.utilities.FutureEitherHelpers
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.domain.StorageAggregation.susers
@@ -397,12 +398,12 @@ class UserController(
         _ = userRequestedChange match {
           case true =>
             insecureContainer.emailer
-              .send(messageToOld)
+              .send(messageToOld, EmailEventKey.unique())
               .leftMap(error => InternalServerError(error.getMessage))
               .toEitherT[Future]
 
             insecureContainer.emailer
-              .send(messageToNew)
+              .send(messageToNew, EmailEventKey.unique())
               .leftMap(error => InternalServerError(error.getMessage))
               .toEitherT[Future]
 

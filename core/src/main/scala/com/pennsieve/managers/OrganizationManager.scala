@@ -21,7 +21,7 @@ import java.time.{ Duration, ZonedDateTime }
 import cats.data._
 import cats.implicits._
 import com.pennsieve.aws.cognito.CognitoClient
-import com.pennsieve.aws.email.Emailer
+import com.pennsieve.aws.email.{ EmailEventKey, Emailer }
 import com.pennsieve.core.utilities.{ DatabaseHelpers, FutureEitherHelpers }
 import com.pennsieve.core.utilities.FutureEitherHelpers.implicits._
 import com.pennsieve.db._
@@ -991,7 +991,10 @@ trait SecureOrganizationManager extends OrganizationManager {
       customMessage.getOrElse("")
     )
 
-    emailer.send(email).leftMap(ThrowableError(_)).map(_ => ())
+    emailer
+      .send(email, EmailEventKey.unique())
+      .leftMap(ThrowableError(_))
+      .map(_ => ())
   }
 
   /**

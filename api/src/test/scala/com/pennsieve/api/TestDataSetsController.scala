@@ -5223,6 +5223,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
         "notification-of-publication-to-contributor" //published
       )
     )
+
+    // Resubmitting after a rejection or cancel is a new event: each submission
+    // must carry its own dedupe id or the email-service would suppress the
+    // later ones as repeats of the first.
+    val inReviewDedupeIds = sentMessages
+      .filter(_.messageId == "dataset-publication-in-review")
+      .flatMap(_.dedupeId)
+      .toList
+    inReviewDedupeIds.size should be >= 3
+    inReviewDedupeIds.distinct shouldBe inReviewDedupeIds
   }
 
   test(
@@ -9176,7 +9186,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   ) {
     val dataset = createDataSet("My Dataset")
 
-    secureContainer.datasetPublicationStatusManager
+    val accepted = secureContainer.datasetPublicationStatusManager
       .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
       .await
       .value
@@ -9201,6 +9211,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     ) {
       status shouldBe 200
     }
+
+    // The email's dedupe id names the publication status being completed, so
+    // a redelivery of this callback is suppressed by the email-service while a
+    // later publication of the dataset is not.
+    insecureContainer.emailer
+      .asInstanceOf[LoggingEmailer]
+      .sentEmails
+      .flatMap(_.dedupeId) should contain(
+      s"notification-of-publication-to-contributor:publication-status-${accepted.id}"
+    )
 
     val events =
       secureContainer.organizationEventManager.getEvents().await.value

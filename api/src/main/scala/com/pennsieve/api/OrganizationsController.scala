@@ -56,7 +56,7 @@ import shapeless._
 
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
-import com.pennsieve.aws.email.Email
+import com.pennsieve.aws.email.{ Email, EmailEventKey }
 import com.pennsieve.clients.CustomTermsOfServiceClient
 import com.pennsieve.domain.{
   CoreError,
@@ -1491,7 +1491,8 @@ class OrganizationsController(
                       team = team.name,
                       emailAddress = user.email,
                       org = organization
-                    )
+                    ),
+                    EmailEventKey.unique()
                   )
 
                 user

@@ -116,7 +116,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     owner: User,
     dataset: Dataset,
-    discoverDatasetId: Int
+    discoverDatasetId: Int,
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -137,7 +138,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -150,7 +151,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     reviewer: User,
-    owner: User
+    owner: User,
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -170,7 +172,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -183,7 +185,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     owner: User,
-    embargoDate: LocalDate
+    embargoDate: LocalDate,
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -204,7 +207,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -216,7 +219,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     reviewer: User,
-    owner: User
+    owner: User,
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -236,7 +240,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
         }
@@ -248,7 +252,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     owner: User,
-    discoverDatasetId: Int
+    discoverDatasetId: Int,
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -267,7 +272,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
         }
@@ -281,7 +286,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     reviewer: User,
     owner: User,
     org: Organization,
-    message: Option[String]
+    message: Option[String],
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -304,7 +310,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(content)
+            .send(content, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -318,7 +324,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     owner: User,
-    discoverDatasetId: Option[Int]
+    discoverDatasetId: Option[Int],
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -338,7 +345,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -351,7 +358,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     contributors: Seq[ContributorDTO],
     dataset: Dataset,
     organization: Organization,
-    owner: User
+    owner: User,
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -373,7 +381,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -386,7 +394,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     owner: User,
     dataset: Dataset,
     organization: Organization,
-    publishers: Seq[User]
+    publishers: Seq[User],
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, Seq[EmailSendResult]] = {
@@ -411,7 +420,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
         }
@@ -424,7 +433,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     owner: User,
     managers: List[User],
     organization: Organization,
-    dataset: Dataset
+    dataset: Dataset,
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, List[EmailSendResult]] = {
@@ -445,7 +455,7 @@ case object DataSetPublishingHelper extends LazyLogging {
           )
 
           insecureContainer.emailer
-            .send(message)
+            .send(message, eventKey)
             .leftMap(error => InternalServerError(error.getMessage))
             .toEitherT[Future]
 
@@ -459,7 +469,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     manager: User,
     organization: Organization,
     dataset: Dataset,
-    discoverDatasetId: Option[Int]
+    discoverDatasetId: Option[Int],
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, EmailSendResult] = {
@@ -479,7 +490,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     )
 
     insecureContainer.emailer
-      .send(message)
+      .send(message, eventKey)
       .leftMap(error => InternalServerError(error.getMessage))
       .toEitherT[Future]
   }
@@ -489,7 +500,8 @@ case object DataSetPublishingHelper extends LazyLogging {
     requestingUser: User,
     manager: User,
     organization: Organization,
-    dataset: Dataset
+    dataset: Dataset,
+    eventKey: String
   )(implicit
     ec: ExecutionContext
   ): EitherT[Future, ActionResult, EmailSendResult] = {
@@ -507,7 +519,7 @@ case object DataSetPublishingHelper extends LazyLogging {
     )
 
     insecureContainer.emailer
-      .send(message)
+      .send(message, eventKey)
       .leftMap(error => InternalServerError(error.getMessage))
       .toEitherT[Future]
   }

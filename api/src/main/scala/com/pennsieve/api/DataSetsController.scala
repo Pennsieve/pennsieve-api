@@ -26,7 +26,7 @@ import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.aws.cognito.{ Cognito, CognitoClient }
-import com.pennsieve.aws.email.{ Email, EmailSendResult }
+import com.pennsieve.aws.email.{ Email, EmailEventKey, EmailSendResult }
 import com.pennsieve.aws.queue.SQSClient
 import com.pennsieve.aws.stepfunctions.{ StepFunctions, StepFunctionsClient }
 import com.pennsieve.clients.DatasetAssetClient
@@ -2311,7 +2311,8 @@ class DataSetsController(
                     secureContainer.organization.name,
                     dataset.name,
                     customMessage = customMessage
-                  )
+                  ),
+                EmailEventKey.unique()
               )
               .leftMap(error => InternalServerError(error.getMessage))
               .toEitherT[Future]
@@ -2757,7 +2758,7 @@ class DataSetsController(
           )
 
         _ <- insecureContainer.emailer
-          .send(message)
+          .send(message, EmailEventKey.unique())
           .leftMap(error => InternalServerError(error.getMessage))
           .toEitherT[Future]
 
@@ -3226,7 +3227,8 @@ class DataSetsController(
               contributors,
               validated.dataset,
               secureContainer.organization,
-              secureContainer.user
+              secureContainer.user,
+              EmailEventKey.forPublicationStatus(response.id)
             )
           } else {
             EitherT
@@ -3244,7 +3246,8 @@ class DataSetsController(
               secureContainer.user,
               validated.dataset,
               secureContainer.organization,
-              publishers
+              publishers,
+              EmailEventKey.forPublicationStatus(response.id)
             )
           } else {
             EitherT
@@ -3366,7 +3369,8 @@ class DataSetsController(
               secureContainer.user,
               validated.owner,
               secureContainer.organization,
-              comments
+              comments,
+              EmailEventKey.forPublicationStatus(response.id)
             )
           } else {
             EitherT
@@ -3484,7 +3488,8 @@ class DataSetsController(
                   contributors,
                   validated.dataset,
                   secureContainer.user,
-                  validated.owner
+                  validated.owner,
+                  EmailEventKey.forPublicationStatus(response.id)
                 )
 
               } yield response
@@ -3511,7 +3516,7 @@ class DataSetsController(
                   )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
-                _ <- secureContainer.datasetPublicationStatusManager
+                revisionStatus <- secureContainer.datasetPublicationStatusManager
                   .create(
                     dataset = validated.dataset,
                     publicationStatus = validated.publicationStatus,
@@ -3527,7 +3532,8 @@ class DataSetsController(
                   contributors,
                   validated.dataset,
                   validated.owner,
-                  currentPublicationStatus.publishedDatasetId
+                  currentPublicationStatus.publishedDatasetId,
+                  EmailEventKey.forPublicationStatus(revisionStatus.id)
                 )
 
                 // Workspace-wide publishing broadcast (organization_events,
@@ -3674,7 +3680,8 @@ class DataSetsController(
                     contributors,
                     validated.dataset,
                     secureContainer.user,
-                    validated.owner
+                    validated.owner,
+                    EmailEventKey.forPublicationStatus(response.id)
                   )
               } yield response
           }
@@ -4313,7 +4320,8 @@ class DataSetsController(
                   contributors,
                   dataset,
                   owner,
-                  publicationStatus.embargoReleaseDate.get
+                  publicationStatus.embargoReleaseDate.get,
+                  EmailEventKey.forPublicationStatus(publicationStatus.id)
                 )
               case PublicationType.Publication =>
                 DataSetPublishingHelper.emailContributorsDatasetPublished(
@@ -4321,7 +4329,8 @@ class DataSetsController(
                   contributors,
                   owner,
                   dataset,
-                  publishedDatasetId
+                  publishedDatasetId,
+                  EmailEventKey.forPublicationStatus(publicationStatus.id)
                 )
               case PublicationType.Release =>
                 DataSetPublishingHelper
@@ -4330,7 +4339,8 @@ class DataSetsController(
                     contributors,
                     dataset,
                     owner,
-                    publishedDatasetId
+                    publishedDatasetId,
+                    EmailEventKey.forPublicationStatus(publicationStatus.id)
                   )
               case _ => EitherT.rightT[Future, ActionResult](())
             }).value)
@@ -4681,7 +4691,8 @@ class DataSetsController(
             manager = secureContainer.user,
             secureContainer.organization,
             dataset,
-            discoverDatasetId
+            discoverDatasetId,
+            EmailEventKey.unique()
           )
 
         } yield ()
@@ -4740,7 +4751,8 @@ class DataSetsController(
                   requestingUser = user,
                   manager = secureContainer.user,
                   secureContainer.organization,
-                  dataset
+                  dataset,
+                  EmailEventKey.unique()
                 )
                 .map(_ => ())
 
@@ -4841,7 +4853,8 @@ class DataSetsController(
             owner,
             managers,
             secureContainer.organization,
-            dataset
+            dataset,
+            EmailEventKey.unique()
           )
         } yield ()
 

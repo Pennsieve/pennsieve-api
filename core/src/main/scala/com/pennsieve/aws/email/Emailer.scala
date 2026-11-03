@@ -31,16 +31,57 @@ case class Email(address: String) extends AnyVal {
   override def toString: String = address
 }
 
+/** What makes one email a distinct event for the email-service's dedupe.
+  *
+  * The email-service suppresses a repeat of the same dedupe id to the same
+  * recipient for 90 days. Without one it hashes messageId + recipient + the
+  * template values, which wrongly suppresses an email that is legitimately
+  * sent again with the same values (a second revision of a dataset, the same
+  * person re-added to a team). So every send names its event explicitly.
+  */
+object EmailEventKey {
+
+  /** For emails sent when a publication status row is created or completed:
+    * a redelivery of the same callback reuses the same row, a new submission
+    * or revision creates a new one.
+    */
+  def forPublicationStatus(id: Int): String = s"publication-status-$id"
+
+  /** For emails sent from a single user-initiated request that has no
+    * durable id and is not redelivered: every request is its own event.
+    */
+  def unique(): String = java.util.UUID.randomUUID().toString
+}
+
 trait Emailer {
-  def send(request: EmailRequest): Either[Throwable, EmailSendResult]
+
+  /** @param eventKey identifies the event that caused this email; see
+    *                 [[EmailEventKey]]. Combined with the messageId into the
+    *                 email-service dedupe id.
+    */
+  def send(
+    request: EmailRequest,
+    eventKey: String
+  ): Either[Throwable, EmailSendResult]
+}
+
+object Emailer {
+  def dedupeId(request: EmailRequest, eventKey: String): String =
+    s"${request.messageId}:$eventKey"
 }
 
 /** Enqueues the request on the email-service send queue; the email-service
   * renders the template and delivers it.
   */
 class QueueEmailer(client: EmailClient) extends Emailer {
-  def send(request: EmailRequest): Either[Throwable, EmailSendResult] =
-    client.send(request).toEither.map(EmailSendResult(_))
+  def send(
+    request: EmailRequest,
+    eventKey: String
+  ): Either[Throwable, EmailSendResult] =
+    client
+      .send(request.withDedupeId(Emailer.dedupeId(request, eventKey)))
+      .toEither
+      .map(EmailSendResult(_))
 }
 
 class LoggingEmailer extends Emailer with LazyLogging {
@@ -49,11 +90,14 @@ class LoggingEmailer extends Emailer with LazyLogging {
   /** Test hook: when set, `send` fails like an enqueue failure would. */
   @volatile var failSends: Option[Throwable] = None
 
-  def send(request: EmailRequest): Either[Throwable, EmailSendResult] =
+  def send(
+    request: EmailRequest,
+    eventKey: String
+  ): Either[Throwable, EmailSendResult] =
     failSends match {
       case Some(error) => Left(error)
       case None =>
-        sentEmails += request
+        sentEmails += request.withDedupeId(Emailer.dedupeId(request, eventKey))
         logger.debug("Not sending test email since ENVIRONMENT is LOCAL")
         logger.debug("messageId: " + request.messageId)
         logger.debug("to: " + request.recipients.map(_.email).mkString(", "))
