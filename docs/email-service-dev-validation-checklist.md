@@ -29,6 +29,7 @@ For every row:
 - [ ] No blank fields or leftover `{{.…}}` in the body
 - [ ] `email-message-log` row is `SENT` (`ENV=dev scripts/email-log.sh` in email-service)
 - [ ] If nothing arrives, check whether the journal row is `LoggedOnly=true` (a send control fired; not a failure)
+- [ ] The journal row `Id` (the dedupe key) is `<messageId>:<event key>:<recipient>`. For the publication emails (#1-#9) the event key is `publication-status-<id>`, the id of the publication status row the email belongs to; for the others (#10-#18) it is a random UUID. A row whose `Id` is a bare hash means a send site is missing its key.
 
 ## Resources to prepare
 
@@ -318,8 +319,7 @@ Confirm these are acceptable rather than treating them as failures:
 - **Apostrophes:** #15, #16 and #18 now use straight instead of curly apostrophes.
 - **From / Reply-To:** now `Pennsieve <support@{domain}>` instead of `email.support_email`.
 - **Delivery is async:** the api returns once the message is queued, not once SES accepts it.
-- **Dedupe:** keyed on content hash (no `dedupeId` set), so an identical repeat send to the
-  same recipient may be suppressed. Use a changed input, or email-service `--fresh`, to retest.
+- **Dedupe:** every send names its event (`messageId:eventKey`, plus the recipient). The publication emails (#1-#9) are keyed on the publication status row, so a redelivered Discover callback is suppressed while every new submission, revision or release is its own email; the other sends carry a per-request id and are never suppressed. Repeating a request therefore **does** send again, so there is nothing to work around when retesting; no email after a 2xx points at the queue, a send control (`LoggedOnly`) or the consumer, not at dedupe. (Calling E4 again on an already-completed dataset sends nothing, but that is the controller's duplicate-callback guard, not the email-service dedupe.)
 - **Org branding:** not used; templates resolve to `default/`.
 - **#1 and #2** both fire from one publication request.
 - Template HTML parity against the old api templates has **not** been compared; read each
