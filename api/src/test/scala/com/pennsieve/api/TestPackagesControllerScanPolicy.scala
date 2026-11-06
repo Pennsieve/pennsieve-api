@@ -26,16 +26,30 @@ class TestPackagesControllerScanPolicy extends AnyFlatSpec with Matchers {
   "scanStatusBlocks" should "block only infected and failed files" in {
     scanStatusBlocks(Some("infected")) shouldBe true
     scanStatusBlocks(Some("failed")) shouldBe true
-    Seq("clean", "format_validated", "unscanned", "not_required", "pending", "scanning")
-      .foreach(s => scanStatusBlocks(Some(s)) shouldBe false)
+    Seq(
+      "clean",
+      "format_validated",
+      "unscanned",
+      "not_required",
+      "pending",
+      "scanning"
+    ).foreach(s => scanStatusBlocks(Some(s)) shouldBe false)
     scanStatusBlocks(None) shouldBe false
   }
 
   "scanStatusWaits" should "hold pending and scanning files with the scan wait on" in {
     scanStatusWaits(Some("pending"), scanWaitOnPending = true) shouldBe true
     scanStatusWaits(Some("scanning"), scanWaitOnPending = true) shouldBe true
-    Seq("clean", "format_validated", "unscanned", "not_required", "infected", "failed")
-      .foreach(s => scanStatusWaits(Some(s), scanWaitOnPending = true) shouldBe false)
+    Seq(
+      "clean",
+      "format_validated",
+      "unscanned",
+      "not_required",
+      "infected",
+      "failed"
+    ).foreach(
+        s => scanStatusWaits(Some(s), scanWaitOnPending = true) shouldBe false
+      )
     scanStatusWaits(None, scanWaitOnPending = true) shouldBe false
   }
 
