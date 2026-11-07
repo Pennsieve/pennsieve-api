@@ -133,6 +133,9 @@ object FileType extends Enum[FileType] with CirceEnum[FileType] {
   case object VariantData extends FileType
   case object YAML extends FileType
   case object ZIP extends FileType
+  // Zipped Zarr stores: a Zarr store is a directory, and a package is one file.
+  case object OMEZarr extends FileType
+  case object TSZarr extends FileType
 
   override lazy val namesToValuesMap: Map[String, FileType] =
     values.map(v => v.entryName -> v).toMap + ("FACS" -> FCS)
