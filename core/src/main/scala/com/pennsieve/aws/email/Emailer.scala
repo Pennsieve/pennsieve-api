@@ -16,96 +16,95 @@
 
 package com.pennsieve.aws.email
 
-import com.amazonaws.services.simpleemail.AmazonSimpleEmailService
-import com.amazonaws.services.simpleemail.model.{
-  Body,
-  Content,
-  Destination,
-  Message,
-  SendEmailRequest
-}
+import com.pennsieve.email.client.{ EmailClient, EmailRequest }
 import com.typesafe.scalalogging.LazyLogging
 
-import scala.util.Try
 import scala.collection.mutable
 
-case class SesMessageResult(id: String)
+/** The id of the message enqueued on the email-service send queue. Delivery is
+  * asynchronous: this means the request was accepted, not that it was sent.
+  */
+case class EmailSendResult(id: String)
 
 // TODO: move to models
 case class Email(address: String) extends AnyVal {
   override def toString: String = address
 }
 
-case class EmailToSend(to: Email, from: Email, message: String, subject: String)
+/** What makes one email a distinct event for the email-service's dedupe.
+  *
+  * The email-service suppresses a repeat of the same dedupe id to the same
+  * recipient for 90 days. Without one it hashes messageId + recipient + the
+  * template values, which wrongly suppresses an email that is legitimately
+  * sent again with the same values (a second revision of a dataset, the same
+  * person re-added to a team). So every send names its event explicitly.
+  */
+object EmailEventKey {
 
-trait Emailer {
-  def sendEmail(
-    to: Email,
-    from: Email,
-    message: String,
-    subject: String
-  ): Either[Throwable, SesMessageResult]
+  /** For emails sent when a publication status row is created or completed:
+    * a redelivery of the same callback reuses the same row, a new submission
+    * or revision creates a new one.
+    */
+  def forPublicationStatus(id: Int): String = s"publication-status-$id"
 
-  def sendEmail(toSend: EmailToSend): Either[Throwable, SesMessageResult]
+  /** For emails sent from a single user-initiated request that has no
+    * durable id and is not redelivered: every request is its own event.
+    */
+  def unique(): String = java.util.UUID.randomUUID().toString
 }
 
-class SESEmailer(client: AmazonSimpleEmailService) extends Emailer {
+trait Emailer {
 
-  def sendEmail(toSend: EmailToSend): Either[Throwable, SesMessageResult] =
-    sendEmail(toSend.to, toSend.from, toSend.message, toSend.subject)
+  /** @param eventKey identifies the event that caused this email; see
+    *                 [[EmailEventKey]]. Combined with the messageId into the
+    *                 email-service dedupe id.
+    */
+  def send(
+    request: EmailRequest,
+    eventKey: String
+  ): Either[Throwable, EmailSendResult]
+}
 
-  def sendEmail(
-    to: Email,
-    from: Email,
-    message: String,
-    subject: String
-  ): Either[Throwable, SesMessageResult] = {
-    Try {
-      // Construct an object to contain the recipient address.
-      val destination = new Destination().withToAddresses(to.address)
+object Emailer {
+  def dedupeId(request: EmailRequest, eventKey: String): String =
+    s"${request.messageId}:$eventKey"
+}
 
-      // Create the subject and body of the message.
-      val message_subject = new Content().withData(subject)
-      val message_textBody = new Content().withData(message)
-      val message_body = new Body().withHtml(message_textBody)
-
-      // Create a message with the specified subject and body.
-      val m = new Message().withSubject(message_subject).withBody(message_body)
-
-      // Assemble the email.
-      val request = new SendEmailRequest()
-        .withSource(from.address)
-        .withDestination(destination)
-        .withMessage(m)
-
-      val result = client.sendEmail(request)
-      SesMessageResult(result.getMessageId)
-    }.toEither
-  }
+/** Enqueues the request on the email-service send queue; the email-service
+  * renders the template and delivers it.
+  */
+class QueueEmailer(client: EmailClient) extends Emailer {
+  def send(
+    request: EmailRequest,
+    eventKey: String
+  ): Either[Throwable, EmailSendResult] =
+    client
+      .send(request.withDedupeId(Emailer.dedupeId(request, eventKey)))
+      .toEither
+      .map(EmailSendResult(_))
 }
 
 class LoggingEmailer extends Emailer with LazyLogging {
-  val sentEmails: mutable.ArrayBuffer[EmailToSend] = mutable.ArrayBuffer.empty
+  val sentEmails: mutable.ArrayBuffer[EmailRequest] = mutable.ArrayBuffer.empty
 
-  def sendEmail(toSend: EmailToSend): Either[Throwable, SesMessageResult] = {
-    sentEmails += toSend
-    logger.debug("Not sending test email since ENVIRONMENT is LOCAL")
-    logger.debug("from: " + toSend.from.address)
-    logger.debug("to: " + toSend.to.address)
-    logger.debug("subject: " + toSend.subject)
-    logger.debug("message: " + toSend.message)
-    Right(SesMessageResult("testmessage"))
-  }
+  /** Test hook: when set, `send` fails like an enqueue failure would. */
+  @volatile var failSends: Option[Throwable] = None
 
-  def sendEmail(
-    to: Email,
-    from: Email,
-    message: String,
-    subject: String
-  ): Either[Throwable, SesMessageResult] =
-    sendEmail(EmailToSend(to, from, message, subject))
+  def send(
+    request: EmailRequest,
+    eventKey: String
+  ): Either[Throwable, EmailSendResult] =
+    failSends match {
+      case Some(error) => Left(error)
+      case None =>
+        sentEmails += request.withDedupeId(Emailer.dedupeId(request, eventKey))
+        logger.debug("Not sending test email since ENVIRONMENT is LOCAL")
+        logger.debug("messageId: " + request.messageId)
+        logger.debug("to: " + request.recipients.map(_.email).mkString(", "))
+        logger.debug("context: " + request.context)
+        Right(EmailSendResult("testmessage"))
+    }
 
-  def sendEmailTo(recipient: String): Boolean = {
-    sentEmails.filter(_.to.address.equalsIgnoreCase(recipient)).length > 0
-  }
+  def sendEmailTo(recipient: String): Boolean =
+    sentEmails.exists(_.recipients.exists(_.email.equalsIgnoreCase(recipient)))
 }

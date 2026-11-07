@@ -56,7 +56,7 @@ import shapeless._
 
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.aws.cognito.CognitoClient
-import com.pennsieve.aws.email.Email
+import com.pennsieve.aws.email.{ Email, EmailEventKey }
 import com.pennsieve.clients.CustomTermsOfServiceClient
 import com.pennsieve.domain.{
   CoreError,
@@ -1485,16 +1485,14 @@ class OrganizationsController(
               }
               .map { _ =>
                 insecureContainer.emailer
-                  .sendEmail(
-                    Email(user.email),
-                    Settings.support_email,
+                  .send(
                     insecureContainer.messageTemplates.addedToTeam(
                       administrator = administrator,
                       team = team.name,
                       emailAddress = user.email,
                       org = organization
                     ),
-                    "You’ve been added to a team"
+                    EmailEventKey.unique()
                   )
 
                 user

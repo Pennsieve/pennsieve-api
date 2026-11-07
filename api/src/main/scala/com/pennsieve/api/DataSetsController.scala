@@ -26,7 +26,7 @@ import cats.implicits._
 import com.pennsieve.audit.middleware.Auditor
 import com.pennsieve.auth.middleware.DatasetPermission
 import com.pennsieve.aws.cognito.{ Cognito, CognitoClient }
-import com.pennsieve.aws.email.{ Email, SesMessageResult }
+import com.pennsieve.aws.email.{ Email, EmailEventKey, EmailSendResult }
 import com.pennsieve.aws.queue.SQSClient
 import com.pennsieve.aws.stepfunctions.{ StepFunctions, StepFunctionsClient }
 import com.pennsieve.clients.DatasetAssetClient
@@ -2298,31 +2298,21 @@ class DataSetsController(
           .addGuestUser(welcomeWorkspace, user)
           .coreErrorToActionResult()
 
-        // generate email message to existing user
-        emailMessage = userExists match {
-          case true =>
-            insecureContainer.messageTemplates
-              .inviteExternalExistingUserToDataset(
-                user.email,
-                s"${invitingUser.firstName} ${invitingUser.lastName}",
-                invitingUser.email,
-                secureContainer.organization.name,
-                dataset.name,
-                customMessage = customMessage
-              )
-          case false =>
-            "n/a"
-        }
-
         _ <- userExists match {
           case true =>
             // send email message to invited user, if they are an existing Pennsieve user
             insecureContainer.emailer
-              .sendEmail(
-                to = Email(user.email),
-                from = Settings.support_email,
-                message = emailMessage,
-                subject = s"You have been invited to collaborate"
+              .send(
+                insecureContainer.messageTemplates
+                  .inviteExternalExistingUserToDataset(
+                    user.email,
+                    s"${invitingUser.firstName} ${invitingUser.lastName}",
+                    invitingUser.email,
+                    secureContainer.organization.name,
+                    dataset.name,
+                    customMessage = customMessage
+                  ),
+                EmailEventKey.unique()
               )
               .leftMap(error => InternalServerError(error.getMessage))
               .toEitherT[Future]
@@ -2768,12 +2758,7 @@ class DataSetsController(
           )
 
         _ <- insecureContainer.emailer
-          .sendEmail(
-            to = Email(newOwner.email),
-            from = Settings.support_email,
-            message = message,
-            subject = s"You’re now a dataset owner"
-          )
+          .send(message, EmailEventKey.unique())
           .leftMap(error => InternalServerError(error.getMessage))
           .toEitherT[Future]
 
@@ -3242,11 +3227,12 @@ class DataSetsController(
               contributors,
               validated.dataset,
               secureContainer.organization,
-              secureContainer.user
+              secureContainer.user,
+              EmailEventKey.forPublicationStatus(response.id)
             )
           } else {
             EitherT
-              .rightT[Future, CoreError](List[SesMessageResult]())
+              .rightT[Future, CoreError](List[EmailSendResult]())
               .coreErrorToActionResult()
           }
 
@@ -3260,11 +3246,12 @@ class DataSetsController(
               secureContainer.user,
               validated.dataset,
               secureContainer.organization,
-              publishers
+              publishers,
+              EmailEventKey.forPublicationStatus(response.id)
             )
           } else {
             EitherT
-              .rightT[Future, CoreError](List[SesMessageResult]())
+              .rightT[Future, CoreError](List[EmailSendResult]())
               .coreErrorToActionResult()
           }
 
@@ -3382,11 +3369,12 @@ class DataSetsController(
               secureContainer.user,
               validated.owner,
               secureContainer.organization,
-              comments
+              comments,
+              EmailEventKey.forPublicationStatus(response.id)
             )
           } else {
             EitherT
-              .rightT[Future, CoreError](List[SesMessageResult]())
+              .rightT[Future, CoreError](List[EmailSendResult]())
               .coreErrorToActionResult()
           }
 
@@ -3500,7 +3488,8 @@ class DataSetsController(
                   contributors,
                   validated.dataset,
                   secureContainer.user,
-                  validated.owner
+                  validated.owner,
+                  EmailEventKey.forPublicationStatus(response.id)
                 )
 
               } yield response
@@ -3527,7 +3516,7 @@ class DataSetsController(
                   )(ec, system, jwtConfig)
                   .coreErrorToActionResult()
 
-                _ <- secureContainer.datasetPublicationStatusManager
+                revisionStatus <- secureContainer.datasetPublicationStatusManager
                   .create(
                     dataset = validated.dataset,
                     publicationStatus = validated.publicationStatus,
@@ -3543,7 +3532,8 @@ class DataSetsController(
                   contributors,
                   validated.dataset,
                   validated.owner,
-                  currentPublicationStatus.publishedDatasetId
+                  currentPublicationStatus.publishedDatasetId,
+                  EmailEventKey.forPublicationStatus(revisionStatus.id)
                 )
 
                 // Workspace-wide publishing broadcast (organization_events,
@@ -3690,7 +3680,8 @@ class DataSetsController(
                     contributors,
                     validated.dataset,
                     secureContainer.user,
-                    validated.owner
+                    validated.owner,
+                    EmailEventKey.forPublicationStatus(response.id)
                   )
               } yield response
           }
@@ -4314,34 +4305,60 @@ class DataSetsController(
           .markFilesInPendingStateAsUploaded(dataset = dataset)
           .coreErrorToActionResult()
 
-        _ <- publicationStatus.publicationType match {
-          case PublicationType.Embargo =>
-            DataSetPublishingHelper.emailContributorsDatasetEmbargoed(
-              insecureContainer,
-              contributors,
-              dataset,
-              owner,
-              publicationStatus.embargoReleaseDate.get
-            )
-          case PublicationType.Publication =>
-            DataSetPublishingHelper.emailContributorsDatasetPublished(
-              insecureContainer,
-              contributors,
-              owner,
-              dataset,
-              publishedDatasetId
-            )
-          case PublicationType.Release =>
-            DataSetPublishingHelper
-              .emailContributorsEmbargoedDatasetReleased(
-                insecureContainer,
-                contributors,
-                dataset,
-                owner,
-                publishedDatasetId
-              )
-          case _ => EitherT.rightT[Future, ActionResult](())
-        }
+        // Contributor emails are a notification, not part of the publication's
+        // state. If they cannot be enqueued (email-service queue missing,
+        // IAM, throttling), log and continue, so the dataset does not stay
+        // `Accepted` forever and the broadcast and the final status write
+        // still happen. The EMAIL_ENQUEUE_FAILED marker is what an alarm on
+        // this should match.
+        _ <- EitherT.right[ActionResult](
+          Future
+            .delegate((publicationStatus.publicationType match {
+              case PublicationType.Embargo =>
+                DataSetPublishingHelper.emailContributorsDatasetEmbargoed(
+                  insecureContainer,
+                  contributors,
+                  dataset,
+                  owner,
+                  publicationStatus.embargoReleaseDate.get,
+                  EmailEventKey.forPublicationStatus(publicationStatus.id)
+                )
+              case PublicationType.Publication =>
+                DataSetPublishingHelper.emailContributorsDatasetPublished(
+                  insecureContainer,
+                  contributors,
+                  owner,
+                  dataset,
+                  publishedDatasetId,
+                  EmailEventKey.forPublicationStatus(publicationStatus.id)
+                )
+              case PublicationType.Release =>
+                DataSetPublishingHelper
+                  .emailContributorsEmbargoedDatasetReleased(
+                    insecureContainer,
+                    contributors,
+                    dataset,
+                    owner,
+                    publishedDatasetId,
+                    EmailEventKey.forPublicationStatus(publicationStatus.id)
+                  )
+              case _ => EitherT.rightT[Future, ActionResult](())
+            }).value)
+            .map {
+              case Left(error) =>
+                logger.error(
+                  s"EMAIL_ENQUEUE_FAILED: contributor emails for dataset ${dataset.nodeId} (publication complete) were not all enqueued: $error"
+                )
+              case Right(_) => ()
+            }
+            .recover {
+              case scala.util.control.NonFatal(e) =>
+                logger.error(
+                  s"EMAIL_ENQUEUE_FAILED: contributor emails for dataset ${dataset.nodeId} (publication complete) threw: ${e.getMessage}",
+                  e
+                )
+            }
+        )
 
         // Workspace-wide publishing broadcast (organization_events,
         // Part 4) -- best-effort, parallel to the email dispatch above,
@@ -4674,7 +4691,8 @@ class DataSetsController(
             manager = secureContainer.user,
             secureContainer.organization,
             dataset,
-            discoverDatasetId
+            discoverDatasetId,
+            EmailEventKey.unique()
           )
 
         } yield ()
@@ -4733,7 +4751,8 @@ class DataSetsController(
                   requestingUser = user,
                   manager = secureContainer.user,
                   secureContainer.organization,
-                  dataset
+                  dataset,
+                  EmailEventKey.unique()
                 )
                 .map(_ => ())
 
@@ -4834,7 +4853,8 @@ class DataSetsController(
             owner,
             managers,
             secureContainer.organization,
-            dataset
+            dataset,
+            EmailEventKey.unique()
           )
         } yield ()
 

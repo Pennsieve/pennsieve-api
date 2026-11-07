@@ -103,3 +103,14 @@ data "terraform_remote_state" "authentication_service" {
 }
 
 # Import Upload Service V2
+
+# Import the email-service, to send emails via its SQS queue.
+data "terraform_remote_state" "email_service" {
+  backend = "s3"
+
+  config = {
+    bucket = "${var.aws_account}-terraform-state"
+    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/email-service/terraform.tfstate"
+    region = "us-east-1"
+  }
+}

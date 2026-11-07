@@ -5059,10 +5059,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     currentPublicationStatus() shouldBe Some(PublicationStatus.Draft)
     currentPublicationType() shouldBe None
 
-    val alreadySentMessagesSubjectList = insecureContainer.emailer
+    val alreadySentMessageIds = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(_.subject)
+      .map(_.messageId)
       .toList
 
     postJson(
@@ -5206,23 +5206,33 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
 
     // Note: the 'colleague' user is added to the Publishers team in initializePublicationTest()
     // and the 'publisher' user is added to the Publishers team in ApiSuite.beforeEach()
-    sentMessages.map(_.subject).toList shouldBe List.concat(
-      alreadySentMessagesSubjectList,
+    sentMessages.map(_.messageId).toList shouldBe List.concat(
+      alreadySentMessageIds,
       List(
-        "Dataset Submitted for Review", //submitted
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
-        "Dataset Revision needed", //rejected
-        "Dataset Submitted for Review", //submitted
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
-        "Dataset Submitted for Review", //submitted again after cancel (cancel does not send email for now)
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (colleague)
-        "Dataset Submitted to Publishers for Review", //cc: Publishers Team (publisher)
-        "Dataset Accepted", //accepted
-        "Dataset Published to Pennsieve Discover" //published
+        "dataset-publication-in-review", //submitted
+        "dataset-submitted-for-review", //cc: Publishers Team (colleague)
+        "dataset-submitted-for-review", //cc: Publishers Team (publisher)
+        "dataset-revision-needed", //rejected
+        "dataset-publication-in-review", //submitted
+        "dataset-submitted-for-review", //cc: Publishers Team (colleague)
+        "dataset-submitted-for-review", //cc: Publishers Team (publisher)
+        "dataset-publication-in-review", //submitted again after cancel (cancel does not send email for now)
+        "dataset-submitted-for-review", //cc: Publishers Team (colleague)
+        "dataset-submitted-for-review", //cc: Publishers Team (publisher)
+        "dataset-publication-accepted", //accepted
+        "notification-of-publication-to-contributor" //published
       )
     )
+
+    // Resubmitting after a rejection or cancel is a new event: each submission
+    // must carry its own dedupe id or the email-service would suppress the
+    // later ones as repeats of the first. Recipients of one submission share
+    // an id on purpose; the service appends the recipient to the key.
+    val inReviewDedupeIds = sentMessages
+      .filter(_.messageId == "dataset-publication-in-review")
+      .flatMap(_.dedupeId)
+      .toList
+    inReviewDedupeIds.distinct.size should be >= 3
   }
 
   test(
@@ -5319,10 +5329,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     "2 step publishing - revision - request > cancel > request > reject > request > accept > complete"
   ) {
 
-    val alreadySentMessagesSubjectList = insecureContainer.emailer
+    val alreadySentMessageIds = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(_.subject)
+      .map(_.messageId)
       .toList
 
     implicit val dataset: Dataset =
@@ -5449,9 +5459,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sentEmails
 
-    sentMessages.map(_.subject).toList shouldBe List.concat(
-      alreadySentMessagesSubjectList,
-      List("Dataset Revision")
+    sentMessages.map(_.messageId).toList shouldBe List.concat(
+      alreadySentMessageIds,
+      List("dataset-revision")
     )
   }
 
@@ -5562,10 +5572,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   test(
     "2 step publishing - embargo - request > accept > publication successful"
   ) {
-    val alreadySentMessagesSubjectList = insecureContainer.emailer
+    val alreadySentMessageIds = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(_.subject)
+      .map(_.messageId)
       .toList
 
     implicit val dataset: Dataset =
@@ -5637,9 +5647,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sentEmails
 
-    sentMessages.map(_.subject).toList shouldBe List.concat(
-      alreadySentMessagesSubjectList,
-      List("Dataset Accepted", "Dataset Under Embargo")
+    sentMessages.map(_.messageId).toList shouldBe List.concat(
+      alreadySentMessageIds,
+      List("dataset-publication-accepted", "dataset-embargo-accepted")
     )
 
   }
@@ -5701,10 +5711,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   }
 
   test("2 step publishing - release - request > accept > release successful") {
-    val alreadySentMessagesSubjectList = insecureContainer.emailer
+    val alreadySentMessageIds = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(_.subject)
+      .map(_.messageId)
       .toList
 
     implicit val dataset: Dataset =
@@ -5761,9 +5771,9 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       .asInstanceOf[LoggingEmailer]
       .sentEmails
 
-    sentMessages.map(_.subject).toList shouldBe List.concat(
-      alreadySentMessagesSubjectList,
-      List("Dataset Release Accepted", "Dataset Released")
+    sentMessages.map(_.messageId).toList shouldBe List.concat(
+      alreadySentMessageIds,
+      List("embargo-dataset-release-accepted", "embargoed-dataset-released")
     )
   }
 
@@ -6819,7 +6829,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     val alreadySent = insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(e => (e.subject, e.to.address))
+      .map(e => (e.messageId, e.recipients.head.email))
       .toList
 
     val serviceHeader =
@@ -6923,10 +6933,10 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
     insecureContainer.emailer
       .asInstanceOf[LoggingEmailer]
       .sentEmails
-      .map(e => (e.subject, e.to.address))
+      .map(e => (e.messageId, e.recipients.head.email))
       .toList shouldBe alreadySent ++ List(
-      ("Request to Access Data", loggedInUser.email),
-      ("Request Accepted", colleagueUser.email)
+      ("embargo-access-requested", loggedInUser.email),
+      ("embargo-access-approved", colleagueUser.email)
     )
   }
   test(
@@ -9176,7 +9186,7 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
   ) {
     val dataset = createDataSet("My Dataset")
 
-    secureContainer.datasetPublicationStatusManager
+    val accepted = secureContainer.datasetPublicationStatusManager
       .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
       .await
       .value
@@ -9202,6 +9212,16 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       status shouldBe 200
     }
 
+    // The email's dedupe id names the publication status being completed, so
+    // a redelivery of this callback is suppressed by the email-service while a
+    // later publication of the dataset is not.
+    insecureContainer.emailer
+      .asInstanceOf[LoggingEmailer]
+      .sentEmails
+      .flatMap(_.dedupeId) should contain(
+      s"notification-of-publication-to-contributor:publication-status-${accepted.id}"
+    )
+
     val events =
       secureContainer.organizationEventManager.getEvents().await.value
     val published = events.collect {
@@ -9223,6 +9243,57 @@ class TestDataSetsController extends BaseApiTest with DataSetTestMixin {
       ownerUserId = loggedInUser.id,
       ownerName = s"${loggedInUser.firstName} ${loggedInUser.lastName}"
     )
+  }
+
+  test(
+    "complete the publish and fire the broadcast even when the contributor emails cannot be enqueued"
+  ) {
+    val dataset = createDataSet("My Dataset")
+
+    secureContainer.datasetPublicationStatusManager
+      .create(dataset, PublicationStatus.Accepted, PublicationType.Publication)
+      .await
+      .value
+
+    val request = write(
+      PublishCompleteRequest(
+        publishedDatasetId = Some(99),
+        publishedVersionCount = 1,
+        lastPublishedDate = Some(OffsetDateTime.now),
+        status = PublishStatus.PublishSucceeded,
+        success = true,
+        error = None,
+        publishedVersion = Some(1),
+        doi = Some("10.1234/abcd")
+      )
+    )
+
+    val emailer = insecureContainer.emailer.asInstanceOf[LoggingEmailer]
+    emailer.failSends = Some(new RuntimeException("queue unavailable"))
+    try {
+      putJson(
+        s"/${dataset.id}/publication/complete",
+        request,
+        headers = jwtServiceAuthorizationHeader(loggedInOrganization) ++ traceIdHeader()
+      ) {
+        status shouldBe 200
+      }
+    } finally {
+      emailer.failSends = None
+    }
+
+    secureContainer.datasetPublicationStatusManager
+      .getLatestByDataset(dataset.id)
+      .await
+      .value
+      .get
+      .publicationStatus shouldBe PublicationStatus.Completed
+
+    secureContainer.organizationEventManager
+      .getEvents()
+      .await
+      .value
+      .count(_.eventType == OrganizationEventName.DATASET_PUBLISHED) shouldBe 1
   }
 
   test(
