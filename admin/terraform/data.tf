@@ -97,7 +97,10 @@ data "terraform_remote_state" "authentication_service" {
 
   config = {
     bucket = "${var.aws_account}-terraform-state"
-    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/authentication-service/terraform.tfstate"
+    # Phase 0.5f: Cognito pool outputs now served by the auth-service leaf
+    # (the pools + state were moved authentication-service -> auth-service in
+    # Phase 0.5; outputs re-exposed on the auth-service leaf in 0.5e / infra#897).
+    key    = "aws/${data.aws_region.current_region.name}/${var.vpc_name}/${var.environment_name}/auth-service/terraform.tfstate"
     region = "us-east-1"
   }
 }
