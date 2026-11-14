@@ -54,6 +54,16 @@ class FileExtensionsSpec extends AnyFlatSpec with Matchers {
     coreUtilities.splitFileName("image.ome.tiff") should equal(
       ("image", ".ome.tiff")
     )
+    coreUtilities.splitFileName("slide.ome.zarr.zip") should equal(
+      ("slide", ".ome.zarr.zip")
+    )
+    coreUtilities.splitFileName("slide.ozx") should equal(("slide", ".ozx"))
+    coreUtilities.splitFileName("recording.ts.zarr.zip") should equal(
+      ("recording", ".ts.zarr.zip")
+    )
+    coreUtilities.splitFileName("files.zip") should equal(("files", ".zip"))
+    coreUtilities.getFileType(".ozx") should equal(FileType.OMEZarr)
+    coreUtilities.getFileType(".ts.zarr.zip") should equal(FileType.TSZarr)
 
   }
 

@@ -18,9 +18,12 @@ package com.pennsieve.models.utilities
 
 import com.pennsieve.models.{
   File,
+  FileExtensions,
   FileObjectType,
   FileProcessingState,
   FileType,
+  FileTypeInfo,
+  PackageType,
   Utilities
 }
 import org.scalatest.matchers.should.Matchers
@@ -100,6 +103,20 @@ class TestUtilities extends AnyWordSpecLike with Matchers {
       f.fileExtension shouldBe Some("ome.btf")
       Utilities.getFullExtension(f.s3Key) shouldBe Some("ome.btf")
 
+    }
+
+    "prefer the zipped Zarr extensions over .zip" in {
+      Utilities.getPennsieveExtension("slide.ome.zarr.zip") shouldBe (".ome.zarr.zip")
+      Utilities.getPennsieveExtension("slide.ozx") shouldBe (".ozx")
+      Utilities.getPennsieveExtension("recording.ts.zarr.zip") shouldBe (".ts.zarr.zip")
+      Utilities.getPennsieveExtension("files.zip") shouldBe (".zip")
+      FileExtensions.fileTypeMap(".ozx") shouldBe FileType.OMEZarr
+      FileExtensions.fileTypeMap(".ome.zarr.zip") shouldBe FileType.OMEZarr
+      FileExtensions.fileTypeMap(".ts.zarr.zip") shouldBe FileType.TSZarr
+      FileTypeInfo.get(FileType.OMEZarr).packageType shouldBe PackageType.Slide
+      FileTypeInfo
+        .get(FileType.TSZarr)
+        .packageType shouldBe PackageType.TimeSeries
     }
 
     "return empty string when there is no extension" in {
