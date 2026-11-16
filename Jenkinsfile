@@ -60,7 +60,6 @@ timestamps {
                 def services = [
                     'admin',
                     'api',
-                    'authorization-service',
                     'jobs'
                 ]
 
