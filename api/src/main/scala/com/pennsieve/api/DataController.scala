@@ -356,24 +356,35 @@ class DataController(
           EitherT.rightT[Future, Failure](Option.empty[Dataset])
         else
           for {
+            // Marks the package DELETING and writes its PENDING delete_jobs
+            // row in one transaction; the message carries the row's id.
             deleteMessage <- secureContainer.packageManager
               .delete(traceId, pkg)
               .leftMap(error => Failure(item, error.getMessage))
 
-            _ <- secureContainer.changelogManager
-              .logEvent(
-                dataset,
-                ChangelogEventDetail.DeletePackage(pkg, parent)
-              )
-              .leftMap(error => Failure(item, error.getMessage))
+            touched <- deleteMessage match {
+              // A concurrent delete of this package won the DELETING flip
+              // and owns the job: same as the DELETING retry above.
+              case None =>
+                EitherT.rightT[Future, Failure](Option.empty[Dataset])
 
-            _ <- sqsClient
-              .send(
-                insecureContainer.sqs_queue_v2,
-                deleteMessage.asJson.noSpaces
-              )
-              .leftMap(error => Failure(item, error.getMessage))
-          } yield Option(dataset)
+              case Some(job) =>
+                for {
+                  _ <- secureContainer.changelogManager
+                    .logEvent(
+                      dataset,
+                      ChangelogEventDetail.DeletePackage(pkg, parent)
+                    )
+                    .leftMap(error => Failure(item, error.getMessage))
+
+                  // After commit. If this send is lost, the PENDING row is
+                  // what the monitor and re-drive pick up.
+                  _ <- sqsClient
+                    .send(insecureContainer.sqs_queue_v2, job.asJson.noSpaces)
+                    .leftMap(error => Failure(item, error.getMessage))
+                } yield Option(dataset)
+            }
+          } yield touched
 
       } yield (item, touchedDataset)
     }

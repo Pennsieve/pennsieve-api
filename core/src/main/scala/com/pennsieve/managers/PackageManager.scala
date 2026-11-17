@@ -72,6 +72,7 @@ trait PackageManager {
   lazy val externalFilesMapper = new ExternalFilesMapper(organization)
   lazy val datasetsMapper: DatasetsMapper = datasetManager.datasetsMapper
   lazy val filesMapper = new FilesMapper(organization)
+  lazy val deleteJobsMapper = new DeleteJobsMapper(organization)
 
   lazy val externalFileManager =
     new ExternalFileManager(externalFilesMapper, this)
@@ -615,8 +616,18 @@ trait PackageManager {
     * Soft delete a package: mark it and all descendants DELETING and rename
     * them in a single transaction, freeing the root's name for immediate
     * reuse and preserving the __DELETED__ prefix contract that the restore
-    * flow depends on. Returns a DeleteJob to be scheduled that will decrement
-    * storage counts and hard-delete the package and all assets.
+    * flow depends on.
+    *
+    * In that same transaction it writes the job's PENDING row to the
+    * organization's delete_jobs table (source API_DELETE), keyed by the job
+    * id. Returns the DeletePackageJob for the caller to enqueue on
+    * jobs_queue_v2 after commit; it decrements storage counts and
+    * hard-deletes the package and all assets. If the enqueue is lost, the
+    * aged PENDING row is what the monitor and re-drive find. Only the
+    * requested package gets a row, not its descendants.
+    *
+    * Returns None, and writes no row, when the package was already DELETING
+    * (a concurrent delete won the guarded update): that delete owns the job.
     *
     * @param traceId The trace ID from the endpoint that initiated the deletion
     * @param pkg The Package to delete
@@ -626,7 +637,10 @@ trait PackageManager {
     pkg: Package
   )(implicit
     ec: ExecutionContext
-  ): EitherT[Future, CoreError, BackgroundJob] = {
+  ): EitherT[Future, CoreError, Option[BackgroundJob]] = {
+
+    val job =
+      DeletePackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId)
 
     for {
       // Deletion is not allowed while a dataset is locked
@@ -638,7 +652,7 @@ trait PackageManager {
       softDeleteAction = for {
         // Guarded on state so a concurrent delete of the same package cannot
         // rename it twice
-        _ <- packagesMapper
+        flipped <- packagesMapper
           .get(pkg.id)
           .filter(_.state =!= (PackageState.DELETING: PackageState))
           .map(p => (p.state, p.name))
@@ -648,11 +662,13 @@ trait PackageManager {
         _ <- if (pkg.`type` == Collection)
           packagesMapper.softDeleteDescendants(pkg)
         else DBIO.successful(0)
-      } yield ()
+        // The durable job record commits (or rolls back) with the flip.
+        _ <- if (flipped > 0) deleteJobsMapper.insertPending(job, pkg)
+        else DBIO.successful(0)
+      } yield flipped
 
-      _ <- db.run(softDeleteAction.transactionally).toEitherT
-    } yield
-      DeletePackageJob(pkg.id, organization.id, actor.nodeId, traceId = traceId): BackgroundJob
+      flipped <- db.run(softDeleteAction.transactionally).toEitherT
+    } yield if (flipped > 0) Some(job: BackgroundJob) else None
 
   }
 
