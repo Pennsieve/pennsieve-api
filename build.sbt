@@ -136,7 +136,7 @@ lazy val jacksonVersion = "2.22.3"
 lazy val nettyVersion = "4.1.139.Final"
 
 // Transitive dependencies pinned to patched versions (clin Inspector findings
-// against the api WAR and the admin / authorization-service jars). Every
+// against the api WAR and the admin jar). Every
 // version here must still run on Java 8.
 ThisBuild / dependencyOverrides ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
@@ -474,49 +474,6 @@ lazy val adminSettings = Seq(
   assembly / assemblyMergeStrategy := defaultMergeStrategy.value
 )
 
-lazy val authorizationServiceSettings = Seq(
-  name := "authorization-service",
-  publishTo := publishToPennsieve.value,
-  publish := aether.AetherKeys.aetherDeploy.value,
-  libraryDependencies ++= Seq(
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-    "com.iheart" %% "ficus" % ficusVersion,
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
-    "com.pennsieve" %% "auth-middleware" % authMiddlewareVersion,
-    // testing deps
-    "org.scalatest" %% "scalatest" % scalatestVersion % Test,
-    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test,
-    "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test
-  ),
-  excludeDependencies ++= unwantedDependencies,
-  docker / dockerfile := {
-    val artifact: File = assembly.value
-    val artifactTargetPath = s"/app/${artifact.name}"
-    new SecureDockerfile(SecureDockerfile.JavaImage) {
-      copy(artifact, artifactTargetPath, chown = "pennsieve:pennsieve")
-      copy(
-        baseDirectory.value / "bin" / "run.sh",
-        "/app/run.sh",
-        chown = "pennsieve:pennsieve"
-      )
-      env("RUST_BACKTRACE", "1")
-      cmd(
-        "--service",
-        "authorization-service",
-        "exec",
-        "--",
-        "/app/run.sh",
-        artifactTargetPath
-      )
-    }
-  },
-  docker / imageNames := Seq(
-    ImageName("pennsieve/authorization-service:latest")
-  ),
-  assembly / assemblyMergeStrategy := defaultMergeStrategy.value
-)
-
 lazy val bfAkkaHttpSettings = Seq(
   name := "bf-akka-http",
   publishTo := publishToPennsieve.value,
@@ -711,16 +668,6 @@ lazy val admin = project
   .settings(commonSettings: _*)
   .settings(adminSettings: _*)
 
-lazy val `authorization-service` = project
-  .dependsOn(
-    core % "test->test;compile->compile",
-    `bf-akka-http` % "test->test;compile->compile"
-  )
-  .enablePlugins(sbtdocker.DockerPlugin)
-  .enablePlugins(AutomateHeaderPlugin)
-  .settings(commonSettings: _*)
-  .settings(authorizationServiceSettings: _*)
-
 lazy val `bf-akka-http` = project
   .dependsOn(core % "test->test;compile->compile")
   .enablePlugins(AutomateHeaderPlugin)
@@ -800,7 +747,6 @@ lazy val `invite-cognito-user` = project
 lazy val root = (project in file("."))
   .aggregate(
     admin,
-    `authorization-service`,
     api,
     `bf-akka-http`,
     core,
