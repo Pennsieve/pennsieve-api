@@ -125,6 +125,7 @@ trait ManagerSpec
     postgresDB = postgresContainer.database
 
     database = postgresDB.forURL
+    database.run(ensureDeleteJobsTables).await
 
     userManager = new UserManagerImpl(database)
     userInviteManager = new UserInviteManagerImpl(database)

@@ -18,7 +18,7 @@ package com.pennsieve.managers
 
 import cats.data.EitherT
 import cats.implicits._
-import com.pennsieve.db.PackagesMapper
+import com.pennsieve.db.{ DeleteJobsMapper, PackagesMapper }
 import com.pennsieve.domain.{ NameCheckError, NotFound, PredicateError }
 import com.pennsieve.domain.StorageAggregation.{ sdatasets, spackages }
 import com.pennsieve.messages.DeletePackageJob
@@ -682,9 +682,9 @@ class PackageManagerSpec extends BaseManagerSpec {
     val job = pm.delete(TraceId("ds"), p).await.value
 
     job match {
-      case deleteJob: DeletePackageJob =>
+      case Some(deleteJob: DeletePackageJob) =>
         assert(deleteJob.packageId == p.id)
-      case other => fail(s"expected DeletePackageJob, got $other")
+      case other => fail(s"expected Some(DeletePackageJob), got $other")
     }
 
     val packagesMapper = new PackagesMapper(testOrganization)
@@ -709,7 +709,33 @@ class PackageManagerSpec extends BaseManagerSpec {
     assert(datasetStorageAfter == Some(file.size))
   }
 
-  "deleting a package" should "not rename it twice when already DELETING" in {
+  "deleting a package" should "record a PENDING API_DELETE delete_jobs row keyed by the job id" in {
+    val user = createUser()
+    val pm = packageManager(user = user)
+    val dataset = createDataset(user = user)
+    val p = createPackage(user = user, dataset = dataset, `type` = Slide)
+
+    val job = pm.delete(TraceId("trace-123"), p).await.value match {
+      case Some(j: DeletePackageJob) => j
+      case other => fail(s"expected Some(DeletePackageJob), got $other")
+    }
+
+    val row = database
+      .run(new DeleteJobsMapper(testOrganization).get(job.id))
+      .await
+      .getOrElse(fail(s"no delete_jobs row for job ${job.id}"))
+
+    assert(row.packageId == p.id)
+    assert(row.packageNodeId == p.nodeId)
+    assert(row.datasetId == dataset.id)
+    assert(row.userNodeId.contains(user.nodeId))
+    assert(row.traceId.contains("trace-123"))
+    assert(row.source == "API_DELETE")
+    assert(row.state == "PENDING")
+    assert(row.attempts == 0)
+  }
+
+  "deleting a package" should "not rename it twice or record a second job when already DELETING" in {
     val user = createUser()
     val pm = packageManager(user = user)
     val dataset = createDataset(user = user)
@@ -717,14 +743,23 @@ class PackageManagerSpec extends BaseManagerSpec {
 
     val packagesMapper = new PackagesMapper(testOrganization)
 
-    pm.delete(TraceId("ds"), p).await.value
+    val first = pm.delete(TraceId("ds"), p).await.value
     val afterFirst = database.run(packagesMapper.get(p.id).result.head).await
 
-    pm.delete(TraceId("ds"), p).await.value
+    // `p` is stale (still READY), like a concurrent request that read the
+    // package before the first delete committed.
+    val second = pm.delete(TraceId("ds"), p).await.value
     val afterSecond = database.run(packagesMapper.get(p.id).result.head).await
 
     assert(afterFirst.state == PackageState.DELETING)
     assert(afterSecond.name == afterFirst.name)
+
+    assert(first.isDefined)
+    assert(second.isEmpty, "the losing delete must not produce a job")
+    val rows = database
+      .run(new DeleteJobsMapper(testOrganization).getByPackageNodeId(p.nodeId))
+      .await
+    assert(rows.map(_.id) == Vector(first.get.id))
   }
 
   "deleting a collection" should "synchronously mark its descendants DELETING" in {
@@ -743,7 +778,7 @@ class PackageManagerSpec extends BaseManagerSpec {
         `type` = Slide
       )
 
-    pm.delete(TraceId("ds"), parent).await.value
+    val job = pm.delete(TraceId("ds"), parent).await.value
 
     val packagesMapper = new PackagesMapper(testOrganization)
     def stateOf(id: Int): PackageState =
@@ -752,6 +787,14 @@ class PackageManagerSpec extends BaseManagerSpec {
     assert(stateOf(parent.id) == PackageState.DELETING)
     assert(stateOf(child.id) == PackageState.DELETING)
     assert(stateOf(grandChild.id) == PackageState.DELETING)
+
+    // Only the requested package gets a job row; descendants ride on it.
+    val deleteJobs = new DeleteJobsMapper(testOrganization)
+    def rowsFor(nodeId: String) =
+      database.run(deleteJobs.getByPackageNodeId(nodeId)).await
+    assert(rowsFor(parent.nodeId).map(_.id) == Vector(job.get.id))
+    assert(rowsFor(child.nodeId).isEmpty)
+    assert(rowsFor(grandChild.nodeId).isEmpty)
   }
 
   "creating packages with duplicate node ids" should "fail" in {

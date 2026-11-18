@@ -184,11 +184,57 @@ $$pgclean$$"""
     )
   }
 
+  // Creates <org>.delete_jobs in every seeded organization schema if the
+  // seed image predates pennsieve-db-migrations
+  // V20261117092140__create_delete_jobs.sql. Same columns and CHECKs as the
+  // migration, minus the updated_at trigger (fires only on UPDATE). A no-op
+  // once :latest-seed carries the migration.
+  //
+  // delete_jobs has no foreign keys, so the clean-up helpers do not clear it.
+  // Tests look rows up by job id or package node id (both unique) rather than
+  // by package id, which restarts every test.
+  def ensureDeleteJobsTables: DBIO[Unit] = {
+    val schemas = seededOrganizationIds.map(id => s"'$id'").mkString(",")
+    val ddl =
+      s"""DO $$$$
+         |DECLARE s text;
+         |BEGIN
+         |  FOREACH s IN ARRAY ARRAY[$schemas] LOOP
+         |    EXECUTE format('CREATE TABLE IF NOT EXISTS %I.delete_jobs (
+         |      id                 UUID PRIMARY KEY,
+         |      package_id         INTEGER NOT NULL,
+         |      package_node_id    VARCHAR(255) NOT NULL,
+         |      dataset_id         INTEGER NOT NULL,
+         |      user_node_id       VARCHAR(255),
+         |      trace_id           VARCHAR(255),
+         |      source             VARCHAR(32) NOT NULL DEFAULT ''UNKNOWN''
+         |                         CHECK (source IN (''API_DELETE'',''UPLOAD_REPLACE'',''OTHER'',''UNKNOWN'')),
+         |      state              VARCHAR(20) NOT NULL DEFAULT ''PENDING''
+         |                         CHECK (state IN (''PENDING'',''IN_PROGRESS'',''SUCCEEDED'',''PARTIAL'',''FAILED'')),
+         |      attempts           INTEGER NOT NULL DEFAULT 0,
+         |      last_error         TEXT,
+         |      packages_total     INTEGER,
+         |      packages_deleted   INTEGER NOT NULL DEFAULT 0,
+         |      bytes_reclaimed    BIGINT  NOT NULL DEFAULT 0,
+         |      s3_objects_deleted INTEGER NOT NULL DEFAULT 0,
+         |      s3_objects_failed  INTEGER NOT NULL DEFAULT 0,
+         |      created_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         |      started_at         TIMESTAMP,
+         |      finished_at        TIMESTAMP,
+         |      updated_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+         |    )', s);
+         |  END LOOP;
+         |END
+         |$$$$""".stripMargin
+    DBIO.seq(sqlu"#$ddl")
+  }
+
   // TRUNCATE-based variant of clearDB. Run once per suite (not per test): it
   // is much slower than clearDB but rewrites relfilenodes, which compacts any
   // table bloat left behind by the DELETE-based fast path.
   def deepClearDB: DBIO[Unit] = DBIO.seq(
     Seq(
+      ensureDeleteJobsTables,
       // clears organizations, subscriptions, and feature flags due to their foreign key relationships
       sqlu"""TRUNCATE TABLE "pennsieve"."users" RESTART IDENTITY CASCADE""",
       sqlu"""TRUNCATE TABLE "pennsieve"."organizations" RESTART IDENTITY CASCADE""",

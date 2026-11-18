@@ -23,7 +23,7 @@ import com.pennsieve.helpers.{
   MockAuditLogger,
   MockSQSClient
 }
-import com.pennsieve.db.PackagesMapper
+import com.pennsieve.db.{ DeleteJobsMapper, PackagesMapper }
 import com.pennsieve.messages.DeletePackageJob
 import com.pennsieve.models.PackageState.{ DELETING, READY }
 import com.pennsieve.models.PackageType.{ Collection, PDF }
@@ -644,6 +644,65 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
 
     val messages = MockSQSClient.sentMessages.getOrElse(queue, List.empty)
     (messages.size - messagesBefore) should equal(1)
+
+    // ...and records exactly one job row, whose id is that message's id.
+    val sentJobId = io.circe.parser
+      .decode[BackgroundJob](messages.head)
+      .value
+      .id
+    insecureContainer.db
+      .run(
+        new DeleteJobsMapper(loggedInOrganization)
+          .getByPackageNodeId(pkg.nodeId)
+      )
+      .await
+      .map(_.id) should equal(Vector(sentJobId))
+  }
+
+  test(
+    "deleting a package records a PENDING API_DELETE delete_jobs row whose id is the enqueued job id"
+  ) {
+    val dataset = createDataSet("My DataSet")
+    val pkg = packageManager
+      .create("Foo", PDF, READY, dataset, Some(loggedInUser.id), None)
+      .await
+      .value
+    val deleteReq = write(DeleteRequest(List(pkg.nodeId)))
+    val queue = insecureContainer.sqs_queue_v2
+
+    postJson(
+      s"/delete",
+      deleteReq,
+      headers = authorizationHeader(loggedInJwt) ++ traceIdHeader()
+    ) {
+      status should equal(200)
+      compactRender(parsedBody \ "success") should include(pkg.nodeId)
+    }
+
+    // The wire format is unchanged: {"DeletePackageJob": {...}}.
+    val job = io.circe.parser
+      .decode[BackgroundJob](
+        MockSQSClient.sentMessages.getOrElse(queue, List.empty).head
+      )
+      .value match {
+      case j: DeletePackageJob => j
+      case other => fail(s"expected DeletePackageJob, got $other")
+    }
+    job.packageId should equal(pkg.id)
+
+    val row = insecureContainer.db
+      .run(new DeleteJobsMapper(loggedInOrganization).get(job.id))
+      .await
+      .getOrElse(fail(s"no delete_jobs row for job ${job.id}"))
+
+    row.packageId should equal(pkg.id)
+    row.packageNodeId should equal(pkg.nodeId)
+    row.datasetId should equal(dataset.id)
+    row.userNodeId should equal(Some(loggedInUser.nodeId))
+    row.traceId should equal(Some(requestTraceId))
+    row.source should equal("API_DELETE")
+    row.state should equal("PENDING")
+    row.attempts should equal(0)
   }
 
   test("deleting a collection soft deletes its descendants synchronously") {
@@ -685,6 +744,15 @@ class TestDataController extends BaseApiTest with DataSetTestMixin {
       .await
     childAfter.state should equal(DELETING)
     childAfter.name should equal("__DELETED__" + child.nodeId + "_Bar")
+
+    // Only the collection gets a job row, not its descendants.
+    val deleteJobs = new DeleteJobsMapper(loggedInOrganization)
+    insecureContainer.db
+      .run(deleteJobs.getByPackageNodeId(collection.nodeId))
+      .await should have size 1
+    insecureContainer.db
+      .run(deleteJobs.getByPackageNodeId(child.nodeId))
+      .await shouldBe empty
   }
 
   test("deleting a package does not synchronously decrement storage") {
