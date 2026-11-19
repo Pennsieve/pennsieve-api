@@ -38,6 +38,8 @@ object FileExtensions {
     ".ome.tf8" -> FileType.OMETIFF,
     ".ome.btf" -> FileType.OMETIFF,
     ".ome.xml" -> FileType.OMETIFF,
+    ".ome.zarr.zip" -> FileType.OMEZarr,
+    ".ozx" -> FileType.OMEZarr,
     ".brukertiff.gz" -> FileType.BRUKERTIFF,
     ".tiff" -> FileType.TIFF,
     ".tif" -> FileType.TIFF,
@@ -73,6 +75,7 @@ object FileExtensions {
     // Mef
     ".mef" -> FileType.MEF,
     ".mefd.gz" -> FileType.MEF3,
+    ".ts.zarr.zip" -> FileType.TSZarr,
     ".edf" -> FileType.EDF,
     ".bdf" -> FileType.BDF,
     ".tdm" -> FileType.TDMS,
