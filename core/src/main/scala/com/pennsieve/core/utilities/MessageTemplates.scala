@@ -16,43 +16,29 @@
 
 package com.pennsieve.core.utilities
 
-import cats.data._
-import cats.implicits._
-import com.pennsieve.domain.{ CoreError, ThrowableError }
+import com.pennsieve.email.client.{ EmailRequest, Messages, Recipient }
 import com.pennsieve.models.{ Dataset, Organization, User }
 
-import com.pennsieve.templates.GeneratedMessageTemplates
+/**
+  * Builds the email-service request for each email the API sends. The request
+  * names the template (messageId) and carries the values to fill into it; the
+  * email-service owns the template, subject, and delivery. The template
+  * variables are defined in the email-templates repo.
+  */
+class MessageTemplates(host: String, discoverHost: String) {
 
-import com.pennsieve.aws.email._
-
-class MessageTemplates(
-  host: String,
-  discoverHost: String,
-  val supportEmail: Email
-) {
-
-//  // TODO: move to Cognito and remove. This email is now unused
-//  def newAccount(
-//    emailAddress: String,
-//    orgId: String,
-//    newUserToken: String
-//  ): String =
-//    GeneratedMessageTemplates.newAccountCreation(
-//      host = host,
-//      emailAddress = emailAddress,
-//      organizationNodeId = orgId,
-//      newUserToken = newUserToken
-//    )
+  // The recipient's name is not used by the email-service, only the address.
+  private def to(emailAddress: String): Recipient = Recipient("", emailAddress)
 
   def addedToOrganization(
     emailAddress: String,
     administrator: String,
     org: Organization,
     customMessage: String
-  ): String =
-    GeneratedMessageTemplates.addedToOrganization(
+  ): EmailRequest =
+    Messages.addedToOrganization(
+      to = to(emailAddress),
       host = host,
-      emailAddress = emailAddress,
       organizationName = org.name,
       organizationNodeId = org.nodeId,
       administrator = administrator,
@@ -64,31 +50,24 @@ class MessageTemplates(
     administrator: String,
     team: String,
     org: Organization
-  ): String =
-    GeneratedMessageTemplates.addedToTeam(
+  ): EmailRequest =
+    Messages.addedToTeam(
+      to = to(emailAddress),
       host = host,
-      emailAddress = emailAddress,
       teamName = team,
       organizationNodeId = org.nodeId,
       administrator = administrator
     )
-
-//  def passwordReset(emailAddress: String, token: String): String =
-//    GeneratedMessageTemplates.passwordReset(
-//      host = host,
-//      token = token,
-//      emailAddress = emailAddress
-//    )
 
   def datasetOwnerChangedNotification(
     emailAddress: String,
     previousOwner: User,
     dataset: Dataset,
     org: Organization
-  ): String =
-    GeneratedMessageTemplates.changeOfDatasetOwner(
+  ): EmailRequest =
+    Messages.changeOfDatasetOwner(
+      to = to(emailAddress),
       host = host,
-      emailAddress = emailAddress,
       datasetName = dataset.name,
       datasetNodeId = dataset.nodeId,
       organizationName = org.name,
@@ -101,13 +80,13 @@ class MessageTemplates(
     emailAddress: String,
     dataset: Dataset,
     discoverDatasetId: Int
-  ): String =
-    GeneratedMessageTemplates.notificationOfPublicationToContributor(
+  ): EmailRequest =
+    Messages.notificationOfPublicationToContributor(
+      to = to(emailAddress),
       ownerName = owner.fullName,
       discoverHost = discoverHost,
       datasetName = dataset.name,
-      discoverDatasetId = discoverDatasetId.toString,
-      emailAddress = emailAddress
+      discoverDatasetId = discoverDatasetId.toString
     )
 
   def datasetRevisionNeeded(
@@ -117,14 +96,14 @@ class MessageTemplates(
     emailAddress: String,
     org: Organization,
     message: String
-  ): String =
-    GeneratedMessageTemplates.datasetRevisionNeeded(
+  ): EmailRequest =
+    Messages.datasetRevisionNeeded(
+      to = to(emailAddress),
       host = host,
       datasetNodeId = dataset.nodeId,
       datasetName = dataset.name,
       reviewerName = reviewer.fullName,
       date = date,
-      emailAddress = emailAddress,
       organizationNodeId = org.nodeId,
       message = message
     )
@@ -134,12 +113,12 @@ class MessageTemplates(
     reviewer: User,
     date: String,
     emailAddress: String
-  ): String =
-    GeneratedMessageTemplates.datasetPublicationAccepted(
+  ): EmailRequest =
+    Messages.datasetPublicationAccepted(
+      to = to(emailAddress),
       datasetName = dataset.name,
       reviewerName = reviewer.fullName,
-      date = date,
-      emailAddress = emailAddress
+      date = date
     )
 
   def datasetEmbargoed(
@@ -147,11 +126,11 @@ class MessageTemplates(
     date: String,
     embargoDate: String,
     emailAddress: String
-  ): String =
-    GeneratedMessageTemplates.datasetEmbargoAccepted(
+  ): EmailRequest =
+    Messages.datasetEmbargoAccepted(
+      to = to(emailAddress),
       datasetName = dataset.name,
-      embargoDate = embargoDate,
-      emailAddress = emailAddress
+      embargoDate = embargoDate
     )
 
   def datasetSubmittedForPublication(
@@ -160,15 +139,15 @@ class MessageTemplates(
     owner: User,
     date: String,
     emailAddress: String
-  ): String =
-    GeneratedMessageTemplates.datasetPublicationInReview(
+  ): EmailRequest =
+    Messages.datasetPublicationInReview(
+      to = to(emailAddress),
       host = host,
       datasetName = dataset.name,
       datasetNodeId = dataset.nodeId,
       ownerName = owner.fullName,
       organizationNodeId = org.nodeId,
-      date = date,
-      emailAddress = emailAddress
+      date = date
     )
 
   def datasetRevisionNotification(
@@ -176,10 +155,10 @@ class MessageTemplates(
     discoverDatasetId: Option[Int],
     org: Organization,
     dataset: Dataset
-  ): String =
-    GeneratedMessageTemplates.datasetRevision(
+  ): EmailRequest =
+    Messages.datasetRevision(
+      to = to(emailAddress),
       host = host,
-      emailAddress = emailAddress,
       discoverHost = discoverHost,
       discoverDatasetId = discoverDatasetId.getOrElse(0).toString,
       organizationNodeId = org.nodeId,
@@ -190,12 +169,12 @@ class MessageTemplates(
     dataset: Dataset,
     emailAddress: String,
     discoverDatasetId: Int
-  ): String =
-    GeneratedMessageTemplates.embargoedDatasetReleased(
+  ): EmailRequest =
+    Messages.embargoedDatasetReleased(
+      to = to(emailAddress),
       discoverHost = discoverHost,
       discoverDatasetId = discoverDatasetId.toString,
-      datasetName = dataset.name,
-      emailAddress = emailAddress
+      datasetName = dataset.name
     )
 
   def embargoedDatasetReleaseAccepted(
@@ -203,12 +182,12 @@ class MessageTemplates(
     date: String,
     reviewer: User,
     emailAddress: String
-  ): String =
-    GeneratedMessageTemplates.embargoDatasetReleaseAccepted(
+  ): EmailRequest =
+    Messages.embargoDatasetReleaseAccepted(
+      to = to(emailAddress),
       datasetName = dataset.name,
       reviewerName = reviewer.fullName,
-      date = date,
-      emailAddress = emailAddress
+      date = date
     )
 
   def embargoAccessRequested(
@@ -217,15 +196,15 @@ class MessageTemplates(
     org: Organization,
     date: String,
     emailAddress: String
-  ): String =
-    GeneratedMessageTemplates.embargoAccessRequested(
+  ): EmailRequest =
+    Messages.embargoAccessRequested(
+      to = to(emailAddress),
       host = host,
       datasetName = dataset.name,
       datasetNodeId = dataset.nodeId,
       organizationNodeId = org.nodeId,
       userName = user.fullName,
-      date = date,
-      emailAddress = emailAddress
+      date = date
     )
 
   def embargoAccessApproved(
@@ -235,14 +214,14 @@ class MessageTemplates(
     org: Organization,
     date: String,
     emailAddress: String
-  ): String =
-    GeneratedMessageTemplates.embargoAccessApproved(
+  ): EmailRequest =
+    Messages.embargoAccessApproved(
+      to = to(emailAddress),
       discoverHost = discoverHost,
       datasetName = dataset.name,
       discoverDatasetId = discoverDatasetId.toString,
       date = date,
-      managerName = manager.fullName,
-      emailAddress = emailAddress
+      managerName = manager.fullName
     )
 
   def embargoAccessDenied(
@@ -251,12 +230,12 @@ class MessageTemplates(
     org: Organization,
     date: String,
     emailAddress: String
-  ): String =
-    GeneratedMessageTemplates.embargoAccessDenied(
+  ): EmailRequest =
+    Messages.embargoAccessDenied(
+      to = to(emailAddress),
       datasetName = dataset.name,
       date = date,
-      managerName = manager.fullName,
-      emailAddress = emailAddress
+      managerName = manager.fullName
     )
 
   def emailAddressChanged(
@@ -264,12 +243,12 @@ class MessageTemplates(
     currentEmailAddress: String,
     transactionNumber: String,
     emailAddress: String
-  ): String =
-    GeneratedMessageTemplates.emailAddressChanged(
+  ): EmailRequest =
+    Messages.emailAddressChanged(
+      to = to(emailAddress),
       previousEmailAddress = previousEmailAddress,
       currentEmailAddress = currentEmailAddress,
-      transactionNumber = transactionNumber,
-      emailAddress = emailAddress
+      transactionNumber = transactionNumber
     )
 
   def inviteExternalExistingUserToDataset(
@@ -279,33 +258,14 @@ class MessageTemplates(
     workspaceName: String,
     datasetName: String,
     customMessage: String
-  ): String =
-    GeneratedMessageTemplates.inviteExternalExistingUserToDataset(
-      emailAddress = emailAddress,
+  ): EmailRequest =
+    Messages.inviteExternalExistingUserToDataset(
+      to = to(emailAddress),
       invitingPerson = invitingPerson,
       invitingEmailAddress = invitingEmailAddress,
       workspaceName = workspaceName,
       datasetName = datasetName,
       customMessage = customMessage
-    )
-
-  def inviteExternalNewUserToDataset(
-    emailAddress: String,
-    invitingPerson: String,
-    invitingEmailAddress: String,
-    workspaceName: String,
-    datasetName: String,
-    customMessage: String,
-    setupAccountLink: String
-  ): String =
-    GeneratedMessageTemplates.inviteExternalNewUserToDataset(
-      emailAddress = emailAddress,
-      invitingPerson = invitingPerson,
-      invitingEmailAddress = invitingEmailAddress,
-      workspaceName = workspaceName,
-      datasetName = datasetName,
-      customMessage = customMessage,
-      setupAccountLink = setupAccountLink
     )
 
   def datasetSubmittedForReview(
@@ -317,8 +277,9 @@ class MessageTemplates(
     ownerEmailAddress: String,
     emailAddress: String,
     date: String
-  ): String =
-    GeneratedMessageTemplates.datasetSubmittedForReview(
+  ): EmailRequest =
+    Messages.datasetSubmittedForReview(
+      to = to(emailAddress),
       host = host,
       organizationName = organizationName,
       organizationNodeId = organizationNodeId,
@@ -326,7 +287,6 @@ class MessageTemplates(
       datasetNodeId = datasetNodeId,
       ownerName = ownerName,
       ownerEmailAddress = ownerEmailAddress,
-      emailAddress = emailAddress,
       date = date
     )
 }

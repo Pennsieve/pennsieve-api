@@ -64,10 +64,14 @@ object AdminWebServer extends App with WebServer with LazyLogging {
       with LocalSQSContainer with AdminContainer with LocalS3Container
       with S3CustomTermsOfServiceClientContainer with LocalCognitoContainer
     } else {
-      new InsecureContainer(config) with InsecureCoreContainer
+      val container = new InsecureContainer(config) with InsecureCoreContainer
       with AWSEmailContainer with MessageTemplatesContainer with AWSSQSContainer
       with AdminContainer with AWSS3Container
       with S3CustomTermsOfServiceClientContainer with AWSCognitoContainer
+      // A missing email-service queue URL should stop this deployment, not
+      // break each email later.
+      container.verifyEmailConfig()
+      container
     }
 
   def secureContainerBuilder(

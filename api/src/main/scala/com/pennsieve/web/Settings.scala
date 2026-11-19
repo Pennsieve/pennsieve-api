@@ -17,7 +17,6 @@
 package com.pennsieve.web
 import com.amazonaws.regions.Regions
 import software.amazon.awssdk.regions.Region
-import com.pennsieve.aws.email.Email
 import com.pennsieve.aws.s3.S3ClientFactory
 import com.typesafe.config.{ Config, ConfigFactory }
 import net.ceedubs.ficus.Ficus._
@@ -50,8 +49,6 @@ object Settings {
     config.as[Boolean]("pennsieve.scan_wait_on_pending")
   val bitly_url_time_limit: Int =
     config.as[Int]("bitly.url_time_limit")
-
-  val support_email: Email = Email(config.as[String]("email.support_email"))
 
   val region = Regions.US_EAST_1
   val regionV2 = Region.US_EAST_1

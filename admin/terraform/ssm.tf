@@ -118,6 +118,13 @@ resource "aws_ssm_parameter" "email_support_email" {
   value = "support@${data.terraform_remote_state.account.outputs.domain_name}"
 }
 
+# The email-service send queue the service enqueues email requests on (EMAIL_SERVICE_QUEUE_URL).
+resource "aws_ssm_parameter" "email_service_queue_url" {
+  name  = "/${var.environment_name}/${var.service_name}/email-service-queue-url"
+  type  = "String"
+  value = data.terraform_remote_state.email_service.outputs.email_service_queue_url
+}
+
 resource "aws_ssm_parameter" "jobs_queue" {
   name  = "/${var.environment_name}/${var.service_name}/sqs-queue"
   type  = "String"

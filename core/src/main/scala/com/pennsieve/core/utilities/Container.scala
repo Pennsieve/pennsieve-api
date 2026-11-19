@@ -27,7 +27,6 @@ import com.pennsieve.auth.middleware.{
   Permission
 }
 import com.pennsieve.core.utilities.ContainerTypes.SnsTopic
-import com.pennsieve.aws.email.Email
 import com.pennsieve.aws.sns.SNSContainer
 import com.pennsieve.db.{
   CollectionMapper,
@@ -114,14 +113,9 @@ trait MessageTemplatesContainer {
 
   lazy val host: String = config.as[String]("email.host")
   lazy val discoverHost: String = config.as[String]("discover_app.host")
-  lazy val supportEmail: Email = Email(config.as[String]("email.support_email"))
 
   lazy val messageTemplates: MessageTemplates =
-    new MessageTemplates(
-      host = host,
-      discoverHost = discoverHost,
-      supportEmail = supportEmail
-    )
+    new MessageTemplates(host = host, discoverHost = discoverHost)
 }
 
 class InsecureContainer(
